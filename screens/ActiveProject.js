@@ -1,0 +1,286 @@
+import React, { useState, useContext, useEffect, useCallback, useRef } from "react";
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, BackHandler } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { TaskContext } from "../context/TaskContext";
+import MileStone from "../components/MileStone";
+import EditModal from "../components/EditModal";
+import ActiveMilestone from "./ActiveMilestone";
+import ActiveTaskMenu from "../components/ActiveTaskMenu";
+import Journal from "./Journal";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+
+const { width, height } = Dimensions.get("window");
+
+export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
+  const {
+    tasks,
+    deleteTask,
+    completeTask,
+    addMilestone,
+    updateMilestone,
+    completeMilestone,
+    deleteMilestone,
+    updateTask,
+  } = useContext(TaskContext);
+
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [selectedJournalMilestone, setSelectedJournalMilestone] = useState(null);
+
+  const currentTask = tasks.find((t) => t.id === selectedCard?.id) || selectedCard;
+  if (!currentTask) return null;
+
+  const isCompleted = currentTask?.done;
+  const start = currentTask?.startDate ? new Date(currentTask.startDate) : null;
+  const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
+  const isModalOpen = !!(editVisible || selectedMilestone || selectedJournalMilestone);
+
+  const progress = currentTask?.milestones?.length
+    ? currentTask.milestones.filter((m) => m.completed).length /
+      currentTask.milestones.length
+    : 0;
+
+  const translateY = useSharedValue(20);
+  const scale = useSharedValue(0.96);
+  const opacity = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const progressAnim = useSharedValue(0);
+  
+  // Cleanup refs for memory leak prevention
+  const animationCleanupRef = useRef([]);
+
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 320 });
+    scale.value = withTiming(1, { duration: 320 });
+    opacity.value = withTiming(1, { duration: 320 });
+    progressAnim.value = withTiming(progress, { duration: 400 });
+  }, [progress]);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (selectedJournalMilestone) {
+        setSelectedJournalMilestone(null);
+        return true;
+      }
+      if (selectedMilestone) {
+        setSelectedMilestone(null);
+        return true;
+      }
+      if (menuVisible) {
+        setMenuVisible(false);
+        return true;
+      }
+      if (editVisible) {
+        setEditVisible(false);
+        return true;
+      }
+      handleClose();
+      return true;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", backAction);
+    return () => sub.remove();
+  }, [menuVisible, editVisible, selectedMilestone, selectedJournalMilestone]);
+
+  // Cleanup animations on unmount
+  useEffect(() => {
+    return () => {
+      // Stop all running animations
+      translateY.value = 0;
+      scale.value = 1;
+      opacity.value = 0;
+      dragY.value = 0;
+      progressAnim.value = 0;
+    };
+  }, []);
+
+  const handleClose = useCallback(() => {
+    translateY.value = withTiming(height, { duration: 200 });
+    opacity.value = withTiming(0, { duration: 200 }, () => {
+      if (onClose) runOnJS(onClose)();
+    });
+  }, [onClose]);
+
+  const handleDelete = useCallback(() => {
+    deleteTask(currentTask.id);
+    setMenuVisible(false);
+    handleClose();
+  }, [currentTask, deleteTask, handleClose]);
+
+  const handleToggleComplete = useCallback(() => {
+    if (isCompleted) {
+      updateTask(currentTask.id, { done: false });
+      setActiveTab && setActiveTab("active");
+    } else {
+      completeTask(currentTask.id);
+      setActiveTab && setActiveTab("completed");
+    }
+    setMenuVisible(false);
+    handleClose();
+  }, [isCompleted, currentTask, updateTask, completeTask, setActiveTab, handleClose]);
+
+  const handleAddMilestone = useCallback(() => {
+    const newMilestone = {
+      id: Date.now().toString(),
+      title: "",
+      startDate: new Date().toISOString(),
+      endDate: new Date().toISOString(),
+      completed: false,
+    };
+    addMilestone(currentTask.id, newMilestone);
+  }, [currentTask, addMilestone]);
+
+  const handleEdit = useCallback(() => {
+    setMenuVisible(false);
+    setEditVisible(true);
+  }, []);
+
+  const handleSaveEdit = useCallback(
+    (updates) => {
+      if (!updates || !currentTask?.id) return;
+      updateTask(currentTask.id, updates);
+      setEditVisible(false);
+    },
+    [currentTask, updateTask]
+  );
+
+  const panGesture = Gesture.Pan()
+    .enabled(!isModalOpen)
+    .onUpdate((e) => {
+      if (!isModalOpen && e.translationY > 0 && e.y <= 120) {
+        dragY.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      if (isModalOpen) {
+        dragY.value = withTiming(0, { duration: 150 });
+        return;
+      }
+      if (e.translationY > 120 && e.y <= 120) {
+        dragY.value = withTiming(height, { duration: 200 }, () => {
+          runOnJS(handleClose)();
+        });
+      } else {
+        dragY.value = withTiming(0, { duration: 150 });
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value + dragY.value }, { scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: progressAnim.value * 100 + "%",
+  }));
+
+  const allMilestones = [...(currentTask?.milestones || [])].sort((a, b) => b.id - a.id);
+  const completedMilestones = allMilestones.filter((m) => m.completed);
+  const activeMilestones = allMilestones.filter((m) => !m.completed);
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={[styles.overlayCard, isCompleted && styles.completedOverlay, animatedStyle]}>
+        <View style={{ flex: 1 }}>
+          {/* Card Header */}
+          <View style={styles.cardContent}>
+            <Text style={[styles.title, isCompleted && styles.completedText]}>{currentTask?.title}</Text>
+            {start && end && (
+              <Text style={[styles.dateText, isCompleted && styles.completedText]}>
+                {start.toLocaleDateString("en-GB")} - {end.toLocaleDateString("en-GB")}
+              </Text>
+            )}
+            {allMilestones.length > 0 && (
+              <View style={{ marginTop: 18, width: "80%" }}>
+                <Text style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>Project Progress</Text>
+                <View style={{ height: 12, backgroundColor: "#E0E0E0", borderRadius: 8, overflow: "hidden", elevation: 2 }}>
+                  <Animated.View style={[{ height: 12, backgroundColor: "#B1A5FF" }, progressStyle]} />
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Menu Button */}
+          {!isModalOpen && (
+            <TouchableOpacity onPress={() => setMenuVisible((s) => !s)} style={styles.menuButton}>
+              <Ionicons name="ellipsis-vertical" size={22} color={isCompleted ? "#fff" : "#333"} />
+            </TouchableOpacity>
+          )}
+
+          {/* Milestones List */}
+          <View style={styles.milestoneHeader}>
+            <Text style={styles.milestoneTitle}>MileStones</Text>
+            <TouchableOpacity onPress={handleAddMilestone}>
+              <Text style={styles.addText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}>
+             {activeMilestones.length === 0 && <Text style={styles.emptyHint}>No milestones yet — add one with +</Text>}
+             {activeMilestones.map((ms, index) => (
+               <MileStone
+                 key={ms.id}
+                 milestone={ms}
+                 isLatest={index === 0}
+                 onUpdate={(updates) => updateMilestone(currentTask.id, ms.id, updates)}
+                 onComplete={() => completeMilestone(currentTask.id, ms.id)}
+                 onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: index === 0, taskId: currentTask.id })}
+                 onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
+                 isCompleted={false}
+               />
+             ))}
+             {completedMilestones.length > 0 && (
+               <View style={{ marginTop: 12 }}>
+                 <Text style={styles.completedHeader}>Completed Milestones</Text>
+                 {completedMilestones.map((ms) => (
+                   <MileStone
+                     key={ms.id}
+                     milestone={ms}
+                     isLatest={false}
+                     isCompleted={true}
+                     onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: false, taskId: currentTask.id })}
+                     onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
+                   />
+                 ))}
+               </View>
+             )}
+           </ScrollView>
+
+          {/* Menüler ve Modallar */}
+          <ActiveTaskMenu
+            visible={menuVisible}
+            onClose={() => setMenuVisible(false)}
+            onToggleComplete={handleToggleComplete}
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+            isCompleted={isCompleted}
+          />
+          <EditModal visible={editVisible} onClose={() => setEditVisible(false)} project={currentTask} onSave={handleSaveEdit} />
+          {selectedMilestone && <ActiveMilestone milestone={selectedMilestone} onClose={() => setSelectedMilestone(null)} />}
+          {selectedJournalMilestone && <Journal visible={!!selectedJournalMilestone} milestone={selectedJournalMilestone} onClose={() => setSelectedJournalMilestone(null)} />}
+        </View>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlayCard: { position: "absolute", top: 35, width: width, height: "105%", backgroundColor: "#F5F1F1", borderRadius: 20, zIndex: 100, elevation: 10 },
+  completedOverlay: { backgroundColor: "#111111" },
+  cardContent: { padding: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: "#E5E5E5" },
+  title: { fontSize: 26, fontFamily: "Poppins_700Bold", color: "#505050", marginBottom: 8 },
+  dateText: { fontSize: 13, fontFamily: "Poppins_500Medium", color: "#AFAFAF" },
+  completedText: { color: "#fff" },
+  menuButton: { position: "absolute", top: 18, right: 18, padding: 6, zIndex: 110 },
+  milestoneHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20},
+  milestoneTitle: { fontWeight: "700", marginTop: 10, fontSize: 16, color: "#505050" },
+  addText: { fontSize: 30, fontWeight: "700", color: "#4A90E2", padding: 5 },
+  emptyHint: { color: "#888", fontStyle: "italic", marginVertical: 8, padding: 10 },
+  completedHeader: { fontWeight: "700", marginTop: 10, marginBottom: 6, fontSize: 16, color: "#505050" },
+});
