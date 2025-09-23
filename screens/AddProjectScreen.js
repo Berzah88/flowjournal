@@ -13,13 +13,14 @@ import {
 } from "react-native";
 import { TaskContext } from "../context/TaskContext";
 import FlashCalendar from "../components/FlashCalendar";
-
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  withSpring,
   withTiming,
   runOnJS,
 } from "react-native-reanimated";
+
 
 export default function AddProjectScreen({ visible, onClose }) {
   const { addTask } = useContext(TaskContext);
@@ -28,8 +29,11 @@ export default function AddProjectScreen({ visible, onClose }) {
   const [calendarVisible, setCalendarVisible] = useState(false);
   const inputRef = useRef(null);
 
-  const baseY = useSharedValue(400);
+  // Apple-style animation values
+  const translateY = useSharedValue(300);
   const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.95);
+
 
   // Android back button handler
   useEffect(() => {
@@ -48,22 +52,48 @@ export default function AddProjectScreen({ visible, onClose }) {
       setNewTitle("");
       setEndDate(new Date());
 
-      baseY.value = withTiming(0, { duration: 350 });
-      opacity.value = withTiming(1, { duration: 350 });
+      // Apple-style entrance animation
+      translateY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
+      });
+      opacity.value = withTiming(1, { duration: 300 });
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 200,
+        mass: 0.5,
+      });
 
       const timeout = setTimeout(() => {
         inputRef.current?.focus();
-        setTimeout(() => inputRef.current?.focus(), 60);
-      }, 250);
+      }, 200);
 
       return () => clearTimeout(timeout);
+    } else {
+      // Reset animation values when not visible
+      translateY.value = 300;
+      opacity.value = 0;
+      scale.value = 0.95;
     }
   }, [visible]);
 
   const handleCloseModal = () => {
-    baseY.value = withTiming(400, { duration: 350 });
-    opacity.value = withTiming(0, { duration: 350 }, (finished) => {
-      if (finished && onClose) runOnJS(onClose)();
+    // Apple-style exit animation
+    translateY.value = withSpring(300, {
+      damping: 20,
+      stiffness: 300,
+      mass: 0.8,
+    });
+    opacity.value = withTiming(0, { duration: 250 });
+    scale.value = withSpring(0.95, {
+      damping: 15,
+      stiffness: 200,
+      mass: 0.5,
+    }, (finished) => {
+      if (finished && onClose) {
+        runOnJS(onClose)();
+      }
     });
   };
 
@@ -83,15 +113,19 @@ export default function AddProjectScreen({ visible, onClose }) {
     handleCloseModal();
   };
 
+  // Apple-style animated style
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: baseY.value }],
+    transform: [
+      { translateY: translateY.value },
+      { scale: scale.value }
+    ],
     opacity: opacity.value,
   }));
 
   if (!visible) return null;
 
   return (
-    <Animated.View style={[styles.modalOverlay, animatedStyle]}>
+    <View style={styles.modalOverlay}>
       <TouchableWithoutFeedback onPress={handleCloseModal}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView
@@ -99,7 +133,7 @@ export default function AddProjectScreen({ visible, onClose }) {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.modalContent}>
+              <Animated.View style={[styles.modalContent, animatedStyle]}>
                 <TextInput
                   ref={inputRef}
                   style={styles.inputOverlay}
@@ -124,7 +158,7 @@ export default function AddProjectScreen({ visible, onClose }) {
                 >
                   <Text style={styles.dateButtonText}>Add Date</Text>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
         </View>
@@ -138,7 +172,7 @@ export default function AddProjectScreen({ visible, onClose }) {
         onCancel={() => setCalendarVisible(false)}
         minDate={new Date()}
       />
-    </Animated.View>
+    </View>
   );
 }
 

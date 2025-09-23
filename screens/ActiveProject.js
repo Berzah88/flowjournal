@@ -17,6 +17,18 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 const { width, height } = Dimensions.get("window");
 
+// Format date range as "23 Mar 2025 - 24 Mar 2025"
+const formatDateRange = (startDate, endDate) => {
+  const formatDate = (date) => {
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+  
+  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+};
+
 export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
   const {
     tasks,
@@ -199,7 +211,7 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
             <Text style={[styles.title, isCompleted && styles.completedText]}>{currentTask?.title}</Text>
             {start && end && (
               <Text style={[styles.dateText, isCompleted && styles.completedText]}>
-                {start.toLocaleDateString("en-GB")} - {end.toLocaleDateString("en-GB")}
+                {formatDateRange(start, end)}
               </Text>
             )}
             {allMilestones.length > 0 && (

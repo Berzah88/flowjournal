@@ -26,6 +26,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
 import { TaskContext } from "../context/TaskContext";
 
 const { width, height } = Dimensions.get("window");
@@ -417,9 +418,15 @@ export default function Journal({
       </Animated.View>
 
       <Animated.View style={[styles.modalContainer, modalStyle]}>
-        <GestureDetector gesture={panGesture}>
-          <View style={styles.topSpacer} />
-        </GestureDetector>
+        <LinearGradient
+          colors={['#f8f9fa', '#ffffff', '#f1f3f4']}
+          style={styles.gradientBackground}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.topSpacer} />
+          </GestureDetector>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.dateRow}>
@@ -493,6 +500,7 @@ export default function Journal({
             ))}
           </View>
         </KeyboardAvoidingView>
+        </LinearGradient>
       </Animated.View>
 
       {/* Image Modal */}
@@ -533,12 +541,16 @@ const styles = StyleSheet.create({
     width,
     top: TOP_GAP,
     height: MODAL_HEIGHT,
-    backgroundColor: "#E7E7E7",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     zIndex: 201,
     elevation: 25,
     overflow: "hidden",
+  },
+  gradientBackground: {
+    flex: 1,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   topSpacer: { height: SWIPE_AREA },
   dateRow: {
@@ -547,7 +559,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: "flex-start",
   },
-  dateText: { paddingHorizontal: 0, fontSize: 15, color: "#AFAFAF", fontFamily: "Poppins_400Regular" },
+  dateText: { 
+    paddingHorizontal: 0, 
+    fontSize: 16, 
+    color: "#1d1d1f", 
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: -0.2,
+  },
   moodTag: {
     flexDirection: "row",
     alignItems: "center",
@@ -571,26 +589,84 @@ const styles = StyleSheet.create({
   },
   leftGrid: { flex: 1, marginRight: 8, height: PREVIEW_HEIGHT },
   rightGrid: { flex: 1, flexDirection: "column", height: PREVIEW_HEIGHT },
-  previewImage: { width: "100%", height: "100%", borderRadius: 12, elevation: 2, borderWidth:1, borderColor:"#fff" },
-  mapWrapper: { flex: 1, borderRadius: 12, overflow: "hidden", backgroundColor: "#eee", borderWidth:1, borderColor:"#fff", elevation: 1 },
+  previewImage: { 
+    width: "100%", 
+    height: "100%", 
+    borderRadius: 16, 
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  mapWrapper: { 
+    flex: 1, 
+    borderRadius: 16, 
+    overflow: "hidden", 
+    backgroundColor: "#f5f5f5", 
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
   mapInner: { width: "100%", height: "100%", borderWidth:1, },
-  input: { flex: 1, padding: 16, fontSize: 17, color: "#545454", textAlignVertical: "top", fontFamily: "Poppins_300Light", letterSpacing:-0.2 },
+  input: { 
+    flex: 1, 
+    padding: 20, 
+    fontSize: 18, 
+    color: "#1d1d1f", 
+    textAlignVertical: "top", 
+    fontFamily: "Poppins_400Regular", 
+    letterSpacing: -0.3,
+    lineHeight: 24,
+  },
   buttonRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20 },
-  button: { width: 70, height: 50, backgroundColor: "#C7C7C7", borderRadius: 12, justifyContent: "center", alignItems: "center", marginVertical: 10, marginBottom: 50},
-  buttonText: { fontSize: 10, color: "#545454", textAlign: "center", marginTop: 4, fontFamily: "Poppins_400Regular" },
+  button: { 
+    width: 72, 
+    height: 52, 
+    backgroundColor: "#ffffff", 
+    borderRadius: 16, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    marginVertical: 8, 
+    marginBottom: 50,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    borderWidth: 0.5,
+    borderColor: "#e0e0e0",
+  },
+  buttonText: { 
+    fontSize: 11, 
+    color: "#1d1d1f", 
+    textAlign: "center", 
+    marginTop: 4, 
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: -0.1,
+  },
 
   /* mood picker popup */
   moodPicker: {
-    width: width - 100,
+    width: width - 80,
     position: "absolute",
-    left: 100,
+    left: 40,
     right: 0,
-    backgroundColor: "#fff",
-    padding: 5,
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    padding: 16,
+    borderRadius: 20,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    borderWidth: 0.5,
+    borderColor: "#e0e0e0",
     zIndex: 500,
     elevation: 10,
     shadowColor: "#000",

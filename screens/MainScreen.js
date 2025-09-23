@@ -152,7 +152,7 @@ export default function MainScreen({ navigation }) {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContainer}>
-          <Text style={styles.header}>Your Projects</Text>
+          <Text style={styles.header}>Flow Journal</Text>
           <Text style={styles.subHeader}>Manage and track your progress</Text>
         </View>
 
@@ -175,7 +175,7 @@ export default function MainScreen({ navigation }) {
               keyExtractor={(item) => item.id.toString()}
               contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => openCard(item)}>
+                <TouchableOpacity onPress={() => openCard(item)} activeOpacity={1}>
                   <Card
                     title={item.title}
                     startDate={item.startDate}
@@ -204,7 +204,7 @@ export default function MainScreen({ navigation }) {
               keyExtractor={(item) => item.id.toString()}
               contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => openCard(item)}>
+                <TouchableOpacity onPress={() => openCard(item)} activeOpacity={1}>
                   <Card
                     title={item.title}
                     startDate={item.startDate}

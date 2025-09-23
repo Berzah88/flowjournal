@@ -129,41 +129,66 @@ export const TaskProvider = ({ children }) => {
   // -------- MILESTONE CRUD --------
   const addMilestone = useCallback((taskId, milestone) => {
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              milestones: [
-                ...(task.milestones || []),
-                {
-                  ...milestone,
-                  id: Date.now(),
-                  completed: false,
-                  journalEntries: [],
-                  media: [],
-                  location: null,
-                },
-              ],
-            }
-          : task
-      )
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        const newMilestone = {
+          ...milestone,
+          id: Date.now(),
+          completed: false,
+          journalEntries: [],
+          media: [],
+          location: null,
+        };
+        
+        const updatedMilestones = [...(task.milestones || []), newMilestone];
+        
+        // Check if project end date should be updated
+        const newEndDate = shouldUpdateProjectEndDate(updatedMilestones, task.endDate);
+        
+        return {
+          ...task,
+          milestones: updatedMilestones,
+          ...(newEndDate && { endDate: newEndDate }),
+        };
+      })
     );
-  }, []);
+  }, [shouldUpdateProjectEndDate]);
+
+  // Helper function to check if project end date should be updated
+  const shouldUpdateProjectEndDate = (milestones, currentEndDate) => {
+    if (!milestones || milestones.length === 0) return null;
+    
+    const latestMilestoneDate = milestones.reduce((latest, ms) => {
+      const msEndDate = new Date(ms.endDate);
+      return msEndDate > latest ? msEndDate : latest;
+    }, new Date(0));
+    
+    const projectEndDate = new Date(currentEndDate);
+    return latestMilestoneDate > projectEndDate ? latestMilestoneDate.toISOString() : null;
+  };
 
   const updateMilestone = useCallback((taskId, msId, updates) => {
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              milestones: task.milestones.map((ms) =>
-                ms.id === msId ? { ...ms, ...updates } : ms
-              ),
-            }
-          : task
-      )
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        // Update the milestone
+        const updatedMilestones = task.milestones.map((ms) =>
+          ms.id === msId ? { ...ms, ...updates } : ms
+        );
+        
+        // Check if project end date should be updated
+        const newEndDate = shouldUpdateProjectEndDate(updatedMilestones, task.endDate);
+        
+        return {
+          ...task,
+          milestones: updatedMilestones,
+          ...(newEndDate && { endDate: newEndDate }),
+        };
+      })
     );
-  }, []);
+  }, [shouldUpdateProjectEndDate]);
 
   const setMilestoneWasEdited = useCallback((taskId, msId) => {
     setTasks((prev) =>

@@ -179,6 +179,9 @@ function MileStone({
         if (isEditing) {
           setIsEditing(false);
           onEditToggle?.(false);
+        } else if (editable) {
+          // Cancel milestone creation when touching outside
+          setEditable(false);
         }
       }}>
         <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -224,11 +227,11 @@ function MileStone({
 
             <TouchableOpacity
               style={styles.dateRow}
-              onPress={() => !isCompleted && isEditing && setCalendarVisible(true)}
+              onPress={() => !isCompleted && (isEditing || editable) && setCalendarVisible(true)}
             >
               <Ionicons name="calendar-outline" size={16} color="#666" style={styles.timerIcon} />
               <Text style={styles.daysText}>{getDaysText()}</Text>
-              {isEditing && <Ionicons name="chevron-down" size={18} color="#555" />}
+              {(isEditing || editable) && <Ionicons name="chevron-down" size={18} color="#555" />}
             </TouchableOpacity>
 
             {/* Create Button - Top Right Corner (same position as Edit button) */}
