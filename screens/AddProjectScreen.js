@@ -185,6 +185,6 @@ const styles = StyleSheet.create({
   dateButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 });

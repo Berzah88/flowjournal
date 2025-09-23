@@ -44,7 +44,7 @@ export default function WelcomeScreen({ navigation }) {
                     // Font family safety check
                     const safeTitleStyle = {
                       ...styles.title,
-                      fontFamily: undefined // Remove font family to prevent crash
+                      fontFamily: "Poppins_600SemiBold"
                     };
                     return <Text style={safeTitleStyle}>Flow Journal</Text>;
                   } catch (titleError) {
@@ -58,7 +58,7 @@ export default function WelcomeScreen({ navigation }) {
                     // Font family safety check
                     const safeSubtitleStyle = {
                       ...styles.subtitle,
-                      fontFamily: undefined // Remove font family to prevent crash
+                      fontFamily: "Poppins_600SemiBold"
                     };
                     return (
                       <Text style={safeSubtitleStyle}>
@@ -83,7 +83,7 @@ export default function WelcomeScreen({ navigation }) {
                             // Font family safety check
                             const safeButtonTextStyle = {
                               ...styles.buttonText,
-                              fontFamily: undefined // Remove font family to prevent crash
+                              fontFamily: "Poppins_600SemiBold"
                             };
                             return <Text style={safeButtonTextStyle}>Başlayın</Text>;
                           } catch (buttonTextError) {

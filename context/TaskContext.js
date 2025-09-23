@@ -165,6 +165,45 @@ export const TaskProvider = ({ children }) => {
     );
   }, []);
 
+  const setMilestoneWasEdited = useCallback((taskId, msId) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              milestones: (() => {
+                const milestones = task.milestones || [];
+                const editedMilestone = milestones.find(ms => ms.id === msId);
+                const otherMilestones = milestones.filter(ms => ms.id !== msId);
+                
+                // Edit edilen milestone'ı en üste taşı ve wasEdited flag'ini set et
+                return [
+                  { ...editedMilestone, wasEdited: true },
+                  ...otherMilestones.map(ms => ({ ...ms, wasEdited: false }))
+                ];
+              })(),
+            }
+          : task
+      )
+    );
+  }, []);
+
+  const clearMilestoneWasEdited = useCallback((taskId) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              milestones: task.milestones.map((ms) => ({
+                ...ms,
+                wasEdited: false
+              })),
+            }
+          : task
+      )
+    );
+  }, []);
+
   const deleteMilestone = useCallback((taskId, msId) => {
     if (!taskId || !msId) {
       console.warn("DeleteMilestone: Missing taskId or msId");
@@ -198,6 +237,21 @@ export const TaskProvider = ({ children }) => {
               ...task,
               milestones: task.milestones.map((ms) =>
                 ms.id === msId ? { ...ms, completed: true } : ms
+              ),
+            }
+          : task
+      )
+    );
+  }, []);
+
+  const setActiveMilestone = useCallback((taskId, msId) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              milestones: task.milestones.map((ms) =>
+                ms.id === msId ? { ...ms, completed: false } : ms
               ),
             }
           : task
@@ -356,12 +410,15 @@ export const TaskProvider = ({ children }) => {
       updateMilestone,
       deleteMilestone,
       completeMilestone,
+      setActiveMilestone,
       reorderMilestones,
       addJournalEntry,
       updateJournalEntry,
       deleteJournalEntry,
       addMedia,
       updateLocation,
+      setMilestoneWasEdited,
+      clearMilestoneWasEdited,
       clearStorage,
     };
   }, [
@@ -375,12 +432,15 @@ export const TaskProvider = ({ children }) => {
     updateMilestone,
     deleteMilestone,
     completeMilestone,
+    setActiveMilestone,
     reorderMilestones,
     addJournalEntry,
     updateJournalEntry,
     deleteJournalEntry,
     addMedia,
     updateLocation,
+    setMilestoneWasEdited,
+    clearMilestoneWasEdited,
     clearStorage,
   ]);
 

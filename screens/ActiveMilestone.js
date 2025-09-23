@@ -50,6 +50,12 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
 
   const entries = currentMilestone?.journalEntries?.slice().sort((a, b) => b.id - a.id) || [];
 
+  // Header renk mantığı
+  let headerBgColor = "#d3cbe3"; // Varsayılan renk
+  if (currentMilestone?.completed) headerBgColor = "#BFBFBF"; // Tamamlanmış milestone
+  else if (currentMilestone?.wasEdited) headerBgColor = "#E8B4B8"; // Edit edilmiş milestone - soft pembe
+  else if (milestoneData?.isLatest) headerBgColor = "#c2d7d0"; // En son eklenen milestone
+
   const [showJournalModal, setShowJournalModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
@@ -280,7 +286,7 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
     <>
       <Animated.View style={[styles.overlayCard, animatedStyle]}>
         <GestureDetector gesture={panGesture}>
-          <Animated.View style={[styles.header, animatedHeaderStyle]}>
+          <Animated.View style={[styles.header, animatedHeaderStyle, { backgroundColor: headerBgColor }]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.journalTitle}>{milestoneData?.title || "Untitled milestone"}</Text>
               <Text style={styles.dateText}>{todayText}</Text>
@@ -341,7 +347,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: -10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 25,
     borderRadius: 15,
     paddingVertical: 15,
     opacity: 0.95,
@@ -351,29 +357,99 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOpacity: 0.3,
   },
-  journalTitle: { fontSize: 18, fontFamily: "Poppins_700Bold", color: "#505050", marginBottom: 8, paddingRight: 30, },
-  dateText: { fontSize: 14, fontFamily: "Poppins_500Medium", color: "#F5F1F1" },
+  journalTitle: { fontSize: 18, fontFamily: "Poppins_700Bold", color: "#545454", marginBottom: 8, paddingRight: 30, },
+  dateText: { fontSize: 11, fontFamily: "Poppins_500Medium", color: "#F5F1F1" },
 
-  contentWrapper: { flex: 1, paddingTop: 10, padding: 7 },
+  contentWrapper: { 
+    flex: 1, 
+    paddingTop: 20, 
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+  },
 
-  entryItem: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 10, minHeight: 100, borderWidth: 1, borderColor: "white", elevation: 1, shadowOffset: { width: 0, height: 0 }, shadowRadius: 6, shadowOpacity: 0.3, marginTop: 10,  },
+  entryItem: { 
+    backgroundColor: "#FFFFFF", 
+    borderRadius: 16, 
+    padding: 16, 
+    minHeight: 100, 
+    marginTop: 12,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    shadowOpacity: 0.1,
+    borderWidth: 0.5,
+    borderColor: "#F0F0F0",
+  },
   previewWrapper: { flexDirection: "row", paddingHorizontal: 5, marginTop: 2, height: PREVIEW_HEIGHT, alignItems: "stretch", elevation: 3 },
   leftGrid: { flex: 1, marginRight: 4, height: PREVIEW_HEIGHT },
   rightGrid: { flex: 1, flexDirection: "column", height: PREVIEW_HEIGHT },
-  previewImage: { width: "100%", height: "100%", borderRadius: 12, elevation: 1, borderColor:"white", borderWidth:1 },
-  mapWrapper: { flex: 1, borderRadius: 12, overflow: "hidden", backgroundColor: "#eee", elevation: 1, borderColor:"white", borderWidth:1 },
+  previewImage: { 
+    width: "100%", 
+    height: "100%", 
+    borderRadius: 12, 
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+    shadowOpacity: 0.1,
+  },
+  mapWrapper: { 
+    flex: 1, 
+    borderRadius: 12, 
+    overflow: "hidden", 
+    backgroundColor: "#f8f8f8", 
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+    shadowOpacity: 0.1,
+  },
   mapInner: { width: "100%", height: "100%" },
 
   entryFooter: { marginTop: 10,  },
-  entryHeader: { flexDirection: "row", alignItems: "center", marginBottom: 17, borderBottomWidth: .5, borderBottomColor: "#545454", paddingBottom: 10 },
+  entryHeader: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: "#F0F0F0", 
+    paddingBottom: 12,
+  },
 
   entryDate: { fontSize: 12, color: "#8a8a8a", fontFamily: "Poppins_500Medium",},
-  entryText: { fontSize: 15, color: "#222" },
+  entryText: { fontSize: 15, color: "#222", fontFamily: "Poppins_400Regular" },
 
   moodTag: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  moodLabelSmall: { marginLeft: 6, fontSize: 12, color: "#333" },
+  moodLabelSmall: { marginLeft: 6, fontSize: 12, color: "#333", fontFamily: "Poppins_400Regular" },
 
   deleteBtn: { position: "absolute", right: 8, bottom: 8 },
-  emptyText: { textAlign: "center", color: "#666", marginTop: 14 },
-  fab: { position: "absolute", bottom: 30, right: 25, width: 56, height: 56, borderRadius: 28, backgroundColor: "#545454", justifyContent: "center", alignItems: "center", elevation: 1, zIndex: 200 },
+  emptyText: { 
+    textAlign: "center", 
+    color: "#888", 
+    marginTop: 40,
+    fontSize: 16,
+    fontFamily: "Poppins_400Regular",
+    lineHeight: 24,
+    opacity: 0.7,
+  },
+  fab: { 
+    position: "absolute", 
+    bottom: 30, 
+    right: 25, 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    backgroundColor: "#545454", 
+    justifyContent: "center", 
+    alignItems: "center", 
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    zIndex: 200,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
 });

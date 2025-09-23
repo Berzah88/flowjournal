@@ -10,6 +10,7 @@ import {
   PanResponder,
   Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { TaskContext } from "../context/TaskContext";
 import StatusBarComponent from "../components/StatusBar";
 import StatusTabs from "../components/StatusTabs";
@@ -144,8 +145,16 @@ export default function MainScreen({ navigation }) {
 
   try {
     return (
-      <View style={styles.container}>
-        <Text style={styles.header}>Your Projects</Text>
+      <LinearGradient
+        colors={['#f8f9fa', '#e9ecef', '#dee2e6']}
+        style={styles.container}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>Your Projects</Text>
+          <Text style={styles.subHeader}>Manage and track your progress</Text>
+        </View>
 
       <StatusBarComponent activeCount={activeTasks.length} doneCount={completedTasks.length} />
 
@@ -177,7 +186,13 @@ export default function MainScreen({ navigation }) {
                   />
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={<Text style={styles.emptyText}>No active projects. Tap + to add one!</Text>}
+              ListEmptyComponent={
+                <View style={styles.emptyStateContainer}>
+                  <Text style={styles.emptyStateIcon}>📋</Text>
+                  <Text style={styles.emptyStateTitle}>No Active Projects</Text>
+                  <Text style={styles.emptyStateSubtitle}>Start your journey by creating your first project</Text>
+                </View>
+              }
               showsVerticalScrollIndicator={false}
             />
           </View>
@@ -202,23 +217,36 @@ export default function MainScreen({ navigation }) {
                   />
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={<Text style={styles.emptyText}>No completed projects.</Text>}
+              ListEmptyComponent={
+                <View style={styles.emptyStateContainer}>
+                  <Text style={styles.emptyStateIcon}>🎯</Text>
+                  <Text style={styles.emptyStateTitle}>No Completed Projects</Text>
+                  <Text style={styles.emptyStateSubtitle}>Complete your active projects to see them here</Text>
+                </View>
+              }
               showsVerticalScrollIndicator={false}
             />
           </View>
         </Animated.View>
       </View>
 
-      {/* + button */}
-      <TouchableOpacity style={styles.addButton} onPress={() => setAddVisible(true)}>
-        <Text style={styles.addButtonText}>+</Text>
+      {/* Modern FAB */}
+      <TouchableOpacity style={styles.addButton} onPress={() => setAddVisible(true)} activeOpacity={0.8}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2']}
+          style={styles.addButtonGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Text style={styles.addButtonText}>+</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
       <AddProjectScreen visible={addVisible} onClose={() => setAddVisible(false)} />
 
       {selectedCard && <ActiveProject selectedCard={selectedCard} onClose={closeCard} navigation={navigation} />}
-    </View>
-  );
+      </LinearGradient>
+    );
   } catch (error) {
     console.error('🚨 MainScreen rendering error:', error);
     console.error('🚨 MainScreen error stack:', error.stack);
@@ -228,27 +256,84 @@ export default function MainScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#aab7bf", paddingTop: 55 },
-  header: {
-    fontSize: 26,
-    fontFamily: "Poppins_600SemiBold",
-    marginBottom: 10,
-    marginHorizontal: 20,
-    color: "#222222",
+  container: { 
+    flex: 1, 
+    paddingTop: 60 
   },
-  viewport: { flex: 1, overflow: "hidden" },
-  panContainer: { flexDirection: "row", flex: 1 },
-  emptyText: { textAlign: "center", marginTop: 20, color: "#555" },
+  headerContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  header: {
+    fontSize: 32,
+    fontFamily: "Poppins_700Bold",
+    color: "#2c3e50",
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  subHeader: {
+    fontSize: 16,
+    fontFamily: "Poppins_400Regular",
+    color: "#7f8c8d",
+    marginBottom: 8,
+  },
+  viewport: { 
+    flex: 1, 
+    overflow: "hidden" 
+  },
+  panContainer: { 
+    flexDirection: "row", 
+    flex: 1 
+  },
+  emptyStateContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#34495e",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    fontFamily: "Poppins_400Regular",
+    color: "#7f8c8d",
+    textAlign: "center",
+    lineHeight: 20,
+  },
   addButton: {
     position: "absolute",
     bottom: 30,
     right: 30,
-    backgroundColor: "#525252",
-    width: 65,
-    height: 65,
-    borderRadius: 100,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  addButtonGradient: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     alignItems: "center",
     justifyContent: "center",
   },
-  addButtonText: { color: "#fff", fontSize: 42, textAlign: "center" },
+  addButtonText: { 
+    color: "#fff", 
+    fontSize: 36, 
+    textAlign: "center", 
+    fontFamily: "Poppins_300Light",
+    lineHeight: 36,
+  },
 });

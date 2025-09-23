@@ -105,6 +105,8 @@ export default function Journal({
   // mood state
   const [selectedMood, setSelectedMood] = useState(null);
   const [showMoodPicker, setShowMoodPicker] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const todayText = new Date().toLocaleDateString("tr-TR", {
     day: "2-digit",
@@ -311,7 +313,17 @@ export default function Journal({
     if (!item) return null;
     if (item.type === "image") {
       return (
-        <Image key={key} source={{ uri: item.content }} style={styles.previewImage} resizeMode="cover" />
+        <TouchableOpacity 
+          key={key} 
+          onPress={() => {
+            Keyboard.dismiss();
+            setSelectedImage({ type: "image", content: item.content });
+            setShowImageModal(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <Image source={{ uri: item.content }} style={styles.previewImage} resizeMode="cover" />
+        </TouchableOpacity>
       );
     }
     if (item.type === "map") {
@@ -328,7 +340,12 @@ export default function Journal({
             }}
             pointerEvents="none"
           >
-            <Marker coordinate={coords} />
+            <Marker
+              coordinate={{
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              }}
+            />
           </MapView>
         </View>
       );
@@ -433,7 +450,6 @@ export default function Journal({
               placeholderTextColor="#999"
               textAlignVertical="top"
               editable = {true}
-              selectTextOnFocus
             />
           </ScrollView>
 
@@ -478,6 +494,32 @@ export default function Journal({
           </View>
         </KeyboardAvoidingView>
       </Animated.View>
+
+      {/* Image Modal */}
+      {showImageModal && selectedImage && selectedImage.type === "image" && (
+        <View style={styles.imageModal}>
+          <TouchableOpacity 
+            style={styles.imageModalBackdrop}
+            onPress={() => setShowImageModal(false)}
+            activeOpacity={1}
+          >
+            <View style={styles.imageModalContent}>
+              <TouchableOpacity 
+                style={styles.imageModalClose}
+                onPress={() => setShowImageModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+              
+              <Image 
+                source={{ uri: selectedImage.content }} 
+                style={styles.imageModalImage} 
+                resizeMode="contain" 
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
     </>
   );
 }
@@ -505,7 +547,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: "flex-start",
   },
-  dateText: { paddingHorizontal: 0, fontSize: 15, color: "#AFAFAF" },
+  dateText: { paddingHorizontal: 0, fontSize: 15, color: "#AFAFAF", fontFamily: "Poppins_400Regular" },
   moodTag: {
     flexDirection: "row",
     alignItems: "center",
@@ -518,6 +560,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: 12,
     color: "#333",
+    fontFamily: "Poppins_400Regular",
   },
   previewWrapper: {
     flexDirection: "row",
@@ -534,7 +577,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, padding: 16, fontSize: 17, color: "#545454", textAlignVertical: "top", fontFamily: "Poppins_300Light", letterSpacing:-0.2 },
   buttonRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20 },
   button: { width: 70, height: 50, backgroundColor: "#C7C7C7", borderRadius: 12, justifyContent: "center", alignItems: "center", marginVertical: 10, marginBottom: 50},
-  buttonText: { fontSize: 10, color: "#545454", textAlign: "center", marginTop: 4 },
+  buttonText: { fontSize: 10, color: "#545454", textAlign: "center", marginTop: 4, fontFamily: "Poppins_400Regular" },
 
   /* mood picker popup */
   moodPicker: {
@@ -567,5 +610,41 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 6,
   },
-  moodOptionLabel: { fontSize: 12, color: "#333" },
+  moodOptionLabel: { fontSize: 12, color: "#333", fontFamily: "Poppins_400Regular" },
+
+  // Image/Map Modal Styles
+  imageModal: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  imageModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imageModalContent: {
+    width: width - 40,
+    height: height - 100,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  imageModalClose: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    zIndex: 1001,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    borderRadius: 20,
+    padding: 8,
+  },
+  imageModalImage: {
+    width: "100%",
+    height: "100%",
+  },
 });

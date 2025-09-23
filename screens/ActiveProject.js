@@ -25,14 +25,18 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
     addMilestone,
     updateMilestone,
     completeMilestone,
+    setActiveMilestone,
     deleteMilestone,
     updateTask,
+    setMilestoneWasEdited,
+    clearMilestoneWasEdited,
   } = useContext(TaskContext);
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [selectedJournalMilestone, setSelectedJournalMilestone] = useState(null);
+  
 
   const currentTask = tasks.find((t) => t.id === selectedCard?.id) || selectedCard;
   if (!currentTask) return null;
@@ -47,7 +51,7 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
       currentTask.milestones.length
     : 0;
 
-  const translateY = useSharedValue(20);
+  const translateY = useSharedValue(height);
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
   const dragY = useSharedValue(0);
@@ -150,6 +154,8 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
     [currentTask, updateTask]
   );
 
+
+
   const panGesture = Gesture.Pan()
     .enabled(!isModalOpen)
     .onUpdate((e) => {
@@ -198,7 +204,7 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
             )}
             {allMilestones.length > 0 && (
               <View style={{ marginTop: 18, width: "80%" }}>
-                <Text style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>Project Progress</Text>
+                <Text style={{ fontSize: 12, color: "#888", marginBottom: 6, fontFamily: "Poppins_400Regular" }}>Project Progress</Text>
                 <View style={{ height: 12, backgroundColor: "#E0E0E0", borderRadius: 8, overflow: "hidden", elevation: 2 }}>
                   <Animated.View style={[{ height: 12, backgroundColor: "#B1A5FF" }, progressStyle]} />
                 </View>
@@ -221,36 +227,64 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
             </TouchableOpacity>
           </View>
 
-           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}>
-             {activeMilestones.length === 0 && <Text style={styles.emptyHint}>No milestones yet — add one with +</Text>}
-             {activeMilestones.map((ms, index) => (
-               <MileStone
-                 key={ms.id}
-                 milestone={ms}
-                 isLatest={index === 0}
-                 onUpdate={(updates) => updateMilestone(currentTask.id, ms.id, updates)}
-                 onComplete={() => completeMilestone(currentTask.id, ms.id)}
-                 onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: index === 0, taskId: currentTask.id })}
-                 onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
-                 isCompleted={false}
-               />
-             ))}
-             {completedMilestones.length > 0 && (
-               <View style={{ marginTop: 12 }}>
-                 <Text style={styles.completedHeader}>Completed Milestones</Text>
-                 {completedMilestones.map((ms) => (
+           <View style={{ flex: 1 }}>
+             {allMilestones.length === 0 && <Text style={styles.emptyHint}>No milestones yet — add one with +</Text>}
+             
+             {allMilestones.length > 0 && (
+               <ScrollView 
+                 style={{ flex: 1 }} 
+                 contentContainerStyle={{ 
+                   paddingBottom: 40
+                 }}
+                 showsVerticalScrollIndicator={true}
+                 bounces={true}
+                 scrollEventThrottle={16}
+                 nestedScrollEnabled={true}
+                 keyboardShouldPersistTaps="handled"
+               >
+                 {/* Active Milestones */}
+                 {activeMilestones.map((milestone, index) => (
                    <MileStone
-                     key={ms.id}
-                     milestone={ms}
-                     isLatest={false}
-                     isCompleted={true}
-                     onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: false, taskId: currentTask.id })}
+                     key={milestone.id}
+                     milestone={milestone}
+                     isLatest={index === 0}
+                     wasEdited={milestone.wasEdited || false}
+                     onUpdate={(updates) => updateMilestone(currentTask.id, milestone.id, updates)}
+                     onComplete={() => completeMilestone(currentTask.id, milestone.id)}
+                     onDelete={() => deleteMilestone(currentTask.id, milestone.id)}
+                     onOpenDetail={() => setSelectedMilestone({ ...milestone, isLatest: index === 0, taskId: currentTask.id })}
                      onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
+                     isCompleted={false}
+                     onEditToggle={(isEditing) => {
+                       if (!isEditing) {
+                         // Edit bittikten sonra flag set et
+                         setMilestoneWasEdited(currentTask.id, milestone.id);
+                       }
+                     }}
                    />
                  ))}
-               </View>
+
+                 {/* Completed Milestones Section */}
+                 {completedMilestones.length > 0 && (
+                   <View style={{ marginTop: 20 }}>
+                     <Text style={styles.completedHeader}>Completed Milestones</Text>
+                     {completedMilestones.map((ms) => (
+                       <MileStone
+                         key={ms.id}
+                         milestone={ms}
+                         isLatest={false}
+                         isCompleted={true}
+                         onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: false, taskId: currentTask.id })}
+                         onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
+                         onDelete={() => deleteMilestone(currentTask.id, ms.id)}
+                         onSetActive={() => setActiveMilestone(currentTask.id, ms.id)}
+                       />
+                     ))}
+                   </View>
+                 )}
+               </ScrollView>
              )}
-           </ScrollView>
+           </View>
 
           {/* Menüler ve Modallar */}
           <ActiveTaskMenu
@@ -264,6 +298,7 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
           <EditModal visible={editVisible} onClose={() => setEditVisible(false)} project={currentTask} onSave={handleSaveEdit} />
           {selectedMilestone && <ActiveMilestone milestone={selectedMilestone} onClose={() => setSelectedMilestone(null)} />}
           {selectedJournalMilestone && <Journal visible={!!selectedJournalMilestone} milestone={selectedJournalMilestone} onClose={() => setSelectedJournalMilestone(null)} />}
+          
         </View>
       </Animated.View>
     </GestureDetector>
@@ -279,8 +314,8 @@ const styles = StyleSheet.create({
   completedText: { color: "#fff" },
   menuButton: { position: "absolute", top: 18, right: 18, padding: 6, zIndex: 110 },
   milestoneHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20},
-  milestoneTitle: { fontWeight: "700", marginTop: 10, fontSize: 16, color: "#505050" },
-  addText: { fontSize: 30, fontWeight: "700", color: "#4A90E2", padding: 5 },
+  milestoneTitle: { fontFamily: "Poppins_700Bold", marginTop: 10, fontSize: 16, color: "#505050" },
+  addText: { fontSize: 30, fontFamily: "Poppins_700Bold", color: "#4A90E2", padding: 5 },
   emptyHint: { color: "#888", fontStyle: "italic", marginVertical: 8, padding: 10 },
-  completedHeader: { fontWeight: "700", marginTop: 10, marginBottom: 6, fontSize: 16, color: "#505050" },
+  completedHeader: { fontFamily: "Poppins_700Bold", marginTop: 20, marginBottom: 6, fontSize: 16, color: "#505050", marginHorizontal: 20 },
 });
