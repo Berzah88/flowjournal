@@ -1,5 +1,6 @@
 // screens/ActiveMilestone.js
 import React, { useEffect, useContext, useCallback, useState } from "react";
+import { getMilestoneColor } from '../utils/milestoneColors';
 import {
   View,
   Text,
@@ -50,11 +51,40 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
 
   const entries = currentMilestone?.journalEntries?.slice().sort((a, b) => b.id - a.id) || [];
 
-  // Header renk mantığı
-  let headerBgColor = "#d3cbe3"; // Varsayılan renk
-  if (currentMilestone?.completed) headerBgColor = "#BFBFBF"; // Tamamlanmış milestone
-  else if (currentMilestone?.wasEdited) headerBgColor = "#E8B4B8"; // Edit edilmiş milestone - soft pembe
-  else if (milestoneData?.isLatest) headerBgColor = "#c2d7d0"; // En son eklenen milestone
+  // Günlükleri tarihlere göre gruplandır
+  const groupEntriesByDate = (entries) => {
+    const groups = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.createdAt);
+      const dateKey = date.toLocaleDateString('tr-TR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(entry);
+    });
+    
+    // Tarihleri sırala (en yeni önce)
+    return Object.keys(groups)
+      .sort((a, b) => {
+        const dateA = new Date(groups[a][0].createdAt);
+        const dateB = new Date(groups[b][0].createdAt);
+        return dateB - dateA;
+      })
+      .map(dateKey => ({
+        date: dateKey,
+        entries: groups[dateKey]
+      }));
+  };
+
+  const groupedEntries = groupEntriesByDate(entries);
+
+  // Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
+  let headerBgColor = currentMilestone ? getMilestoneColor(currentMilestone) : "#BFBFBF";
 
   const [showJournalModal, setShowJournalModal] = useState(milestoneData?.autoOpenJournal || false);
   const [selectedEntry, setSelectedEntry] = useState(null);
@@ -235,6 +265,12 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
     );
   };
 
+  const renderDateHeader = (date) => (
+    <View style={styles.dateHeader}>
+      <Text style={styles.dateHeaderText}>{date}</Text>
+    </View>
+  );
+
   const renderEntryPreview = ({ item }) => {
     const textContent = item.text || "";
     let moodObj = null;
@@ -299,9 +335,18 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
             <Text style={styles.emptyText}>No journal entries yet. Use the + button to add one.</Text>
           ) : (
             <FlatList
-              data={entries}
-              keyExtractor={(it) => it.id.toString()}
-              renderItem={renderEntryPreview}
+              data={groupedEntries}
+              keyExtractor={(item) => item.date}
+              renderItem={({ item }) => (
+                <View>
+                  {renderDateHeader(item.date)}
+                  {item.entries.map((entry) => (
+                    <View key={entry.id}>
+                      {renderEntryPreview({ item: entry })}
+                    </View>
+                  ))}
+                </View>
+              )}
               contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
               style={{ flex: 1 }}
               extraData={tasks}
@@ -332,9 +377,9 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
 const styles = StyleSheet.create({
   overlayCard: {
     position: "absolute",
-    top: 35,
+    top: 20,
     width: width,
-    height: height - 35,
+    height: height - 20,
     zIndex: 100,
     elevation: 10,
     backgroundColor: "#F5F1F1", // pastel beyaz
@@ -365,6 +410,18 @@ const styles = StyleSheet.create({
     paddingTop: 20, 
     paddingHorizontal: 16,
     paddingBottom: 100,
+  },
+
+  dateHeader: {
+    marginTop: 20,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  dateHeaderText: {
+    fontSize: 16,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#666",
+    textTransform: "capitalize",
   },
 
   entryItem: { 

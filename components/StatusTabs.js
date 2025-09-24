@@ -10,7 +10,7 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
   useEffect(() => {
     Animated.timing(progress, {
       toValue: activeIndex === 0 ? 0 : 1,
-      duration: 200,
+      duration: 100,
       useNativeDriver: false, // color interpolation doesn't support native driver
     }).start();
   }, [activeIndex]);

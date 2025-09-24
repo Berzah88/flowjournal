@@ -1,6 +1,7 @@
 // context/TaskContext.js
 import React, { createContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { assignUniqueColor } from "../utils/milestoneColors";
 
 export const TaskContext = createContext();
 
@@ -140,6 +141,9 @@ export const TaskProvider = ({ children }) => {
           media: [],
           location: null,
         };
+        
+        // Milestone'a unique renk ata
+        assignUniqueColor(newMilestone);
         
         const updatedMilestones = [...(task.milestones || []), newMilestone];
         

@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Animated, A
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
 import PropTypes from "prop-types";
+import { getMilestoneColor } from '../utils/milestoneColors';
 
 function MileStone({
   milestone,
@@ -30,7 +31,6 @@ function MileStone({
     !isCompleted && !(milestone.initialized ?? (title && title.trim() !== ""))
   );
   const [showDeleteOption, setShowDeleteOption] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
 
   const inputRef = useRef(null);
   const deleteAnimation = useRef(new Animated.Value(0)).current;
@@ -94,19 +94,9 @@ function MileStone({
   }, [onDelete, hideDeleteOptionWithAnimation]);
 
   const handleEditToggle = useCallback(() => {
-    const newEditingState = !isEditing;
-    setIsEditing(newEditingState);
-    
-    // Notify parent about edit state change
-    onEditToggle?.(newEditingState);
-    
-    // Focus the input when entering edit mode
-    if (newEditingState) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-    }
-  }, [isEditing, onEditToggle]);
+    // Open modal for editing
+    onEditToggle?.(milestone);
+  }, [onEditToggle, milestone]);
 
   const handleCreateMilestone = useCallback(() => {
     if (!title.trim()) {
@@ -123,19 +113,6 @@ function MileStone({
     Keyboard.dismiss();
   }, [title, startDate, endDate, onUpdate, milestone]);
 
-  const handleEndEditing = useCallback(() => {
-    if (!title.trim()) {
-      return;
-    }
-    setIsEditing(false); // Exit edit mode
-    onEditToggle?.(false); // Notify parent - this will trigger wasEdited flag
-    onUpdate?.({
-      title,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-    });
-    Keyboard.dismiss();
-  }, [title, startDate, endDate, onUpdate, onEditToggle]);
 
   const handleCalendarConfirm = ({ startDate: sISO, endDate: eISO }) => {
     const s = new Date(sISO);
@@ -167,19 +144,13 @@ function MileStone({
     }
   };
 
-  // Renk düzeni
-  let bgColor = "#d3cbe3"; // Varsayılan renk
-  if (isCompleted) bgColor = "#BFBFBF"; // Tamamlanmış milestone
-  else if (wasEdited) bgColor = "#E8B4B8"; // Edit edilmiş milestone - soft pembe
-  else if (isLatest) bgColor = "#c2d7d0"; // En son eklenen milestone
+  // Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
+  let bgColor = getMilestoneColor(milestone);
 
   return (
     <>
       <TouchableWithoutFeedback onPress={() => {
-        if (isEditing) {
-          setIsEditing(false);
-          onEditToggle?.(false);
-        } else if (editable) {
+        if (editable) {
           // Cancel milestone creation when touching outside
           setEditable(false);
         }
@@ -212,26 +183,30 @@ function MileStone({
           </View>
 
           <View style={styles.body}>
-            <TextInput
-              ref={inputRef}
-              style={styles.titleInput}
-              value={title}
-              placeholder="Milestone title"
-              onChangeText={setTitle}
-              editable={editable || isEditing}
-              onSubmitEditing={editable ? handleCreateMilestone : handleEndEditing}
-              returnKeyType="done"
-              blurOnSubmit={true}
-              multiline={true}
-            />
+            {editable ? (
+              <TextInput
+                ref={inputRef}
+                style={styles.titleInput}
+                value={title}
+                placeholder="Milestone title"
+                onChangeText={setTitle}
+                editable={editable}
+                onSubmitEditing={handleCreateMilestone}
+                returnKeyType="done"
+                blurOnSubmit={true}
+                multiline={true}
+              />
+            ) : (
+              <Text style={styles.titleText}>{title}</Text>
+            )}
 
             <TouchableOpacity
               style={styles.dateRow}
-              onPress={() => !isCompleted && (isEditing || editable) && setCalendarVisible(true)}
+              onPress={() => !isCompleted && editable && setCalendarVisible(true)}
             >
               <Ionicons name="calendar-outline" size={16} color="#666" style={styles.timerIcon} />
               <Text style={styles.daysText}>{getDaysText()}</Text>
-              {(isEditing || editable) && <Ionicons name="chevron-down" size={18} color="#555" />}
+              {editable && <Ionicons name="chevron-down" size={18} color="#555" />}
             </TouchableOpacity>
 
             {/* Create Button - Top Right Corner (same position as Edit button) */}
@@ -379,6 +354,15 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     flexWrap: "wrap",
     paddingRight: 50, // Edit tuşu için boşluk (12px button + 12px padding + 5px margin + 21px text width)
+  },
+  titleText: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    marginBottom: 8,
+    lineHeight: 20,
+    color: "#1a1a1a",
+    flexWrap: "wrap",
+    paddingRight: 50, // Edit tuşu için boşluk
   },
   dateRow: { 
     flexDirection: "row", 

@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { StatusBar } from 'react-native';
 import WelcomeScreen from './screens/WelcomeScreen';
 import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
@@ -30,6 +31,7 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <TaskProvider>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>

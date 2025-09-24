@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { getMilestoneColor } from '../utils/milestoneColors';
 
 const { width } = Dimensions.get("window");
 const CELL_SIZE = (width - 40) / 7; // 7 gün için eşit genişlik
@@ -30,12 +31,18 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
     return null;
   };
   
-  // Milestone rengini belirleyen fonksiyon - Modern renk paleti
-  const getMilestoneColor = (milestone) => {
-    if (milestone.completed) return "#A0A0A0"; // Tamamlanmış milestone - daha soft gri
-    else if (milestone.wasEdited) return "#FFB3BA"; // Edit edilmiş milestone - modern pembe
-    else if (milestone.isLatest) return "#B3E5B3"; // En son eklenen milestone - modern yeşil
-    else return "#C7B3FF"; // Varsayılan renk - modern mor
+  // Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
+
+  // Milestone ismini kısaltan fonksiyon
+  const getShortMilestoneTitle = (title, index) => {
+    if (!title) return `M${index + 1}`;
+    
+    // Eğer title çok uzunsa kısalt
+    if (title.length > 12) {
+      return title.substring(0, 12) + "...";
+    }
+    
+    return title;
   };
 
   // Ayın günlerini oluştur
@@ -89,11 +96,15 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
     const dayMilestones = getMilestonesForDate(date);
     if (dayMilestones.length === 0) return "transparent";
     
-    // İlk milestone'un rengini kullan (en son eklenen)
-    const firstMilestone = dayMilestones[0];
-    // En son eklenen milestone'u latest olarak işaretle
-    const milestoneWithLatest = { ...firstMilestone, isLatest: true };
-    return getMilestoneColor(milestoneWithLatest);
+    // Öncelik sırası: 1) Aktif milestone'lar, 2) En yeni milestone
+    const activeMilestones = dayMilestones.filter(m => !m.completed);
+    if (activeMilestones.length > 0) {
+      // Aktif milestone'lar varsa, en yeni aktif milestone'un rengini kullan
+      return getMilestoneColor(activeMilestones[0]);
+    } else {
+      // Sadece completed milestone'lar varsa, en yeni completed milestone'un rengini kullan
+      return getMilestoneColor(dayMilestones[0]);
+    }
   };
 
   // Tarih formatı
@@ -145,6 +156,22 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
           const isToday = date && date.toDateString() === new Date().toDateString();
           const dayBackgroundColor = getDayBackgroundColor(date);
           
+          // Inside border için milestone rengini belirle
+          const getInsideBorderColor = () => {
+            if (isToday) return dayBackgroundColor;
+            if (dayMilestones.length === 0) return "transparent";
+            
+            // Öncelik sırası: 1) Aktif milestone'lar, 2) En yeni milestone
+            const activeMilestones = dayMilestones.filter(m => !m.completed);
+            if (activeMilestones.length > 0) {
+              return getMilestoneColor(activeMilestones[0]);
+            } else {
+              return getMilestoneColor(dayMilestones[0]);
+            }
+          };
+          
+          const insideBorderColor = getInsideBorderColor();
+          
           return (
             <View key={index} style={[
               styles.calendarCell,
@@ -159,9 +186,9 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
                     <Text style={[
                       styles.dayText,
                       isToday && styles.todayText,
-                      dayBackgroundColor !== "transparent" && {
-                        borderColor: dayBackgroundColor,
-                        backgroundColor: dayBackgroundColor + "20"
+                      insideBorderColor !== "transparent" && {
+                        borderColor: insideBorderColor,
+                        backgroundColor: insideBorderColor + "20"
                       }
                     ]}>
                     {date.getDate()}
@@ -174,7 +201,7 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
                         key={milestone.id}
                         style={[
                           styles.milestoneIndicator,
-                          { backgroundColor: dayBackgroundColor }
+                          { backgroundColor: getMilestoneColor(milestone) }
                         ]}
                       />
                     ))}
@@ -215,24 +242,43 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
       {/* Milestone legend */}
       <View style={styles.legend}>
         <Text style={styles.legendTitle}>Milestone Types</Text>
-        <View style={styles.legendItems}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#C7B3FF" }]} />
-            <Text style={styles.legendText}>Default</Text>
+        
+        {/* Aktif milestone'lar */}
+        {milestones.filter(milestone => !milestone.completed).length > 0 && (
+          <View style={styles.legendSection}>
+            <View style={styles.legendGrid}>
+              {milestones
+                .filter(milestone => !milestone.completed)
+                .map((milestone, index) => (
+                  <View key={milestone.id} style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: getMilestoneColor(milestone) }]} />
+                    <Text style={styles.legendText} numberOfLines={1}>
+                      {getShortMilestoneTitle(milestone.title, index)}
+                    </Text>
+                  </View>
+                ))}
+            </View>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#B3E5B3" }]} />
-            <Text style={styles.legendText}>Latest</Text>
+        )}
+
+        {/* Completed milestone'lar */}
+        {milestones.some(m => m.completed) && (
+          <View style={styles.legendSection}>
+            <Text style={styles.legendSectionTitle}>Completed</Text>
+            <View style={styles.legendGrid}>
+              {milestones
+                .filter(milestone => milestone.completed)
+                .map((milestone, index) => (
+                  <View key={milestone.id} style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: "#BFBFBF" }]} />
+                    <Text style={styles.legendText} numberOfLines={1}>
+                      {getShortMilestoneTitle(milestone.title, index)}
+                    </Text>
+                  </View>
+                ))}
+            </View>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#FFB3BA" }]} />
-            <Text style={styles.legendText}>Edited</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#A0A0A0" }]} />
-            <Text style={styles.legendText}>Completed</Text>
-          </View>
-        </View>
+        )}
       </View>
     </View>
   );
@@ -351,7 +397,16 @@ const styles = StyleSheet.create({
     color: "#2c3e50",
     marginBottom: 12,
   },
-  legendItems: {
+  legendSection: {
+    marginBottom: 16,
+  },
+  legendSectionTitle: {
+    fontSize: 14,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#34495e",
+    marginBottom: 8,
+  },
+  legendGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
@@ -361,6 +416,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
     width: "48%",
+    paddingRight: 8,
   },
   legendColor: {
     width: 12,

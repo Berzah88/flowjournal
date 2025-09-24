@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } fro
 import Svg, { Circle } from "react-native-svg";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import PropTypes from "prop-types";
+import { getMilestoneColor } from '../utils/milestoneColors';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -16,15 +17,7 @@ const hexToRgb = (hex) => {
   } : { r: 211, g: 203, b: 227 }; // Varsayılan renk
 };
 
-// Milestone rengini belirleyen fonksiyon
-const getMilestoneColor = (milestone) => {
-  let bgColor = "#d3cbe3"; // Varsayılan renk
-  if (milestone.completed) bgColor = "#BFBFBF"; // Tamamlanmış milestone
-  else if (milestone.wasEdited) bgColor = "#E8B4B8"; // Edit edilmiş milestone - soft pembe
-  else if (milestone.isLatest) bgColor = "#c2d7d0"; // En son eklenen milestone
-  
-  return bgColor;
-};
+// Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
 
 // Mood tag'lerini render eden fonksiyon
 const renderMoodTags = (milestone) => {
@@ -32,15 +25,20 @@ const renderMoodTags = (milestone) => {
     return null;
   }
 
-  // Son 3 journal entry'den mood tag'lerini al
-  const recentEntries = milestone.journalEntries
-    .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 3);
+  // Tüm journal entry'lerden mood tag'lerini al - tarihten bağımsız
+  const moodEntries = milestone.journalEntries
+    .filter(entry => entry.mood || entry.moodIcon) // Sadece mood'u olan entry'ler
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // En yeni önce (ters sıralama)
+    .reverse(); // Sonra tersine çevir ki en eski solda, en yeni sağda olsun
+
+  // Eğer mood yoksa hiçbir şey gösterme
+  if (moodEntries.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.moodTagsContainer}>
-      {recentEntries.map((entry, index) => {
+      {moodEntries.map((entry, index) => {
         if (!entry.mood && !entry.moodIcon) return null;
         
         const iconName = entry.moodIcon || entry.mood || 'sentiment-satisfied';
@@ -54,7 +52,7 @@ const renderMoodTags = (milestone) => {
               styles.moodTag, 
               { 
                 backgroundColor,
-                zIndex: index + 1 // Sağdaki ikonlar daha yüksek zIndex
+                zIndex: index + 1 // Sağdaki (son eklenen) en yüksek zIndex
               }
             ]}
           >
@@ -148,13 +146,14 @@ export default function Card({ title, startDate, endDate, completed = false, act
           {activeMilestones.map((ms) => (
             <TouchableWithoutFeedback 
               key={ms.id} 
-              disabled={completed}
               onPress={() => onMilestonePress && onMilestonePress(ms)}
             >
               <View style={[
                 styles.milestoneItem, 
-                !completed && styles.milestoneItemClickable,
-                !completed && { backgroundColor: "rgba(235, 225, 225, 0.8)" }
+                styles.milestoneItemClickable, // Hem active hem completed için clickable
+                { 
+                  backgroundColor: getMilestoneColor(ms) + (completed ? "80" : "B3") // Completed: 0.5 opacity (80), Active: 0.7 opacity (B3)
+                }
               ]}>
                 <Image source={require("../assets/AddMileStone.png")} style={styles.addIcon} />
                 <View style={styles.milestoneContent}>
@@ -239,7 +238,7 @@ const styles = StyleSheet.create({
   milestoneItemClickable: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 10,
+    borderRadius: 16,
     marginBottom: 6,
     minHeight: 50,
     justifyContent: 'flex-start',

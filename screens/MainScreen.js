@@ -142,6 +142,8 @@ export default function MainScreen({ navigation }) {
   // when user taps tabs
   const handleTabPress = (index) => {
     if (index === activeIndex) return;
+    // set activeIndex immediately so StatusTabs animates right away
+    setActiveIndex(index);
     // set offsetRef immediately so panResponderGrant later uses correct offset
     offsetRef.current = -index * width;
     animateToIndex(index);
