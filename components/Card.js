@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo, useCallback } from "react";
 import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import PropTypes from "prop-types";
 import { getMilestoneColor } from '../utils/milestoneColors';
+import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -19,17 +21,19 @@ const hexToRgb = (hex) => {
 
 // Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
 
-// Mood tag'lerini render eden fonksiyon
-const renderMoodTags = (milestone) => {
-  if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
-    return null;
-  }
+// Mood tag'lerini render eden fonksiyon - memoized
+const MoodTags = React.memo(({ milestone }) => {
+  const moodEntries = useMemo(() => {
+    if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
+      return [];
+    }
 
-  // Tüm journal entry'lerden mood tag'lerini al - tarihten bağımsız
-  const moodEntries = milestone.journalEntries
-    .filter(entry => entry.mood || entry.moodIcon) // Sadece mood'u olan entry'ler
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // En yeni önce (ters sıralama)
-    .reverse(); // Sonra tersine çevir ki en eski solda, en yeni sağda olsun
+    // Tüm journal entry'lerden mood tag'lerini al - tarihten bağımsız
+    return milestone.journalEntries
+      .filter(entry => entry.mood || entry.moodIcon) // Sadece mood'u olan entry'ler
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // En yeni önce (ters sıralama)
+      .reverse(); // Sonra tersine çevir ki en eski solda, en yeni sağda olsun
+  }, [milestone.journalEntries]);
 
   // Eğer mood yoksa hiçbir şey gösterme
   if (moodEntries.length === 0) {
@@ -43,7 +47,6 @@ const renderMoodTags = (milestone) => {
         
         const iconName = entry.moodIcon || entry.mood || 'sentiment-satisfied';
         const backgroundColor = entry.moodColor || '#8E7DBE';
-        const label = entry.mood || 'Happy';
         
         return (
           <View 
@@ -56,43 +59,77 @@ const renderMoodTags = (milestone) => {
               }
             ]}
           >
-                   <MaterialIcons
-                     name={iconName}
-                     size={12}
-                     color="#333"
-                   />
+            <MaterialIcons
+              name={iconName}
+              size={12}
+              color="#333"
+            />
           </View>
         );
       })}
     </View>
   );
-};
+});
 
 export default function Card({ title, startDate, endDate, completed = false, activeMilestones = [], onMilestonePress }) {
-  const totalDays = Math.max(
-    1,
-    (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)
-  );
-  const remainingDays = Math.max(
-    0,
-    (new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24)
-  );
-  const progress = Math.min(1, (totalDays - remainingDays) / totalDays);
+  // Performance monitoring (sadece development'ta)
+  usePerformanceMonitor('Card');
+  
+  // Memoize expensive calculations
+  const { totalDays, remainingDays, progress } = useMemo(() => {
+    const total = Math.max(
+      1,
+      (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)
+    );
+    const remaining = Math.max(
+      0,
+      (new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24)
+    );
+    const prog = Math.min(1, (total - remaining) / total);
+    
+    return {
+      totalDays: total,
+      remainingDays: remaining,
+      progress: prog
+    };
+  }, [startDate, endDate]);
 
-  const radius = 28;
-  const strokeWidth = 8;
-  const center = radius + strokeWidth;
-  const circumference = 2 * Math.PI * radius;
+  // Memoize circle calculations
+  const { radius, strokeWidth, center, circumference } = useMemo(() => {
+    const r = 28;
+    const sw = 8;
+    const c = r + sw;
+    const circ = 2 * Math.PI * r;
+    
+    return {
+      radius: r,
+      strokeWidth: sw,
+      center: c,
+      circumference: circ
+    };
+  }, []);
 
   const animatedValue = useRef(new Animated.Value(0)).current;
+
+  // Memoized milestone press handler
+  const handleMilestonePress = useCallback((milestone) => {
+    onMilestonePress?.(milestone);
+  }, [onMilestonePress]);
 
   useEffect(() => {
     Animated.timing(animatedValue, {
       toValue: progress,
-      duration: 800,
+      duration: ANIMATION_DURATIONS.VERY_SLOW,
       useNativeDriver: true,
     }).start();
   }, [progress]);
+
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      animatedValue.stopAnimation();
+    };
+  }, []);
 
   const strokeDashoffset = animatedValue.interpolate({
     inputRange: [0, 1],
@@ -146,7 +183,10 @@ export default function Card({ title, startDate, endDate, completed = false, act
           {activeMilestones.map((ms) => (
             <TouchableWithoutFeedback 
               key={ms.id} 
-              onPress={() => onMilestonePress && onMilestonePress(ms)}
+              onPress={() => handleMilestonePress(ms)}
+              accessible={true}
+              accessibilityLabel={`${ms.title || "Untitled"} milestone`}
+              accessibilityRole="button"
             >
               <View style={[
                 styles.milestoneItem, 
@@ -160,7 +200,7 @@ export default function Card({ title, startDate, endDate, completed = false, act
                   <Text style={[styles.milestoneText, completed ? styles.completedDaysText : {}]}>
                     {ms.title || "Untitled"}
                   </Text>
-                  {renderMoodTags(ms)}
+                  <MoodTags milestone={ms} />
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -195,7 +235,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: FONTS.BOLD,
     letterSpacing: -0.2,
     marginBottom: 8,
     color: "#2c3e50",
@@ -215,7 +255,7 @@ const styles = StyleSheet.create({
     marginTop: -10,
   },
   daysLeftText: {
-    fontFamily: "Poppins_500Medium",
+    fontFamily: FONTS.MEDIUM,
     color: "#7f8c8d",
     fontSize: 14,
     letterSpacing: -0.2,
@@ -277,7 +317,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   milestoneText: {
-    fontFamily: "Poppins_500Medium",
+    fontFamily: FONTS.MEDIUM,
     fontSize: 13,
     color: "#5a6c7d",
     lineHeight: 18,

@@ -1,4 +1,4 @@
-// components/ActiveTaskMenu.js
+// components/DataRecoveryMenu.js
 import React, { useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,7 +9,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onDelete, onEdit, isCompleted }) {
+export default function DataRecoveryMenu({ 
+  visible, 
+  onClose, 
+  onCheckStatus, 
+  onRecoverData, 
+  onCreateBackup 
+}) {
   // Smooth animasyon değerleri
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -45,20 +51,20 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
   }));
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleEdit = useCallback(() => {
-    onEdit?.();
+  const handleCheckStatus = useCallback(() => {
+    onCheckStatus?.();
     onClose?.();
-  }, [onEdit, onClose]);
+  }, [onCheckStatus, onClose]);
 
-  const handleToggleComplete = useCallback(() => {
-    onToggleComplete?.();
+  const handleRecoverData = useCallback(() => {
+    onRecoverData?.();
     onClose?.();
-  }, [onToggleComplete, onClose]);
+  }, [onRecoverData, onClose]);
 
-  const handleDelete = useCallback(() => {
-    onDelete?.();
+  const handleCreateBackup = useCallback(() => {
+    onCreateBackup?.();
     onClose?.();
-  }, [onDelete, onClose]);
+  }, [onCreateBackup, onClose]);
 
   if (!visible) return null;
 
@@ -66,51 +72,45 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
     <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.overlay}>
         <Animated.View style={[styles.container, animatedContainerStyle]}>
-          {/* Edit */}
+          {/* Check Data Status */}
           <TouchableOpacity
             style={styles.item}
-            onPress={handleEdit}
+            onPress={handleCheckStatus}
             accessible={true}
-            accessibilityLabel="Edit project"
+            accessibilityLabel="Check data status"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="create-outline" size={20} color="#4A90E2" />
-              <Text style={styles.itemText}>Edit</Text>
+              <Ionicons name="analytics-outline" size={20} color="#FFA726" />
+              <Text style={styles.itemText}>Check Status</Text>
             </View>
           </TouchableOpacity>
 
-          {/* Complete / Uncomplete */}
+          {/* Recover Data */}
           <TouchableOpacity
             style={styles.item}
-            onPress={handleToggleComplete}
+            onPress={handleRecoverData}
             accessible={true}
-            accessibilityLabel={isCompleted ? "Mark as incomplete" : "Mark as complete"}
+            accessibilityLabel="Recover lost data"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons 
-                name={isCompleted ? "close-circle-outline" : "checkmark-circle-outline"} 
-                size={20} 
-                color={isCompleted ? "#FF6B6B" : "#4ECDC4"} 
-              />
-              <Text style={[styles.itemText, isCompleted && styles.uncompleteText]}>
-                {isCompleted ? "Mark as Incomplete" : "Complete"}
-              </Text>
+              <Ionicons name="refresh-outline" size={20} color="#FF6B6B" />
+              <Text style={[styles.itemText, styles.recoveryText]}>Recover Data</Text>
             </View>
           </TouchableOpacity>
 
-          {/* Delete */}
+          {/* Create Backup */}
           <TouchableOpacity
             style={styles.item}
-            onPress={handleDelete}
+            onPress={handleCreateBackup}
             accessible={true}
-            accessibilityLabel="Delete project"
+            accessibilityLabel="Create manual backup"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="trash-outline" size={20} color="#E74C3C" />
-              <Text style={[styles.itemText, styles.deleteText]}>Delete</Text>
+              <Ionicons name="save-outline" size={20} color="#4ECDC4" />
+              <Text style={[styles.itemText, styles.backupText]}>Create Backup</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -158,6 +158,10 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_600SemiBold",
     marginLeft: 12,
   },
-  deleteText: { color: "#E74C3C" },
-  uncompleteText: { color: "#4A90E2" },
+  recoveryText: { 
+    color: "#FF6B6B" 
+  },
+  backupText: { 
+    color: "#4ECDC4" 
+  },
 });

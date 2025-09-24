@@ -27,7 +27,7 @@ import * as ImagePicker from "expo-image-picker";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
-import { TaskContext } from "../context/TaskContext";
+import { useTaskActions } from "../hooks/useTaskContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -88,7 +88,7 @@ export default function Journal({
   existingEntry = null,
 }) {
 
-  const { addJournalEntry, updateJournalEntry } = useContext(TaskContext);
+  const { addJournalEntry, updateJournalEntry } = useTaskActions();
 
   const translateY = useSharedValue(MODAL_HEIGHT);
   const translateX = useSharedValue(width); // Sağdan başla

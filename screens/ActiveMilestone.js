@@ -11,7 +11,7 @@ import {
   BackHandler,
   Image,
 } from "react-native";
-import { TaskContext } from "../context/TaskContext";
+import { useTasks, useTaskActions } from "../hooks/useTaskContext";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
@@ -37,7 +37,8 @@ const getValidIconName = (name) => {
 
 export default function ActiveMilestone({ route, navigation, milestone, onClose }) {
   const milestoneData = route?.params?.milestone || milestone || {};
-  const { tasks, deleteJournalEntry } = useContext(TaskContext);
+  const tasks = useTasks();
+  const { deleteJournalEntry } = useTaskActions();
 
   if (!milestoneData || !milestoneData.id) {
     if (navigation) navigation.goBack();
@@ -106,7 +107,7 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
       if (opacity) opacity.value = 0;
       if (dragY) dragY.value = 0;
     };
-  }, [translateY, scale, opacity, dragY]);
+  }, []); // Dependency array'i boş bırak - sadece mount/unmount'ta çalışsın
 
   useEffect(() => {
     const onBackPress = () => {

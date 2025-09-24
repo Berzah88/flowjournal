@@ -1,28 +1,10 @@
-import React, { useContext } from "react";
+import React from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
-import { TaskContext } from "../context/TaskContext";
+import { useTaskStats } from "../hooks/useTaskContext";
+import { FONTS } from "../constants";
 
 export default function StatusBarComponent() {
-  const { tasks } = useContext(TaskContext);
-
-  // "done" alanına göre sayıları alıyoruz
-  const activeTasks = tasks.filter(task => !task.done).length;
-  const doneTasks = tasks.filter(task => task.done).length;
-
-  // En uzun deadline ile bugünden kalan gün sayısı
-  const today = new Date();
-  let daysLeft = 0;
-  const activeDeadlines = tasks
-    .filter(task => !task.done) // sadece aktif projeler
-    .map(task => {
-      const diffTime = new Date(task.endDate) - today;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays > 0 ? diffDays : 0;
-    });
-
-  if (activeDeadlines.length > 0) {
-    daysLeft = Math.max(...activeDeadlines);
-  }
+  const { activeCount, completedCount, daysLeft } = useTaskStats();
 
   return (
     <View style={styles.container}>
@@ -30,7 +12,7 @@ export default function StatusBarComponent() {
       <View style={styles.item}>
         <Image source={require("../assets/active.png")} style={styles.icon} />
         <View>
-          <Text style={styles.number}>{activeTasks}</Text>
+          <Text style={styles.number}>{activeCount}</Text>
           <Text style={styles.label}>Active</Text>
         </View>
       </View>
@@ -48,7 +30,7 @@ export default function StatusBarComponent() {
       <View style={styles.item}>
         <Image source={require("../assets/done.png")} style={styles.icon} />
         <View>
-          <Text style={styles.number}>{doneTasks}</Text>
+          <Text style={styles.number}>{completedCount}</Text>
           <Text style={styles.label}>Done</Text>
         </View>
       </View>
@@ -76,12 +58,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   number: {
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: FONTS.SEMI_BOLD,
     fontSize: 12,
     color: "#585858",
   },
   label: {
-    fontFamily: "Poppins_400Regular",
+    fontFamily: FONTS.REGULAR,
     fontSize: 10,
     color: "#555",
   },

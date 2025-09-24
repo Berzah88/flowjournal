@@ -5,6 +5,7 @@ import { assignUniqueColor } from "../utils/milestoneColors";
 import { STORAGE_KEYS } from "../constants";
 import { useAsyncStorage, useDebouncedSave } from "../hooks/useAsyncStorage";
 import { useErrorHandler } from "../hooks/useErrorHandler";
+import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 
 // Context'i bölerek re-render optimizasyonu
 export const TaskContext = createContext();
@@ -16,12 +17,18 @@ let HAS_INITIALIZED = false;
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef(null);
   const isMountedRef = useRef(true); // to avoid setState on unmounted component
   const justLoadedRef = useRef(false); // skip first save immediately after load
+  const saveLockRef = useRef(false); // prevent concurrent saves
+  const lastSaveVersionRef = useRef(0); // version control for race condition prevention
   
   // Error handling
   const { handleAsyncStorageError } = useErrorHandler();
+  
+  // Performance monitoring (sadece development'ta)
+  useContextPerformanceMonitor('TaskContext');
 
   // Cleanup mount flag
   useEffect(() => {
@@ -43,38 +50,148 @@ export const TaskProvider = ({ children }) => {
 
     const loadTasks = async () => {
       try {
+        console.log("🔄 Veri yükleniyor...");
+        
+        // Önce ana veriyi yüklemeye çalış
         const storedTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
+        let parsedTasks = null;
 
         if (storedTasks !== null && storedTasks !== '') {
-          const parsedTasks = JSON.parse(storedTasks);
+          try {
+            parsedTasks = JSON.parse(storedTasks);
+            if (Array.isArray(parsedTasks)) {
+              console.log("✅ Ana veri yüklendi:", parsedTasks.length, "task");
+              if (isMountedRef.current) setTasks(parsedTasks);
+            } else {
+              console.warn("⚠️ Ana veri geçersiz format");
+              parsedTasks = null;
+            }
+          } catch (parseError) {
+            console.error("❌ Ana veri parse hatası:", parseError);
+            parsedTasks = null;
+          }
+        }
 
-          if (Array.isArray(parsedTasks)) {
-            if (isMountedRef.current) setTasks(parsedTasks);
+        // Ana veri yoksa veya bozuksa backup'tan yüklemeye çalış
+        if (!parsedTasks || parsedTasks.length === 0) {
+          console.log("🔄 Backup'tan yükleniyor...");
+          const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+          
+          if (backupData !== null && backupData !== '') {
+            try {
+              const backupTasks = JSON.parse(backupData);
+              if (Array.isArray(backupTasks) && backupTasks.length > 0) {
+                console.log("✅ Backup'tan yüklendi:", backupTasks.length, "task");
+                if (isMountedRef.current) setTasks(backupTasks);
+                
+                // Backup'ı ana veri olarak kaydet
+                await AsyncStorage.setItem(STORAGE_KEYS.TASKS, backupData);
+                console.log("📦 Backup ana veri olarak kaydedildi");
+              } else {
+                console.warn("⚠️ Backup verisi geçersiz");
+                if (isMountedRef.current) setTasks([]);
+              }
+            } catch (backupParseError) {
+              console.error("❌ Backup parse hatası:", backupParseError);
+              if (isMountedRef.current) setTasks([]);
+            }
           } else {
+            console.log("📝 Yeni başlangıç - veri yok");
             if (isMountedRef.current) setTasks([]);
           }
-        } else {
-          if (isMountedRef.current) setTasks([]);
         }
+
       } catch (error) {
+        console.error("❌ Veri yükleme hatası:", error);
         handleAsyncStorageError(error, "load");
         if (isMountedRef.current) setTasks([]);
+        
+        // Bozuk veriyi temizle
         try {
           await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
+          console.log("🧹 Bozuk ana veri temizlendi");
         } catch (clearError) {
-          console.error("TaskProvider: Failed to clear corrupted data:", clearError);
+          console.error("❌ Bozuk veri temizlenemedi:", clearError);
         }
       } finally {
         // Mark that we just loaded so the next save effect can skip one save cycle
         justLoadedRef.current = true;
         if (isMountedRef.current) setIsLoading(false);
+        console.log("✅ Veri yükleme tamamlandı");
       }
     };
 
     loadTasks();
   }, []);
 
-  // ---------- SAVE TASKS (debounced) ----------
+  // ---------- RACE CONDITION SAFE SAVE FUNCTION ----------
+  const saveTasks = useCallback(async (tasksToSave, version) => {
+    // Lock kontrolü - concurrent save'leri önle
+    if (saveLockRef.current) {
+      console.log("🔄 Save işlemi devam ediyor, atlanıyor...");
+      return;
+    }
+
+    // Version kontrolü - eski veri ile save'i önle
+    if (version <= lastSaveVersionRef.current) {
+      console.log("⏰ Eski veri, save işlemi atlanıyor");
+      return;
+    }
+
+    // Mount kontrolü
+    if (!isMountedRef.current) {
+      console.log("🚫 Component unmounted, save işlemi atlanıyor");
+      return;
+    }
+
+    // Array kontrolü
+    if (!Array.isArray(tasksToSave)) {
+      console.warn("⚠️ Invalid tasks data, save işlemi atlanıyor");
+      return;
+    }
+
+    saveLockRef.current = true;
+    setIsSaving(true);
+
+    try {
+      // Save işleminden önce backup oluştur
+      try {
+        const currentTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
+        if (currentTasks) {
+          await AsyncStorage.setItem(`${STORAGE_KEYS.TASKS}_backup`, currentTasks);
+          console.log("📦 Backup oluşturuldu");
+        }
+      } catch (backupError) {
+        console.warn("⚠️ Backup oluşturulamadı:", backupError);
+      }
+      
+      const serialized = JSON.stringify(tasksToSave);
+      await AsyncStorage.setItem(STORAGE_KEYS.TASKS, serialized);
+      lastSaveVersionRef.current = version;
+      console.log("✅ Veri başarıyla kaydedildi, version:", version);
+    } catch (error) {
+      console.error("❌ Save işlemi başarısız:", error);
+      
+      // Save başarısız olursa backup'tan geri yükle
+      try {
+        const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+        if (backupData) {
+          await AsyncStorage.setItem(STORAGE_KEYS.TASKS, backupData);
+          const parsedTasks = JSON.parse(backupData);
+          if (isMountedRef.current) setTasks(parsedTasks);
+          console.log("🔄 Backup'tan geri yüklendi");
+        }
+      } catch (restoreError) {
+        console.error("❌ Backup'tan geri yükleme başarısız:", restoreError);
+        handleAsyncStorageError(error, "save");
+      }
+    } finally {
+      saveLockRef.current = false;
+      setIsSaving(false);
+    }
+  }, [handleAsyncStorageError]);
+
+  // ---------- SAVE TASKS (debounced with race condition prevention) ----------
   useEffect(() => {
     if (isLoading) {
       return;
@@ -90,17 +207,10 @@ export const TaskProvider = ({ children }) => {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Slightly longer debounce to reduce frequent saves on quick successive updates
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        if (!isMountedRef.current) return;
-        if (Array.isArray(tasks)) {
-          await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-        } else {
-        }
-      } catch (error) {
-        handleAsyncStorageError(error, "save");
-      }
+    // Debounced save with version control
+    saveTimeoutRef.current = setTimeout(() => {
+      const currentVersion = Date.now(); // Version olarak timestamp kullan
+      saveTasks(tasks, currentVersion);
     }, 1000);
 
     return () => {
@@ -109,7 +219,29 @@ export const TaskProvider = ({ children }) => {
         saveTimeoutRef.current = null;
       }
     };
-  }, [tasks, isLoading]);
+  }, [tasks, isLoading, saveTasks]);
+
+  // ---------- EMERGENCY SAVE ON APP BACKGROUND/FOREGROUND ----------
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // Uygulama arka plana geçerken hemen kaydet
+        if (tasks.length > 0 && !isLoading) {
+          console.log("🚨 Emergency save on app background");
+          const currentVersion = Date.now();
+          saveTasks(tasks, currentVersion);
+        }
+      }
+    };
+
+    // App state listener ekle
+    const { AppState } = require('react-native');
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [tasks, isLoading, saveTasks]);
 
   // -------- TASK CRUD --------
   const addTask = useCallback((newTask) => {
@@ -133,6 +265,19 @@ export const TaskProvider = ({ children }) => {
     setTasks((prev) =>
       prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
     );
+  }, []);
+
+  // Helper function to check if project end date should be updated
+  const shouldUpdateProjectEndDate = useCallback((milestones, currentEndDate) => {
+    if (!milestones || milestones.length === 0) return null;
+    
+    const latestMilestoneDate = milestones.reduce((latest, ms) => {
+      const msEndDate = new Date(ms.endDate);
+      return msEndDate > latest ? msEndDate : latest;
+    }, new Date(0));
+    
+    const projectEndDate = new Date(currentEndDate);
+    return latestMilestoneDate > projectEndDate ? latestMilestoneDate.toISOString() : null;
   }, []);
 
   // -------- MILESTONE CRUD --------
@@ -166,19 +311,6 @@ export const TaskProvider = ({ children }) => {
       })
     );
   }, [shouldUpdateProjectEndDate]);
-
-  // Helper function to check if project end date should be updated
-  const shouldUpdateProjectEndDate = (milestones, currentEndDate) => {
-    if (!milestones || milestones.length === 0) return null;
-    
-    const latestMilestoneDate = milestones.reduce((latest, ms) => {
-      const msEndDate = new Date(ms.endDate);
-      return msEndDate > latest ? msEndDate : latest;
-    }, new Date(0));
-    
-    const projectEndDate = new Date(currentEndDate);
-    return latestMilestoneDate > projectEndDate ? latestMilestoneDate.toISOString() : null;
-  };
 
   const updateMilestone = useCallback((taskId, msId, updates) => {
     setTasks((prev) =>
@@ -424,10 +556,125 @@ export const TaskProvider = ({ children }) => {
     );
   }, []);
 
+  // Backup system for data safety
+  const createBackup = useCallback(async () => {
+    try {
+      const currentTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
+      if (currentTasks) {
+        await AsyncStorage.setItem(`${STORAGE_KEYS.TASKS}_backup`, currentTasks);
+        console.log("📦 Backup oluşturuldu");
+      }
+    } catch (error) {
+      console.warn("⚠️ Backup oluşturulamadı:", error);
+    }
+  }, []);
+
+  // Restore from backup if main data is corrupted
+  const restoreFromBackup = useCallback(async () => {
+    try {
+      const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+      if (backupData) {
+        await AsyncStorage.setItem(STORAGE_KEYS.TASKS, backupData);
+        const parsedTasks = JSON.parse(backupData);
+        if (isMountedRef.current) setTasks(parsedTasks);
+        console.log("🔄 Backup'tan geri yüklendi");
+        return true;
+      }
+    } catch (error) {
+      console.error("❌ Backup'tan geri yükleme başarısız:", error);
+    }
+    return false;
+  }, []);
+
+  // Check data status function
+  const checkDataStatus = useCallback(async () => {
+    try {
+      const mainData = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
+      const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+      
+      const mainExists = mainData !== null && mainData !== '';
+      const backupExists = backupData !== null && backupData !== '';
+      
+      let mainTaskCount = 0;
+      let backupTaskCount = 0;
+      
+      if (mainExists) {
+        try {
+          const parsedMain = JSON.parse(mainData);
+          mainTaskCount = Array.isArray(parsedMain) ? parsedMain.length : 0;
+        } catch (e) {
+          console.log("⚠️ Main data corrupted");
+        }
+      }
+      
+      if (backupExists) {
+        try {
+          const parsedBackup = JSON.parse(backupData);
+          backupTaskCount = Array.isArray(parsedBackup) ? parsedBackup.length : 0;
+        } catch (e) {
+          console.log("⚠️ Backup data corrupted");
+        }
+      }
+      
+      return {
+        mainExists,
+        backupExists,
+        mainTaskCount,
+        backupTaskCount,
+        mainData: mainExists ? mainData : null,
+        backupData: backupExists ? backupData : null
+      };
+    } catch (error) {
+      console.error("❌ Data status check failed:", error);
+      return {
+        mainExists: false,
+        backupExists: false,
+        mainTaskCount: 0,
+        backupTaskCount: 0,
+        mainData: null,
+        backupData: null
+      };
+    }
+  }, []);
+
+  // Manual restore from backup function
+  const restoreFromBackupManually = useCallback(async () => {
+    try {
+      const dataStatus = await checkDataStatus();
+      
+      if (!dataStatus.backupExists) {
+        console.log("⚠️ Backup verisi bulunamadı");
+        return { success: false, message: "Backup verisi bulunamadı" };
+      }
+      
+      if (dataStatus.backupTaskCount === 0) {
+        console.log("⚠️ Backup verisi boş");
+        return { success: false, message: "Backup verisi boş" };
+      }
+      
+      // Backup'tan geri yükle
+      const parsedTasks = JSON.parse(dataStatus.backupData);
+      if (isMountedRef.current) {
+        setTasks(parsedTasks);
+        console.log("🔄 Manuel backup'tan geri yüklendi:", parsedTasks.length, "task");
+      }
+      
+      return { 
+        success: true, 
+        message: `${parsedTasks.length} task geri yüklendi`,
+        taskCount: parsedTasks.length
+      };
+    } catch (error) {
+      console.error("❌ Manuel backup'tan geri yükleme başarısız:", error);
+      return { success: false, message: "Geri yükleme hatası: " + error.message };
+    }
+  }, [checkDataStatus]);
+
   // Clear storage function for debugging
   const clearStorage = useCallback(async () => {
     try {
       await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
+      await AsyncStorage.removeItem(`${STORAGE_KEYS.TASKS}_backup`);
       if (isMountedRef.current) setTasks([]);
     } catch (error) {
       handleAsyncStorageError(error, "clear");
@@ -439,7 +686,8 @@ export const TaskProvider = ({ children }) => {
   const stateContextValue = useMemo(() => ({
     tasks,
     isLoading,
-  }), [tasks, isLoading]);
+    isSaving,
+  }), [tasks, isLoading, isSaving]);
 
   // Actions context - actions değişmediği sürece re-render yok
   const actionsContextValue = useMemo(() => ({
@@ -460,6 +708,10 @@ export const TaskProvider = ({ children }) => {
     updateLocation,
     setMilestoneWasEdited,
     clearMilestoneWasEdited,
+    createBackup,
+    restoreFromBackup,
+    restoreFromBackupManually,
+    checkDataStatus,
     clearStorage,
   }), [
     addTask,
@@ -479,7 +731,12 @@ export const TaskProvider = ({ children }) => {
     updateLocation,
     setMilestoneWasEdited,
     clearMilestoneWasEdited,
+    createBackup,
+    restoreFromBackup,
+    restoreFromBackupManually,
+    checkDataStatus,
     clearStorage,
+    shouldUpdateProjectEndDate, // Dependency eklendi
   ]);
 
   // Final render with split contexts

@@ -20,6 +20,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
+import { FONTS, COLORS, ANIMATION_DURATIONS, SWIPE_THRESHOLDS } from "../constants";
+import { useModalAnimation } from "../hooks/useAnimations";
 
 const { width, height } = Dimensions.get("window");
 
@@ -38,11 +40,12 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     return '#B6CEB4'; // Yeni milestone için varsayılan renk (paletten ilk renk)
   };
   
-  const translateY = useSharedValue(height);
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.9);
+  // Use custom animation hook
+  const { translateY, opacity, scale, closeModal } = useModalAnimation(visible, onClose);
   const backdropOpacity = useSharedValue(0);
   const inputRef = useRef(null);
+
+  // Cleanup animations on unmount - handled by hooks
 
   useEffect(() => {
     if (visible) {
@@ -59,19 +62,8 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
         setIsEditing(false);
       }
       
-      // Apple-style entrance animation - more smooth and natural (25% slower)
-      backdropOpacity.value = withTiming(1, { duration: 312 }); // 250 * 1.25
-      translateY.value = withSpring(0, {
-        damping: 25,
-        stiffness: 320, // 400 / 1.25
-        mass: 0.6,
-      });
-      opacity.value = withTiming(1, { duration: 375 }); // 300 * 1.25
-      scale.value = withSpring(1, {
-        damping: 20,
-        stiffness: 240, // 300 / 1.25
-        mass: 0.7,
-      });
+      // Backdrop animation only - modal animation handled by hook
+      backdropOpacity.value = withTiming(0.45, { duration: ANIMATION_DURATIONS.NORMAL });
 
       const timeout = setTimeout(() => {
         inputRef.current?.focus();
@@ -79,32 +71,15 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
 
       return () => clearTimeout(timeout);
     } else {
-      // Reset animation values when not visible
-      translateY.value = height;
-      opacity.value = 0;
-      scale.value = 0.9;
+      // Reset backdrop when not visible
       backdropOpacity.value = 0;
     }
-  }, [visible]);
+  }, [visible, editingMilestone, backdropOpacity]);
 
   const handleCloseModal = () => {
-    // Apple-style exit animation - more smooth and natural (25% slower)
-    backdropOpacity.value = withTiming(0, { duration: 250 }); // 200 * 1.25
-    translateY.value = withSpring(height, {
-      damping: 30,
-      stiffness: 400, // 500 / 1.25
-      mass: 0.8,
-    });
-    opacity.value = withTiming(0, { duration: 312 }); // 250 * 1.25
-    scale.value = withSpring(0.9, {
-      damping: 25,
-      stiffness: 320, // 400 / 1.25
-      mass: 0.6,
-    }, (finished) => {
-      if (finished && onClose) {
-        runOnJS(onClose)();
-      }
-    });
+    // Close modal - animation handled by hook
+    backdropOpacity.value = withTiming(0, { duration: ANIMATION_DURATIONS.FAST });
+    closeModal();
   };
 
   const handleSave = () => {
@@ -345,7 +320,7 @@ const styles = StyleSheet.create({
   },
   titleInput: {
     fontSize: 14,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: FONTS.MEDIUM,
     marginBottom: 8,
     lineHeight: 20,
     color: "#1a1a1a",
@@ -367,7 +342,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: FONTS.REGULAR,
     color: "#7f8c8d",
     flex: 1,
   },

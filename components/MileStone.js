@@ -4,6 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
 import PropTypes from "prop-types";
 import { getMilestoneColor } from '../utils/milestoneColors';
+import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
 function MileStone({
   milestone,
@@ -17,6 +19,9 @@ function MileStone({
   wasEdited = false,
   onEditToggle,
 }) {
+  // Performance monitoring (sadece development'ta)
+  usePerformanceMonitor('MileStone');
+  
   if (!milestone) return null;
 
   const [title, setTitle] = useState(milestone.title || "");
@@ -46,7 +51,7 @@ function MileStone({
     setShowDeleteOption(true);
     Animated.timing(deleteAnimation, {
       toValue: 1,
-      duration: 300,
+      duration: ANIMATION_DURATIONS.NORMAL,
       useNativeDriver: true,
     }).start();
   }, [deleteAnimation]);
@@ -54,7 +59,7 @@ function MileStone({
   const hideDeleteOptionWithAnimation = useCallback(() => {
     Animated.timing(deleteAnimation, {
       toValue: 0,
-      duration: 200,
+      duration: ANIMATION_DURATIONS.FAST,
       useNativeDriver: true,
     }).start(() => {
       setShowDeleteOption(false);
@@ -348,7 +353,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingVertical: 4 },
   titleInput: {
     fontSize: 14,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: FONTS.MEDIUM,
     marginBottom: 8,
     lineHeight: 20,
     color: "#1a1a1a",
@@ -357,7 +362,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 14,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: FONTS.MEDIUM,
     marginBottom: 8,
     lineHeight: 20,
     color: "#1a1a1a",

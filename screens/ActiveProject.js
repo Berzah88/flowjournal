@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useCallback, useRef } from "react";
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, BackHandler, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { TaskContext } from "../context/TaskContext";
+import { useTasks, useTaskActions } from "../hooks/useTaskContext";
 import MileStone from "../components/MileStone";
 import EditModal from "../components/EditModal";
 import ActiveMilestone from "./ActiveMilestone";
@@ -32,8 +32,8 @@ const formatDateRange = (startDate, endDate) => {
 };
 
 export default function ActiveProject({ selectedCard, onClose, setMainActiveTab }) {
+  const tasks = useTasks();
   const {
-    tasks,
     deleteTask,
     completeTask,
     addMilestone,
@@ -44,7 +44,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     updateTask,
     setMilestoneWasEdited,
     clearMilestoneWasEdited,
-  } = useContext(TaskContext);
+  } = useTaskActions();
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
@@ -129,7 +129,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
         animationCleanupRef.current = [];
       }
     };
-  }, [translateY, scale, opacity, dragY, progressAnim]);
+  }, []); // Dependency array'i boş bırak - sadece unmount'ta çalışsın
 
   const handleClose = useCallback(() => {
     translateY.value = withTiming(height, { duration: 200 });

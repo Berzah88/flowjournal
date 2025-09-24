@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,12 +13,17 @@ import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "../components/FlashCalendar";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
+import { useModalAnimation, usePanGesture } from "../hooks/useAnimations";
+import { MODAL_SIZES, SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 
 const { height } = Dimensions.get("window");
 const modalHeight = height * 0.90;
-const SWIPE_THRESHOLD = 120;
 
 export default function EditModal({ visible, onClose, project, onSave }) {
+  // Performance monitoring (sadece development'ta)
+  usePerformanceMonitor('EditModal');
+  
   const [title, setTitle] = useState(project?.title || "");
   const [startDate, setStartDate] = useState(
     project?.startDate ? new Date(project.startDate) : new Date()
@@ -30,26 +35,17 @@ export default function EditModal({ visible, onClose, project, onSave }) {
 
   const inputRef = useRef(null);
 
-  // Animasyon değerleri
-  const translateY = useSharedValue(modalHeight);
-  const scale = useSharedValue(0.96);
-  const opacity = useSharedValue(0);
-  const dragY = useSharedValue(0);
+  // Animasyon değerleri using custom hook
+  const { translateY, opacity, scale, closeModal } = useModalAnimation(visible, onClose);
+  const { dragY, handlePanEnd, resetDrag } = usePanGesture(closeModal, SWIPE_THRESHOLDS.CLOSE);
 
-  // Modal açılış animasyonu
+  // Focus input when modal opens
   useEffect(() => {
     if (visible) {
-      translateY.value = withTiming(0, { duration: 320 });
-      scale.value = withTiming(1, { duration: 320 });
-      opacity.value = withTiming(1, { duration: 320 });
-      dragY.value = 0;
       const timer = setTimeout(() => {
         inputRef.current?.focus();
       }, 400);
       return () => clearTimeout(timer);
-    } else {
-      translateY.value = withTiming(modalHeight, { duration: 200 });
-      opacity.value = withTiming(0, { duration: 200 });
     }
   }, [visible]);
 
@@ -61,6 +57,8 @@ export default function EditModal({ visible, onClose, project, onSave }) {
     );
     setEndDate(project?.endDate ? new Date(project.endDate) : new Date());
   }, [project]);
+
+  // Cleanup animations on unmount - handled by hooks
 
   const handleCalendarConfirm = useCallback(({ startDate: sISO, endDate: eISO }) => {
     let s = new Date(sISO);
@@ -83,25 +81,16 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   }, [onSave, onClose, project, title, startDate, endDate]);
 
   const handleClose = useCallback(() => {
-    translateY.value = withTiming(modalHeight, { duration: 200 });
-    opacity.value = withTiming(0, { duration: 200 }, () => {
-      if (onClose) runOnJS(onClose)();
-    });
-  }, [onClose]);
+    closeModal();
+  }, [closeModal]);
 
-  const panGesture = Gesture.Pan()
+  const panGesture = useMemo(() => Gesture.Pan()
     .onUpdate((e) => {
       if (e.translationY > 0) dragY.value = e.translationY;
     })
     .onEnd((e) => {
-      if (e.translationY > SWIPE_THRESHOLD) {
-        dragY.value = withTiming(modalHeight, { duration: 200 }, () => {
-          runOnJS(handleClose)();
-        });
-      } else {
-        dragY.value = withSpring(0, { damping: 20, stiffness: 150 });
-      }
-    });
+      handlePanEnd(e.translationY);
+    }), [dragY, handlePanEnd]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

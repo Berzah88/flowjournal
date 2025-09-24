@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useContext } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,9 @@ import {
   BackHandler,
   TouchableWithoutFeedback,
 } from "react-native";
-import { TaskContext } from "../context/TaskContext";
+import { useTaskActions } from "../hooks/useTaskContext";
+import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
+import { useSpringAnimation } from "../hooks/useAnimations";
 import FlashCalendar from "../components/FlashCalendar";
 import Animated, {
   useSharedValue,
@@ -23,16 +25,17 @@ import Animated, {
 
 
 export default function AddProjectScreen({ visible, onClose }) {
-  const { addTask } = useContext(TaskContext);
+  const { addTask } = useTaskActions();
+  
+  // Performance monitoring (sadece development'ta)
+  usePerformanceMonitor('AddProjectScreen');
   const [newTitle, setNewTitle] = useState("");
   const [endDate, setEndDate] = useState(new Date());
   const [calendarVisible, setCalendarVisible] = useState(false);
   const inputRef = useRef(null);
 
-  // Apple-style animation values
-  const translateY = useSharedValue(300);
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.95);
+  // Apple-style animation values using custom hook
+  const { translateY, opacity, scale } = useSpringAnimation(visible);
 
 
   // Android back button handler
@@ -52,49 +55,19 @@ export default function AddProjectScreen({ visible, onClose }) {
       setNewTitle("");
       setEndDate(new Date());
 
-      // Apple-style entrance animation
-      translateY.value = withSpring(0, {
-        damping: 20,
-        stiffness: 300,
-        mass: 0.8,
-      });
-      opacity.value = withTiming(1, { duration: 300 });
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 200,
-        mass: 0.5,
-      });
-
       const timeout = setTimeout(() => {
         inputRef.current?.focus();
       }, 200);
 
       return () => clearTimeout(timeout);
-    } else {
-      // Reset animation values when not visible
-      translateY.value = 300;
-      opacity.value = 0;
-      scale.value = 0.95;
     }
   }, [visible]);
 
   const handleCloseModal = () => {
-    // Apple-style exit animation
-    translateY.value = withSpring(300, {
-      damping: 20,
-      stiffness: 300,
-      mass: 0.8,
-    });
-    opacity.value = withTiming(0, { duration: 250 });
-    scale.value = withSpring(0.95, {
-      damping: 15,
-      stiffness: 200,
-      mass: 0.5,
-    }, (finished) => {
-      if (finished && onClose) {
-        runOnJS(onClose)();
-      }
-    });
+    // Close modal - animation handled by useSpringAnimation hook
+    if (onClose) {
+      onClose();
+    }
   };
 
   const handleCalendarConfirm = ({ startDate: sISO, endDate: eISO }) => {
