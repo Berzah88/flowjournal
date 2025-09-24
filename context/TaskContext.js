@@ -3,8 +3,8 @@ import React, { createContext, useState, useEffect, useRef, useCallback, useMemo
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { assignUniqueColor } from "../utils/milestoneColors";
 import { STORAGE_KEYS } from "../constants";
-import { useAsyncStorage, useDebouncedSave } from "../hooks/useAsyncStorage";
 import { useErrorHandler } from "../hooks/useErrorHandler";
+import { useAsyncStorage } from "../hooks/useAsyncStorage";
 import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 
 // Context'i bölerek re-render optimizasyonu
@@ -15,8 +15,15 @@ export const TaskActionsContext = createContext();
 let HAS_INITIALIZED = false;
 
 export const TaskProvider = ({ children }) => {
-  const [tasks, setTasks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use custom AsyncStorage hook for better error handling and performance
+  const { 
+    data: tasks, 
+    loading: isLoading, 
+    error: storageError, 
+    saveData: saveTasksToStorage,
+    clearData: clearStorageData 
+  } = useAsyncStorage(STORAGE_KEYS.TASKS, []);
+  
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef(null);
   const isMountedRef = useRef(true); // to avoid setState on unmounted component
@@ -38,90 +45,15 @@ export const TaskProvider = ({ children }) => {
     };
   }, []);
 
-  // ---------- INITIAL LOAD (guarded by module-level flag) ----------
+  // ---------- INITIAL LOAD (handled by useAsyncStorage hook) ----------
   useEffect(() => {
     if (HAS_INITIALIZED) {
-      // Ensure loading flag is false so UI can proceed
-      if (isMountedRef.current) setIsLoading(false);
       return;
     }
-
     HAS_INITIALIZED = true;
+    justLoadedRef.current = true; // Mark that we just loaded so the next save effect can skip one save cycle
 
-    const loadTasks = async () => {
-      try {
-        console.log("🔄 Veri yükleniyor...");
-        
-        // Önce ana veriyi yüklemeye çalış
-        const storedTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
-        let parsedTasks = null;
-
-        if (storedTasks !== null && storedTasks !== '') {
-          try {
-            parsedTasks = JSON.parse(storedTasks);
-            if (Array.isArray(parsedTasks)) {
-              console.log("✅ Ana veri yüklendi:", parsedTasks.length, "task");
-              if (isMountedRef.current) setTasks(parsedTasks);
-            } else {
-              console.warn("⚠️ Ana veri geçersiz format");
-              parsedTasks = null;
-            }
-          } catch (parseError) {
-            console.error("❌ Ana veri parse hatası:", parseError);
-            parsedTasks = null;
-          }
-        }
-
-        // Ana veri yoksa veya bozuksa backup'tan yüklemeye çalış
-        if (!parsedTasks || parsedTasks.length === 0) {
-          console.log("🔄 Backup'tan yükleniyor...");
-          const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
-          
-          if (backupData !== null && backupData !== '') {
-            try {
-              const backupTasks = JSON.parse(backupData);
-              if (Array.isArray(backupTasks) && backupTasks.length > 0) {
-                console.log("✅ Backup'tan yüklendi:", backupTasks.length, "task");
-                if (isMountedRef.current) setTasks(backupTasks);
-                
-                // Backup'ı ana veri olarak kaydet
-                await AsyncStorage.setItem(STORAGE_KEYS.TASKS, backupData);
-                console.log("📦 Backup ana veri olarak kaydedildi");
-              } else {
-                console.warn("⚠️ Backup verisi geçersiz");
-                if (isMountedRef.current) setTasks([]);
-              }
-            } catch (backupParseError) {
-              console.error("❌ Backup parse hatası:", backupParseError);
-              if (isMountedRef.current) setTasks([]);
-            }
-          } else {
-            console.log("📝 Yeni başlangıç - veri yok");
-            if (isMountedRef.current) setTasks([]);
-          }
-        }
-
-      } catch (error) {
-        console.error("❌ Veri yükleme hatası:", error);
-        handleAsyncStorageError(error, "load");
-        if (isMountedRef.current) setTasks([]);
-        
-        // Bozuk veriyi temizle
-        try {
-          await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
-          console.log("🧹 Bozuk ana veri temizlendi");
-        } catch (clearError) {
-          console.error("❌ Bozuk veri temizlenemedi:", clearError);
-        }
-      } finally {
-        // Mark that we just loaded so the next save effect can skip one save cycle
-        justLoadedRef.current = true;
-        if (isMountedRef.current) setIsLoading(false);
-        console.log("✅ Veri yükleme tamamlandı");
-      }
-    };
-
-    loadTasks();
+    // Data loading is now handled by useAsyncStorage hook
   }, []);
 
   // ---------- RACE CONDITION SAFE SAVE FUNCTION ----------
