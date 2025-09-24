@@ -170,7 +170,7 @@ export default function Journal({
       opacity.value = 0;
       dragY.value = 0;
     }
-  }, [visible]);
+  }, [visible, translateY, scale, opacity, dragY]);
 
   const backdropStyle = useAnimatedStyle(() => {
     const o = interpolate(translateY.value, [0, MODAL_HEIGHT], [0.45, 0]);
@@ -249,8 +249,9 @@ export default function Journal({
       if (result?.assets && result.assets.length > 0) uri = result.assets[0].uri;
       else if (result?.uri) uri = result.uri;
       if (uri) addPreviewImage(uri);
-    } catch (e) {
-      console.warn("Image pick error", e);
+    } catch (error) {
+      console.error("Image pick error:", error);
+      // User'a error gösterme - sessizce logla
     }
   };
 
@@ -258,11 +259,15 @@ export default function Journal({
     if (!canAddMore) return;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+      if (status !== "granted") {
+        console.warn("Location permission denied");
+        return;
+      }
       const loc = await Location.getCurrentPositionAsync({});
       addPreviewLocation(loc);
-    } catch (e) {
-      console.warn("Location error", e);
+    } catch (error) {
+      console.error("Location error:", error);
+      // User'a error gösterme - sessizce logla
     }
   };
 

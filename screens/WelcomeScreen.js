@@ -1,134 +1,44 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { FONTS, COLORS } from "../constants";
 
 export default function WelcomeScreen({ navigation }) {
-  
   const handleStart = () => {
-    if (navigation && navigation.replace) {
-      navigation.replace("Main");
-    } else {
-    }
+    navigation?.replace("Main");
   };
 
-  
-  try {
-    return (
-      <LinearGradient
-        colors={["#FFFFFF", "#151152"]}
-        start={{ x: -1.3, y: 0.2 }}
-        end={{ x: 0.3, y: 0.8 }}
-        style={styles.container}
+  return (
+    <LinearGradient
+      colors={[COLORS.WHITE, "#151152"]}
+      start={{ x: -1.3, y: 0.2 }}
+      end={{ x: 0.3, y: 0.8 }}
+      style={styles.container}
+    >
+      <Image
+        source={require("../assets/illustration.png")}
+        style={styles.illustration}
+        resizeMode="contain"
+      />
+      
+      <Text style={styles.title}>Flow Journal</Text>
+      
+      <Text style={styles.subtitle}>
+        Projelerinizi takip ederken, duygularınızı da kaydedin. Flow Jurnal, projelerinizi kişisel deneyimlerinizle birlikte takip etmenizi sağlar.
+      </Text>
+      
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleStart}
+        accessible={true}
+        accessibilityLabel="Start using the app"
+        accessibilityHint="Opens the main screen"
+        accessibilityRole="button"
       >
-        {(() => {
-          try {
-            return (
-              <Image
-                source={require("../assets/illustration.png")}
-                style={styles.illustration}
-                resizeMode="contain"
-              />
-            );
-          } catch (imageError) {
-            console.error("WelcomeScreen: Image error:", imageError);
-            return <Text style={styles.title}>Image Error</Text>;
-          }
-        })()}
-
-        {(() => {
-          try {
-            return (
-              <>
-                {(() => {
-                  try {
-                    // Font family safety check
-                    const safeTitleStyle = {
-                      ...styles.title,
-                      fontFamily: "Poppins_600SemiBold"
-                    };
-                    return <Text style={safeTitleStyle}>Flow Journal</Text>;
-                  } catch (titleError) {
-                    console.error("WelcomeScreen: Title error:", titleError);
-                    return <Text>Flow Journal</Text>;
-                  }
-                })()}
-
-                {(() => {
-                  try {
-                    // Font family safety check
-                    const safeSubtitleStyle = {
-                      ...styles.subtitle,
-                      fontFamily: "Poppins_600SemiBold"
-                    };
-                    return (
-                      <Text style={safeSubtitleStyle}>
-                        Projelerinizi takip ederken, duygularınızı da kaydedin. Flow Jurnal, projelerinizi kişisel deneyimlerinizle birlikte takip etmenizi sağlar.
-                      </Text>
-                    );
-                  } catch (subtitleError) {
-                    console.error("WelcomeScreen: Subtitle error:", subtitleError);
-                    return <Text>Projelerinizi takip ederken, duygularınızı da kaydedin.</Text>;
-                  }
-                })()}
-
-                {(() => {
-                  try {
-                    return (
-                      <TouchableOpacity
-                        style={styles.button}
-                        onPress={handleStart}
-                      >
-                        {(() => {
-                          try {
-                            // Font family safety check
-                            const safeButtonTextStyle = {
-                              ...styles.buttonText,
-                              fontFamily: "Poppins_600SemiBold"
-                            };
-                            return <Text style={safeButtonTextStyle}>Başlayın</Text>;
-                          } catch (buttonTextError) {
-                            console.error("WelcomeScreen: Button text error:", buttonTextError);
-                            return <Text>Başlayın</Text>;
-                          }
-                        })()}
-                      </TouchableOpacity>
-                    );
-                  } catch (buttonError) {
-                    console.error("WelcomeScreen: Button error:", buttonError);
-                    return (
-                      <TouchableOpacity onPress={handleStart}>
-                        <Text>Başlayın</Text>
-                      </TouchableOpacity>
-                    );
-                  }
-                })()}
-              </>
-            );
-          } catch (textComponentsError) {
-            console.error("WelcomeScreen: Text components error:", textComponentsError);
-            return (
-              <View>
-                <Text>Flow Journal</Text>
-                <TouchableOpacity onPress={handleStart}>
-                  <Text>Başlayın</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          }
-        })()}
-      </LinearGradient>
-    );
-  } catch (renderError) {
-    console.error("WelcomeScreen: Render error:", renderError);
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Welcome Screen Error</Text>
-        <TouchableOpacity style={styles.button} onPress={handleStart}>
-          <Text style={styles.buttonText}>Başlayın</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+        <Text style={styles.buttonText}>Başlayın</Text>
+      </TouchableOpacity>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -138,39 +48,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 20,
   },
-  logo: {
-    right: 100,
-    marginBottom: 10,
-  },
   illustration: {
     width: "100%",
     height: 250,
-    bottom: 5,
+    marginBottom: 20,
   },
   title: {
     fontSize: 30,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#fff",
+    fontFamily: FONTS.SEMI_BOLD,
+    color: COLORS.WHITE,
     textAlign: "center",
-    top: 2,
+    marginBottom: 20,
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: FONTS.REGULAR,
     color: "#f5f5f5",
     textAlign: "center",
     marginBottom: 50,
+    lineHeight: 24,
   },
   button: {
     backgroundColor: "#427D56",
-    bottom: 0,
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 10,
+    minHeight: 48, // Accessibility için minimum touch target
   },
   buttonText: {
-    color: "#fff",
+    color: COLORS.WHITE,
     fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: FONTS.SEMI_BOLD,
   },
 });

@@ -113,13 +113,23 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
   useEffect(() => {
     return () => {
       // Stop all running animations
-      translateY.value = 0;
-      scale.value = 1;
-      opacity.value = 0;
-      dragY.value = 0;
-      progressAnim.value = 0;
+      if (translateY) translateY.value = 0;
+      if (scale) scale.value = 1;
+      if (opacity) opacity.value = 0;
+      if (dragY) dragY.value = 0;
+      if (progressAnim) progressAnim.value = 0;
+      
+      // Clear any pending animation callbacks
+      if (animationCleanupRef.current) {
+        animationCleanupRef.current.forEach(cleanup => {
+          if (typeof cleanup === 'function') {
+            cleanup();
+          }
+        });
+        animationCleanupRef.current = [];
+      }
     };
-  }, []);
+  }, [translateY, scale, opacity, dragY, progressAnim]);
 
   const handleClose = useCallback(() => {
     translateY.value = withTiming(height, { duration: 200 });

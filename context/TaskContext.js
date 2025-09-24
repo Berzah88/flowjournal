@@ -2,8 +2,13 @@
 import React, { createContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { assignUniqueColor } from "../utils/milestoneColors";
+import { STORAGE_KEYS } from "../constants";
+import { useAsyncStorage, useDebouncedSave } from "../hooks/useAsyncStorage";
+import { useErrorHandler } from "../hooks/useErrorHandler";
 
+// Context'i bölerek re-render optimizasyonu
 export const TaskContext = createContext();
+export const TaskActionsContext = createContext();
 
 // Module-level flag to avoid double init within the same JS runtime
 let HAS_INITIALIZED = false;
@@ -14,6 +19,9 @@ export const TaskProvider = ({ children }) => {
   const saveTimeoutRef = useRef(null);
   const isMountedRef = useRef(true); // to avoid setState on unmounted component
   const justLoadedRef = useRef(false); // skip first save immediately after load
+  
+  // Error handling
+  const { handleAsyncStorageError } = useErrorHandler();
 
   // Cleanup mount flag
   useEffect(() => {
@@ -35,7 +43,7 @@ export const TaskProvider = ({ children }) => {
 
     const loadTasks = async () => {
       try {
-        const storedTasks = await AsyncStorage.getItem("tasks");
+        const storedTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
 
         if (storedTasks !== null && storedTasks !== '') {
           const parsedTasks = JSON.parse(storedTasks);
@@ -49,10 +57,10 @@ export const TaskProvider = ({ children }) => {
           if (isMountedRef.current) setTasks([]);
         }
       } catch (error) {
-        console.error("TaskProvider: Failed to load tasks:", error);
+        handleAsyncStorageError(error, "load");
         if (isMountedRef.current) setTasks([]);
         try {
-          await AsyncStorage.removeItem("tasks");
+          await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
         } catch (clearError) {
           console.error("TaskProvider: Failed to clear corrupted data:", clearError);
         }
@@ -87,11 +95,11 @@ export const TaskProvider = ({ children }) => {
       try {
         if (!isMountedRef.current) return;
         if (Array.isArray(tasks)) {
-          await AsyncStorage.setItem("tasks", JSON.stringify(tasks));
+          await AsyncStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
         } else {
         }
       } catch (error) {
-        console.error("TaskProvider: Save failed:", error);
+        handleAsyncStorageError(error, "save");
       }
     }, 1000);
 
@@ -419,40 +427,41 @@ export const TaskProvider = ({ children }) => {
   // Clear storage function for debugging
   const clearStorage = useCallback(async () => {
     try {
-      await AsyncStorage.removeItem("tasks");
+      await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
       if (isMountedRef.current) setTasks([]);
     } catch (error) {
-      console.error("Failed to clear storage:", error);
+      handleAsyncStorageError(error, "clear");
     }
-  }, []);
+  }, [handleAsyncStorageError]);
 
-  // ---------- MEMOIZED CONTEXT ----------
-  const contextValue = useMemo(() => {
-    return {
-      tasks,
-      isLoading,
-      addTask,
-      deleteTask,
-      completeTask,
-      updateTask,
-      addMilestone,
-      updateMilestone,
-      deleteMilestone,
-      completeMilestone,
-      setActiveMilestone,
-      reorderMilestones,
-      addJournalEntry,
-      updateJournalEntry,
-      deleteJournalEntry,
-      addMedia,
-      updateLocation,
-      setMilestoneWasEdited,
-      clearMilestoneWasEdited,
-      clearStorage,
-    };
-  }, [
+  // ---------- MEMOIZED CONTEXTS ----------
+  // State context - sadece state değiştiğinde re-render
+  const stateContextValue = useMemo(() => ({
     tasks,
     isLoading,
+  }), [tasks, isLoading]);
+
+  // Actions context - actions değişmediği sürece re-render yok
+  const actionsContextValue = useMemo(() => ({
+    addTask,
+    deleteTask,
+    completeTask,
+    updateTask,
+    addMilestone,
+    updateMilestone,
+    deleteMilestone,
+    completeMilestone,
+    setActiveMilestone,
+    reorderMilestones,
+    addJournalEntry,
+    updateJournalEntry,
+    deleteJournalEntry,
+    addMedia,
+    updateLocation,
+    setMilestoneWasEdited,
+    clearMilestoneWasEdited,
+    clearStorage,
+  }), [
     addTask,
     deleteTask,
     completeTask,
@@ -473,6 +482,12 @@ export const TaskProvider = ({ children }) => {
     clearStorage,
   ]);
 
-  // Final render
-  return <TaskContext.Provider value={contextValue}>{children}</TaskContext.Provider>;
+  // Final render with split contexts
+  return (
+    <TaskContext.Provider value={stateContextValue}>
+      <TaskActionsContext.Provider value={actionsContextValue}>
+        {children}
+      </TaskActionsContext.Provider>
+    </TaskContext.Provider>
+  );
 };

@@ -98,7 +98,15 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
     translateY.value = withTiming(0, { duration: 320 });
     scale.value = withTiming(1, { duration: 320 });
     opacity.value = withTiming(1, { duration: 320 });
-  }, []);
+    
+    // Cleanup function
+    return () => {
+      if (translateY) translateY.value = 0;
+      if (scale) scale.value = 1;
+      if (opacity) opacity.value = 0;
+      if (dragY) dragY.value = 0;
+    };
+  }, [translateY, scale, opacity, dragY]);
 
   useEffect(() => {
     const onBackPress = () => {

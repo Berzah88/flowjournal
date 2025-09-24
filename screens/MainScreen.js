@@ -11,7 +11,8 @@ import {
   Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { TaskContext } from "../context/TaskContext";
+import { TaskContext, TaskActionsContext } from "../context/TaskContext";
+import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import StatusBarComponent from "../components/StatusBar";
 import StatusTabs from "../components/StatusTabs";
 import Card from "../components/Card";
@@ -23,7 +24,8 @@ import LoadingSpinner from "../components/LoadingSpinner";
 const { width } = Dimensions.get("window");
 
 export default function MainScreen({ navigation }) {
-  const { tasks, isLoading, clearStorage } = useContext(TaskContext);
+  const { tasks, isLoading } = useContext(TaskContext);
+  const { clearStorage } = useContext(TaskActionsContext);
 
   const [activeIndex, setActiveIndex] = useState(0); // 0 = active, 1 = completed
   const [addVisible, setAddVisible] = useState(false);
@@ -56,14 +58,17 @@ export default function MainScreen({ navigation }) {
 
   const closeMilestone = () => setSelectedMilestone(null);
 
-  const threshold = width * 0.25; // swipe threshold
+  const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
 
   // Cleanup animations on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
-      panX.stopAnimation();
+      if (panX) {
+        panX.stopAnimation();
+        panX.removeAllListeners();
+      }
     };
-  }, []);
+  }, [panX]);
 
   // animate to page index (0 or 1)
   const animateToIndex = (index) => {
@@ -96,7 +101,7 @@ export default function MainScreen({ navigation }) {
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => {
         // only start when horizontal movement dominant
-        return Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
+        return Math.abs(gesture.dx) > SWIPE_THRESHOLDS.PAN_RESPONDER && Math.abs(gesture.dx) > Math.abs(gesture.dy);
       },
       onPanResponderGrant: () => {
         // prepare to track delta relative to committed offset
@@ -191,7 +196,14 @@ export default function MainScreen({ navigation }) {
               keyExtractor={(item) => item.id.toString()}
               contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => openCard(item)} activeOpacity={1}>
+                <TouchableOpacity 
+                  onPress={() => openCard(item)} 
+                  activeOpacity={1}
+                  accessible={true}
+                  accessibilityLabel={`${item.title} project`}
+                  accessibilityHint={`Opens project details for ${item.title}`}
+                  accessibilityRole="button"
+                >
                   <Card
                     title={item.title}
                     startDate={item.startDate}
@@ -247,7 +259,15 @@ export default function MainScreen({ navigation }) {
       </View>
 
       {/* Modern FAB */}
-      <TouchableOpacity style={styles.addButton} onPress={() => setAddVisible(true)} activeOpacity={0.8}>
+              <TouchableOpacity 
+                style={styles.addButton} 
+                onPress={() => setAddVisible(true)} 
+                activeOpacity={0.8}
+                accessible={true}
+                accessibilityLabel="Add new project"
+                accessibilityHint="Opens a modal to create a new project"
+                accessibilityRole="button"
+              >
         <LinearGradient
           colors={['#667eea', '#764ba2']}
           style={styles.addButtonGradient}

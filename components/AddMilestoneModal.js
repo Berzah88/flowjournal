@@ -217,6 +217,10 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 style={styles.dateRow}
                 onPress={() => setCalendarVisible(true)}
                 activeOpacity={0.7}
+                accessible={true}
+                accessibilityLabel="Select milestone dates"
+                accessibilityHint="Opens calendar to select start and end dates"
+                accessibilityRole="button"
               >
                 <Ionicons name="calendar-outline" size={14} color="#7f8c8d" style={styles.timerIcon} />
                 <Text style={styles.dateText}>
@@ -230,6 +234,10 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
               <TouchableOpacity 
                 style={styles.cancelBtn} 
                 onPress={handleCloseModal}
+                accessible={true}
+                accessibilityLabel="Cancel milestone creation"
+                accessibilityHint="Closes the milestone creation modal without saving"
+                accessibilityRole="button"
               >
                 <Ionicons name="close" size={18} color="#7f8c8d" />
               </TouchableOpacity>
@@ -238,6 +246,10 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]} 
                 onPress={handleSave}
                 disabled={!title.trim()}
+                accessible={true}
+                accessibilityLabel={title.trim() ? "Save milestone" : "Save milestone (disabled)"}
+                accessibilityHint="Saves the milestone with the entered title and dates"
+                accessibilityRole="button"
               >
                 <Ionicons name="checkmark" size={18} color={title.trim() ? "#fff" : "#999"} />
               </TouchableOpacity>
