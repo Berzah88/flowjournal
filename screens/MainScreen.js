@@ -17,6 +17,7 @@ import StatusTabs from "../components/StatusTabs";
 import Card from "../components/Card";
 import AddProjectScreen from "./AddProjectScreen";
 import ActiveProject from "./ActiveProject";
+import ActiveMilestone from "./ActiveMilestone";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const { width } = Dimensions.get("window");
@@ -27,6 +28,7 @@ export default function MainScreen({ navigation }) {
   const [activeIndex, setActiveIndex] = useState(0); // 0 = active, 1 = completed
   const [addVisible, setAddVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
 
   // horizontal pan value (translateX)
   const panX = useRef(new Animated.Value(0)).current;
@@ -41,6 +43,18 @@ export default function MainScreen({ navigation }) {
 
   const openCard = (card) => setSelectedCard(card);
   const closeCard = () => setSelectedCard(null);
+
+  const openMilestone = (milestone, project) => {
+    const milestoneData = {
+      ...milestone,
+      taskId: project.id,
+      projectTitle: project.title,
+      autoOpenJournal: true // Journal'ı otomatik aç
+    };
+    setSelectedMilestone(milestoneData);
+  };
+
+  const closeMilestone = () => setSelectedMilestone(null);
 
   const threshold = width * 0.25; // swipe threshold
 
@@ -182,6 +196,7 @@ export default function MainScreen({ navigation }) {
                     endDate={item.endDate}
                     completed={item.done}
                     activeMilestones={item.milestones?.filter((m) => !m.completed) ?? []}
+                    onMilestonePress={(milestone) => openMilestone(milestone, item)}
                     style={{ marginBottom: 15 }}
                   />
                 </TouchableOpacity>
@@ -211,9 +226,8 @@ export default function MainScreen({ navigation }) {
                     endDate={item.endDate}
                     completed={item.done}
                     activeMilestones={item.milestones?.filter((m) => !m.completed) ?? []}
+                    onMilestonePress={null} // Completed cards don't allow milestone taps
                     style={{ marginBottom: 15 }}
-                    // NOTE: Do NOT pass undefined handlers for milestones here.
-                    // Completed cards should show milestone list but not allow taps.
                   />
                 </TouchableOpacity>
               )}
@@ -245,6 +259,8 @@ export default function MainScreen({ navigation }) {
       <AddProjectScreen visible={addVisible} onClose={() => setAddVisible(false)} />
 
       {selectedCard && <ActiveProject selectedCard={selectedCard} onClose={closeCard} navigation={navigation} />}
+      
+      {selectedMilestone && <ActiveMilestone milestone={selectedMilestone} onClose={closeMilestone} />}
       </LinearGradient>
     );
   } catch (error) {

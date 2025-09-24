@@ -31,7 +31,7 @@ import { TaskContext } from "../context/TaskContext";
 
 const { width, height } = Dimensions.get("window");
 
-const TOP_GAP = 20;
+const TOP_GAP = 50;
 const SWIPE_AREA = 40;
 const CLOSE_THRESHOLD = 110;
 const MODAL_HEIGHT = height - TOP_GAP;

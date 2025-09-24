@@ -7,6 +7,7 @@ import EditModal from "../components/EditModal";
 import ActiveMilestone from "./ActiveMilestone";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
+import ProjectCalendar from "../components/ProjectCalendar";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -29,7 +30,7 @@ const formatDateRange = (startDate, endDate) => {
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 };
 
-export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
+export default function ActiveProject({ selectedCard, onClose, setMainActiveTab }) {
   const {
     tasks,
     deleteTask,
@@ -48,6 +49,7 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
   const [editVisible, setEditVisible] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [selectedJournalMilestone, setSelectedJournalMilestone] = useState(null);
+  const [activeTab, setActiveTab] = useState(0); // 0 = milestones, 1 = calendar
   
 
   const currentTask = tasks.find((t) => t.id === selectedCard?.id) || selectedCard;
@@ -132,14 +134,14 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
   const handleToggleComplete = useCallback(() => {
     if (isCompleted) {
       updateTask(currentTask.id, { done: false });
-      setActiveTab && setActiveTab("active");
+      setMainActiveTab && setMainActiveTab("active");
     } else {
       completeTask(currentTask.id);
-      setActiveTab && setActiveTab("completed");
+      setMainActiveTab && setMainActiveTab("completed");
     }
     setMenuVisible(false);
     handleClose();
-  }, [isCompleted, currentTask, updateTask, completeTask, setActiveTab, handleClose]);
+  }, [isCompleted, currentTask, updateTask, completeTask, setMainActiveTab, handleClose]);
 
   const handleAddMilestone = useCallback(() => {
     const newMilestone = {
@@ -204,112 +206,158 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.overlayCard, isCompleted && styles.completedOverlay, animatedStyle]}>
+      <Animated.View style={[
+        styles.overlayCard, 
+        isCompleted && styles.completedOverlay, 
+        activeTab === 1 && styles.calendarOverlay,
+        animatedStyle
+      ]}>
         <View style={{ flex: 1 }}>
           {/* Card Header */}
           <View style={styles.cardContent}>
-            <Text style={[styles.title, isCompleted && styles.completedText]}>{currentTask?.title}</Text>
-            {start && end && (
-              <Text style={[styles.dateText, isCompleted && styles.completedText]}>
-                {formatDateRange(start, end)}
-              </Text>
-            )}
-            {allMilestones.length > 0 && (
-              <View style={{ marginTop: 18, width: "80%" }}>
-                <Text style={{ fontSize: 12, color: "#888", marginBottom: 6, fontFamily: "Poppins_400Regular" }}>Project Progress</Text>
-                <View style={{ height: 12, backgroundColor: "#E0E0E0", borderRadius: 8, overflow: "hidden", elevation: 2 }}>
-                  <Animated.View style={[{ height: 12, backgroundColor: "#B1A5FF" }, progressStyle]} />
+            {/* Tab Başlıkları */}
+            <View style={styles.headerTabs}>
+              {/* Sol %50 - Milestones Tab */}
+              <TouchableOpacity 
+                style={[styles.projectHeaderTab, activeTab === 0 && styles.activeHeaderTab]} 
+                onPress={() => setActiveTab(0)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.title, isCompleted && styles.completedText]}>{currentTask?.title}</Text>
+              </TouchableOpacity>
+
+              {/* Sağ %50 - Calendar Tab */}
+              <TouchableOpacity 
+                style={[styles.calendarHeaderTab, activeTab === 1 && styles.activeHeaderTab]} 
+                onPress={() => setActiveTab(1)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.calendarTitle, isCompleted && styles.completedText]}>Calendar</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Date ve Progress Bar - Sadece Milestones tab'da görünür */}
+            {activeTab === 0 && (
+              <>
+                {start && end && (
+                  <Text style={[styles.dateText, isCompleted && styles.completedText]}>
+                    {formatDateRange(start, end)}
+                  </Text>
+                )}
+                <View style={{ marginTop: 18, width: "80%" }}>
+                  <Text style={{ fontSize: 12, color: "#888", marginBottom: 6, fontFamily: "Poppins_400Regular" }}>Project Progress</Text>
+                  <View style={{ height: 12, backgroundColor: "#E0E0E0", borderRadius: 8, overflow: "hidden", elevation: 2 }}>
+                    <Animated.View style={[{ height: 12, backgroundColor: "#B1A5FF" }, progressStyle]} />
+                  </View>
                 </View>
-              </View>
+              </>
             )}
           </View>
 
-          {/* Menu Button */}
-          {!isModalOpen && (
+          {/* Menu Button - Sadece Milestones tab'da görünür */}
+          {!isModalOpen && activeTab === 0 && (
             <TouchableOpacity onPress={() => setMenuVisible((s) => !s)} style={styles.menuButton}>
               <Ionicons name="ellipsis-vertical" size={22} color={isCompleted ? "#fff" : "#333"} />
             </TouchableOpacity>
           )}
 
-          {/* Milestones List */}
-          <View style={styles.milestoneHeader}>
-            <Text style={styles.milestoneTitle}>MileStones</Text>
-            <TouchableOpacity onPress={handleAddMilestone}>
-              <Text style={styles.addText}>+</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Milestones List - Sadece Milestones tab'da görünür */}
+          {activeTab === 0 && (
+            <View style={styles.milestoneHeader}>
+              <Text style={styles.milestoneTitle}>MileStones</Text>
+              <TouchableOpacity onPress={handleAddMilestone}>
+                <Text style={styles.addText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
            <View style={{ flex: 1 }}>
-             {allMilestones.length === 0 && <Text style={styles.emptyHint}>No milestones yet — add one with +</Text>}
-             
-             {allMilestones.length > 0 && (
-               <ScrollView 
-                 style={{ flex: 1 }} 
-                 contentContainerStyle={{ 
-                   paddingBottom: 40
-                 }}
-                 showsVerticalScrollIndicator={true}
-                 bounces={true}
-                 scrollEventThrottle={16}
-                 nestedScrollEnabled={true}
-                 keyboardShouldPersistTaps="handled"
-               >
-                 {/* Active Milestones */}
-                 {activeMilestones.map((milestone, index) => (
-                   <MileStone
-                     key={milestone.id}
-                     milestone={milestone}
-                     isLatest={index === 0}
-                     wasEdited={milestone.wasEdited || false}
-                     onUpdate={(updates) => updateMilestone(currentTask.id, milestone.id, updates)}
-                     onComplete={() => completeMilestone(currentTask.id, milestone.id)}
-                     onDelete={() => deleteMilestone(currentTask.id, milestone.id)}
-                     onOpenDetail={() => setSelectedMilestone({ ...milestone, isLatest: index === 0, taskId: currentTask.id })}
-                     onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
-                     isCompleted={false}
-                     onEditToggle={(isEditing) => {
-                       if (!isEditing) {
-                         // Edit bittikten sonra flag set et
-                         setMilestoneWasEdited(currentTask.id, milestone.id);
-                       }
+             {activeTab === 0 ? (
+               // Milestones Tab
+               <>
+                 {allMilestones.length === 0 && <Text style={styles.emptyHint}>No milestones yet — add one with +</Text>}
+                 
+                 {allMilestones.length > 0 && (
+                   <ScrollView 
+                     style={{ flex: 1 }} 
+                     contentContainerStyle={{ 
+                       paddingBottom: 40
                      }}
-                   />
-                 ))}
-
-                 {/* Completed Milestones Section */}
-                 {completedMilestones.length > 0 && (
-                   <View style={{ marginTop: 20 }}>
-                     <Text style={styles.completedHeader}>Completed Milestones</Text>
-                     {completedMilestones.map((ms) => (
+                     showsVerticalScrollIndicator={true}
+                     bounces={true}
+                     scrollEventThrottle={16}
+                     nestedScrollEnabled={true}
+                     keyboardShouldPersistTaps="handled"
+                   >
+                     {/* Active Milestones */}
+                     {activeMilestones.map((milestone, index) => (
                        <MileStone
-                         key={ms.id}
-                         milestone={ms}
-                         isLatest={false}
-                         isCompleted={true}
-                         onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: false, taskId: currentTask.id })}
+                         key={milestone.id}
+                         milestone={milestone}
+                         isLatest={index === 0}
+                         wasEdited={milestone.wasEdited || false}
+                         onUpdate={(updates) => updateMilestone(currentTask.id, milestone.id, updates)}
+                         onComplete={() => completeMilestone(currentTask.id, milestone.id)}
+                         onDelete={() => deleteMilestone(currentTask.id, milestone.id)}
+                         onOpenDetail={() => setSelectedMilestone({ ...milestone, isLatest: index === 0, taskId: currentTask.id })}
                          onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
-                         onDelete={() => deleteMilestone(currentTask.id, ms.id)}
-                         onSetActive={() => setActiveMilestone(currentTask.id, ms.id)}
+                         isCompleted={false}
+                         onEditToggle={(isEditing) => {
+                           if (!isEditing) {
+                             // Edit bittikten sonra flag set et
+                             setMilestoneWasEdited(currentTask.id, milestone.id);
+                           }
+                         }}
                        />
                      ))}
-                   </View>
+
+                     {/* Completed Milestones Section */}
+                     {completedMilestones.length > 0 && (
+                       <View style={{ marginTop: 20 }}>
+                         <Text style={styles.completedHeader}>Completed Milestones</Text>
+                         {completedMilestones.map((ms) => (
+                           <MileStone
+                             key={ms.id}
+                             milestone={ms}
+                             isLatest={false}
+                             isCompleted={true}
+                             onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: false, taskId: currentTask.id })}
+                             onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
+                             onDelete={() => deleteMilestone(currentTask.id, ms.id)}
+                             onSetActive={() => setActiveMilestone(currentTask.id, ms.id)}
+                           />
+                         ))}
+                       </View>
+                     )}
+                   </ScrollView>
                  )}
-               </ScrollView>
+               </>
+             ) : (
+               // Calendar Tab - Tamamen ayrı ekran
+               <ProjectCalendar 
+                 milestones={allMilestones}
+                 projectStartDate={currentTask?.startDate}
+                 projectEndDate={currentTask?.endDate}
+               />
              )}
            </View>
 
-          {/* Menüler ve Modallar */}
-          <ActiveTaskMenu
-            visible={menuVisible}
-            onClose={() => setMenuVisible(false)}
-            onToggleComplete={handleToggleComplete}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            isCompleted={isCompleted}
-          />
-          <EditModal visible={editVisible} onClose={() => setEditVisible(false)} project={currentTask} onSave={handleSaveEdit} />
-          {selectedMilestone && <ActiveMilestone milestone={selectedMilestone} onClose={() => setSelectedMilestone(null)} />}
-          {selectedJournalMilestone && <Journal visible={!!selectedJournalMilestone} milestone={selectedJournalMilestone} onClose={() => setSelectedJournalMilestone(null)} />}
+          {/* Menüler ve Modallar - Sadece Milestones tab'da çalışır */}
+          {activeTab === 0 && (
+            <>
+              <ActiveTaskMenu
+                visible={menuVisible}
+                onClose={() => setMenuVisible(false)}
+                onToggleComplete={handleToggleComplete}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                isCompleted={isCompleted}
+              />
+              <EditModal visible={editVisible} onClose={() => setEditVisible(false)} project={currentTask} onSave={handleSaveEdit} />
+              {selectedMilestone && <ActiveMilestone milestone={selectedMilestone} onClose={() => setSelectedMilestone(null)} />}
+              {selectedJournalMilestone && <Journal visible={!!selectedJournalMilestone} milestone={selectedJournalMilestone} onClose={() => setSelectedJournalMilestone(null)} />}
+            </>
+          )}
           
         </View>
       </Animated.View>
@@ -320,10 +368,17 @@ export default function ActiveProject({ selectedCard, onClose, setActiveTab }) {
 const styles = StyleSheet.create({
   overlayCard: { position: "absolute", top: 35, width: width, height: "105%", backgroundColor: "#F5F1F1", borderRadius: 20, zIndex: 100, elevation: 10 },
   completedOverlay: { backgroundColor: "#111111" },
-  cardContent: { padding: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: "#E5E5E5" },
-  title: { fontSize: 26, fontFamily: "Poppins_700Bold", color: "#505050", marginBottom: 8 },
-  dateText: { fontSize: 13, fontFamily: "Poppins_500Medium", color: "#AFAFAF" },
+  calendarOverlay: { backgroundColor: "#F8FBFF", },
+  cardContent: { padding: 10, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: "#E5E5E5" },
+  headerTabs: { flexDirection: "row" },
+  headerTab: { padding: 5, justifyContent: "center" },
+  projectHeaderTab: { flex: 0.5, padding: 5, justifyContent: "center", alignItems: "center" },
+  calendarHeaderTab: { flex: 0.5, padding: 5, justifyContent: "center", alignItems: "center" },
+  activeHeaderTab: { backgroundColor: "rgba(74, 144, 226, 0.1)", borderRadius: 12 },
+  title: { fontSize: 18, fontFamily: "Poppins_700Bold", color: "#505050", paddingVertical: 8 },
+  dateText: { fontSize: 14, fontFamily: "Poppins_500Medium", color: "#AFAFAF" },
   completedText: { color: "#fff" },
+  calendarTitle: { fontSize: 18, fontFamily: "Poppins_700Bold", color: "#505050", paddingVertical: 8 },
   menuButton: { position: "absolute", top: 18, right: 18, padding: 6, zIndex: 110 },
   milestoneHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20},
   milestoneTitle: { fontFamily: "Poppins_700Bold", marginTop: 10, fontSize: 16, color: "#505050" },

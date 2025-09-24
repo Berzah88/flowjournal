@@ -1,0 +1,392 @@
+// components/ProjectCalendar.js
+import React, { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+const { width } = Dimensions.get("window");
+const CELL_SIZE = (width - 40) / 7; // 7 gün için eşit genişlik
+const CELL_HEIGHT = CELL_SIZE + 20; // Hücre yüksekliğini daha fazla artır
+
+export default function ProjectCalendar({ milestones = [], projectStartDate, projectEndDate }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // O günde yazılmış günlük girdisini bulan fonksiyon
+  const getJournalEntryForDate = (currentDate) => {
+    // Tüm milestone'lardan o günde yazılmış journal entry'yi bul
+    for (const milestone of milestones) {
+      if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
+        continue;
+      }
+
+      const entryForThisDate = milestone.journalEntries.find(entry => {
+        const entryDate = new Date(entry.createdAt);
+        return entryDate.toDateString() === currentDate.toDateString();
+      });
+
+      if (entryForThisDate) {
+        return entryForThisDate;
+      }
+    }
+    return null;
+  };
+  
+  // Milestone rengini belirleyen fonksiyon - Modern renk paleti
+  const getMilestoneColor = (milestone) => {
+    if (milestone.completed) return "#A0A0A0"; // Tamamlanmış milestone - daha soft gri
+    else if (milestone.wasEdited) return "#FFB3BA"; // Edit edilmiş milestone - modern pembe
+    else if (milestone.isLatest) return "#B3E5B3"; // En son eklenen milestone - modern yeşil
+    else return "#C7B3FF"; // Varsayılan renk - modern mor
+  };
+
+  // Ayın günlerini oluştur
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay(); // 0 = Pazar, 1 = Pazartesi, ...
+
+    const days = [];
+    
+    // Önceki ayın son günlerini ekle (boş hücreler için)
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Bu ayın günlerini ekle
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    return days;
+  };
+
+  // Belirli bir tarihte milestone var mı kontrol et
+  const getMilestonesForDate = (date) => {
+    if (!date) return [];
+    
+    return milestones.filter(milestone => {
+      const startDate = new Date(milestone.startDate);
+      const endDate = new Date(milestone.endDate);
+      
+      // Tarih aralığında mı kontrol et
+      return date >= startDate && date <= endDate;
+    }).sort((a, b) => {
+      // En son eklenen milestone'u ilk sıraya koy (ID'ye göre)
+      return parseInt(b.id) - parseInt(a.id);
+    });
+  };
+
+  // Gün arkaplan rengini belirle
+  const getDayBackgroundColor = (date) => {
+    if (!date) return "transparent";
+    
+    // Bugün ise RGB(255, 0, 127)
+    const isToday = date.toDateString() === new Date().toDateString();
+    if (isToday) return "#FF007F";
+    
+    const dayMilestones = getMilestonesForDate(date);
+    if (dayMilestones.length === 0) return "transparent";
+    
+    // İlk milestone'un rengini kullan (en son eklenen)
+    const firstMilestone = dayMilestones[0];
+    // En son eklenen milestone'u latest olarak işaretle
+    const milestoneWithLatest = { ...firstMilestone, isLatest: true };
+    return getMilestoneColor(milestoneWithLatest);
+  };
+
+  // Tarih formatı
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  // Ay değiştirme
+  const changeMonth = (direction) => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + direction);
+      return newDate;
+    });
+  };
+
+  const days = getDaysInMonth(currentDate);
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.navButton}>
+          <Text style={styles.navButtonText}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.monthTitle}>{formatDate(currentDate)}</Text>
+        <TouchableOpacity onPress={() => changeMonth(1)} style={styles.navButton}>
+          <Text style={styles.navButtonText}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Hafta günleri */}
+      <View style={styles.weekDaysRow}>
+        {weekDays.map(day => (
+          <View key={day} style={styles.weekDayCell}>
+            <Text style={styles.weekDayText}>{day}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Takvim grid */}
+      <View style={styles.calendarGrid}>
+        {days.map((date, index) => {
+          const dayMilestones = getMilestonesForDate(date);
+          const isToday = date && date.toDateString() === new Date().toDateString();
+          const dayBackgroundColor = getDayBackgroundColor(date);
+          
+          return (
+            <View key={index} style={[
+              styles.calendarCell,
+              { 
+                backgroundColor: isToday ? dayBackgroundColor : "transparent",
+                borderRadius: isToday ? 8 : 0,
+                elevation: isToday ? 2 : 0
+              }
+            ]}>
+              {date && (
+                <>
+                    <Text style={[
+                      styles.dayText,
+                      isToday && styles.todayText,
+                      dayBackgroundColor !== "transparent" && {
+                        borderColor: dayBackgroundColor,
+                        backgroundColor: dayBackgroundColor + "20"
+                      }
+                    ]}>
+                    {date.getDate()}
+                  </Text>
+                  
+                  {/* Milestone işaretleri */}
+                  <View style={styles.milestoneIndicators}>
+                    {dayMilestones.slice(0, 3).map((milestone, idx) => (
+                      <View
+                        key={milestone.id}
+                        style={[
+                          styles.milestoneIndicator,
+                          { backgroundColor: dayBackgroundColor }
+                        ]}
+                      />
+                    ))}
+                    {dayMilestones.length > 3 && (
+                      <Text style={styles.moreText}>+{dayMilestones.length - 3}</Text>
+                    )}
+                  </View>
+                  
+                  {/* Mood tag - Sağ alt köşe */}
+                  {(() => {
+                    const journalEntry = getJournalEntryForDate(date);
+                    if (!journalEntry || (!journalEntry.mood && !journalEntry.moodIcon)) {
+                      return null;
+                    }
+                    
+                    const iconName = journalEntry.moodIcon || journalEntry.mood || 'sentiment-satisfied';
+                    const backgroundColor = journalEntry.moodColor || '#8E7DBE';
+                    
+                    return (
+                      <View style={styles.moodTagContainer}>
+                        <View style={[styles.moodTag, { backgroundColor }]}>
+                          <MaterialIcons
+                            name={iconName}
+                            size={10}
+                            color="#333"
+                          />
+                        </View>
+                      </View>
+                    );
+                  })()}
+                </>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Milestone legend */}
+      <View style={styles.legend}>
+        <Text style={styles.legendTitle}>Milestone Types</Text>
+        <View style={styles.legendItems}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#C7B3FF" }]} />
+            <Text style={styles.legendText}>Default</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#B3E5B3" }]} />
+            <Text style={styles.legendText}>Latest</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#FFB3BA" }]} />
+            <Text style={styles.legendText}>Edited</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#A0A0A0" }]} />
+            <Text style={styles.legendText}>Completed</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  navButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  navButtonText: {
+    fontSize: 20,
+    color: "#7f8c8d",
+    fontFamily: "Poppins_700Bold",
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontFamily: "Poppins_700Bold",
+    color: "#2c3e50",
+    letterSpacing: -0.3,
+  },
+  weekDaysRow: {
+    flexDirection: "row",
+    marginBottom: 10,
+  },
+  weekDayCell: {
+    width: CELL_SIZE,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  weekDayText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#7f8c8d",
+  },
+  calendarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  calendarCell: {
+    width: CELL_SIZE,
+    height: CELL_HEIGHT,
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingTop: 3,
+  },
+  dayText: {
+    fontSize: 12,
+    fontFamily: "Poppins_500Medium",
+    color: "#333",
+    marginBottom: 2,
+    borderWidth: 0,
+    borderColor: "#E0E0E0",
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 3,
+    textAlign: "center",
+    width: 28,
+    height: 36,
+  },
+  todayText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+  dayTextWithBackground: {
+    color: "#333",
+    fontWeight: "600",
+  },
+  milestoneIndicators: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 2,
+  },
+  milestoneIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginHorizontal: 1,
+    marginVertical: 1,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.1)",
+  },
+  moreText: {
+    fontSize: 8,
+    color: "#666",
+    fontFamily: "Poppins_500Medium",
+  },
+  legend: {
+    marginTop: 24,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5E5",
+  },
+  legendTitle: {
+    fontSize: 15,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#2c3e50",
+    marginBottom: 12,
+  },
+  legendItems: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    width: "48%",
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  legendText: {
+    fontSize: 13,
+    fontFamily: "Poppins_500Medium",
+    color: "#7f8c8d",
+  },
+  moodTagContainer: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+  },
+  moodTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    minWidth: 16,
+    minHeight: 16,
+    elevation: 1,
+  },
+});

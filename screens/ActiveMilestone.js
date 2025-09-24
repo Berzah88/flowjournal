@@ -56,7 +56,7 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
   else if (currentMilestone?.wasEdited) headerBgColor = "#E8B4B8"; // Edit edilmiş milestone - soft pembe
   else if (milestoneData?.isLatest) headerBgColor = "#c2d7d0"; // En son eklenen milestone
 
-  const [showJournalModal, setShowJournalModal] = useState(false);
+  const [showJournalModal, setShowJournalModal] = useState(milestoneData?.autoOpenJournal || false);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
   const translateY = useSharedValue(height);
@@ -332,9 +332,9 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
 const styles = StyleSheet.create({
   overlayCard: {
     position: "absolute",
-    top: 0,
+    top: 35,
     width: width,
-    height: height,
+    height: height - 35,
     zIndex: 100,
     elevation: 10,
     backgroundColor: "#F5F1F1", // pastel beyaz
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     padding: 16, 
     minHeight: 100, 
     marginTop: 12,
-    elevation: 3,
+    elevation: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,

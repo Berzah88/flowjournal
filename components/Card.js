@@ -1,11 +1,76 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import PropTypes from "prop-types";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-export default function Card({ title, startDate, endDate, completed = false, activeMilestones = [] }) {
+// Hex rengi RGB'ye çeviren fonksiyon
+const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 211, g: 203, b: 227 }; // Varsayılan renk
+};
+
+// Milestone rengini belirleyen fonksiyon
+const getMilestoneColor = (milestone) => {
+  let bgColor = "#d3cbe3"; // Varsayılan renk
+  if (milestone.completed) bgColor = "#BFBFBF"; // Tamamlanmış milestone
+  else if (milestone.wasEdited) bgColor = "#E8B4B8"; // Edit edilmiş milestone - soft pembe
+  else if (milestone.isLatest) bgColor = "#c2d7d0"; // En son eklenen milestone
+  
+  return bgColor;
+};
+
+// Mood tag'lerini render eden fonksiyon
+const renderMoodTags = (milestone) => {
+  if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
+    return null;
+  }
+
+  // Son 3 journal entry'den mood tag'lerini al
+  const recentEntries = milestone.journalEntries
+    .slice()
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 3);
+
+  return (
+    <View style={styles.moodTagsContainer}>
+      {recentEntries.map((entry, index) => {
+        if (!entry.mood && !entry.moodIcon) return null;
+        
+        const iconName = entry.moodIcon || entry.mood || 'sentiment-satisfied';
+        const backgroundColor = entry.moodColor || '#8E7DBE';
+        const label = entry.mood || 'Happy';
+        
+        return (
+          <View 
+            key={`${entry.id}-${index}`}
+            style={[
+              styles.moodTag, 
+              { 
+                backgroundColor,
+                zIndex: index + 1 // Sağdaki ikonlar daha yüksek zIndex
+              }
+            ]}
+          >
+                   <MaterialIcons
+                     name={iconName}
+                     size={12}
+                     color="#333"
+                   />
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
+export default function Card({ title, startDate, endDate, completed = false, activeMilestones = [], onMilestonePress }) {
   const totalDays = Math.max(
     1,
     (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)
@@ -53,7 +118,7 @@ export default function Card({ title, startDate, endDate, completed = false, act
         <Svg
           height={radius * 2 + strokeWidth * 2}
           width={radius * 2 + strokeWidth * 2}
-          style={{ transform: [{ rotate: "-90deg" }, { translateY: -4 }, { translateX: 15 }] }}
+          style={{ transform: [{ rotate: "-90deg" }, { translateY: -12 }, { translateX: 15 }] }}
         >
           <Circle
             cx={center}
@@ -81,12 +146,23 @@ export default function Card({ title, startDate, endDate, completed = false, act
       {activeMilestones.length > 0 && (
         <View style={styles.milestoneList}>
           {activeMilestones.map((ms) => (
-            <TouchableWithoutFeedback key={ms.id} disabled={completed}>
-              <View style={styles.milestoneItem}>
+            <TouchableWithoutFeedback 
+              key={ms.id} 
+              disabled={completed}
+              onPress={() => onMilestonePress && onMilestonePress(ms)}
+            >
+              <View style={[
+                styles.milestoneItem, 
+                !completed && styles.milestoneItemClickable,
+                !completed && { backgroundColor: "rgba(235, 225, 225, 0.8)" }
+              ]}>
                 <Image source={require("../assets/AddMileStone.png")} style={styles.addIcon} />
-                <Text style={[styles.milestoneText, completed ? styles.completedDaysText : {}]}>
-                  {ms.title || "Untitled"}
-                </Text>
+                <View style={styles.milestoneContent}>
+                  <Text style={[styles.milestoneText, completed ? styles.completedDaysText : {}]}>
+                    {ms.title || "Untitled"}
+                  </Text>
+                  {renderMoodTags(ms)}
+                </View>
               </View>
             </TouchableWithoutFeedback>
           ))}
@@ -99,7 +175,7 @@ export default function Card({ title, startDate, endDate, completed = false, act
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#F5F1F1",
-    padding: 20,
+    padding: 16,
     marginBottom: 16,
     borderRadius: 24,
     width: "100%",
@@ -122,7 +198,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: "Poppins_700Bold",
     letterSpacing: -0.2,
-    marginBottom: 12,
+    marginBottom: 8,
     color: "#2c3e50",
     lineHeight: 28,
   },
@@ -151,24 +227,62 @@ const styles = StyleSheet.create({
   icon: { width: 24, height: 24, marginRight: 8 },
 
   milestoneList: {
-    marginTop: 10,
+    marginTop: 4,
+    paddingTop: 0,
   },
   milestoneItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    marginBottom: 0,
+    width: "90%"
+  },
+  milestoneItemClickable: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     marginBottom: 6,
-    width: "85%"
+    minHeight: 50,
+    justifyContent: 'flex-start',
+  },
+  milestoneContent: {
+    flex: 1,
+    flexDirection: "column",
+  },
+  moodTagsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    flexWrap: "wrap",
+  },
+  moodTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginRight: -3,
+    marginBottom: 2,
+    minWidth: 20,
+    minHeight: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+    zIndex: 1,
   },
   addIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 8,
+    width: 18,
+    height: 18,
+    marginRight: 6,
   },
   milestoneText: {
     fontFamily: "Poppins_500Medium",
-    fontSize: 14,
-    color: "#7f8c8d",
+    fontSize: 13,
+    color: "#5a6c7d",
     lineHeight: 18,
+    letterSpacing: -0.2,
   },
 });
 
@@ -185,6 +299,7 @@ Card.propTypes = {
       completed: PropTypes.bool,
     })
   ),
+  onMilestonePress: PropTypes.func,
 };
 
 Card.defaultProps = {
