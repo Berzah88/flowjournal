@@ -8,7 +8,7 @@ import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
 import ActiveProject from './screens/ActiveProject';
 import ActiveMilestone from './screens/ActiveMilestone';
-import { TaskProvider } from './context/TaskContextOptimized';
+import { TaskProvider } from './context/TaskContext';
 import LoadingSpinner from './components/LoadingSpinner';
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 

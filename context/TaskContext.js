@@ -4,7 +4,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { assignUniqueColor } from "../utils/milestoneColors";
 import { STORAGE_KEYS } from "../constants";
 import { useErrorHandler } from "../hooks/useErrorHandler";
-import { useAsyncStorage } from "../hooks/useAsyncStorage";
 import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 
 // Context'i bölerek re-render optimizasyonu
@@ -15,15 +14,8 @@ export const TaskActionsContext = createContext();
 let HAS_INITIALIZED = false;
 
 export const TaskProvider = ({ children }) => {
-  // Use custom AsyncStorage hook for better error handling and performance
-  const { 
-    data: tasks, 
-    loading: isLoading, 
-    error: storageError, 
-    saveData: saveTasksToStorage,
-    clearData: clearStorageData 
-  } = useAsyncStorage(STORAGE_KEYS.TASKS, []);
-  
+  const [tasks, setTasks] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef(null);
   const isMountedRef = useRef(true); // to avoid setState on unmounted component
@@ -45,15 +37,47 @@ export const TaskProvider = ({ children }) => {
     };
   }, []);
 
-  // ---------- INITIAL LOAD (handled by useAsyncStorage hook) ----------
+  // ---------- INITIAL LOAD (guarded by module-level flag) ----------
   useEffect(() => {
     if (HAS_INITIALIZED) {
+      // Ensure loading flag is false so UI can proceed
+      if (isMountedRef.current) setIsLoading(false);
       return;
     }
-    HAS_INITIALIZED = true;
-    justLoadedRef.current = true; // Mark that we just loaded so the next save effect can skip one save cycle
 
-    // Data loading is now handled by useAsyncStorage hook
+    HAS_INITIALIZED = true;
+
+    const loadTasks = async () => {
+      try {
+        const storedTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
+
+        if (storedTasks !== null && storedTasks !== '') {
+          const parsedTasks = JSON.parse(storedTasks);
+
+          if (Array.isArray(parsedTasks)) {
+            if (isMountedRef.current) setTasks(parsedTasks);
+          } else {
+            if (isMountedRef.current) setTasks([]);
+          }
+        } else {
+          if (isMountedRef.current) setTasks([]);
+        }
+      } catch (error) {
+        handleAsyncStorageError(error, "load");
+        if (isMountedRef.current) setTasks([]);
+        try {
+          await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
+        } catch (clearError) {
+          console.error("TaskProvider: Failed to clear corrupted data:", clearError);
+        }
+      } finally {
+        // Mark that we just loaded so the next save effect can skip one save cycle
+        justLoadedRef.current = true;
+        if (isMountedRef.current) setIsLoading(false);
+      }
+    };
+
+    loadTasks();
   }, []);
 
   // ---------- RACE CONDITION SAFE SAVE FUNCTION ----------
