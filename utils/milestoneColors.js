@@ -1,22 +1,5 @@
 // Milestone Renk Paleti - Merkezi Yönetim
-export const MILESTONE_COLORS = [
-  "#B6CEB4", // Soft yeşil
-  "#CBDCEB", // Soft mavi
-  "#C0C9EE", // Soft mor
-  "#D1D8BE", // Soft zeytin
-  "#FFD6BA", // Soft turuncu
-  "#FFF2EB", // Soft krem
-  "#F49BAB", // Soft pembe
-  "#F0F1C5", // Soft limon
-  "#FFD2A0", // Soft şeftali
-  "#E7CCCC", // Soft gül
-  "#DEE5D4", // Soft nane
-  "#F1D3CE", // Soft koral
-  "#9FB3DF", // Soft gökyüzü
-  "#BDDDE4", // Soft buz
-  "#D5E5D5", // Soft mint
-  "#C7D9DD", // Soft gri mavi
-];
+import { MILESTONE_COLORS } from '../constants';
 
 // Kullanılan renkleri takip etmek için Set
 let usedColors = new Set();

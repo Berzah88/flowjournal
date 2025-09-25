@@ -17,6 +17,7 @@ import Animated, {
   withSpring,
   withTiming,
   runOnJS,
+  Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
@@ -25,7 +26,7 @@ import { useModalAnimation } from "../hooks/useAnimations";
 
 const { width, height } = Dimensions.get("window");
 
-export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null, onEditToggle = null }) {
+export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null }) {
   const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
@@ -47,6 +48,21 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
 
   // Cleanup animations on unmount - handled by hooks
 
+  // Update form when editingMilestone changes
+  useEffect(() => {
+    if (editingMilestone) {
+      setTitle(editingMilestone.title || "");
+      setStartDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : new Date());
+      setEndDate(editingMilestone.endDate ? new Date(editingMilestone.endDate) : new Date());
+      setIsEditing(true);
+    } else {
+      setTitle("");
+      setStartDate(new Date());
+      setEndDate(new Date());
+      setIsEditing(false);
+    }
+  }, [editingMilestone]);
+
   useEffect(() => {
     if (visible) {
       // Reset form or load editing milestone
@@ -62,23 +78,31 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
         setIsEditing(false);
       }
       
-      // Backdrop animation only - modal animation handled by hook
-      backdropOpacity.value = withTiming(0.45, { duration: ANIMATION_DURATIONS.NORMAL });
+      // Smooth backdrop animation
+      backdropOpacity.value = withTiming(0.45, { 
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
 
       const timeout = setTimeout(() => {
         inputRef.current?.focus();
-      }, 375); // 300 * 1.25 - animasyon bitince focus
+      }, 400); // Animasyon bitince focus
 
       return () => clearTimeout(timeout);
     } else {
+      // Reset editing state when modal closes
+      setIsEditing(false);
       // Reset backdrop when not visible
       backdropOpacity.value = 0;
     }
   }, [visible, editingMilestone, backdropOpacity]);
 
   const handleCloseModal = () => {
-    // Close modal - animation handled by hook
-    backdropOpacity.value = withTiming(0, { duration: ANIMATION_DURATIONS.FAST });
+    // Smooth backdrop fade out
+    backdropOpacity.value = withTiming(0, { 
+      duration: 200,
+      easing: Easing.out(Easing.quad),
+    });
     closeModal();
   };
 
@@ -113,9 +137,6 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     }, (finished) => {
       if (finished) {
         runOnJS(onSave)(milestoneData);
-        if (isEditing && onEditToggle) {
-          runOnJS(onEditToggle)(false);
-        }
         runOnJS(onClose)();
       }
     });

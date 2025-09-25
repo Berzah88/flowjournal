@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useActiveTasks, useCompletedTasks, useTaskActions, useTaskSaving, useDataRecovery } from "../hooks/useTaskContext";
+import { useDataRecoveryOperations } from "../hooks/useDataRecoveryOperations";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import StatusBarComponent from "../components/StatusBar";
@@ -32,6 +33,7 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
   const isSaving = useTaskSaving();
   const { clearStorage } = useTaskActions();
   const { recoverData, createManualBackup, getDataStatus } = useDataRecovery();
+  const { handleDataRecovery, handleCreateBackup, handleCheckDataStatus } = useDataRecoveryOperations();
   
   // Performance monitoring (sadece development'ta)
   usePerformanceMonitor('MainScreen');
@@ -67,56 +69,7 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
   const openDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(true), []);
   const closeDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(false), []);
 
-  // Memoized veri kurtarma fonksiyonları
-  const handleDataRecovery = useCallback(async () => {
-    // Önce veri durumunu kontrol et
-    const dataStatus = await getDataStatus();
-    
-    if (!dataStatus.backupExists) {
-      alert("❌ Backup verisi bulunamadı!\n\nVeri kurtarma için önce backup oluşturmanız gerekiyor.");
-      return;
-    }
-    
-    if (dataStatus.backupTaskCount === 0) {
-      alert("❌ Backup verisi boş!\n\nKurtarılacak veri yok.");
-      return;
-    }
-    
-    // Geri yükleme işlemini başlat
-    const result = await recoverData();
-    
-    if (result.success) {
-      alert(`✅ Veriler başarıyla geri yüklendi!\n\n${result.message}`);
-    } else {
-      alert(`❌ Veri geri yüklenemedi!\n\nHata: ${result.message}`);
-    }
-  }, [getDataStatus, recoverData]);
-
-  const handleCreateBackup = useCallback(async () => {
-    const result = await createManualBackup();
-    
-    if (result.success) {
-      alert("✅ Manuel backup oluşturuldu!\n\nVerileriniz güvende.");
-    } else {
-      alert(`❌ Backup oluşturulamadı!\n\nHata: ${result.message}`);
-    }
-  }, [createManualBackup]);
-
-  const handleCheckDataStatus = useCallback(async () => {
-    const status = await getDataStatus();
-    
-    let message = "📊 Veri Durumu:\n\n";
-    message += `Ana Veri: ${status.mainExists ? `${status.mainTaskCount} task` : 'Yok'}\n`;
-    message += `Backup: ${status.backupExists ? `${status.backupTaskCount} task` : 'Yok'}\n\n`;
-    
-    if (status.backupExists && status.backupTaskCount > 0) {
-      message += "✅ Veri kurtarma mümkün";
-    } else {
-      message += "❌ Veri kurtarma mümkün değil";
-    }
-    
-    alert(message);
-  }, [getDataStatus]);
+  // Data recovery operations - artık hook'tan geliyor
 
   const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
 
@@ -370,9 +323,18 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
       <DataRecoveryMenu
         visible={dataRecoveryMenuVisible}
         onClose={closeDataRecoveryMenu}
-        onCheckStatus={handleCheckDataStatus}
-        onRecoverData={handleDataRecovery}
-        onCreateBackup={handleCreateBackup}
+        onCheckStatus={async () => {
+          const result = await handleCheckDataStatus();
+          alert(result.message);
+        }}
+        onRecoverData={async () => {
+          const result = await handleDataRecovery();
+          alert(result.message);
+        }}
+        onCreateBackup={async () => {
+          const result = await handleCreateBackup();
+          alert(result.message);
+        }}
       />
       </LinearGradient>
     );

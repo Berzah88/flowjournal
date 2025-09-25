@@ -97,6 +97,11 @@ export default function Journal({
   const dragY = useSharedValue(0);
   const isPanningRef = useRef(false);
   const inputRef = useRef(null);
+  
+  // Mood picker animation values
+  const moodPickerOpacity = useSharedValue(0);
+  const moodPickerScale = useSharedValue(0.8);
+  const moodPickerTranslateY = useSharedValue(20);
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [textValue, setTextValue] = useState("");
@@ -172,6 +177,19 @@ export default function Journal({
     }
   }, [visible, translateY, scale, opacity, dragY]);
 
+  // Mood picker animation control
+  useEffect(() => {
+    if (showMoodPicker) {
+      moodPickerOpacity.value = withTiming(1, { duration: 200 });
+      moodPickerScale.value = withTiming(1, { duration: 250 });
+      moodPickerTranslateY.value = withTiming(0, { duration: 250 });
+    } else {
+      moodPickerOpacity.value = withTiming(0, { duration: 150 });
+      moodPickerScale.value = withTiming(0.8, { duration: 150 });
+      moodPickerTranslateY.value = withTiming(20, { duration: 150 });
+    }
+  }, [showMoodPicker]);
+
   const backdropStyle = useAnimatedStyle(() => {
     const o = interpolate(translateY.value, [0, MODAL_HEIGHT], [0.45, 0]);
     return { opacity: o };
@@ -184,6 +202,16 @@ export default function Journal({
         { scale: scale.value }
       ],
       opacity: opacity.value,
+    };
+  });
+
+  const moodPickerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: moodPickerOpacity.value,
+      transform: [
+        { scale: moodPickerScale.value },
+        { translateY: moodPickerTranslateY.value }
+      ],
     };
   });
 
@@ -467,7 +495,7 @@ export default function Journal({
 
           {/* Mood picker popup */}
           {showMoodPicker && (
-            <View style={[styles.moodPicker, { bottom: keyboardHeight ? keyboardHeight + 70 : 86 }]}>
+            <Animated.View style={[styles.moodPicker, { bottom: keyboardHeight ? keyboardHeight + 70 : 86 }, moodPickerAnimatedStyle]}>
               {MOODS.map((m) => (
                 <TouchableOpacity
                   key={m.key}
@@ -488,7 +516,7 @@ export default function Journal({
                   <Text style={styles.moodOptionLabel}>{m.label}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </Animated.View>
           )}
 
           <View style={[styles.buttonRow, { marginBottom: keyboardHeight ? keyboardHeight : 16 }]}>

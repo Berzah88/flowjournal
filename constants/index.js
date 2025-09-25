@@ -107,7 +107,7 @@ export const SUCCESS_MESSAGES = {
   JOURNAL_ENTRY_SAVED: "Journal entry saved successfully",
 };
 
-// Milestone renk paleti
+// Milestone renk paleti - Merkezi yönetim
 export const MILESTONE_COLORS = [
   "#B6CEB4", // Soft yeşil
   "#CBDCEB", // Soft mavi

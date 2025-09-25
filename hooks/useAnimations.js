@@ -5,52 +5,70 @@ import {
   useSharedValue, 
   withTiming, 
   withSpring, 
-  runOnJS 
+  runOnJS,
+  Easing
 } from "react-native-reanimated";
 import { ANIMATION_DURATIONS, ANIMATION_CONFIGS } from "../constants";
 
 const { height } = Dimensions.get("window");
 
-// Modal animasyonları için hook
+// Modal animasyonları için hook - iOS tarzı smooth animasyonlar
 export const useModalAnimation = (visible, onClose = null) => {
   const translateY = useSharedValue(height);
   const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.96);
+  const scale = useSharedValue(0.95);
 
   useEffect(() => {
     if (visible) {
-      translateY.value = withTiming(0, { 
-        duration: ANIMATION_DURATIONS.NORMAL 
+      // iOS tarzı smooth açılış animasyonu
+      translateY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
       });
       opacity.value = withTiming(1, { 
-        duration: ANIMATION_DURATIONS.NORMAL 
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
       });
-      scale.value = withTiming(1, { 
-        duration: ANIMATION_DURATIONS.NORMAL 
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 200,
+        mass: 0.6,
       });
     } else {
+      // Hızlı kapanış animasyonu
       translateY.value = withTiming(height, { 
-        duration: ANIMATION_DURATIONS.FAST 
+        duration: 200,
+        easing: Easing.out(Easing.quad),
       });
       opacity.value = withTiming(0, { 
-        duration: ANIMATION_DURATIONS.FAST 
+        duration: 150,
       });
-      scale.value = withTiming(0.96, { 
-        duration: ANIMATION_DURATIONS.FAST 
+      scale.value = withTiming(0.95, { 
+        duration: 200,
       });
     }
   }, [visible]);
 
   const closeModal = () => {
-    translateY.value = withTiming(height, { 
-      duration: ANIMATION_DURATIONS.FAST 
+    // Smooth kapanış animasyonu
+    translateY.value = withSpring(height, {
+      damping: 25,
+      stiffness: 400,
+      mass: 0.7,
     });
     opacity.value = withTiming(0, { 
-      duration: ANIMATION_DURATIONS.FAST 
+      duration: 200,
+      easing: Easing.out(Easing.quad),
     }, () => {
       if (onClose) {
         runOnJS(onClose)();
       }
+    });
+    scale.value = withSpring(0.95, {
+      damping: 20,
+      stiffness: 300,
+      mass: 0.5,
     });
   };
 
@@ -119,26 +137,38 @@ export const useScaleAnimation = (visible) => {
   return scale;
 };
 
-// Pan gesture ile modal kapatma için hook
+// Pan gesture ile modal kapatma için hook - iOS tarzı smooth
 export const usePanGesture = (onClose, threshold = 120) => {
   const dragY = useSharedValue(0);
 
   const handlePanEnd = (translationY) => {
     if (translationY > threshold) {
-      dragY.value = withTiming(height, { 
-        duration: ANIMATION_DURATIONS.FAST 
+      // Smooth kapanış animasyonu
+      dragY.value = withSpring(height, {
+        damping: 25,
+        stiffness: 400,
+        mass: 0.7,
       }, () => {
         if (onClose) {
           runOnJS(onClose)();
         }
       });
     } else {
-      dragY.value = withSpring(0, ANIMATION_CONFIGS.SPRING);
+      // Smooth geri dönüş animasyonu
+      dragY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
+      });
     }
   };
 
   const resetDrag = () => {
-    dragY.value = 0;
+    dragY.value = withSpring(0, {
+      damping: 20,
+      stiffness: 300,
+      mass: 0.8,
+    });
   };
 
   return { dragY, handlePanEnd, resetDrag };

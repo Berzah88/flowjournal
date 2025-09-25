@@ -156,18 +156,15 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
           const isToday = date && date.toDateString() === new Date().toDateString();
           const dayBackgroundColor = getDayBackgroundColor(date);
           
-          // Inside border için milestone rengini belirle
+          // Inside border için milestone rengini belirle - basitleştirilmiş
           const getInsideBorderColor = () => {
-            if (isToday) return dayBackgroundColor;
+            if (isToday) return "#FF007F"; // Bugün için özel renk
             if (dayMilestones.length === 0) return "transparent";
             
             // Öncelik sırası: 1) Aktif milestone'lar, 2) En yeni milestone
             const activeMilestones = dayMilestones.filter(m => !m.completed);
-            if (activeMilestones.length > 0) {
-              return getMilestoneColor(activeMilestones[0]);
-            } else {
-              return getMilestoneColor(dayMilestones[0]);
-            }
+            const targetMilestone = activeMilestones.length > 0 ? activeMilestones[0] : dayMilestones[0];
+            return getMilestoneColor(targetMilestone);
           };
           
           const insideBorderColor = getInsideBorderColor();
@@ -188,6 +185,7 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
                       isToday && styles.todayText,
                       insideBorderColor !== "transparent" && {
                         borderColor: insideBorderColor,
+                        borderWidth: 2,
                         backgroundColor: insideBorderColor + "20"
                       }
                     ]}>

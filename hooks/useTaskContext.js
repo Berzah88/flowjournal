@@ -57,6 +57,15 @@ export const useCompletedTasks = () => {
   return useFilteredTasks(task => task.done);
 };
 
+// Herhangi bir task var mı kontrolü için custom hook
+export const useHasAnyTasks = () => {
+  const tasks = useTasks();
+  return useMemo(() => {
+    return tasks && tasks.length > 0;
+  }, [tasks]);
+};
+
+
 // Specific task için custom hook
 export const useTask = (taskId) => {
   const tasks = useTasks();

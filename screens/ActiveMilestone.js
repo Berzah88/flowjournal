@@ -299,9 +299,13 @@ export default function ActiveMilestone({ route, navigation, milestone, onClose 
     const previewText = truncateWords(textContent, 30);
 
     return (
-      <TouchableOpacity style={styles.entryItem} onPress={() => handleCardPress(item)} activeOpacity={0.95}>
-        {renderPreviewGridForEntry(item)}
-        <View style={styles.entryFooter}>
+      <TouchableOpacity 
+        style={styles.entryItem} 
+        onPress={() => handleCardPress(item)} 
+        activeOpacity={0.95}
+      >
+          {renderPreviewGridForEntry(item)}
+          <View style={styles.entryFooter}>
           <View style={styles.entryHeader}>
             <Text style={styles.entryDate}>
               {new Date(item.createdAt).toLocaleString("en-GB", {
@@ -435,17 +439,22 @@ const styles = StyleSheet.create({
 
   entryItem: { 
     backgroundColor: "#FFFFFF", 
-    borderRadius: 16, 
-    padding: 16, 
-    minHeight: 100, 
-    marginTop: 12,
-    elevation: 1,
+    borderRadius: 20, 
+    padding: 20, 
+    minHeight: 120, 
+    marginTop: 16,
+    marginHorizontal: 4,
+    // Modern shadow system
+    elevation: 2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOpacity: 0.08,
+    // Subtle border
     borderWidth: 0.5,
-    borderColor: "#F0F0F0",
+    borderColor: "#F5F5F5",
+    // Better spacing
+    marginBottom: 8,
   },
   previewWrapper: { flexDirection: "row", paddingHorizontal: 5, marginTop: 2, height: PREVIEW_HEIGHT, alignItems: "stretch", elevation: 3 },
   leftGrid: { flex: 1, marginRight: 4, height: PREVIEW_HEIGHT },
@@ -473,23 +482,65 @@ const styles = StyleSheet.create({
   },
   mapInner: { width: "100%", height: "100%" },
 
-  entryFooter: { marginTop: 10,  },
+  entryFooter: { 
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F8F8F8",
+  },
   entryHeader: { 
     flexDirection: "row", 
     alignItems: "center", 
-    marginBottom: 16, 
+    marginBottom: 20, 
+    paddingBottom: 16,
     borderBottomWidth: 1, 
-    borderBottomColor: "#F0F0F0", 
-    paddingBottom: 12,
+    borderBottomColor: "#F5F5F5", 
   },
 
-  entryDate: { fontSize: 12, color: "#8a8a8a", fontFamily: "Poppins_500Medium",},
-  entryText: { fontSize: 15, color: "#222", fontFamily: "Poppins_400Regular" },
+  entryDate: { 
+    fontSize: 13, 
+    color: "#999", 
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: 0.3,
+  },
+  entryText: { 
+    fontSize: 16, 
+    color: "#333", 
+    fontFamily: "Poppins_400Regular",
+    lineHeight: 24,
+    letterSpacing: 0.2,
+  },
 
-  moodTag: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  moodLabelSmall: { marginLeft: 6, fontSize: 12, color: "#333", fontFamily: "Poppins_400Regular" },
+  moodTag: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  moodLabelSmall: { 
+    marginLeft: 8, 
+    fontSize: 13, 
+    color: "#555", 
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: 0.2,
+  },
 
-  deleteBtn: { position: "absolute", right: 8, bottom: 8 },
+  deleteBtn: { 
+    position: "absolute", 
+    right: 12, 
+    bottom: 12,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    shadowOpacity: 0.1,
+  },
   emptyText: { 
     textAlign: "center", 
     color: "#888", 

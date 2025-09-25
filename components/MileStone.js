@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Animated, Alert, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
@@ -7,7 +7,7 @@ import { getMilestoneColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
-function MileStone({
+const MileStone = memo(function MileStone({
   milestone,
   onUpdate,
   onComplete,
@@ -16,7 +16,6 @@ function MileStone({
   onSetActive,
   isLatest = false,
   isCompleted = false,
-  wasEdited = false,
   onEditToggle,
 }) {
   // Performance monitoring (sadece development'ta)
@@ -39,6 +38,15 @@ function MileStone({
 
   const inputRef = useRef(null);
   const deleteAnimation = useRef(new Animated.Value(0)).current;
+
+  // Update local state when milestone prop changes
+  useEffect(() => {
+    if (milestone) {
+      setTitle(milestone.title || "");
+      setStartDate(milestone.startDate ? new Date(milestone.startDate) : new Date());
+      setEndDate(milestone.endDate ? new Date(milestone.endDate) : new Date());
+    }
+  }, [milestone]);
 
   useEffect(() => {
     if (editable) {
@@ -312,9 +320,7 @@ function MileStone({
       />
     </>
   );
-}
-
-export default React.memo(MileStone);
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -498,7 +504,6 @@ MileStone.propTypes = {
     startDate: PropTypes.string,
     endDate: PropTypes.string,
     initialized: PropTypes.bool,
-    wasEdited: PropTypes.bool,
   }).isRequired,
   onUpdate: PropTypes.func,
   onComplete: PropTypes.func,
@@ -507,7 +512,6 @@ MileStone.propTypes = {
   onSetActive: PropTypes.func,
   isLatest: PropTypes.bool,
   isCompleted: PropTypes.bool,
-  wasEdited: PropTypes.bool,
   onEditToggle: PropTypes.func,
 };
 
@@ -519,6 +523,7 @@ MileStone.defaultProps = {
   onSetActive: null,
   isLatest: false,
   isCompleted: false,
-  wasEdited: false,
   onEditToggle: null,
 };
+
+export default MileStone;

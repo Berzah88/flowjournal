@@ -1,13 +1,16 @@
 {
   "name": "flow-journal",
   "license": "0BSD",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:beta:android": "eas build --platform android --profile beta",
+    "build:beta:ios": "eas build --platform ios --profile beta",
+    "build:beta:all": "eas build --platform all --profile beta"
   },
   "dependencies": {
     "@expo-google-fonts/poppins": "^0.4.0",

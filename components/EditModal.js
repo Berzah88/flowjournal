@@ -39,12 +39,12 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   const { translateY, opacity, scale, closeModal } = useModalAnimation(visible, onClose);
   const { dragY, handlePanEnd, resetDrag } = usePanGesture(closeModal, SWIPE_THRESHOLDS.CLOSE);
 
-  // Focus input when modal opens
+  // Focus input when modal opens - iOS tarzı timing
   useEffect(() => {
     if (visible) {
       const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 400);
+      }, 450); // Biraz daha geç focus için
       return () => clearTimeout(timer);
     }
   }, [visible]);

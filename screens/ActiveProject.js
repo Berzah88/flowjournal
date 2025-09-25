@@ -1,14 +1,15 @@
-import React, { useState, useContext, useEffect, useCallback, useRef } from "react";
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, BackHandler, FlatList } from "react-native";
+import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
-import MileStone from "../components/MileStone";
 import EditModal from "../components/EditModal";
 import ActiveMilestone from "./ActiveMilestone";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
 import ProjectCalendar from "../components/ProjectCalendar";
 import AddMilestoneModal from "../components/AddMilestoneModal";
+import ActiveProjectHeader from "../components/ActiveProjectHeader";
+import ActiveProjectMilestones from "../components/ActiveProjectMilestones";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,17 +20,6 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 const { width, height } = Dimensions.get("window");
 
-// Format date range as "23 Mar 2025 - 24 Mar 2025"
-const formatDateRange = (startDate, endDate) => {
-  const formatDate = (date) => {
-    const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
-  };
-  
-  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
-};
 
 export default function ActiveProject({ selectedCard, onClose, setMainActiveTab }) {
   const tasks = useTasks();
@@ -42,8 +32,6 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     setActiveMilestone,
     deleteMilestone,
     updateTask,
-    setMilestoneWasEdited,
-    clearMilestoneWasEdited,
   } = useTaskActions();
 
   const [menuVisible, setMenuVisible] = useState(false);
@@ -53,9 +41,19 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
   const [activeTab, setActiveTab] = useState(0); // 0 = milestones, 1 = calendar
   const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState(null);
+
+  // Reset editing milestone when modal closes
+  useEffect(() => {
+    if (!addMilestoneModalVisible) {
+      setEditingMilestone(null);
+    }
+  }, [addMilestoneModalVisible]);
+  
   
 
+  // Get current task directly without memoization to ensure fresh data
   const currentTask = tasks.find((t) => t.id === selectedCard?.id) || selectedCard;
+  
   if (!currentTask) return null;
 
   const isCompleted = currentTask?.done;
@@ -63,10 +61,13 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
   const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
   const isModalOpen = !!(editVisible || selectedMilestone || selectedJournalMilestone || addMilestoneModalVisible);
 
-  const progress = currentTask?.milestones?.length
-    ? currentTask.milestones.filter((m) => m.completed).length /
-      currentTask.milestones.length
-    : 0;
+  // Memoize progress calculation
+  const progress = useMemo(() => {
+    return currentTask?.milestones?.length
+      ? currentTask.milestones.filter((m) => m.completed).length /
+        currentTask.milestones.length
+      : 0;
+  }, [currentTask]);
 
   const translateY = useSharedValue(height);
   const scale = useSharedValue(0.96);
@@ -139,12 +140,15 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
   }, [onClose]);
 
   const handleDelete = useCallback(() => {
+    if (!currentTask?.id) return;
     deleteTask(currentTask.id);
     setMenuVisible(false);
     handleClose();
-  }, [currentTask, deleteTask, handleClose]);
+  }, [currentTask?.id, deleteTask, handleClose]);
 
   const handleToggleComplete = useCallback(() => {
+    if (!currentTask?.id) return;
+    
     if (isCompleted) {
       updateTask(currentTask.id, { done: false });
       setMainActiveTab && setMainActiveTab("active");
@@ -154,24 +158,23 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     }
     setMenuVisible(false);
     handleClose();
-  }, [isCompleted, currentTask, updateTask, completeTask, setMainActiveTab, handleClose]);
+  }, [isCompleted, currentTask?.id, updateTask, completeTask, setMainActiveTab, handleClose]);
 
   const handleAddMilestone = useCallback(() => {
     setAddMilestoneModalVisible(true);
   }, []);
 
   const handleSaveMilestone = useCallback((milestoneData) => {
+    if (!currentTask?.id) return;
+    
     if (editingMilestone) {
       // Edit existing milestone
       updateMilestone(currentTask.id, milestoneData.id, milestoneData);
-      // Set wasEdited flag for the edited milestone
-      setMilestoneWasEdited(currentTask.id, milestoneData.id);
-      setEditingMilestone(null);
     } else {
       // Add new milestone
       addMilestone(currentTask.id, milestoneData);
     }
-  }, [currentTask, addMilestone, updateMilestone, editingMilestone, setMilestoneWasEdited]);
+  }, [currentTask?.id, addMilestone, updateMilestone, editingMilestone]);
 
   const handleEdit = useCallback(() => {
     setMenuVisible(false);
@@ -184,7 +187,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
       updateTask(currentTask.id, updates);
       setEditVisible(false);
     },
-    [currentTask, updateTask]
+    [currentTask?.id, updateTask]
   );
 
 
@@ -219,9 +222,24 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     width: progressAnim.value * 100 + "%",
   }));
 
-  const allMilestones = [...(currentTask?.milestones || [])].sort((a, b) => a.id - b.id);
-  const completedMilestones = allMilestones.filter((m) => m.completed);
-  const activeMilestones = allMilestones.filter((m) => !m.completed);
+  // Simple tab switching function without animation
+  const handleTabSwitch = useCallback((newTab) => {
+    if (newTab === activeTab) return;
+    setActiveTab(newTab);
+  }, [activeTab]);
+
+  // Memoize milestone calculations to prevent unnecessary re-renders
+  const allMilestones = useMemo(() => {
+    return [...(currentTask?.milestones || [])].sort((a, b) => a.id - b.id);
+  }, [currentTask]);
+  
+  const completedMilestones = useMemo(() => {
+    return allMilestones.filter((m) => m.completed);
+  }, [allMilestones]);
+  
+  const activeMilestones = useMemo(() => {
+    return allMilestones.filter((m) => !m.completed);
+  }, [allMilestones]);
 
   return (
     <Animated.View style={[
@@ -232,47 +250,17 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     ]}>
       <View style={{ flex: 1 }}>
         {/* Card Header */}
-        <GestureDetector gesture={panGesture}>
-          <View style={styles.cardContent}>
-            {/* Tab Başlıkları */}
-            <View style={styles.headerTabs}>
-              {/* Sol %50 - Milestones Tab */}
-              <TouchableOpacity 
-                style={[styles.projectHeaderTab, activeTab === 0 && styles.activeHeaderTab]} 
-                onPress={() => setActiveTab(0)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.title, isCompleted && styles.completedText]}>{currentTask?.title}</Text>
-              </TouchableOpacity>
-
-              {/* Sağ %50 - Calendar Tab */}
-              <TouchableOpacity 
-                style={[styles.calendarHeaderTab, activeTab === 1 && styles.activeHeaderTab]} 
-                onPress={() => setActiveTab(1)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.calendarTitle, isCompleted && styles.completedText]}>Calendar</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Date ve Progress Bar - Sadece Milestones tab'da görünür */}
-            {activeTab === 0 && (
-              <>
-                {start && end && (
-                  <Text style={[styles.dateText, isCompleted && styles.completedText]}>
-                    {formatDateRange(start, end)}
-                  </Text>
-                )}
-                <View style={{ marginTop: 0, width: "80%" }}>
-                  <Text style={{ fontSize: 12, color: "#888", marginBottom: 6, fontFamily: "Poppins_400Regular" }}>Project Progress</Text>
-                  <View style={{ height: 12, backgroundColor: "#E0E0E0", borderRadius: 8, overflow: "hidden", elevation: 2 }}>
-                    <Animated.View style={[{ height: 12, backgroundColor: "#B1A5FF" }, progressStyle]} />
-                  </View>
-                </View>
-              </>
-            )}
-          </View>
-        </GestureDetector>
+        <ActiveProjectHeader
+          currentTask={currentTask}
+          isCompleted={isCompleted}
+          activeTab={activeTab}
+          onTabSwitch={handleTabSwitch}
+          onMenuPress={() => setMenuVisible((s) => !s)}
+          isModalOpen={isModalOpen}
+          progress={progress}
+          progressStyle={progressStyle}
+          panGesture={panGesture}
+        />
 
         {/* Menu Button - Sadece Milestones tab'da görünür */}
           {!isModalOpen && activeTab === 0 && (
@@ -281,82 +269,35 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
             </TouchableOpacity>
           )}
 
-          {/* Milestones List - Sadece Milestones tab'da görünür */}
-          {activeTab === 0 && (
-            <View style={styles.milestoneHeader}>
-              <Text style={styles.milestoneTitle}>MileStones</Text>
-              <TouchableOpacity onPress={handleAddMilestone}>
-                <Text style={styles.addText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-           <View style={{ flex: 1, minHeight: 400 }}>
-             {activeTab === 0 ? (
-               // Milestones Tab
-               <>
-                 {allMilestones.length === 0 && <Text style={styles.emptyHint}>No milestones yet — add one with +</Text>}
-                 
-                 {allMilestones.length > 0 && (
-                   <ScrollView 
-                     style={{ flex: 1 }} 
-                     contentContainerStyle={{ paddingBottom: 40 }}
-                     showsVerticalScrollIndicator={true}
-                     bounces={true}
-                     scrollEnabled={true}
-                   >
-                     {/* Active Milestones */}
-                     {activeMilestones.map((milestone, index) => (
-                       <MileStone
-                         key={milestone.id}
-                         milestone={milestone}
-                         isLatest={index === activeMilestones.length - 1}
-                         wasEdited={milestone.wasEdited || false}
-                         onUpdate={(milestoneData) => {
-                           updateMilestone(currentTask.id, milestone.id, milestoneData);
-                         }}
-                         onComplete={() => completeMilestone(currentTask.id, milestone.id)}
-                         onDelete={() => deleteMilestone(currentTask.id, milestone.id)}
-                         onOpenDetail={() => setSelectedMilestone({ ...milestone, isLatest: index === activeMilestones.length - 1, taskId: currentTask.id })}
-                         onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
-                         isCompleted={false}
-                         onEditToggle={(milestone) => {
-                           setEditingMilestone(milestone);
-                           setAddMilestoneModalVisible(true);
-                         }}
-                       />
-                     ))}
-
-                     {/* Completed Milestones Section */}
-                     {completedMilestones.length > 0 && (
-                       <View style={{ marginTop: 20 }}>
-                         <Text style={styles.completedHeader}>Completed Milestones</Text>
-                         {completedMilestones.map((ms) => (
-                           <MileStone
-                             key={ms.id}
-                             milestone={ms}
-                             isLatest={false}
-                             isCompleted={true}
-                             onOpenDetail={() => setSelectedMilestone({ ...ms, isLatest: false, taskId: currentTask.id })}
-                             onOpenEditor={(ms) => setSelectedJournalMilestone(ms)}
-                             onDelete={() => deleteMilestone(currentTask.id, ms.id)}
-                             onSetActive={() => setActiveMilestone(currentTask.id, ms.id)}
-                           />
-                         ))}
-                       </View>
-                     )}
-                   </ScrollView>
-                 )}
-               </>
-             ) : (
-               // Calendar Tab - Tamamen ayrı ekran
-               <ProjectCalendar 
-                 milestones={allMilestones}
-                 projectStartDate={currentTask?.startDate}
-                 projectEndDate={currentTask?.endDate}
-               />
-             )}
-           </View>
+          <View style={{ flex: 1, minHeight: 400 }}>
+            {activeTab === 0 ? (
+              // Milestones Tab
+              <ActiveProjectMilestones
+                currentTask={currentTask}
+                allMilestones={allMilestones}
+                activeMilestones={activeMilestones}
+                completedMilestones={completedMilestones}
+                onUpdateMilestone={updateMilestone}
+                onCompleteMilestone={completeMilestone}
+                onDeleteMilestone={deleteMilestone}
+                onSetActiveMilestone={setActiveMilestone}
+                onOpenMilestoneDetail={setSelectedMilestone}
+                onOpenJournalEditor={setSelectedJournalMilestone}
+                onEditToggle={(milestone) => {
+                  setEditingMilestone(milestone);
+                  setAddMilestoneModalVisible(true);
+                }}
+                onAddMilestone={handleAddMilestone}
+              />
+            ) : (
+              // Calendar Tab - Tamamen ayrı ekran
+              <ProjectCalendar 
+                milestones={allMilestones}
+                projectStartDate={currentTask?.startDate}
+                projectEndDate={currentTask?.endDate}
+              />
+            )}
+          </View>
 
           {/* Menüler ve Modallar - Sadece Milestones tab'da çalışır */}
           {activeTab === 0 && (
@@ -374,10 +315,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
               {selectedJournalMilestone && <Journal visible={!!selectedJournalMilestone} milestone={selectedJournalMilestone} onClose={() => setSelectedJournalMilestone(null)} />}
               <AddMilestoneModal 
                 visible={addMilestoneModalVisible} 
-                onClose={() => {
-                  setAddMilestoneModalVisible(false);
-                  setEditingMilestone(null);
-                }} 
+                onClose={() => setAddMilestoneModalVisible(false)} 
                 onSave={handleSaveMilestone}
                 editingMilestone={editingMilestone}
               />
@@ -393,16 +331,6 @@ const styles = StyleSheet.create({
   overlayCard: { position: "absolute", top: 35, width: width, height: height - 35, backgroundColor: "#F5F1F1", borderRadius: 20, zIndex: 100, elevation: 10, overflow: "hidden" },
   completedOverlay: { backgroundColor: "#111111" },
   calendarOverlay: { backgroundColor: "#F8FBFF", },
-  cardContent: { padding: 10, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: "#E5E5E5" },
-  headerTabs: { flexDirection: "row" },
-  headerTab: { padding: 5, justifyContent: "center" },
-  projectHeaderTab: { flex: 0.5, padding: 5, justifyContent: "center", alignItems: "center" },
-  calendarHeaderTab: { flex: 0.5, padding: 5, justifyContent: "center", alignItems: "center" },
-  activeHeaderTab: { backgroundColor: "rgba(74, 144, 226, 0.1)", borderRadius: 12 },
-  title: { fontSize: 18, fontFamily: "Poppins_700Bold", color: "#505050", paddingVertical: 8 },
-  dateText: { fontSize: 12, fontFamily: "Poppins_500Medium", color: "#666666", paddingVertical: 25 },
-  completedText: { color: "#fff" },
-  calendarTitle: { fontSize: 18, fontFamily: "Poppins_700Bold", color: "#505050", paddingVertical: 8 },
   menuButton: { position: "absolute", top: 18, right: 18, padding: 6, zIndex: 110 },
   milestoneHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20},
   milestoneTitle: { fontFamily: "Poppins_700Bold", marginTop: 10, fontSize: 16, color: "#505050" },
