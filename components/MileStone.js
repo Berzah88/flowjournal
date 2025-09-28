@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback, memo } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Animated, Alert, TouchableWithoutFeedback, Keyboard } from "react-native";
+import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Animated, Alert, Pressable, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
 import PropTypes from "prop-types";
-import { getMilestoneColor } from '../utils/milestoneColors';
+import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
@@ -18,8 +18,8 @@ const MileStone = memo(function MileStone({
   isCompleted = false,
   onEditToggle,
 }) {
-  // Performance monitoring (sadece development'ta)
-  usePerformanceMonitor('MileStone');
+  // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
+  // usePerformanceMonitor('MileStone');
   
   if (!milestone) return null;
 
@@ -32,7 +32,7 @@ const MileStone = memo(function MileStone({
   );
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [editable, setEditable] = useState(
-    !isCompleted && !(milestone.initialized ?? (title && title.trim() !== ""))
+    !isCompleted && (!title || title.trim() === "")
   );
   const [showDeleteOption, setShowDeleteOption] = useState(false);
 
@@ -46,7 +46,7 @@ const MileStone = memo(function MileStone({
       setStartDate(milestone.startDate ? new Date(milestone.startDate) : new Date());
       setEndDate(milestone.endDate ? new Date(milestone.endDate) : new Date());
     }
-  }, [milestone]);
+  }, [milestone?.id, milestone?.title, milestone?.startDate, milestone?.endDate]);
 
   useEffect(() => {
     if (editable) {
@@ -75,10 +75,12 @@ const MileStone = memo(function MileStone({
   }, [deleteAnimation]);
 
   const handleLongPress = useCallback(() => {
-    if (!editable) {
+    // Milestone'lar için basılı tutma işlevselliğini etkinleştir
+    // (sadece title'ı olan milestone'lar için - completed veya incomplete fark etmez)
+    if (title && title.trim() !== "") {
       showDeleteOptionWithAnimation();
     }
-  }, [editable, showDeleteOptionWithAnimation]);
+  }, [title, showDeleteOptionWithAnimation]);
 
   const handleDelete = useCallback(() => {
     Alert.alert(
@@ -116,7 +118,6 @@ const MileStone = memo(function MileStone({
       return;
     }
     setEditable(false);
-    milestone.initialized = true;
     onUpdate?.({
       title,
       startDate: startDate.toISOString(),
@@ -124,7 +125,7 @@ const MileStone = memo(function MileStone({
     });
     // Dismiss keyboard after milestone creation
     Keyboard.dismiss();
-  }, [title, startDate, endDate, onUpdate, milestone]);
+  }, [title, startDate, endDate, onUpdate]);
 
 
   const handleCalendarConfirm = ({ startDate: sISO, endDate: eISO }) => {
@@ -157,21 +158,29 @@ const MileStone = memo(function MileStone({
     }
   };
 
-  // Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
-  let bgColor = getMilestoneColor(milestone);
+  // Renk sistemi - kart gövdesi beyaz, icon arkaplanı renkli
+  const cardBgColor = useMemo(() => getMilestoneCardColor(), []);
+  const iconBgColor = useMemo(() => getMilestoneColor(milestone), [milestone]);
 
   return (
     <>
-      <TouchableWithoutFeedback onPress={() => {
+      <Pressable onPress={() => {
         if (editable) {
           // Cancel milestone creation when touching outside
           setEditable(false);
         }
       }}>
-        <View style={[styles.container, { backgroundColor: bgColor }]}>
-        <TouchableOpacity
-          style={styles.cardContent}
-          activeOpacity={0.9}
+        <View style={[styles.container, { backgroundColor: cardBgColor }]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.cardContent,
+            {
+              transform: [{ scale: pressed && !editable ? 0.98 : 1 }],
+              // Shadow ve elevation değerlerini sabit tutarak parlama efektini önle
+              shadowOpacity: 0.15,
+              elevation: 5,
+            }
+          ]}
           disabled={editable}
           onPress={() => {
             if (!editable && onOpenDetail && !showDeleteOption) {
@@ -183,15 +192,20 @@ const MileStone = memo(function MileStone({
         >
           {/* Edit Button - Top Right Corner */}
           {!editable && !isCompleted && (
-            <TouchableOpacity
-              style={styles.editButton}
+            <Pressable
+              style={({ pressed }) => [
+                styles.editButton,
+                {
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                  opacity: pressed ? 0.8 : 1,
+                }
+              ]}
               onPress={handleEditToggle}
-              activeOpacity={0.7}
             >
               <Text style={[styles.editButtonText, { color: "#545454" }]}>Edit</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
-          <View style={styles.iconWrapper}>
+          <View style={[styles.iconWrapper, { backgroundColor: iconBgColor }]}>
             <Image source={require("../assets/yourDateVisual.png")} style={styles.icon} />
           </View>
 
@@ -213,102 +227,141 @@ const MileStone = memo(function MileStone({
               <Text style={styles.titleText}>{title}</Text>
             )}
 
-            <TouchableOpacity
-              style={styles.dateRow}
+            <Pressable
+              style={({ pressed }) => [
+                styles.dateRow,
+                {
+                  transform: [{ scale: pressed && editable ? 0.98 : 1 }],
+                  opacity: pressed && editable ? 0.8 : 1,
+                }
+              ]}
               onPress={() => !isCompleted && editable && setCalendarVisible(true)}
             >
               <Ionicons name="calendar-outline" size={16} color="#666" style={styles.timerIcon} />
               <Text style={styles.daysText}>{getDaysText()}</Text>
               {editable && <Ionicons name="chevron-down" size={18} color="#555" />}
-            </TouchableOpacity>
+            </Pressable>
 
             {/* Create Button - Top Right Corner (same position as Edit button) */}
             {editable && title.trim() && (
-              <TouchableOpacity
-                style={styles.createButton}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.createButton,
+                  {
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                    opacity: pressed ? 0.8 : 1,
+                  }
+                ]}
                 onPress={handleCreateMilestone}
-                activeOpacity={0.7}
               >
                 <Text style={styles.createButtonText}>Create</Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
 
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Action Options Overlay */}
         {showDeleteOption && (
-          <TouchableWithoutFeedback onPress={hideDeleteOptionWithAnimation}>
-            <Animated.View
-              style={[
-                styles.actionOverlay,
+          <View style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            borderRadius: 20,
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}>
+            {/* Close Button - Top Right Corner */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.closeButton,
                 {
-                  opacity: deleteAnimation,
-                  transform: [
-                    {
-                      scale: deleteAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.8, 1],
-                      }),
-                    },
-                  ],
-                },
+                  transform: [{ scale: pressed ? 0.9 : 1 }],
+                  opacity: pressed ? 0.7 : 1,
+                }
               ]}
+              onPress={hideDeleteOptionWithAnimation}
             >
-              {/* Close Button - Top Right Corner */}
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={hideDeleteOptionWithAnimation}
-                activeOpacity={0.8}
+              <Ionicons name="close" size={18} color="#666" />
+            </Pressable>
+
+            {/* Action Buttons */}
+            <View style={{
+              flexDirection: "row",
+              width: "100%",
+              height: "100%",
+              borderRadius: 20,
+              overflow: "hidden",
+            }}>
+              {/* Left Half - Delete Button */}
+              <Pressable
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    backgroundColor: "#ff4444",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                    opacity: pressed ? 0.8 : 1,
+                  }
+                ]}
+                onPress={handleDelete}
               >
-                <Ionicons name="close" size={18} color="#666" />
-              </TouchableOpacity>
+                <Ionicons name="trash" size={24} color="#fff" />
+                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", marginTop: 4 }}>Delete</Text>
+              </Pressable>
 
-              <TouchableWithoutFeedback>
-                <View style={styles.splitActionCard}>
-                  {/* Left Half - Delete Button */}
-                  <TouchableOpacity
-                    style={styles.deleteHalf}
-                    onPress={handleDelete}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="trash" size={24} color="#fff" />
-                    <Text style={styles.splitButtonText}>Delete</Text>
-                  </TouchableOpacity>
-
-                  {/* Right Half - Complete/Set Active Button */}
-                  {!isCompleted ? (
-                    <TouchableOpacity
-                      style={styles.completeHalf}
-                      onPress={() => {
-                        hideDeleteOptionWithAnimation();
-                        onComplete?.();
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="checkmark" size={24} color="#fff" />
-                      <Text style={styles.splitButtonText}>Complete</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.completeHalf}
-                      onPress={() => {
-                        hideDeleteOptionWithAnimation();
-                        onSetActive?.();
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="refresh" size={24} color="#fff" />
-                      <Text style={styles.splitButtonText}>Set Active</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </TouchableWithoutFeedback>
-            </Animated.View>
-          </TouchableWithoutFeedback>
+              {/* Right Half - Complete/Set Active Button */}
+              {!isCompleted ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    {
+                      flex: 1,
+                      backgroundColor: "#4CAF50",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transform: [{ scale: pressed ? 0.95 : 1 }],
+                      opacity: pressed ? 0.8 : 1,
+                    }
+                  ]}
+                  onPress={() => {
+                    hideDeleteOptionWithAnimation();
+                    onComplete?.();
+                  }}
+                >
+                  <Ionicons name="checkmark" size={24} color="#fff" />
+                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", marginTop: 4 }}>Complete</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [
+                    {
+                      flex: 1,
+                      backgroundColor: "#2196F3",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transform: [{ scale: pressed ? 0.95 : 1 }],
+                      opacity: pressed ? 0.8 : 1,
+                    }
+                  ]}
+                  onPress={() => {
+                    hideDeleteOptionWithAnimation();
+                    onSetActive?.();
+                  }}
+                >
+                  <Ionicons name="refresh" size={24} color="#fff" />
+                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", marginTop: 4 }}>Set Active</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
         )}
         </View>
-      </TouchableWithoutFeedback>
+      </Pressable>
     
       <FlashCalendar
         visible={calendarVisible}
@@ -320,7 +373,24 @@ const MileStone = memo(function MileStone({
       />
     </>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  // Check if milestone content has changed efficiently
+  const milestoneChanged = !prevProps.milestone || !nextProps.milestone ||
+    prevProps.milestone.id !== nextProps.milestone.id ||
+    prevProps.milestone.title !== nextProps.milestone.title ||
+    prevProps.milestone.completed !== nextProps.milestone.completed ||
+    prevProps.milestone.startDate !== nextProps.milestone.startDate ||
+    prevProps.milestone.endDate !== nextProps.milestone.endDate;
+  
+  return (
+    !milestoneChanged &&
+    prevProps.isLatest === nextProps.isLatest &&
+    prevProps.isCompleted === nextProps.isCompleted
+  );
 });
+
+export default MileStone;
 
 const styles = StyleSheet.create({
   container: {
@@ -334,23 +404,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 3,
+    overflow: "visible",
   },
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
     flex: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
   },
   iconWrapper: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "#BAB0F9",
+    // backgroundColor dinamik olarak belirleniyor
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
     elevation: 2,
-    shadowColor: "#BAB0F9",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
@@ -440,6 +515,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     elevation: 6,
     shadowColor: "#000",
+    zIndex: 12,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -525,5 +601,3 @@ MileStone.defaultProps = {
   isCompleted: false,
   onEditToggle: null,
 };
-
-export default MileStone;

@@ -27,8 +27,8 @@ import Animated, {
 export default function AddProjectScreen({ visible, onClose }) {
   const { addTask } = useTaskActions();
   
-  // Performance monitoring (sadece development'ta)
-  usePerformanceMonitor('AddProjectScreen');
+  // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
+  // usePerformanceMonitor('AddProjectScreen');
   const [newTitle, setNewTitle] = useState("");
   const [endDate, setEndDate] = useState(new Date());
   const [calendarVisible, setCalendarVisible] = useState(false);
@@ -119,6 +119,9 @@ export default function AddProjectScreen({ visible, onClose }) {
                   }}
                   returnKeyType="done"
                   autoFocus
+                  multiline={true}
+                  numberOfLines={3}
+                  textAlignVertical="top"
                 />
 
                 <TouchableOpacity
@@ -181,6 +184,8 @@ const styles = StyleSheet.create({
     borderBottomColor: "#ccc",
     marginVertical: 15,
     paddingVertical: 6,
+    minHeight: 60,
+    maxHeight: 120,
   },
   dateButton: {
     paddingVertical: 15,

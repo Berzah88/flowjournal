@@ -1,15 +1,9 @@
 // components/StatusTabs.js
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef } from "react";
 import { View, Animated, TouchableOpacity, StyleSheet, Text, Dimensions } from "react-native";
-import HorizontalCalendar from "./HorizontalCalendar";
-import { useTasks } from "../hooks/useTaskContext";
-
 const { width } = Dimensions.get("window");
 
-export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, selectedDate, onDateSelect, onCompletedPress }) {
-  const tasks = useTasks();
-  const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
-
+export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
   // progress: 0 => Active selected, 1 => Completed selected
   const progress = useRef(new Animated.Value(activeIndex === 0 ? 0 : 1)).current;
 
@@ -24,11 +18,11 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, sel
   // interpolate colors (safe) — outputRange are hex strings
   const activeColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#222222", "#FFFFFF"],
+    outputRange: ["#1D1D1F", "#8E8E93"],
   });
   const completedColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#FFFFFF", "#222222"],
+    outputRange: ["#8E8E93", "#1D1D1F"],
   });
 
   // optional: small background slide indicator
@@ -36,29 +30,6 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, sel
     inputRange: [0, 1],
     outputRange: [0, width * 0.5 - 20], // shift indicator half width minus some padding
   });
-
-  // Tarihe göre görevleri grupla
-  const tasksByDate = useMemo(() => {
-    const grouped = {};
-    tasks.forEach(task => {
-      if (task.startDate) {
-        const date = new Date(task.startDate).toDateString();
-        if (!grouped[date]) grouped[date] = [];
-        grouped[date].push(task);
-      }
-    });
-    return grouped;
-  }, [tasks]);
-
-  // Tüm milestone'ları topla
-  const allMilestones = useMemo(() => {
-    return tasks.flatMap(task => task.milestones || []);
-  }, [tasks]);
-
-  const handleDateSelect = (date) => {
-    setCurrentDate(date);
-    if (onDateSelect) onDateSelect(date);
-  };
 
   return (
     <View style={styles.wrapper}>
@@ -73,21 +44,13 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, sel
           ]}
         />
         <TouchableOpacity style={styles.tab} onPress={() => onTabPress(0)} activeOpacity={0.8}>
-          <Animated.Text style={[styles.tabText, { color: activeColor }]}>Active Projects</Animated.Text>
+          <Animated.Text style={[styles.tabText, { color: activeColor }]}>My Day</Animated.Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => onCompletedPress && onCompletedPress()} activeOpacity={0.8}>
-          <Animated.Text style={[styles.tabText, { color: completedColor }]}>Completed Projects</Animated.Text>
+        <TouchableOpacity style={styles.tab} onPress={() => onTabPress(1)} activeOpacity={0.8}>
+          <Animated.Text style={[styles.tabText, { color: completedColor }]}>Active Projects</Animated.Text>
         </TouchableOpacity>
       </View>
-      
-      {/* Horizontal Calendar */}
-      <HorizontalCalendar
-        selectedDate={currentDate}
-        onDateSelect={handleDateSelect}
-        tasksByDate={tasksByDate}
-        milestones={allMilestones}
-      />
     </View>
   );
 }
@@ -95,36 +58,46 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, sel
 const styles = StyleSheet.create({
   wrapper: {
     marginHorizontal: 20,
-    marginBottom: 10,
-    paddingHorizontal: 15,
+    marginBottom: 0,
+    paddingHorizontal: 0,
   },
   container: {
-    backgroundColor: "#D6D6D6",
-    borderRadius: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.06)",
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
-    height: 42,
+    height: 48,
     justifyContent: "space-between",
-    paddingHorizontal: 10,
-    elevation: 4,
+    paddingHorizontal: 6,
+    elevation: 0,
     overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "rgba(0, 0, 0, 0.04)",
   },
   tab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: "Poppins_600SemiBold",
+    letterSpacing: -0.1,
   },
   indicator: {
     position: "absolute",
-    left: 8,
+    left: 6,
     top: 6,
     bottom: 6,
-    width: (width - 40) / 2 - 16, // half minus paddings
-    borderRadius: 10,
+    width: (width - 40) / 2 - 12, // half minus paddings
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

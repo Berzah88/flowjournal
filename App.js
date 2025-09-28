@@ -8,9 +8,8 @@ import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
 import ActiveProject from './screens/ActiveProject';
 import ActiveMilestone from './screens/ActiveMilestone';
-import MyDayScreen from './screens/MyDayScreen';
-import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
 import JournalDetailScreen from './screens/JournalDetailScreen';
+import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
 import { TaskProvider } from './context/TaskContext';
 import { useHasAnyTasks, useTaskLoading } from './hooks/useTaskContext';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -48,9 +47,8 @@ function AppNavigator() {
         <Stack.Screen name="AddProject" component={AddProjectScreen} />
         <Stack.Screen name="ActiveProject" component={ActiveProject} />
         <Stack.Screen name="ActiveMilestone" component={ActiveMilestone} />
-        <Stack.Screen name="MyDay" component={MyDayScreen} />
-        <Stack.Screen name="CompletedProjects" component={CompletedProjectsScreen} />
         <Stack.Screen name="JournalDetail" component={JournalDetailScreen} />
+        <Stack.Screen name="CompletedProjects" component={CompletedProjectsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

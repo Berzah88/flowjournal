@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useMemo, useCallback } from "react";
-import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from "react-native";
+import React, { useEffect, useRef, useMemo, useCallback, memo } from "react";
+import { View, Text, StyleSheet, Image, Animated, Pressable } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import PropTypes from "prop-types";
-import { getMilestoneColor } from '../utils/milestoneColors';
+import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
@@ -19,31 +20,30 @@ const hexToRgb = (hex) => {
   } : { r: 211, g: 203, b: 227 }; // Varsayılan renk
 };
 
-// Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
-
-// Mood tag'lerini render eden fonksiyon - memoized
-const MoodTags = React.memo(({ milestone }) => {
-  const moodEntries = useMemo(() => {
+// Mood tag'lerini render eden fonksiyon - basit ve temiz
+const MoodTags = memo(({ milestone }) => {
+  const recentMoods = useMemo(() => {
     if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
       return [];
     }
 
-    // Tüm journal entry'lerden mood tag'lerini al - tarihten bağımsız
+    // Son 3 mood'u al (en yeni önce)
     return milestone.journalEntries
-      .filter(entry => entry.mood || entry.moodIcon) // Sadece mood'u olan entry'ler
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // En yeni önce (ters sıralama)
-      .reverse(); // Sonra tersine çevir ki en eski solda, en yeni sağda olsun
+      ?.slice()
+      ?.sort((a, b) => b.id - a.id) // En yeni entry'ler önce
+      ?.filter(entry => entry.mood || entry.moodIcon || entry.moodColor) // Sadece mood'u olan entry'ler
+      ?.slice(0, 3); // En fazla 3 mood göster
   }, [milestone.journalEntries]);
 
   // Eğer mood yoksa hiçbir şey gösterme
-  if (moodEntries.length === 0) {
+  if (recentMoods.length === 0) {
     return null;
   }
 
   return (
     <View style={styles.moodTagsContainer}>
-      {moodEntries.map((entry, index) => {
-        if (!entry.mood && !entry.moodIcon) return null;
+      {recentMoods.map((entry, index) => {
+        if (!entry.mood && !entry.moodIcon && !entry.moodColor) return null;
         
         const iconName = entry.moodIcon || entry.mood || 'sentiment-satisfied';
         const backgroundColor = entry.moodColor || '#8E7DBE';
@@ -71,7 +71,7 @@ const MoodTags = React.memo(({ milestone }) => {
   );
 });
 
-export default function Card({ title, startDate, endDate, completed = false, activeMilestones = [], onMilestonePress }) {
+const Card = memo(function Card({ title, startDate, endDate, completed = false, activeMilestones = [], onMilestonePress, onPress }) {
   // Performance monitoring (sadece development'ta)
   usePerformanceMonitor('Card');
   
@@ -141,13 +141,23 @@ export default function Card({ title, startDate, endDate, completed = false, act
   const daysLeftTextStyle = [styles.daysLeftText, completed ? styles.completedDaysText : {}];
 
   return (
-    <View style={cardStyle}>
+    <Pressable
+      style={({ pressed }) => [
+        cardStyle,
+        {
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+          shadowOpacity: pressed ? 0.2 : 0.1,
+          elevation: pressed ? 6 : 4,
+        }
+      ]}
+      onPress={onPress}
+    >
       <Text style={titleStyle}>{title}</Text>
 
       <View style={styles.bottomRow}>
         <View style={styles.daysLeft}>
-          <Image source={require("../assets/hourglass.png")} style={styles.icon} />
-          <Text style={daysLeftTextStyle}>{Math.ceil(remainingDays)} days left</Text>
+          <MaterialIcons name="schedule" size={18} color="#007AFF" />
+          <Text style={[daysLeftTextStyle, { marginLeft: 6 }]}>{Math.ceil(remainingDays)} days left</Text>
         </View>
 
         <Svg
@@ -159,7 +169,7 @@ export default function Card({ title, startDate, endDate, completed = false, act
             cx={center}
             cy={center}
             r={radius}
-            stroke={completed ? "#555" : "#E6E6E6"}
+            stroke={completed ? "#555" : "#D0D0D0"}
             strokeWidth={strokeWidth}
             fill="none"
           />
@@ -167,7 +177,7 @@ export default function Card({ title, startDate, endDate, completed = false, act
             cx={center}
             cy={center}
             r={radius}
-            stroke={completed ? "#FFD700" : "#8E7DBE"}
+            stroke={completed ? "#FFD700" : "#007AFF"}
             strokeWidth={strokeWidth}
             fill="none"
             strokeDasharray={circumference}
@@ -180,49 +190,117 @@ export default function Card({ title, startDate, endDate, completed = false, act
       {/* Active Milestones Listesi */}
       {activeMilestones.length > 0 && (
         <View style={styles.milestoneList}>
-          {activeMilestones.map((ms) => (
-            <TouchableWithoutFeedback 
-              key={ms.id} 
-              onPress={() => handleMilestonePress(ms)}
-              accessible={true}
-              accessibilityLabel={`${ms.title || "Untitled"} milestone`}
-              accessibilityRole="button"
-            >
-              <View style={[
-                styles.milestoneItem, 
-                styles.milestoneItemClickable, // Hem active hem completed için clickable
-                { 
-                  backgroundColor: getMilestoneColor(ms) + (completed ? "80" : "B3") // Completed: 0.5 opacity (80), Active: 0.7 opacity (B3)
-                }
-              ]}>
-                <Image source={require("../assets/AddMileStone.png")} style={styles.addIcon} />
+          {activeMilestones.map((ms, index) => (
+            <View key={ms.id}>
+              <Pressable 
+                onPress={() => handleMilestonePress(ms)}
+                accessible={true}
+                accessibilityLabel={`${ms.title || "Untitled"} milestone`}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.milestoneItemClickable,
+                  { 
+                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                  }
+                ]}
+              >
+                <View style={styles.iconContainer}>
+                  <Ionicons 
+                    name="ellipse" 
+                    size={18} 
+                    color={getMilestoneColor(ms)} 
+                  />
+                </View>
                 <View style={styles.milestoneContent}>
                   <Text style={[styles.milestoneText, completed ? styles.completedDaysText : {}]}>
                     {ms.title || "Untitled"}
                   </Text>
                   <MoodTags milestone={ms} />
                 </View>
-              </View>
-            </TouchableWithoutFeedback>
+              </Pressable>
+            </View>
           ))}
         </View>
       )}
-    </View>
+    </Pressable>
   );
-}
+}, (prevProps, nextProps) => {
+  // Smart comparison function - only re-render when necessary
+  // Check basic props first (fastest)
+  if (prevProps.title !== nextProps.title ||
+      prevProps.startDate !== nextProps.startDate ||
+      prevProps.endDate !== nextProps.endDate ||
+      prevProps.completed !== nextProps.completed) {
+    return false; // Re-render needed
+  }
+  
+  // Check milestones length (fast)
+  const prevMilestones = prevProps.activeMilestones || [];
+  const nextMilestones = nextProps.activeMilestones || [];
+  
+  if (prevMilestones.length !== nextMilestones.length) {
+    return false; // Re-render needed
+  }
+  
+  // Check milestones content (only if length matches)
+  for (let i = 0; i < prevMilestones.length; i++) {
+    const prev = prevMilestones[i];
+    const next = nextMilestones[i];
+    
+    if (!prev || !next) return false;
+    
+    // Check basic milestone properties
+    if (prev.id !== next.id ||
+        prev.title !== next.title ||
+        prev.completed !== next.completed) {
+      return false; // Re-render needed
+    }
+    
+    // Check journal entries length
+    const prevEntries = prev.journalEntries || [];
+    const nextEntries = next.journalEntries || [];
+    
+    if (prevEntries.length !== nextEntries.length) {
+      return false; // Re-render needed
+    }
+    
+    // Check journal entries content (only if length matches)
+    for (let j = 0; j < prevEntries.length; j++) {
+      const prevEntry = prevEntries[j];
+      const nextEntry = nextEntries[j];
+      
+      if (!prevEntry || !nextEntry) return false;
+      
+      // Check mood-related properties
+      if (prevEntry.id !== nextEntry.id ||
+          prevEntry.mood !== nextEntry.mood ||
+          prevEntry.moodIcon !== nextEntry.moodIcon ||
+          prevEntry.moodColor !== nextEntry.moodColor ||
+          prevEntry.createdAt !== nextEntry.createdAt) {
+        return false; // Re-render needed
+      }
+    }
+  }
+  
+  return true; // No re-render needed
+});
+
+export default Card;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#F5F1F1",
-    padding: 16,
-    marginBottom: 16,
-    borderRadius: 24,
+    backgroundColor: "#FFFFFF", // Temiz beyaz arka plan
+    padding: 24, // Daha geniş padding
+    marginBottom: 20,
+    borderRadius: 20,
     width: "100%",
-    elevation: 4,
+    elevation: 2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    borderWidth: 0.5,
+    borderColor: "rgba(0, 0, 0, 0.04)",
   },
   completedCard: {
     backgroundColor: "#2c3e50",
@@ -234,12 +312,12 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: FONTS.BOLD,
-    letterSpacing: -0.2,
-    marginBottom: 8,
-    color: "#2c3e50",
-    lineHeight: 28,
+    letterSpacing: -0.3,
+    marginBottom: 16,
+    color: "#1D1D1F", // Apple'ın kullandığı koyu gri
+    lineHeight: 26,
   },
   completedTitle: {
     color: "#fff",
@@ -252,18 +330,17 @@ const styles = StyleSheet.create({
   daysLeft: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: -10,
+    marginTop: -8,
   },
   daysLeftText: {
     fontFamily: FONTS.MEDIUM,
-    color: "#7f8c8d",
-    fontSize: 14,
-    letterSpacing: -0.2,
+    color: "#007AFF", // Apple'ın mavi rengi
+    fontSize: 15,
+    letterSpacing: -0.1,
   },
   completedDaysText: {
     color: "#fff",
   },
-  icon: { width: 24, height: 24, marginRight: 8 },
 
   milestoneList: {
     marginTop: 4,
@@ -273,19 +350,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     marginBottom: 0,
-    width: "90%"
   },
   milestoneItemClickable: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginBottom: 6,
-    minHeight: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    minHeight: 48,
     justifyContent: 'flex-start',
+    backgroundColor: "rgba(0, 122, 255, 0.04)", // Çok hafif mavi arka plan
+  },
+  iconContainer: {
+    width: 30,
+    alignItems: "center",
+    justifyContent: "center",
   },
   milestoneContent: {
     flex: 1,
     flexDirection: "column",
+    marginLeft: 8,
+  },
+  moodContainer: {
+    marginTop: 4,
   },
   moodTagsContainer: {
     flexDirection: "row",
@@ -311,17 +399,12 @@ const styles = StyleSheet.create({
     elevation: 1,
     zIndex: 1,
   },
-  addIcon: {
-    width: 18,
-    height: 18,
-    marginRight: 6,
-  },
   milestoneText: {
     fontFamily: FONTS.MEDIUM,
-    fontSize: 13,
-    color: "#5a6c7d",
-    lineHeight: 18,
-    letterSpacing: -0.2,
+    fontSize: 14,
+    color: "#1D1D1F", // Apple'ın koyu gri rengi
+    lineHeight: 20,
+    letterSpacing: -0.1,
   },
 });
 
@@ -339,6 +422,7 @@ Card.propTypes = {
     })
   ),
   onMilestonePress: PropTypes.func,
+  onPress: PropTypes.func,
 };
 
 Card.defaultProps = {

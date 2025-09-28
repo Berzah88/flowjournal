@@ -21,25 +21,44 @@ import { getMilestoneColor } from "../utils/milestoneColors";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { ANIMATION_DURATIONS } from "../constants";
 import LoadingSpinner from "../components/LoadingSpinner";
+import HorizontalCalendar from "../components/HorizontalCalendar";
 import ActiveProject from "./ActiveProject";
+import ActiveMilestone from "./ActiveMilestone";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 const { width } = Dimensions.get("window");
 
-const MyDayScreen = memo(function MyDayScreen({ navigation }) {
+const MyDayScreen = memo(function MyDayScreen({ 
+  navigation, 
+  selectedCard, 
+  setSelectedCard, 
+  selectedMilestone, 
+  setSelectedMilestone,
+  addMilestoneModalVisible,
+  setAddMilestoneModalVisible,
+  selectedProjectForMilestone,
+  setSelectedProjectForMilestone
+}) {
   const activeTasks = useActiveTasks();
   const { addMilestone, updateMilestone, completeMilestone, addJournalEntry } = useTaskActions();
   
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
   // usePerformanceMonitor('MyDayScreen');
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [completingMilestones, setCompletingMilestones] = useState(new Set());
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [selectedMilestone, setSelectedMilestone] = useState(null);
-  const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
-  const [selectedProjectForMilestone, setSelectedProjectForMilestone] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
+  const progressAnimation = useRef(new Animated.Value(0)).current;
 
+  // Ekran render olduğunda bugünü seç
+  useEffect(() => {
+    setSelectedDate(new Date());
+  }, []);
+
+  // Ekran focus olduğunda bugünü seç
+  useFocusEffect(
+    useCallback(() => {
+      setSelectedDate(new Date());
+    }, [])
+  );
 
 
   // Refresh fonksiyonu
@@ -51,106 +70,57 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
     }, 1000);
   }, []);
 
+  // Progress bar animasyonu
+  useEffect(() => {
+    const totalMilestones = selectedDateActiveTasks.reduce((acc, project) => 
+      acc + (project.milestones?.length || 0), 0
+    );
+    const completedMilestones = selectedDateActiveTasks.reduce((acc, project) => 
+      acc + (project.milestones?.filter(m => m.completed).length || 0), 0
+    );
+    const progressPercentage = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+    
+    Animated.timing(progressAnimation, {
+      toValue: progressPercentage,
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [selectedDateActiveTasks, progressAnimation]);
 
   // Memoized handlers to prevent unnecessary re-renders
-  const openCard = useCallback((card) => {
-    setSelectedCard(card);
-  }, []);
-  
-  const closeCard = useCallback(() => {
-    setSelectedCard(null);
-  }, []);
+     const openCard = useCallback((card) => {
+       setSelectedCard(card);
+     }, [setSelectedCard]);
+     const closeCard = useCallback(() => {
+       setSelectedCard(null);
+     }, [setSelectedCard]);
 
   const openMilestone = useCallback((milestone, project) => {
     console.log('openMilestone called with:', { milestone, project: project?.title });
     
-    // Milestone'a tıklayınca direkt journal aç
-    const milestoneData = {
-      ...milestone,
-      taskId: project.id,
-      projectTitle: project.title,
-      autoOpenJournal: true // Journal'ı otomatik aç
-    };
-    setSelectedMilestone(milestoneData);
-  }, []);
-
-  const handleMilestoneComplete = useCallback((milestone, project) => {
-    if (milestone.completed) return;
-    
-    const milestoneKey = `${project.id}-${milestone.id}`;
-    
-    // Milestone'u completing state'e ekle
-    setCompletingMilestones(prev => new Set([...prev, milestoneKey]));
-    
-    // 1.5 saniye sonra milestone'u tamamla ve completing state'den çıkar
-    setTimeout(() => {
-      try {
-        completeMilestone(project.id, milestone.id);
-        setCompletingMilestones(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(milestoneKey);
-          return newSet;
-        });
-      } catch (error) {
-        // Hata durumunda completing state'i temizle
-        setCompletingMilestones(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(milestoneKey);
-          return newSet;
-        });
-      }
-    }, 1500);
-  }, [completeMilestone]);
-
-  // Milestone'ın bugün için uygun olup olmadığını kontrol et
-  const isMilestoneActiveToday = useCallback((milestone, selectedDate) => {
-    const today = new Date(selectedDate);
-    today.setHours(0, 0, 0, 0); // Sadece tarih kısmını al
-    
-    // Başlangıç tarihi kontrolü
-    if (milestone.startDate) {
-      const milestoneStartDate = new Date(milestone.startDate);
-      milestoneStartDate.setHours(0, 0, 0, 0);
-      
-      // Milestone henüz başlamamışsa gösterme
-      if (milestoneStartDate > today) {
-        return false;
-      }
+    // Eğer milestone boşsa (yeni milestone oluşturma), farklı bir yaklaşım kullan
+    if (!milestone || Object.keys(milestone).length === 0) {
+      // Yeni milestone oluşturma için boş milestone data
+      const newMilestoneData = {
+        id: null,
+        title: '',
+        completed: false,
+        taskId: project.id,
+        projectTitle: project.title,
+        autoOpenJournal: false // Yeni milestone için journal açma
+      };
+      setSelectedMilestone(newMilestoneData);
+    } else {
+      // Mevcut milestone için
+      const milestoneData = {
+        ...milestone,
+        taskId: project.id,
+        projectTitle: project.title,
+        autoOpenJournal: true // Journal'ı otomatik aç
+      };
+      setSelectedMilestone(milestoneData);
     }
-    
-    // Bitiş tarihi kontrolü
-    if (milestone.endDate) {
-      const milestoneEndDate = new Date(milestone.endDate);
-      milestoneEndDate.setHours(23, 59, 59, 999); // Günün sonuna kadar
-      
-      // Milestone bitmişse gösterme
-      if (milestoneEndDate < today) {
-        return false;
-      }
-    }
-    
-    return true; // Başlangıç ve bitiş tarihleri arasında
-  }, []);
-
-  // Milestone'ın günü geçip geçmediğini kontrol et
-  const isMilestoneOverdue = useCallback((milestone, selectedDate) => {
-    if (!milestone.endDate) return false; // Bitiş tarihi yoksa günü geçmiş sayma
-    
-    const milestoneEndDate = new Date(milestone.endDate);
-    const today = new Date(selectedDate);
-    
-    return milestoneEndDate < today;
-  }, []);
-
-  // Milestone'ın son günü olup olmadığını kontrol et
-  const isMilestoneLastDay = useCallback((milestone, selectedDate) => {
-    if (!milestone.endDate) return false; // Bitiş tarihi yoksa son gün değil
-    
-    const milestoneEndDate = new Date(milestone.endDate);
-    const today = new Date(selectedDate);
-    
-    return milestoneEndDate.toDateString() === today.toDateString();
-  }, []);
+  }, [setSelectedMilestone]);
 
   const closeMilestone = useCallback(() => setSelectedMilestone(null), [setSelectedMilestone]);
 
@@ -178,6 +148,10 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
       // Seçili tarih proje tarih aralığında mı kontrol et
       const isInRange = selectedDateObj >= startDate && selectedDateObj <= endDate;
       
+      // Debug için log
+      if (isInRange) {
+        console.log('Project found:', task.title, 'Date range:', task.startDate, 'to', task.endDate, 'Selected:', selectedDate.toDateString());
+      }
       
       return isInRange;
     }).map(task => {
@@ -200,17 +174,17 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
     return filtered;
   }, [activeTasks, selectedDate]);
 
-  // Bugünün özeti için milestone'ları hesapla - o gün aktif olan milestone'ları baz al
+  // Bugünün özeti için milestone'ları hesapla
   const todaySummary = useMemo(() => {
     const totalMilestones = selectedDateActiveTasks.reduce((total, project) => {
-      return total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length || 0);
+      return total + (project.milestones?.length || 0);
     }, 0);
 
     const completedMilestones = selectedDateActiveTasks.reduce((total, project) => {
-      return total + (project.milestones?.filter(m => m.completed && isMilestoneActiveToday(m, selectedDate)).length || 0);
+      return total + (project.milestones?.filter(m => m.completed).length || 0);
     }, 0);
 
-    const activeMilestones = totalMilestones;
+    const activeMilestones = totalMilestones - completedMilestones;
 
     return {
       totalProjects: selectedDateActiveTasks.length,
@@ -236,6 +210,14 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+        {/* Horizontal Calendar - ScrollView dışında */}
+        <HorizontalCalendar
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          tasksByDate={tasksByDate}
+          milestones={[]}
+        />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -256,50 +238,19 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
             <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
             <Text style={styles.emptyTitle}>Bu tarihte proje yok</Text>
             <Text style={styles.emptyText}>
-              {(() => {
-                const today = new Date();
-                const selected = new Date(selectedDate);
-                today.setHours(0, 0, 0, 0);
-                selected.setHours(0, 0, 0, 0);
-                
-                if (selected < today) {
-                  return "Bu tarihte proje yok";
-                } else {
-                  return "Seçili tarihte aktif proje bulunmuyor.\nYeni bir proje oluşturmak ister misin?";
-                }
-              })()}
+              Seçili tarihte aktif proje bulunmuyor.{'\n'}
+              Başka bir tarih seçmeyi deneyin.
             </Text>
-            {(() => {
-              const today = new Date();
-              const selected = new Date(selectedDate);
-              today.setHours(0, 0, 0, 0);
-              selected.setHours(0, 0, 0, 0);
-              
-              // Sadece bugün veya gelecek tarihleri için buton göster
-              if (selected >= today) {
-                return (
-                  <TouchableOpacity 
-                    style={styles.addProjectButton}
-                    onPress={onAddProject}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                    <Text style={styles.addProjectButtonText}>Proje Ekle</Text>
-                  </TouchableOpacity>
-                );
-              }
-              return null;
-            })()}
           </View>
         ) : (
           selectedDateActiveTasks.map((project) => (
             <TouchableOpacity 
               key={project.id} 
               style={[
-              styles.projectSummaryCard,
-              project.isLastDay && styles.lastDayProjectCard
+                styles.projectSummaryCard,
+                project.isLastDay && styles.lastDayProjectCard
               ]}
-              onPress={() => setSelectedCard(project)}
+              onPress={() => openCard(project)}
               activeOpacity={0.7}
             >
               <View style={styles.projectHeader}>
@@ -343,27 +294,10 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
                 <Ionicons name="add" size={16} color="#007AFF" />
               </TouchableOpacity>
               
-              {project.milestones && (project.milestones.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length > 0 || project.milestones.some(m => completingMilestones.has(`${project.id}-${m.id}`))) ? (
+              {project.milestones && project.milestones.length > 0 ? (
                 <View style={styles.milestonesList}>
-                  {project.milestones.filter(m => (!m.completed && isMilestoneActiveToday(m, selectedDate)) || completingMilestones.has(`${project.id}-${m.id}`)).map((milestone, index) => {
-                    const milestoneKey = `${project.id}-${milestone.id}`;
-                    const isCompleting = completingMilestones.has(milestoneKey);
-                    const isOverdue = isMilestoneOverdue(milestone, selectedDate);
-                    const isLastDay = isMilestoneLastDay(milestone, selectedDate);
-                    
-                    return (
-                    <TouchableOpacity 
-                      key={milestone.id || index}
-                      style={styles.milestoneItem}
-                      onPress={() => openMilestone(milestone, project)}
-                      onLongPress={() => {
-                        if (!milestone.completed) {
-                          handleMilestoneComplete(milestone, project);
-                        }
-                      }}
-                      activeOpacity={0.7}
-                      delayLongPress={500}
-                    >
+                  {project.milestones.map((milestone, index) => (
+                    <View key={milestone.id || index} style={styles.milestoneItem}>
                       <View style={styles.milestoneInfo}>
                         <Ionicons 
                           name="ellipse" 
@@ -371,17 +305,12 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
                           color={getMilestoneColor(milestone)} 
                         />
                         <View style={styles.milestoneContent}>
-                          <View style={styles.milestoneTextContainer}>
-                            <Text style={[
-                              styles.milestoneText,
-                              milestone.completed && styles.completedMilestoneText,
-                              isCompleting && styles.completingMilestoneText,
-                              isOverdue && styles.overdueMilestoneText,
-                              isLastDay && styles.lastDayMilestoneText
-                            ]}>
-                              {milestone.title}
-                            </Text>
-                          </View>
+                          <Text style={[
+                            styles.milestoneText,
+                            milestone.completed && styles.completedMilestoneText
+                          ]}>
+                            {milestone.title}
+                          </Text>
                           {/* Mood sticker - sadece seçili güne ait */}
                           {milestone.journalEntries && milestone.journalEntries.length > 0 && (
                             <View style={styles.moodStickers}>
@@ -413,9 +342,25 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
                           )}
                         </View>
                       </View>
-                    </TouchableOpacity>
-                    );
-                  })}
+                      {milestone.journalEntries && milestone.journalEntries.length > 0 && (
+                        <TouchableOpacity 
+                          style={styles.journalCount}
+                          onPress={() => openMilestone(milestone, project)}
+                          activeOpacity={0.5}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Text style={styles.journalCountText}>
+                            {milestone.journalEntries ? 
+                              new Set(
+                                milestone.journalEntries
+                                  .filter(entry => entry.mood || entry.moodIcon || entry.moodColor)
+                                  .map(entry => new Date(entry.createdAt).toDateString())
+                              ).size : 0} entry
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
                 </View>
               ) : (
                 <TouchableOpacity 
@@ -435,9 +380,76 @@ const MyDayScreen = memo(function MyDayScreen({ navigation }) {
           ))
         )}
 
+        {/* Progress Bar Section */}
+        {selectedDateActiveTasks.length > 0 && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeader}>
+                <View style={styles.progressTitleRow}>
+                  <Ionicons name="trending-up" size={18} color="#007AFF" />
+                  <Text style={styles.progressTitle}>İlerleme Durumu</Text>
+                </View>
+                <View style={styles.progressBadge}>
+                  <Text style={styles.progressPercentage}>
+                    {(() => {
+                      const totalMilestones = selectedDateActiveTasks.reduce((acc, project) => 
+                        acc + (project.milestones?.length || 0), 0
+                      );
+                      const completedMilestones = selectedDateActiveTasks.reduce((acc, project) => 
+                        acc + (project.milestones?.filter(m => m.completed).length || 0), 0
+                      );
+                      return totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+                    })()}%
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.progressBarContainer}>
+                <View style={styles.progressBar}>
+                  <Animated.View style={[styles.progressBarFill, {
+                    width: progressAnimation.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ['0%', '100%'],
+                      extrapolate: 'clamp',
+                    })
+                  }]}>
+                    <LinearGradient
+                      colors={['#34C759', '#30D158']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.progressGradient}
+                    />
+                  </Animated.View>
+                </View>
+              </View>
+              
+              <View style={styles.progressStats}>
+                <View style={styles.progressStatsRow}>
+                  <View style={styles.progressStatItem}>
+                    <View style={styles.progressStatDot} />
+                    <Text style={styles.progressStatLabel}>Tamamlandı</Text>
+                    <Text style={styles.progressStatValue}>
+                      {selectedDateActiveTasks.reduce((acc, project) => 
+                        acc + (project.milestones?.filter(m => m.completed).length || 0), 0
+                      )}
+                    </Text>
+                  </View>
+                  <View style={styles.progressStatItem}>
+                    <View style={[styles.progressStatDot, { backgroundColor: '#FF9500' }]} />
+                    <Text style={styles.progressStatLabel}>Kalan</Text>
+                    <Text style={styles.progressStatValue}>
+                      {selectedDateActiveTasks.reduce((acc, project) => 
+                        acc + (project.milestones?.filter(m => !m.completed).length || 0), 0
+                      )}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
       </ScrollView>
-
 
     </View>
   );
@@ -570,28 +582,6 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 20,
-  },
-  addProjectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    marginTop: 8,
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addProjectButtonText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#FFFFFF',
-    marginLeft: 8,
   },
   projectSummaryCard: {
     backgroundColor: '#FFFFFF',
@@ -669,17 +659,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: '#8E8E93',
   },
-  milestoneTextContainer: {
-    position: 'relative',
-    flex: 1,
-  },
-  completingMilestoneText: {
-    color: '#8E8E93',
-    opacity: 0.7,
-    textDecorationLine: 'line-through',
-    textDecorationStyle: 'solid',
-    textDecorationColor: '#8E8E93',
-  },
   journalCount: {
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     paddingHorizontal: 8,
@@ -718,12 +697,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 8,
-  },
-  overdueMilestoneText: {
-    color: '#FF3B30',
-  },
-  lastDayMilestoneText: {
-    color: '#FF9500',
   },
   addMilestoneButton: {
     flexDirection: 'row',

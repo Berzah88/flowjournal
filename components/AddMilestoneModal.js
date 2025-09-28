@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { getMilestoneColor } from '../utils/milestoneColors';
+import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import {
   View,
   Text,
@@ -20,30 +20,27 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import FlashCalendar from "./FlashCalendar";
 import { FONTS, COLORS, ANIMATION_DURATIONS, SWIPE_THRESHOLDS } from "../constants";
-import { useModalAnimation } from "../hooks/useAnimations";
+import { useSpringAnimation } from "../hooks/useAnimations";
 
 const { width, height } = Dimensions.get("window");
 
 export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null }) {
   const [title, setTitle] = useState("");
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
-  const [calendarVisible, setCalendarVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [isSelectingRange, setIsSelectingRange] = useState(false);
 
-  // Modal rengini belirle - Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
+  // Modal rengini belirle - Her zaman beyaz/Apple tarzı
   const getModalColor = () => {
-    if (editingMilestone) {
-      return getMilestoneColor(editingMilestone);
-    }
-    return '#B6CEB4'; // Yeni milestone için varsayılan renk (paletten ilk renk)
+    return getMilestoneCardColor(); // Her zaman aynı beyaz renk
   };
   
-  // Use custom animation hook
-  const { translateY, opacity, scale, closeModal } = useModalAnimation(visible, onClose);
-  const backdropOpacity = useSharedValue(0);
+  // Use spring animation hook - same as Add Project screen
+  const { translateY, opacity, scale } = useSpringAnimation(visible);
   const inputRef = useRef(null);
 
   // Cleanup animations on unmount - handled by hooks
@@ -52,13 +49,15 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
   useEffect(() => {
     if (editingMilestone) {
       setTitle(editingMilestone.title || "");
-      setStartDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : new Date());
-      setEndDate(editingMilestone.endDate ? new Date(editingMilestone.endDate) : new Date());
+      setSelectedDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : new Date());
+      setStartDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : null);
+      setEndDate(editingMilestone.endDate ? new Date(editingMilestone.endDate) : null);
       setIsEditing(true);
     } else {
       setTitle("");
-      setStartDate(new Date());
-      setEndDate(new Date());
+      setSelectedDate(new Date());
+      setStartDate(null);
+      setEndDate(null);
       setIsEditing(false);
     }
   }, [editingMilestone]);
@@ -68,22 +67,18 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
       // Reset form or load editing milestone
       if (editingMilestone) {
         setTitle(editingMilestone.title || "");
-        setStartDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : new Date());
-        setEndDate(editingMilestone.endDate ? new Date(editingMilestone.endDate) : new Date());
+        setSelectedDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : new Date());
+        setStartDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : null);
+        setEndDate(editingMilestone.endDate ? new Date(editingMilestone.endDate) : null);
         setIsEditing(true);
       } else {
         setTitle("");
-        setStartDate(new Date());
-        setEndDate(new Date());
+        setSelectedDate(new Date());
+        setStartDate(null);
+        setEndDate(null);
         setIsEditing(false);
       }
       
-      // Smooth backdrop animation
-      backdropOpacity.value = withTiming(0.45, { 
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-
       const timeout = setTimeout(() => {
         inputRef.current?.focus();
       }, 400); // Animasyon bitince focus
@@ -92,18 +87,14 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     } else {
       // Reset editing state when modal closes
       setIsEditing(false);
-      // Reset backdrop when not visible
-      backdropOpacity.value = 0;
     }
-  }, [visible, editingMilestone, backdropOpacity]);
+  }, [visible, editingMilestone]);
 
   const handleCloseModal = () => {
-    // Smooth backdrop fade out
-    backdropOpacity.value = withTiming(0, { 
-      duration: 200,
-      easing: Easing.out(Easing.quad),
-    });
-    closeModal();
+    // Close modal - animation handled by useSpringAnimation hook
+    if (onClose) {
+      onClose();
+    }
   };
 
   const handleSave = () => {
@@ -116,38 +107,124 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     const milestoneData = {
       id: editingMilestone ? editingMilestone.id : Date.now().toString(),
       title: title.trim(),
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
+      startDate: (startDate || selectedDate).toISOString(),
+      endDate: (endDate || selectedDate).toISOString(),
       completed: editingMilestone ? editingMilestone.completed : false,
       journalEntries: editingMilestone ? editingMilestone.journalEntries : [],
     };
 
-    // Smooth save animation (25% slower)
-    backdropOpacity.value = withTiming(0, { duration: 250 }); // 200 * 1.25
-    translateY.value = withSpring(height, {
-      damping: 30,
-      stiffness: 400, // 500 / 1.25
-      mass: 0.8,
-    });
-    opacity.value = withTiming(0, { duration: 312 }); // 250 * 1.25
-    scale.value = withSpring(0.9, {
-      damping: 25,
-      stiffness: 320, // 400 / 1.25
-      mass: 0.6,
-    }, (finished) => {
-      if (finished) {
-        runOnJS(onSave)(milestoneData);
-        runOnJS(onClose)();
-      }
+    // Save milestone and close modal - animation handled by useSpringAnimation hook
+    onSave(milestoneData);
+    onClose();
+  };
+
+  // Calendar helper functions
+  const getDaysInMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const formatMonthYear = (date) => {
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const navigateMonth = (direction) => {
+    setCurrentMonth(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + direction);
+      return newDate;
     });
   };
 
-  const handleCalendarConfirm = ({ startDate: sISO, endDate: eISO }) => {
-    const s = new Date(sISO);
-    const e = new Date(eISO);
-    setStartDate(s);
-    setEndDate(e);
-    setCalendarVisible(false);
+  const isSameDay = (date1, date2) => {
+    return date1.getDate() === date2.getDate() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getFullYear() === date2.getFullYear();
+  };
+
+  const isDateInRange = (date, start, end) => {
+    if (!start || !end) return false;
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    const dateTime = date.getTime();
+    return dateTime >= startTime && dateTime <= endTime;
+  };
+
+  const handleDayPress = (dayDate) => {
+    if (!startDate || (startDate && endDate)) {
+      // Start new selection
+      setStartDate(dayDate);
+      setEndDate(null);
+      setIsSelectingRange(true);
+    } else if (startDate && !endDate) {
+      // Complete selection
+      if (dayDate >= startDate) {
+        setEndDate(dayDate);
+      } else {
+        setEndDate(startDate);
+        setStartDate(dayDate);
+      }
+      setIsSelectingRange(false);
+    }
+  };
+
+  const handleDayLongPress = (dayDate) => {
+    setStartDate(dayDate);
+    setEndDate(null);
+    setIsSelectingRange(true);
+  };
+
+  const renderCalendar = () => {
+    const daysInMonth = getDaysInMonth(currentMonth);
+    const firstDay = getFirstDayOfMonth(currentMonth);
+    const days = [];
+    
+    // Empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<View key={`empty-${i}`} style={styles.calendarDay} />);
+    }
+    
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+      const isSelected = isSameDay(dayDate, selectedDate);
+      const isToday = isSameDay(dayDate, new Date());
+      const isStartDate = startDate && isSameDay(dayDate, startDate);
+      const isEndDate = endDate && isSameDay(dayDate, endDate);
+      const isInRange = isDateInRange(dayDate, startDate, endDate);
+      
+      days.push(
+        <TouchableOpacity
+          key={day}
+          style={[
+            styles.calendarDay,
+            isSelected && !startDate && !endDate && styles.selectedDay,
+            isToday && !isSelected && !isInRange && styles.todayDay,
+            isStartDate && styles.rangeStartDay,
+            isEndDate && styles.rangeEndDay,
+            isInRange && !isStartDate && !isEndDate && styles.rangeDay
+          ]}
+          onPress={() => handleDayPress(dayDate)}
+          onLongPress={() => handleDayLongPress(dayDate)}
+          delayLongPress={500}
+        >
+          <Text style={[
+            styles.dayText,
+            isSelected && !startDate && !endDate && styles.selectedDayText,
+            isToday && !isSelected && !isInRange && styles.todayDayText,
+            (isStartDate || isEndDate) && styles.rangeEndDayText,
+            isInRange && !isStartDate && !isEndDate && styles.rangeDayText
+          ]}>
+            {day}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    return days;
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -158,21 +235,16 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     opacity: opacity.value,
   }));
 
-  const backdropAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }));
 
   if (!visible) return null;
 
   return (
     <View style={styles.overlay}>
-      <Animated.View style={[styles.backdrop, backdropAnimatedStyle]}>
-        <TouchableOpacity 
-          style={styles.backdropTouchable} 
-          activeOpacity={1} 
-          onPress={handleCloseModal}
-        />
-      </Animated.View>
+      <TouchableOpacity 
+        style={styles.backdrop} 
+        activeOpacity={1} 
+        onPress={handleCloseModal}
+      />
       
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -184,19 +256,17 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
           { backgroundColor: getModalColor() },
           animatedStyle
         ]}>
-          {/* Milestone Card Content - MileStone component ile aynı stil */}
-          <View style={styles.cardContent}>
-            {/* Icon - MileStone ile aynı */}
-            <View style={styles.iconWrapper}>
-              <Image source={require("../assets/yourDateVisual.png")} style={styles.icon} />
-            </View>
-
-            {/* Body */}
-            <View style={styles.body}>
-              {/* Title Input */}
+          {/* Title Input with Action Buttons */}
+          <View style={styles.titleSection}>
+            <View style={styles.titleRow}>
+              {/* Calendar Icon */}
+              <View style={styles.iconWrapper}>
+                <Image source={require("../assets/yourDateVisual.png")} style={styles.icon} />
+              </View>
+              
               <TextInput
                 ref={inputRef}
-                style={styles.titleInput}
+                style={styles.titleInputWithButtons}
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Enter milestone title..."
@@ -207,61 +277,74 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 textAlignVertical="top"
                 maxLength={200}
               />
-
-              {/* Date Row */}
-              <TouchableOpacity 
-                style={styles.dateRow}
-                onPress={() => setCalendarVisible(true)}
-                activeOpacity={0.7}
-                accessible={true}
-                accessibilityLabel="Select milestone dates"
-                accessibilityHint="Opens calendar to select start and end dates"
-                accessibilityRole="button"
-              >
-                <Ionicons name="calendar-outline" size={14} color="#7f8c8d" style={styles.timerIcon} />
-                <Text style={styles.dateText}>
-                  {startDate.toDateString()} → {endDate.toDateString()}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.cancelBtn} 
-                onPress={handleCloseModal}
-                accessible={true}
-                accessibilityLabel="Cancel milestone creation"
-                accessibilityHint="Closes the milestone creation modal without saving"
-                accessibilityRole="button"
-              >
-                <Ionicons name="close" size={18} color="#7f8c8d" />
-              </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]} 
-                onPress={handleSave}
-                disabled={!title.trim()}
-                accessible={true}
-                accessibilityLabel={title.trim() ? "Save milestone" : "Save milestone (disabled)"}
-                accessibilityHint="Saves the milestone with the entered title and dates"
-                accessibilityRole="button"
-              >
-                <Ionicons name="checkmark" size={18} color={title.trim() ? "#fff" : "#999"} />
-              </TouchableOpacity>
+              {/* Action Buttons */}
+              <View style={styles.actionButtonsInline}>
+                <TouchableOpacity 
+                  style={styles.cancelBtn} 
+                  onPress={handleCloseModal}
+                  accessible={true}
+                  accessibilityLabel="Cancel milestone creation"
+                  accessibilityHint="Closes the milestone creation modal without saving"
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="close" size={18} color="#7f8c8d" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]} 
+                  onPress={handleSave}
+                  disabled={!title.trim()}
+                  accessible={true}
+                  accessibilityLabel={title.trim() ? "Save milestone" : "Save milestone (disabled)"}
+                  accessibilityHint="Saves the milestone with the entered title and dates"
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="checkmark" size={18} color={title.trim() ? "#fff" : "#999"} />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
+
+          {/* Inline Calendar - Full Width */}
+          <View style={styles.calendarContainerFull}>
+            {/* Calendar Header */}
+            <View style={styles.calendarHeader}>
+              <TouchableOpacity 
+                style={styles.navButton}
+                onPress={() => navigateMonth(-1)}
+              >
+                <Ionicons name="chevron-back" size={20} color="#7f8c8d" />
+              </TouchableOpacity>
+              
+              <Text style={styles.monthYearText}>
+                {formatMonthYear(currentMonth)}
+              </Text>
+              
+              <TouchableOpacity 
+                style={styles.navButton}
+                onPress={() => navigateMonth(1)}
+              >
+                <Ionicons name="chevron-forward" size={20} color="#7f8c8d" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Day Headers */}
+            <View style={styles.dayHeaders}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <Text key={day} style={styles.dayHeaderText}>{day}</Text>
+              ))}
+            </View>
+
+            {/* Calendar Grid */}
+            <View style={styles.calendarGrid}>
+              {renderCalendar()}
+            </View>
+          </View>
+
         </Animated.View>
       </KeyboardAvoidingView>
       
-      <FlashCalendar
-        visible={calendarVisible}
-        initialStart={startDate}
-        initialEnd={endDate}
-        onConfirm={handleCalendarConfirm}
-        onCancel={() => setCalendarVisible(false)}
-        minDate={undefined}
-      />
     </View>
   );
 }
@@ -283,30 +366,25 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  backdropTouchable: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
   keyboardAvoid: {
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
   milestoneCard: {
-    // MileStone component ile aynı stil
-    flexDirection: "row",
-    alignItems: "flex-start", // flex-start yaparak üstten hizalama
+    // Yeni layout - column direction
+    flexDirection: "column",
     borderRadius: 16,
-    marginHorizontal: 20,
-    marginBottom: height * 0.15, // Ekranın altında %15 görünsün - daha aşağıda
+    marginHorizontal: 10, // Daha az margin - daha geniş modal
+    marginBottom: height * 0.05, // Ekranın altında %5 görünsün - daha yukarıda
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 12,
     // backgroundColor dinamik olarak belirleniyor
-    width: width - 40,
-    minHeight: 80, // Minimum yükseklik
+    width: width - 20, // Daha geniş modal
+    minHeight: 400, // Minimum yükseklik - takvim için daha büyük
   },
   editMilestoneCard: {
     // backgroundColor dinamik olarak belirleniyor
@@ -321,12 +399,12 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "#BAB0F9",
+    backgroundColor: "#5AC8FA", // Soft Apple mavi - daha yumuşak ton
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
     elevation: 2,
-    shadowColor: "#BAB0F9",
+    shadowColor: "#5AC8FA",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
@@ -352,21 +430,6 @@ const styles = StyleSheet.create({
     maxHeight: 80, // Maksimum yükseklik (4 satır)
     textAlignVertical: 'top',
   },
-  dateRow: { 
-    flexDirection: "row", 
-    alignItems: "center",
-    marginTop: 4,
-    paddingVertical: 4,
-  },
-  timerIcon: { 
-    marginRight: 6 
-  },
-  dateText: {
-    fontSize: 12,
-    fontFamily: FONTS.REGULAR,
-    color: "#7f8c8d",
-    flex: 1,
-  },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'flex-start', // Üstten hizalama
@@ -385,11 +448,149 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#8E7DBE',
+    backgroundColor: '#5AC8FA', // Soft Apple mavi - daha yumuşak ton
     justifyContent: 'center',
     alignItems: 'center',
   },
   saveBtnDisabled: {
     backgroundColor: '#E0E0E0',
+  },
+  // New Layout Styles
+  titleSection: {
+    padding: 20,
+    paddingBottom: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  titleInputWithButtons: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: FONTS.MEDIUM,
+    lineHeight: 22,
+    color: "#1a1a1a",
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    minHeight: 24,
+    maxHeight: 80,
+    textAlignVertical: 'top',
+  },
+  actionButtonsInline: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 2,
+  },
+  calendarContainerFull: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  // Calendar Styles
+  calendarContainer: {
+    marginTop: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 12, // Padding'i azalt
+    marginHorizontal: -8, // Container'ı çok daha geniş yap
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  navButton: {
+    width: 28, // Küçültülmüş navigasyon butonları
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  monthYearText: {
+    fontSize: 14, // Küçültülmüş başlık
+    fontFamily: FONTS.MEDIUM,
+    color: '#1a1a1a',
+  },
+  dayHeaders: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  dayHeaderText: {
+    width: (width - 96) / 7, // Gün hücreleri ile aynı genişlik
+    textAlign: 'center',
+    fontSize: 11, // Küçültülmüş gün başlıkları
+    fontFamily: FONTS.REGULAR,
+    color: '#7f8c8d',
+    marginBottom: 4, // Daha az boşluk
+    marginHorizontal: 0.5, // Gün hücreleri ile aynı margin
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+    justifyContent: 'flex-start',
+    width: '100%',
+  },
+  calendarDay: {
+    width: (width - 96) / 7, // 7 columns, container padding'leri dahil
+    height: 32, // Küçültülmüş gün hücreleri
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4, // Daha az boşluk
+    marginHorizontal: 0.5, // Minimal yan boşluklar
+  },
+  selectedDay: {
+    backgroundColor: '#5AC8FA', // Soft Apple mavi
+    borderRadius: 16,
+  },
+  todayDay: {
+    backgroundColor: 'rgba(90, 200, 250, 0.3)', // Soft Apple mavi - şeffaf
+    borderRadius: 16,
+  },
+  dayText: {
+    fontSize: 13, // Küçültülmüş font
+    fontFamily: FONTS.REGULAR,
+    color: '#1a1a1a',
+  },
+  selectedDayText: {
+    color: '#fff',
+    fontFamily: FONTS.MEDIUM,
+  },
+  todayDayText: {
+    color: '#5AC8FA', // Soft Apple mavi
+    fontFamily: FONTS.MEDIUM,
+  },
+  // Range Selection Styles
+  rangeStartDay: {
+    backgroundColor: '#5AC8FA', // Soft Apple mavi
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  rangeEndDay: {
+    backgroundColor: '#5AC8FA', // Soft Apple mavi
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  rangeDay: {
+    backgroundColor: 'rgba(90, 200, 250, 0.3)', // Soft Apple mavi - şeffaf
+    borderRadius: 0,
+  },
+  rangeEndDayText: {
+    color: '#fff',
+    fontFamily: FONTS.MEDIUM,
+  },
+  rangeDayText: {
+    color: '#5AC8FA', // Soft Apple mavi
+    fontFamily: FONTS.MEDIUM,
   },
 });

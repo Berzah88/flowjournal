@@ -4,7 +4,7 @@ import { MILESTONE_COLORS } from '../constants';
 // Kullanılan renkleri takip etmek için Set
 let usedColors = new Set();
 
-// Milestone rengini belirleyen fonksiyon
+// Milestone icon arkaplan rengini belirleyen fonksiyon
 export const getMilestoneColor = (milestone) => {
   if (milestone.completed) return "#BFBFBF"; // Completed milestone'lar gri
   
@@ -15,6 +15,11 @@ export const getMilestoneColor = (milestone) => {
   
   // Milestone'a unique renk ata
   return assignUniqueColor(milestone);
+};
+
+// Milestone kart gövde rengini belirleyen fonksiyon - her zaman beyaz
+export const getMilestoneCardColor = () => {
+  return "#F2F2F7"; // Modern Apple tarzı açık gri - modal ile aynı
 };
 
 // Unique renk atama fonksiyonu

@@ -156,12 +156,11 @@ export default HorizontalCalendar;
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 3,
+    paddingTop: 5,
     paddingBottom: 0,
     paddingHorizontal: 20,
     width: '100%',
     backgroundColor: 'transparent',
-    height: 60, // Sabit yükseklik
   },
   calendarStrip: {
     paddingHorizontal: 4,
@@ -169,7 +168,7 @@ const styles = StyleSheet.create({
   dayContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     marginHorizontal: 4,
     borderRadius: 12,

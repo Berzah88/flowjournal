@@ -7,17 +7,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
+  PanResponder,
   Dimensions,
-  ScrollView,
-  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useCompletedTasks, useTaskActions } from "../hooks/useTaskContext";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
-import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS, FONTS, COLORS } from "../constants";
+import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
+import StatusBarComponent from "../components/StatusBar";
 import Card from "../components/Card";
 import ActiveProject from "./ActiveProject";
+import ActiveMilestone from "./ActiveMilestone";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const { width } = Dimensions.get("window");
@@ -31,7 +32,6 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
 
   const [selectedCard, setSelectedCard] = useState(null);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   // Memoized handlers to prevent unnecessary re-renders
   const openCard = useCallback((card) => setSelectedCard(card), []);
@@ -48,16 +48,6 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
   }, []);
 
   const closeMilestone = useCallback(() => setSelectedMilestone(null), []);
-
-  // Refresh handler
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    // Simulate refresh - in real app, this would trigger data reload
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  }, []);
-
 
   // Memoized render functions for FlatList
   const renderCompletedItem = useCallback(({ item }) => (
@@ -80,37 +70,15 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
     return [...completedTasks].reverse();
   }, [completedTasks.length, completedTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.milestones?.map(m => `${m.id}-${m.title}-${m.completed}-${m.journalEntries?.length || 0}-${m.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',') || ''}`).join(',')]);
 
-  // Statistics calculation
-  const stats = useMemo(() => {
-    const totalMilestones = completedTasks.reduce((acc, task) => acc + (task.milestones?.length || 0), 0);
-    const completedMilestones = completedTasks.reduce((acc, task) => 
-      acc + (task.milestones?.filter(m => m.completed).length || 0), 0
-    );
-    const totalJournalEntries = completedTasks.reduce((acc, task) => 
-      acc + (task.milestones?.reduce((msAcc, ms) => msAcc + (ms.journalEntries?.length || 0), 0) || 0), 0
-    );
-    
-    return {
-      totalProjects: completedTasks.length,
-      totalMilestones,
-      completedMilestones,
-      totalJournalEntries,
-      completionRate: totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0
-    };
-  }, [completedTasks]);
-
   // Additional safety check
   if (!completedTasksReversed) {
     return <LoadingSpinner />;
   }
 
   return (
-    <LinearGradient
-      colors={['#f8f9fa', '#e9ecef', '#dee2e6']}
-      style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
+    <View style={styles.container}>
+      <StatusBarComponent />
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -123,75 +91,20 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
           <Ionicons name="arrow-back" size={24} color="#1D1D1F" />
         </TouchableOpacity>
         
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Completed Projects</Text>
-          <Text style={styles.headerSubtitle}>{stats.totalProjects} projects completed</Text>
-        </View>
+        <Text style={styles.headerTitle}>Completed Projects</Text>
         
         <View style={styles.headerSpacer} />
       </View>
-
-      {/* Statistics Cards */}
-      {completedTasksReversed.length > 0 && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statsContent}>
-          <View style={[styles.statCard, { borderTopColor: "#FFD700" }]}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="trophy" size={18} color="#FFD700" />
-            </View>
-            <Text style={styles.statNumber}>{stats.totalProjects}</Text>
-            <Text style={styles.statLabel}>Projects</Text>
-          </View>
-          
-          <View style={[styles.statCard, { borderTopColor: "#4CAF50" }]}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
-            </View>
-            <Text style={styles.statNumber}>{stats.completedMilestones}</Text>
-            <Text style={styles.statLabel}>Milestones</Text>
-          </View>
-          
-          <View style={[styles.statCard, { borderTopColor: "#2196F3" }]}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="journal" size={18} color="#2196F3" />
-            </View>
-            <Text style={styles.statNumber}>{stats.totalJournalEntries}</Text>
-            <Text style={styles.statLabel}>Journal Entries</Text>
-          </View>
-          
-          <View style={[styles.statCard, { borderTopColor: "#FF9800" }]}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="trending-up" size={18} color="#FF9800" />
-            </View>
-            <Text style={styles.statNumber}>{stats.completionRate}%</Text>
-            <Text style={styles.statLabel}>Success Rate</Text>
-          </View>
-          </View>
-        </View>
-      )}
 
       {/* Content */}
       <View style={styles.content}>
         {completedTasksReversed.length === 0 ? (
           <View style={styles.emptyState}>
-            <LinearGradient
-              colors={['#4CAF50', '#45a049']}
-              style={styles.emptyIconContainer}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="checkmark-circle" size={48} color="#FFFFFF" />
-            </LinearGradient>
-            <Text style={styles.emptyTitle}>No Completed Projects Yet</Text>
+            <Ionicons name="checkmark-circle-outline" size={64} color="#8E8E93" />
+            <Text style={styles.emptyTitle}>No Completed Projects</Text>
             <Text style={styles.emptySubtitle}>
-              Complete your first project to see it here! 🎉
+              Your completed projects will appear here
             </Text>
-            <TouchableOpacity 
-              style={styles.createProjectButton}
-              onPress={() => navigation.navigate('Main')}
-            >
-              <Text style={styles.createProjectButtonText}>Start Your First Project</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <FlatList
@@ -204,14 +117,6 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
             maxToRenderPerBatch={10}
             windowSize={10}
             initialNumToRender={5}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#4CAF50']}
-                tintColor="#4CAF50"
-              />
-            }
             getItemLayout={(data, index) => ({
               length: 200, // Approximate card height
               offset: 200 * index,
@@ -231,7 +136,15 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
         />
       )}
 
-    </LinearGradient>
+      {selectedMilestone && (
+        <ActiveMilestone
+          route={{ params: { milestone: selectedMilestone } }}
+          navigation={navigation}
+          milestone={selectedMilestone}
+          onClose={closeMilestone}
+        />
+      )}
+    </View>
   );
 });
 
@@ -240,138 +153,43 @@ export default CompletedProjectsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#F2F2F7",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(0, 0, 0, 0.04)",
-    backdropFilter: "blur(20px)",
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0, 0, 0, 0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: FONTS.SEMI_BOLD,
-    color: "#1D1D1F",
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontFamily: FONTS.REGULAR,
-    color: "#8E8E93",
-    marginTop: 1,
-  },
-  viewModeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(74, 144, 226, 0.1)",
+    backgroundColor: "rgba(0, 0, 0, 0.04)",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#4A90E2",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  statsContainer: {
-    marginTop: 10,
-    marginBottom: 2,
-    height: '14%',
-    minHeight: 54,
-    paddingHorizontal: 15,
-  },
-  statsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flex: 1,
-  },
-  statCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    flex: 1,
-    height: '100%',
-    minHeight: 49,
-    marginHorizontal: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 0,
-    // Modern gradient border effect
-    borderTopWidth: 2,
-    borderTopColor: "transparent",
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.02)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-  statNumber: {
-    fontSize: 16,
-    fontFamily: FONTS.BOLD,
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
     color: "#1D1D1F",
-    marginTop: 0,
-    marginBottom: 4,
-    fontWeight: "700",
+    letterSpacing: -0.2,
   },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: FONTS.MEDIUM,
-    color: "#6B7280",
-    textAlign: "center",
-    marginTop: 0,
-    opacity: 0.8,
-    lineHeight: 12,
+  headerSpacer: {
+    width: 40,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    height: '80%',
   },
   listContainer: {
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  gridContainer: {
-    paddingHorizontal: 10,
-  },
-  gridItem: {
-    flex: 1,
-    marginHorizontal: 5,
-    marginBottom: 15,
-  },
-  listItem: {
-    marginBottom: 15,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   emptyState: {
     flex: 1,
@@ -379,50 +197,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 40,
   },
-  emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    shadowColor: "#4CAF50",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
   emptyTitle: {
-    fontSize: 24,
-    fontFamily: FONTS.BOLD,
+    fontSize: 20,
+    fontFamily: "Poppins_600SemiBold",
     color: "#1D1D1F",
-    marginBottom: 12,
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: "center",
   },
   emptySubtitle: {
     fontSize: 16,
-    fontFamily: FONTS.REGULAR,
+    fontFamily: "Poppins_400Regular",
     color: "#8E8E93",
     textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  createProjectButton: {
-    backgroundColor: "#4CAF50",
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 25,
-    shadowColor: "#4CAF50",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  createProjectButtonText: {
-    fontSize: 16,
-    fontFamily: FONTS.SEMI_BOLD,
-    color: "#FFFFFF",
-    textAlign: "center",
+    lineHeight: 22,
   },
 });
 

@@ -1,6 +1,6 @@
 // hooks/useAnimations.js
-import { useEffect } from "react";
-import { Dimensions } from "react-native";
+import { useEffect, useRef, useCallback } from "react";
+import { Dimensions, Animated } from "react-native";
 import { 
   useSharedValue, 
   withTiming, 
@@ -83,17 +83,15 @@ export const useSpringAnimation = (visible) => {
 
   useEffect(() => {
     if (visible) {
-      translateY.value = withSpring(0, ANIMATION_CONFIGS.SPRING);
-      opacity.value = withTiming(1, { 
-        duration: ANIMATION_DURATIONS.NORMAL 
-      });
-      scale.value = withSpring(1, ANIMATION_CONFIGS.BOUNCE);
+      // ActiveProject ile aynı süreler: 320ms açılış
+      translateY.value = withTiming(0, { duration: 320 });
+      opacity.value = withTiming(1, { duration: 320 });
+      scale.value = withTiming(1, { duration: 320 });
     } else {
-      translateY.value = withSpring(height, ANIMATION_CONFIGS.SPRING);
-      opacity.value = withTiming(0, { 
-        duration: ANIMATION_DURATIONS.FAST 
-      });
-      scale.value = withSpring(0.96, ANIMATION_CONFIGS.BOUNCE);
+      // ActiveProject ile aynı süreler: 200ms kapanış
+      translateY.value = withTiming(height, { duration: 200 });
+      opacity.value = withTiming(0, { duration: 200 });
+      scale.value = withTiming(0.96, { duration: 200 });
     }
   }, [visible]);
 
@@ -172,4 +170,106 @@ export const usePanGesture = (onClose, threshold = 120) => {
   };
 
   return { dragY, handlePanEnd, resetDrag };
+};
+
+// Medya modal animasyonu için hook - Add Project screen benzeri
+export const useMediaModalAnimation = () => {
+  const translateY = useSharedValue(height);
+  const opacity = useSharedValue(0);
+  const backdropOpacity = useSharedValue(0);
+
+  const openModal = () => {
+    // Add Project screen benzeri animasyon - yukarıdan aşağıya
+    backdropOpacity.value = withTiming(1, { 
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+    });
+    translateY.value = withSpring(0, ANIMATION_CONFIGS.SPRING);
+    opacity.value = withTiming(1, { 
+      duration: ANIMATION_DURATIONS.NORMAL,
+      easing: Easing.out(Easing.cubic),
+    });
+  };
+
+  const closeModal = (onComplete) => {
+    // Hızlı kapanış animasyonu
+    backdropOpacity.value = withTiming(0, { 
+      duration: 200,
+      easing: Easing.in(Easing.quad),
+    });
+    translateY.value = withSpring(height, ANIMATION_CONFIGS.SPRING);
+    opacity.value = withTiming(0, { 
+      duration: ANIMATION_DURATIONS.FAST,
+      easing: Easing.in(Easing.quad),
+    }, () => {
+      if (onComplete) {
+        runOnJS(onComplete)();
+      }
+    });
+  };
+
+  const resetAnimation = () => {
+    translateY.value = height;
+    opacity.value = 0;
+    backdropOpacity.value = 0;
+  };
+
+  return {
+    translateY,
+    opacity,
+    backdropOpacity,
+    openModal,
+    closeModal,
+    resetAnimation,
+  };
+};
+
+// Calendar animasyonu için hook - gün değişimlerinde smooth geçiş
+export const useCalendarAnimation = () => {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const animateDateChange = useCallback((callback) => {
+    // Yukarı kaydırma ve fade out
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -20,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Callback'i çalıştır (veri güncelleme)
+      if (callback) callback();
+      
+      // Aşağıdan yukarı gelme ve fade in
+      translateY.setValue(20); // Başlangıç pozisyonu
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  }, [translateY, opacity]);
+
+  const animatedStyle = {
+    opacity: opacity,
+    transform: [{ translateY: translateY }],
+  };
+
+  return {
+    animateDateChange,
+    animatedStyle,
+  };
 };

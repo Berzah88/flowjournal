@@ -12,9 +12,9 @@ import Animated, {
 export default function DataRecoveryMenu({ 
   visible, 
   onClose, 
-  onCheckStatus, 
   onRecoverData, 
-  onCreateBackup 
+  onCreateBackup,
+  onViewCompleted 
 }) {
   // Smooth animasyon değerleri
   const scale = useSharedValue(0);
@@ -51,11 +51,6 @@ export default function DataRecoveryMenu({
   }));
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleCheckStatus = useCallback(() => {
-    onCheckStatus?.();
-    onClose?.();
-  }, [onCheckStatus, onClose]);
-
   const handleRecoverData = useCallback(() => {
     onRecoverData?.();
     onClose?.();
@@ -66,37 +61,28 @@ export default function DataRecoveryMenu({
     onClose?.();
   }, [onCreateBackup, onClose]);
 
+  const handleViewCompleted = useCallback(() => {
+    onViewCompleted?.();
+    onClose?.();
+  }, [onViewCompleted, onClose]);
+
   if (!visible) return null;
 
   return (
     <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.overlay}>
         <Animated.View style={[styles.container, animatedContainerStyle]}>
-          {/* Check Data Status */}
+          {/* View Completed Projects */}
           <TouchableOpacity
             style={styles.item}
-            onPress={handleCheckStatus}
+            onPress={handleViewCompleted}
             accessible={true}
-            accessibilityLabel="Check data status"
+            accessibilityLabel="View completed projects"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="analytics-outline" size={20} color="#FFA726" />
-              <Text style={styles.itemText}>Check Status</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Recover Data */}
-          <TouchableOpacity
-            style={styles.item}
-            onPress={handleRecoverData}
-            accessible={true}
-            accessibilityLabel="Recover lost data"
-            accessibilityRole="button"
-          >
-            <View style={styles.itemContent}>
-              <Ionicons name="refresh-outline" size={20} color="#FF6B6B" />
-              <Text style={[styles.itemText, styles.recoveryText]}>Recover Data</Text>
+              <Ionicons name="checkmark-circle-outline" size={20} color="#FFA726" />
+              <Text style={styles.itemText}>Completed Projects</Text>
             </View>
           </TouchableOpacity>
 
@@ -113,6 +99,20 @@ export default function DataRecoveryMenu({
               <Text style={[styles.itemText, styles.backupText]}>Create Backup</Text>
             </View>
           </TouchableOpacity>
+
+          {/* Recover Data */}
+          <TouchableOpacity
+            style={styles.item}
+            onPress={handleRecoverData}
+            accessible={true}
+            accessibilityLabel="Recover lost data"
+            accessibilityRole="button"
+          >
+            <View style={styles.itemContent}>
+              <Ionicons name="refresh-outline" size={20} color="#FF6B6B" />
+              <Text style={[styles.itemText, styles.recoveryText]}>Recover Data</Text>
+            </View>
+          </TouchableOpacity>
         </Animated.View>
       </View>
     </TouchableWithoutFeedback>
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   container: {
     position: "absolute",
-    top: 20,
+    top: 40,
     right: 18,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.2)",
   },
   item: {
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },

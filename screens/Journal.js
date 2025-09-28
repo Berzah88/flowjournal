@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  BackHandler,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -25,233 +24,19 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
-// import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
+import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTaskActions } from "../hooks/useTaskContext";
 
 const { width, height } = Dimensions.get("window");
 
-const TOP_GAP = 40;
+const TOP_GAP = 50;
 const SWIPE_AREA = 40;
 const CLOSE_THRESHOLD = 110;
 const MODAL_HEIGHT = height - TOP_GAP;
-const PREVIEW_HEIGHT = 120;
-const UI_DISPLAY_LIMIT = 5; // UI'da gösterilecek maksimum resim sayısı
-
-// Sentiment Analysis Functions
-const analyzeSentiment = (text) => {
-  if (!text || text.trim().length === 0) return { score: 0, label: 'neutral' };
-  
-  const positiveWords = [
-    // Türkçe pozitif kelimeler - Temizlenmiş
-    'harika', 'mükemmel', 'güzel', 'iyi', 'başarılı', 'mutlu', 'sevinçli', 
-    'gurur', 'başardım', 'tamamladım', 'başarı', 'süper', 'müthiş', 'hoş', 
-    'keyifli', 'eğlenceli', 'kazandım', 'kazandı', 'neşeli', 'coşkulu', 
-    'enerjik', 'dinamik', 'canlı', 'parlak', 'ışıklı', 'güçlü', 'sağlam', 
-    'dayanıklı', 'cesur', 'kararlı', 'azimli', 'hevesli', 'istekli', 'motiveli', 
-    'heyecanlı', 'coşkun', 'neşe', 'sevinç', 'mutluluk', 'huzur', 'sakin', 
-    'rahat', 'ferah', 'temiz', 'düzenli', 'organize', 'planlı', 'sistematik', 
-    'verimli', 'etkili', 'kazançlı', 'karlı', 'faydalı', 'yararlı', 'değerli', 
-    'önemli', 'anlamlı', 'kaliteli', 'üstün', 'kusursuz', 'ideal',
-    
-    // İngilizce pozitif kelimeler
-    'wonderful', 'great', 'amazing', 'excellent', 'fantastic', 'awesome',
-    'happy', 'excited', 'proud', 'successful', 'completed', 'achieved',
-    'good', 'nice', 'perfect', 'brilliant', 'outstanding', 'superb',
-    'incredible', 'marvelous', 'spectacular', 'magnificent', 'splendid',
-    'glorious', 'delightful', 'charming', 'lovely', 'beautiful', 'gorgeous',
-    'stunning', 'breathtaking', 'impressive', 'remarkable', 'extraordinary',
-    'phenomenal', 'unbelievable'
-  ];
-  
-  const negativeWords = [
-    // Türkçe negatif kelimeler - Temizlenmiş
-    'kötü', 'zor', 'yorgun', 'stresli', 'üzgün', 'sinirli', 'başarısız',
-    'kaybettim', 'başaramadım', 'zorlandım', 'sıkıldım', 'bıktım', 'yorucu',
-    'sıkıcı', 'can sıkıcı', 'sinir bozucu', 'hayal kırıklığı', 'mutsuz', 'hüzünlü',
-    'kederli', 'acılı', 'üzüntülü', 'kırgın', 'kızgın', 'öfkeli', 'gergin',
-    'huzursuz', 'tedirgin', 'endişeli', 'kaygılı', 'panik', 'korku', 'endişe',
-    'stres', 'baskı', 'zorluk', 'engel', 'problem', 'sorun', 'hata', 'yanlış',
-    'kayıp', 'zarar', 'hasar', 'bozuk', 'çalışmıyor', 'işe yaramıyor', 'faydasız',
-    'yararsız', 'değersiz', 'önemsiz', 'anlamsız', 'boş', 'gereksiz', 'fazla',
-    'aşırı', 'yavaş', 'gecikme', 'gecikti', 'gecikmiş', 'bitkin', 'tükenmiş',
-    'halsiz', 'güçsüz', 'zayıf', 'dermansız', 'takatsiz', 'kudretsiz', 'çaresiz',
-    'umutsuz', 'karamsar',
-    
-    // İngilizce negatif kelimeler
-    'bad', 'difficult', 'tired', 'stressed', 'sad', 'angry', 'failed',
-    'struggled', 'bored', 'frustrated', 'disappointed', 'terrible', 'awful',
-    'horrible', 'annoying', 'irritating', 'depressing', 'upsetting', 'hate',
-    'dislike', 'disgusting', 'revolting', 'nasty', 'vile', 'wicked', 'evil',
-    'cruel', 'mean', 'harsh', 'rough', 'tough', 'hard', 'challenging',
-    'problematic', 'troublesome', 'bothersome', 'disturbing', 'concerning',
-    'worrying', 'alarming', 'frightening', 'scary', 'terrifying', 'horrifying',
-    'exhausted', 'weary', 'fatigued', 'drained', 'spent', 'worn', 'depleted',
-    'empty', 'hollow', 'numb', 'lifeless', 'listless', 'lethargic', 'sluggish',
-    'slow', 'heavy', 'burdened', 'overwhelmed', 'swamped', 'strained', 'tense',
-    'anxious', 'worried', 'concerned', 'troubled', 'distressed', 'restless',
-    'uneasy', 'uncomfortable', 'miserable'
-  ];
-  
-  // Metni temizle ve kelimelere ayır
-  const cleanText = text.toLowerCase().replace(/[^\w\s]/g, ' ').trim();
-  const words = cleanText.split(/\s+/).filter(word => word.length > 2);
-  
-  let positiveCount = 0;
-  let negativeCount = 0;
-  let totalSentimentWords = 0;
-  
-  // Her kelimeyi kontrol et
-  words.forEach(word => {
-    let isPositive = false;
-    let isNegative = false;
-    
-    // Pozitif kelimeleri kontrol et - daha hassas eşleştirme
-    for (const pw of positiveWords) {
-      if (word === pw || word.startsWith(pw) || pw.startsWith(word)) {
-        positiveCount++;
-        isPositive = true;
-        totalSentimentWords++;
-        break;
-      }
-    }
-    
-    // Negatif kelimeleri kontrol et (pozitif değilse) - daha hassas eşleştirme
-    if (!isPositive) {
-      for (const nw of negativeWords) {
-        if (word === nw || word.startsWith(nw) || nw.startsWith(word)) {
-          negativeCount++;
-          isNegative = true;
-          totalSentimentWords++;
-          break;
-        }
-      }
-    }
-  });
-  
-  // Eğer hiç sentiment kelimesi yoksa nötr
-  if (totalSentimentWords === 0) {
-    return { score: 0, label: 'neutral', positiveCount: 0, negativeCount: 0 };
-  }
-  
-  // Skor hesapla (sentiment kelimelerine göre)
-  const positiveRatio = positiveCount / totalSentimentWords;
-  const negativeRatio = negativeCount / totalSentimentWords;
-  
-  let score = (positiveRatio - negativeRatio) * 100;
-  score = Math.max(-100, Math.min(100, score));
-  
-  // Daha hassas threshold'lar
-  let label = 'neutral';
-  if (score > 10) label = 'positive';
-  else if (score < -10) label = 'negative';
-  
-  return { score, label, positiveCount, negativeCount };
-};
-
-const getSentimentColor = (sentiment) => {
-  switch (sentiment.label) {
-    case 'positive': return '#4CAF50'; // Green
-    case 'negative': return '#F44336'; // Red
-    default: return '#9E9E9E'; // Gray
-  }
-};
-
-const getSentimentEmoji = (sentiment) => {
-  switch (sentiment.label) {
-    case 'positive': return '😊';
-    case 'negative': return '😔';
-    default: return '😐';
-  }
-};
-
-const getSmartMoodSuggestion = (sentiment, currentMood) => {
-  const suggestions = [];
-  
-  // Sadece mood seçilmemişse veya uyumsuzsa öner
-  if (!currentMood || currentMood === '') {
-    if (sentiment.label === 'positive') {
-      // Pozitif sentiment için daha spesifik öneriler
-      if (sentiment.score > 30) {
-        suggestions.push({
-          mood: 'excited',
-          reason: 'Metnin çok pozitif ve heyecanlı görünüyor!'
-        });
-      } else if (sentiment.score > 20) {
-        suggestions.push({
-          mood: 'happy',
-          reason: 'Metnin pozitif görünüyor. "Happy" mood\'u uygun olabilir!'
-        });
-      } else {
-        suggestions.push({
-          mood: 'calm',
-          reason: 'Metnin huzurlu görünüyor. "Calm" mood\'u uygun olabilir.'
-        });
-      }
-    } else if (sentiment.label === 'negative') {
-      // Negatif sentiment için daha spesifik öneriler
-      if (sentiment.score < -30) {
-        suggestions.push({
-          mood: 'angry',
-          reason: 'Metnin çok negatif görünüyor. "Angry" mood\'u uygun olabilir.'
-        });
-      } else if (sentiment.score < -20) {
-        suggestions.push({
-          mood: 'sad',
-          reason: 'Metnin üzgün görünüyor. "Sad" mood\'u uygun olabilir.'
-        });
-      } else {
-        suggestions.push({
-          mood: 'tired',
-          reason: 'Metnin yorgun görünüyor. "Tired" mood\'u uygun olabilir.'
-        });
-      }
-    }
-  } else {
-    // Mood seçilmiş ama uyumsuzsa öner
-    if (sentiment.label === 'positive' && (currentMood === 'sad' || currentMood === 'angry')) {
-      suggestions.push({
-        mood: 'happy',
-        reason: 'Metnin pozitif ama mood\'un negatif. "Happy" mood\'u daha uygun!'
-      });
-    } else if (sentiment.label === 'negative' && (currentMood === 'happy' || currentMood === 'excited')) {
-      if (sentiment.score < -40) {
-        suggestions.push({
-          mood: 'angry',
-          reason: 'Metnin negatif ama mood\'un pozitif. "Angry" mood\'u daha uygun!'
-        });
-      } else {
-        suggestions.push({
-          mood: 'sad',
-          reason: 'Metnin negatif ama mood\'un pozitif. "Sad" mood\'u daha uygun!'
-        });
-      }
-    }
-  }
-  
-  return suggestions;
-};
-
-const getSmartSuggestions = (sentiment, currentMood) => {
-  const suggestions = [];
-  
-  if (sentiment.label === 'negative') {
-    suggestions.push(
-      "Bugün zor geçmiş gibi görünüyor. Yarın daha iyi olacak! 💪",
-      "Zorluklar geçicidir. Sen güçlüsün! ⭐",
-      "Biraz nefes almayı dene. Her şey yoluna girecek! 🌸"
-    );
-  } else if (sentiment.label === 'positive') {
-    suggestions.push(
-      "Harika! Pozitif enerjin devam etsin! 🎉",
-      "Bu enerjiyi koru, harika gidiyorsun! ✨",
-      "Başarıların devam etsin! 🚀"
-    );
-  }
-  
-  return suggestions;
-};
+const PREVIEW_HEIGHT = 150;
+const MAX_ITEMS = 4;
 
 const MOODS = [
   {
@@ -301,7 +86,6 @@ export default function Journal({
   onClose = () => {},
   milestone = null,
   existingEntry = null,
-  onSave = () => {},
 }) {
 
   const { addJournalEntry, updateJournalEntry } = useTaskActions();
@@ -328,69 +112,12 @@ export default function Journal({
   const [selectedMood, setSelectedMood] = useState(null);
   const [showMoodPicker, setShowMoodPicker] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [autoMoodApplied, setAutoMoodApplied] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
-
-  // sentiment analysis state
-  const [sentiment, setSentiment] = useState({ score: 0, label: 'neutral' });
-  const [moodSuggestions, setMoodSuggestions] = useState([]);
-  const [smartSuggestions, setSmartSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const todayText = new Date().toLocaleDateString("tr-TR", {
     day: "2-digit",
     month: "long",
   });
-
-  // Konum bilgisini al (previews'dan)
-  const locationData = previews.find(item => item.type === "map");
-  const [locationText, setLocationText] = useState(null);
-  const [currentLocation, setCurrentLocation] = useState(null);
-  
-  // Reverse geocoding ile şehir/ilçe bilgisi al
-  const getLocationText = useCallback(async () => {
-    const locationSource = locationData || currentLocation;
-    if (!locationSource) return null;
-    const coords = locationSource.content?.coords || locationSource.coords || locationSource;
-    if (coords) {
-      try {
-        const reverseGeocode = await Location.reverseGeocodeAsync({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        });
-        
-        if (reverseGeocode && reverseGeocode.length > 0) {
-          const location = reverseGeocode[0];
-          // Şehir ve ilçe bilgisini al
-          const city = location.city || location.subregion || location.region;
-          const district = location.district || location.subLocality;
-          
-          if (city && district && city !== district) {
-            return `${district}, ${city}`;
-          } else if (city) {
-            return city;
-          } else {
-            // Fallback: koordinat
-            return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
-          }
-        }
-      } catch (error) {
-        console.warn('Reverse geocoding failed:', error);
-        // Fallback: koordinat
-        return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
-      }
-    }
-    return null;
-  }, [locationData]);
-  
-  // Location text'i güncelle
-  useEffect(() => {
-    if (locationData || currentLocation) {
-      getLocationText().then(setLocationText);
-    } else {
-      setLocationText(null);
-    }
-  }, [locationData, currentLocation, getLocationText]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", (e) =>
@@ -402,44 +129,6 @@ export default function Journal({
       hideSub.remove();
     };
   }, []);
-
-  // Sentiment analysis when text changes
-  useEffect(() => {
-    if (textValue.trim().length > 10) { // Minimum 10 karakter
-      const analysis = analyzeSentiment(textValue);
-      setSentiment(analysis);
-      
-      // Mood önerileri
-      const moodSugs = getSmartMoodSuggestion(analysis, selectedMood?.key);
-      setMoodSuggestions(moodSugs);
-      
-      // Akıllı öneriler
-      const smartSugs = getSmartSuggestions(analysis, selectedMood?.key);
-      setSmartSuggestions(smartSugs);
-      
-      // Önerileri göster (sadece gerçek analiz sonrası)
-      if (analysis.positiveCount > 0 || analysis.negativeCount > 0) {
-        setShowSuggestions(true);
-        
-        // Otomatik mood kaydetme - 10 kelime sonra ve mood seçilmemişse
-        if (textValue.trim().split(/\s+/).length > 10 && !selectedMood && !autoMoodApplied && moodSugs.length > 0) {
-          const suggestedMood = MOODS.find(m => m.key === moodSugs[0].mood);
-          if (suggestedMood) {
-            setSelectedMood(suggestedMood);
-            setAutoMoodApplied(true);
-          }
-        }
-      } else {
-        setShowSuggestions(false);
-      }
-    } else {
-      setSentiment({ score: 0, label: 'neutral' });
-      setMoodSuggestions([]);
-      setSmartSuggestions([]);
-      setShowSuggestions(false);
-      setAutoMoodApplied(false);
-    }
-  }, [textValue, selectedMood, autoMoodApplied]);
 
   // Populate when editing existing entry
   useEffect(() => {
@@ -477,30 +166,7 @@ export default function Journal({
       scale.value = withTiming(1, { duration: 320 });
       opacity.value = withTiming(1, { duration: 320 });
       const t = setTimeout(() => inputRef.current?.focus?.(), 340);
-      
-      // State'leri reset et
-      setAutoMoodApplied(false);
-      
-      // Android geri tuşu için handler
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-        handleClose();
-        return true; // Event'i yakala, uygulamadan çıkmasın
-      });
-      
-      return () => {
-        clearTimeout(t);
-        if (backHandler && backHandler.remove) {
-          backHandler.remove();
-        }
-        // Shared values'ları da reset et
-        translateY.value = MODAL_HEIGHT;
-        scale.value = 0.96;
-        opacity.value = 0;
-        dragY.value = 0;
-        moodPickerOpacity.value = 0;
-        moodPickerScale.value = 0.8;
-        moodPickerTranslateY.value = 20;
-      };
+      return () => clearTimeout(t);
     } else {
       // Journal kapanırken shared value'ları reset et
       Keyboard.dismiss();
@@ -509,7 +175,7 @@ export default function Journal({
       opacity.value = 0;
       dragY.value = 0;
     }
-  }, [visible, translateY, scale, opacity, dragY, handleClose]);
+  }, [visible, translateY, scale, opacity, dragY]);
 
   // Mood picker animation control
   useEffect(() => {
@@ -575,33 +241,33 @@ export default function Journal({
       }
     })
     .onEnd((e) => {
-      if (e.translationY > 80) { // Daha düşük threshold
+      if (e.translationY > 120) {
         dragY.value = withTiming(height, { duration: 200 }, () => {
           runOnJS(handleClose)();
         });
       } else {
         dragY.value = withTiming(0, { duration: 150 });
       }
-    })
-    .minDistance(10); // Minimum mesafe
+    });
 
   const backdropTap = Gesture.Tap().onEnd(() => {
     handleClose();
   });
 
+  const canAddMore = previews.length < MAX_ITEMS;
   const addPreviewImage = (uri) => {
-    setPreviews((p) => {
-      const newPreviews = [...p, { type: "image", content: uri }];
-      // FIFO: Sadece son 3 resmi tut, eski resimleri tamamen sil
-      if (newPreviews.length > UI_DISPLAY_LIMIT) {
-        return newPreviews.slice(-UI_DISPLAY_LIMIT);
-      }
-      return newPreviews;
-    });
+    if (!canAddMore) return false;
+    setPreviews((p) => [...p, { type: "image", content: uri }]);
+    return true;
+  };
+  const addPreviewLocation = (loc) => {
+    if (!canAddMore) return false;
+    setPreviews((p) => [...p, { type: "map", content: loc }]);
     return true;
   };
 
   const pickImage = async () => {
+    if (!canAddMore) return;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         quality: 0.7,
@@ -612,27 +278,23 @@ export default function Journal({
       else if (result?.uri) uri = result.uri;
       if (uri) addPreviewImage(uri);
     } catch (error) {
+      console.error("Image pick error:", error);
       // User'a error gösterme - sessizce logla
     }
   };
 
   const pickLocation = async () => {
+    if (!canAddMore) return;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
+        console.warn("Location permission denied");
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
-      // Location'ı hem currentLocation state'ine hem de previews'e ekle
-      setCurrentLocation(loc);
-      
-      // Location'ı previews array'ine ekle (journal entry için)
-      setPreviews(prev => {
-        // Eğer zaten location varsa, eski olanı kaldır
-        const filteredPreviews = prev.filter(item => item.type !== "map");
-        return [...filteredPreviews, { type: "map", content: loc }];
-      });
+      addPreviewLocation(loc);
     } catch (error) {
+      console.error("Location error:", error);
       // User'a error gösterme - sessizce logla
     }
   };
@@ -653,6 +315,7 @@ export default function Journal({
     }
     if (label === "Save") {
       if (!milestone || !milestone.id) {
+        console.warn("Cannot save journal entry: missing milestone id");
         handleClose();
         return;
       }
@@ -670,29 +333,13 @@ export default function Journal({
         moodColor: selectedMood?.color || null,
       };
 
-      // Save işlemini async olarak yap ve tamamlandıktan sonra modal'ı kapat
-      try {
-        if (editingEntryId) {
-          if (updateJournalEntry) {
-            updateJournalEntry(taskId, msId, editingEntryId, payload);
-          }
-        } else {
-          if (addJournalEntry) {
-            addJournalEntry(taskId, msId, payload);
-          }
-        }
-        
-        // onSave callback'ini çağır
-        onSave();
-        
-        // Kısa bir delay ile modal'ı kapat ki state güncellenmesi tamamlansın
-        setTimeout(() => {
-          handleClose();
-        }, 100);
-      } catch (error) {
-        console.warn('Journal save error:', error);
-        handleClose();
+      if (editingEntryId) {
+        updateJournalEntry && updateJournalEntry(taskId, msId, editingEntryId, payload);
+      } else {
+        addJournalEntry && addJournalEntry(taskId, msId, payload);
       }
+
+      handleClose();
     }
   };
 
@@ -713,49 +360,72 @@ export default function Journal({
         </TouchableOpacity>
       );
     }
-    // Harita artık medya alanında gösterilmiyor, konum bilgisi mood sticker'ının yanında gösterilecek
+    if (item.type === "map") {
+      const coords = item.content?.coords || item.content;
+      return (
+        <View key={key} style={styles.mapWrapper}>
+          <MapView
+            style={styles.mapInner}
+            initialRegion={{
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }}
+            pointerEvents="none"
+          >
+            <Marker
+              coordinate={{
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              }}
+            />
+          </MapView>
+        </View>
+      );
+    }
     return null;
   };
 
   const renderPreviewGrid = () => {
-    // Sadece resimleri filtrele, konum bilgisini hariç tut
-    const imagePreviews = previews.filter(item => item.type === "image");
-    if (!imagePreviews || imagePreviews.length === 0) return null;
+    if (!previews || previews.length === 0) return null;
 
-    // Sadece son 5 resmi göster (UI_DISPLAY_LIMIT)
-    const displayPreviews = imagePreviews.slice(-UI_DISPLAY_LIMIT);
-    
-    // Asimetrik layout: Sol büyük + Sağ 4 küçük (üst 2, alt 2)
-    const leftImage = displayPreviews[0];
-    const rightImages = displayPreviews.slice(1);
+    const left = previews[0] ? [previews[0]] : [];
+    const right = previews.slice(1);
+    const rightCount = right.length;
+
+    let topRow = [];
+    let bottomRow = [];
+    if (rightCount === 1) topRow = [right[0]];
+    else if (rightCount === 2) topRow = right;
+    else if (rightCount === 3) {
+      topRow = [right[0]];
+      bottomRow = right.slice(1, 3);
+    } else if (rightCount >= 4) {
+      topRow = right.slice(0, 2);
+      bottomRow = right.slice(2, 4);
+    }
 
     return (
       <View style={styles.previewWrapper}>
-        <View style={styles.asymmetricGrid}>
-          {/* Sol taraf - 1 büyük resim */}
-          <View style={styles.leftColumn}>
-            {leftImage && renderPreviewItem(leftImage, "left")}
+        <View style={styles.leftGrid}>{left[0] && renderPreviewItem(left[0], "left-0")}</View>
+        <View style={styles.rightGrid}>
+          <View style={{ flexDirection: "row", flex: topRow.length === 1 ? 0.5 : 0.5, marginBottom: 4 }}>
+            {topRow.map((item, idx) => (
+              <View key={idx} style={{ flex: topRow.length === 1 ? 1 : 0.5, paddingRight: 4 }}>
+                {renderPreviewItem(item, `right-top-${idx}`)}
+              </View>
+            ))}
           </View>
-          
-          {/* Sağ taraf - 4 küçük resim */}
-          <View style={styles.rightColumn}>
-            <View style={styles.rightTop}>
-              <View style={styles.rightTopLeft}>
-                {rightImages[0] && renderPreviewItem(rightImages[0], "right-top-left")}
-              </View>
-              <View style={styles.rightTopRight}>
-                {rightImages[1] && renderPreviewItem(rightImages[1], "right-top-right")}
-              </View>
+          {bottomRow.length > 0 && (
+            <View style={{ flexDirection: "row", flex: 0.5 }}>
+              {bottomRow.map((item, idx) => (
+                <View key={idx} style={{ flex: 0.5, paddingRight: 4 }}>
+                  {renderPreviewItem(item, `right-bottom-${idx}`)}
+                </View>
+              ))}
             </View>
-            <View style={styles.rightBottom}>
-              <View style={styles.rightBottomLeft}>
-                {rightImages[2] && renderPreviewItem(rightImages[2], "right-bottom-left")}
-              </View>
-              <View style={styles.rightBottomRight}>
-                {rightImages[3] && renderPreviewItem(rightImages[3], "right-bottom-right")}
-              </View>
-            </View>
-          </View>
+          )}
         </View>
       </View>
     );
@@ -768,7 +438,9 @@ export default function Journal({
     { label: "Save", icon: "save-outline" },
   ];
 
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   return (
     <>
@@ -788,90 +460,21 @@ export default function Journal({
           <GestureDetector gesture={panGesture}>
             <View style={styles.topSpacer} />
           </GestureDetector>
-          
-          {/* Pan gesture için genişletilmiş alan */}
-          <GestureDetector gesture={panGesture}>
-            <View style={styles.panGestureArea} />
-          </GestureDetector>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.dateRow}>
-            <View style={styles.dateContainer}>
-              <View style={styles.dateAndMoodContainer}>
-                <Text style={styles.dateText}>{todayText}</Text>
-                {/* Mood tarihin yanında */}
-                {selectedMood && (
-                  <View style={[styles.moodTag, { backgroundColor: selectedMood.color || "transparent" }]}>
-                    <MaterialIcons
-                      name={getValidIconName(selectedMood.icon)}
-                      size={18}
-                      color="#333"
-                    />
-                    <Text style={styles.moodLabel}>{selectedMood.label}</Text>
-                  </View>
-                )}
-              </View>
-              
-              {/* Cool Sentiment Bar - Header'ın sağında */}
-              <View style={styles.coolSentimentContainer}>
-                <View style={styles.coolSentimentBar}>
-                  <View style={[styles.coolSentimentFill, { 
-                    width: `${Math.abs(sentiment.score)}%`,
-                    backgroundColor: getSentimentColor(sentiment)
-                  }]} />
-                </View>
-                <View style={styles.coolSentimentIcon}>
-                  <MaterialIcons 
-                    name={sentiment.label === 'positive' ? 'sentiment-satisfied' : 
-                          sentiment.label === 'negative' ? 'sentiment-dissatisfied' : 'sentiment-neutral'} 
-                    size={12} 
-                    color={getSentimentColor(sentiment)} 
-                  />
-                </View>
-              </View>
-            </View>
-            
-            {/* Location tarihin altında */}
-            {locationText && (
-              <View style={styles.locationRow}>
-                <View style={styles.locationSticker}>
-                  <Ionicons name="location" size={12} color="#007AFF" />
-                  <Text style={styles.locationText}>{locationText}</Text>
-                </View>
+            <Text style={styles.dateText}>{todayText}</Text>
+            {selectedMood && (
+              <View style={[styles.moodTag, { backgroundColor: selectedMood.color || "transparent" }]}>
+                <MaterialIcons
+                  name={getValidIconName(selectedMood.icon)}
+                  size={18}
+                  color="#333"
+                />
+                <Text style={styles.moodLabel}>{selectedMood.label}</Text>
               </View>
             )}
           </View>
-
-          {/* Minimal Mood Suggestions - 10 kelime sonra */}
-          {textValue.trim().split(/\s+/).length > 10 && showSuggestions && moodSuggestions.length > 0 && (
-            <View style={styles.minimalMoodSuggestions}>
-              {moodSuggestions.map((suggestion, index) => {
-                const suggestedMood = MOODS.find(m => m.key === suggestion.mood);
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.minimalMoodSuggestion}
-                    onPress={() => {
-                      if (suggestedMood) {
-                        setSelectedMood(suggestedMood);
-                        setShowSuggestions(false);
-                        setAutoMoodApplied(true); // Manuel seçim yapıldı
-                      }
-                    }}
-                  >
-                    <View style={[styles.minimalMoodIcon, { backgroundColor: suggestedMood?.color || '#4A90E2' }]}>
-                      <MaterialIcons 
-                        name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
-                        size={16} 
-                        color="#333" 
-                      />
-                    </View>
-                    <Text style={styles.minimalMoodText}>{suggestedMood?.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
 
           {renderPreviewGrid()}
 
@@ -904,7 +507,6 @@ export default function Journal({
                   onPress={() => {
                     // toggle selection (if selecting different mood, replace; if same, keep/replace)
                     setSelectedMood((prev) => (prev?.key === m.key ? m : m));
-                    setAutoMoodApplied(true); // Manuel seçim yapıldı
                     setShowMoodPicker(false);
                   }}
                 >
@@ -917,7 +519,7 @@ export default function Journal({
             </Animated.View>
           )}
 
-          <View style={[styles.buttonRow, { bottom: keyboardHeight ? keyboardHeight + 20 : 20 }]}>
+          <View style={[styles.buttonRow, { marginBottom: keyboardHeight ? keyboardHeight : 16 }]}>
             {buttons.map((btn, i) => (
               <TouchableOpacity
                 key={i}
@@ -983,50 +585,19 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
-  topSpacer: { height: 8 },
-  panGestureArea: { 
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 100,
-    zIndex: 1,
-  },
+  topSpacer: { height: SWIPE_AREA },
   dateRow: {
-    flexDirection: "column",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    paddingTop: 8,
-    minHeight: 60,
-    backgroundColor: "transparent",
-  },
-  dateContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  dateAndMoodContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  moodRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    paddingHorizontal: 16,
+    justifyContent: "flex-start",
   },
   dateText: { 
     paddingHorizontal: 0, 
-    fontSize: 20, 
+    fontSize: 16, 
     color: "#1d1d1f", 
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_500Medium",
     letterSpacing: -0.2,
-    marginRight: 12,
   },
   moodTag: {
     flexDirection: "row",
@@ -1042,80 +613,24 @@ const styles = StyleSheet.create({
     color: "#333",
     fontFamily: "Poppins_400Regular",
   },
-  locationSticker: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 122, 255, 0.1)",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0, 122, 255, 0.3)",
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 10,
-    color: "#007AFF",
-    fontFamily: "Poppins_500Medium",
-  },
   previewWrapper: {
+    flexDirection: "row",
     paddingHorizontal: 16,
     marginTop: 8,
     height: PREVIEW_HEIGHT,
-  },
-  asymmetricGrid: {
-    flexDirection: "row",
-    height: PREVIEW_HEIGHT,
     alignItems: "stretch",
   },
-  leftColumn: {
-    flex: 1,
-    marginRight: 8,
-    height: PREVIEW_HEIGHT,
-  },
-  rightColumn: {
-    flex: 1,
-    flexDirection: "column",
-    height: PREVIEW_HEIGHT,
-  },
-  rightTop: {
-    flex: 1,
-    flexDirection: "row",
-    marginBottom: 4,
-    height: (PREVIEW_HEIGHT - 8) / 2,
-  },
-  rightTopLeft: {
-    flex: 1,
-    marginRight: 4,
-    height: "100%",
-  },
-  rightTopRight: {
-    flex: 1,
-    height: "100%",
-  },
-  rightBottom: {
-    flex: 1,
-    flexDirection: "row",
-    height: (PREVIEW_HEIGHT - 8) / 2,
-  },
-  rightBottomLeft: {
-    flex: 1,
-    marginRight: 4,
-    height: "100%",
-  },
-  rightBottomRight: {
-    flex: 1,
-    height: "100%",
-  },
+  leftGrid: { flex: 1, marginRight: 8, height: PREVIEW_HEIGHT },
+  rightGrid: { flex: 1, flexDirection: "column", height: PREVIEW_HEIGHT },
   previewImage: { 
     width: "100%", 
     height: "100%", 
-    borderRadius: 12, 
-    elevation: 6,
+    borderRadius: 16, 
+    elevation: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   mapWrapper: { 
     flex: 1, 
@@ -1132,7 +647,6 @@ const styles = StyleSheet.create({
   input: { 
     flex: 1, 
     padding: 20, 
-    paddingTop: 30,
     fontSize: 18, 
     color: "#1d1d1f", 
     textAlignVertical: "top", 
@@ -1140,19 +654,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     lineHeight: 24,
   },
-  buttonRow: { 
-    position: "absolute", 
-    bottom: 0, 
-    left: 0, 
-    right: 0, 
-    flexDirection: "row", 
-    justifyContent: "space-around", 
-    paddingHorizontal: 16, 
-    paddingVertical: 30, 
-    backgroundColor: "rgba(248, 249, 250, 0.95)",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)"
-  },
+  buttonRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20 },
   button: { 
     width: 72, 
     height: 52, 
@@ -1160,6 +662,8 @@ const styles = StyleSheet.create({
     borderRadius: 16, 
     justifyContent: "center", 
     alignItems: "center", 
+    marginVertical: 8, 
+    marginBottom: 50,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -1251,92 +755,5 @@ const styles = StyleSheet.create({
   imageModalImage: {
     width: "100%",
     height: "100%",
-  },
-
-  // Cool Sentiment Analysis Styles
-  coolSentimentContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(135, 206, 250, 0.15)", // Soft mavi gövde
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: "rgba(135, 206, 250, 0.4)", // Soft mavi çerçeve
-    minWidth: 70,
-    justifyContent: "center",
-  },
-  coolSentimentBar: {
-    width: 60,
-    height: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    borderRadius: 4,
-    position: "relative",
-    overflow: "visible",
-  },
-  coolSentimentFill: {
-    height: "100%",
-    borderRadius: 4,
-    opacity: 0.9,
-  },
-  coolSentimentIcon: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  minimalMoodSuggestions: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    backgroundColor: "rgba(135, 206, 250, 0.1)",
-    marginHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  minimalMoodSuggestion: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.1)",
-  },
-  minimalMoodIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 6,
-  },
-  minimalMoodText: {
-    fontSize: 11,
-    fontFamily: "Poppins_500Medium",
-    color: "#333",
-  },
-  mapFallback: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-    borderRadius: 8,
-  },
-  mapFallbackText: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 4,
-    textAlign: "center",
   },
 });
