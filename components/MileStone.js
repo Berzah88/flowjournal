@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Animated, Alert, Pressable, Keyboard } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Alert, Pressable, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
+import JournalCard from "./JournalCard";
 import PropTypes from "prop-types";
 import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
+
 
 const MileStone = memo(function MileStone({
   milestone,
@@ -17,6 +19,8 @@ const MileStone = memo(function MileStone({
   isLatest = false,
   isCompleted = false,
   onEditToggle,
+  onOpenJournal,
+  navigation,
 }) {
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
   // usePerformanceMonitor('MileStone');
@@ -162,6 +166,43 @@ const MileStone = memo(function MileStone({
   const cardBgColor = useMemo(() => getMilestoneCardColor(), []);
   const iconBgColor = useMemo(() => getMilestoneColor(milestone), [milestone]);
 
+  // Günlük kartları için gerekli fonksiyonlar
+  const entries = milestone?.journalEntries?.slice().sort((a, b) => b.id - a.id) || [];
+
+  // Günlükleri tarihlere göre gruplandır
+  const groupEntriesByDate = useCallback((entries) => {
+    const groups = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.createdAt);
+      const dateKey = date.toLocaleDateString('tr-TR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(entry);
+    });
+    
+    return Object.keys(groups)
+      .sort((a, b) => {
+        const dateA = new Date(groups[a][0].createdAt);
+        const dateB = new Date(groups[b][0].createdAt);
+        return dateB - dateA;
+      })
+      .map(dateKey => {
+        const dayEntries = groups[dateKey];
+        return {
+          date: dateKey,
+          allEntries: dayEntries
+        };
+      });
+  }, []);
+
+  const groupedEntries = useMemo(() => groupEntriesByDate(entries), [entries, groupEntriesByDate]);
+
   return (
     <>
       <Pressable onPress={() => {
@@ -170,77 +211,86 @@ const MileStone = memo(function MileStone({
           setEditable(false);
         }
       }}>
-        <View style={[styles.container, { backgroundColor: cardBgColor }]}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.cardContent,
-            {
-              transform: [{ scale: pressed && !editable ? 0.98 : 1 }],
-              // Shadow ve elevation değerlerini sabit tutarak parlama efektini önle
-              shadowOpacity: 0.15,
-              elevation: 5,
-            }
-          ]}
-          disabled={editable}
-          onPress={() => {
-            if (!editable && onOpenDetail && !showDeleteOption) {
-              onOpenDetail();
-            }
-          }}
-          onLongPress={handleLongPress}
-          delayLongPress={500}
-        >
-          {/* Edit Button - Top Right Corner */}
-          {!editable && !isCompleted && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.editButton,
-                {
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                  opacity: pressed ? 0.8 : 1,
+        <View style={styles.container}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.milestoneItemClickable,
+              {
+                transform: [{ scale: pressed && !editable ? 0.96 : 1 }],
+              }
+            ]}
+            disabled={editable}
+            onPress={() => {
+              if (!editable && !showDeleteOption) {
+                if (onOpenJournal) {
+                  onOpenJournal(milestone);
+                } else if (onOpenDetail) {
+                  onOpenDetail();
                 }
-              ]}
-              onPress={handleEditToggle}
-            >
-              <Text style={[styles.editButtonText, { color: "#545454" }]}>Edit</Text>
-            </Pressable>
-          )}
-          <View style={[styles.iconWrapper, { backgroundColor: iconBgColor }]}>
-            <Image source={require("../assets/yourDateVisual.png")} style={styles.icon} />
-          </View>
-
-          <View style={styles.body}>
-            {editable ? (
-              <TextInput
-                ref={inputRef}
-                style={styles.titleInput}
-                value={title}
-                placeholder="Milestone title"
-                onChangeText={setTitle}
-                editable={editable}
-                onSubmitEditing={handleCreateMilestone}
-                returnKeyType="done"
-                blurOnSubmit={true}
-                multiline={true}
+              }
+            }}
+            onLongPress={handleLongPress}
+            delayLongPress={500}
+          >
+            <View style={styles.iconContainer}>
+              <Ionicons 
+                name="ellipse" 
+                size={18} 
+                color={isCompleted ? "#555" : iconBgColor} 
               />
-            ) : (
-              <Text style={styles.titleText}>{title}</Text>
-            )}
+            </View>
+            <View style={styles.milestoneContent}>
+              {editable ? (
+                <TextInput
+                  ref={inputRef}
+                  style={styles.milestoneText}
+                  value={title}
+                  placeholder="Milestone title"
+                  onChangeText={setTitle}
+                  editable={editable}
+                  onSubmitEditing={handleCreateMilestone}
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  multiline={true}
+                />
+              ) : (
+                <Text style={[styles.milestoneText, isCompleted && styles.completedText]}>{title}</Text>
+              )}
+              
+              {/* Date info - only show if not editable or if milestone has dates */}
+              {(!editable || (startDate && endDate)) && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.dateRow,
+                    {
+                      transform: [{ scale: pressed && editable ? 0.98 : 1 }],
+                      opacity: pressed && editable ? 0.8 : 1,
+                    }
+                  ]}
+                  onPress={() => !isCompleted && editable && setCalendarVisible(true)}
+                >
+                  <Ionicons name="calendar-outline" size={12} color="#666" style={styles.timerIcon} />
+                  <Text style={[styles.daysText, isCompleted && styles.completedText]}>{getDaysText()}</Text>
+                  {editable && <Ionicons name="chevron-down" size={14} color="#555" />}
+                </Pressable>
+              )}
+            </View>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.dateRow,
-                {
-                  transform: [{ scale: pressed && editable ? 0.98 : 1 }],
-                  opacity: pressed && editable ? 0.8 : 1,
-                }
-              ]}
-              onPress={() => !isCompleted && editable && setCalendarVisible(true)}
-            >
-              <Ionicons name="calendar-outline" size={16} color="#666" style={styles.timerIcon} />
-              <Text style={styles.daysText}>{getDaysText()}</Text>
-              {editable && <Ionicons name="chevron-down" size={18} color="#555" />}
-            </Pressable>
+            {/* Edit Button - Top Right Corner */}
+            {!editable && !isCompleted && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.editButton,
+                  {
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                    opacity: pressed ? 0.8 : 1,
+                  }
+                ]}
+                onPress={handleEditToggle}
+              >
+                <Text style={styles.editButtonText}>Edit</Text>
+              </Pressable>
+            )}
 
             {/* Create Button - Top Right Corner (same position as Edit button) */}
             {editable && title.trim() && (
@@ -257,9 +307,28 @@ const MileStone = memo(function MileStone({
                 <Text style={styles.createButtonText}>Create</Text>
               </Pressable>
             )}
-          </View>
+          </Pressable>
 
-        </Pressable>
+          {/* Günlük Kartları */}
+          {!editable && groupedEntries.length > 0 && (
+            <View style={styles.journalCardsContainer}>
+              {groupedEntries.slice(0, 3).map((dayGroup) => (
+                <JournalCard 
+                  key={dayGroup.date}
+                  dayGroup={dayGroup}
+                  navigation={navigation}
+                  taskId={milestone?.taskId}
+                  milestoneId={milestone?.id}
+                  isCompleted={isCompleted}
+                />
+              ))}
+              {groupedEntries.length > 3 && (
+                <View style={styles.moreEntriesIndicator}>
+                  <Text style={styles.moreEntriesText}>+{groupedEntries.length - 3} daha fazla gün</Text>
+                </View>
+              )}
+            </View>
+          )}
 
         {/* Action Options Overlay */}
         {showDeleteOption && (
@@ -394,68 +463,46 @@ export default MileStone;
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: 16,
+    marginHorizontal: 28,
+  },
+  milestoneItemClickable: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 16,
-    marginBottom: 12,
-    marginHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 3,
-    overflow: "visible",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    minHeight: 40,
+    justifyContent: 'flex-start',
+    backgroundColor: "rgba(0, 122, 255, 0.04)", // Çok hafif mavi arka plan
   },
-  cardContent: {
-    flexDirection: "row",
+  iconContainer: {
+    width: 30,
     alignItems: "center",
-    padding: 14,
-    flex: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  iconWrapper: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    // backgroundColor dinamik olarak belirleniyor
     justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-    elevation: 2,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
   },
-  icon: { width: 24, height: 24 },
-  body: { flex: 1, paddingVertical: 4 },
-  titleInput: {
-    fontSize: 14,
-    fontFamily: FONTS.MEDIUM,
-    marginBottom: 8,
-    lineHeight: 20,
-    color: "#1a1a1a",
-    flexWrap: "wrap",
-    paddingRight: 50, // Edit tuşu için boşluk (12px button + 12px padding + 5px margin + 21px text width)
+  milestoneContent: {
+    flex: 1,
+    flexDirection: "column",
+    marginLeft: 8,
   },
-  titleText: {
-    fontSize: 14,
+  milestoneText: {
     fontFamily: FONTS.MEDIUM,
-    marginBottom: 8,
+    fontSize: 14,
+    color: "#1D1D1F", // Apple'ın koyu gri rengi
     lineHeight: 20,
-    color: "#1a1a1a",
-    flexWrap: "wrap",
+    letterSpacing: -0.1,
     paddingRight: 50, // Edit tuşu için boşluk
+  },
+  completedText: {
+    color: "#888", // Daha soluk renk completed milestone'lar için
   },
   dateRow: { 
     flexDirection: "row", 
     alignItems: "center",
     marginTop: 4,
   },
-  timerIcon: { marginRight: 6 },
+  timerIcon: { marginRight: 4 },
   daysText: {
     color: "#666",
     fontSize: 11,
@@ -542,8 +589,8 @@ const styles = StyleSheet.create({
   },
   createButton: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 8,
+    right: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignItems: "center",
@@ -552,13 +599,13 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     fontFamily: "Poppins_600SemiBold",
-    fontSize: 14,
+    fontSize: 12,
     color: "#545454",
   },
   editButton: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 8,
+    right: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignItems: "center",
@@ -566,9 +613,31 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   editButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
     color: "#545454",
+  },
+  // Günlük kartları container
+  journalCardsContainer: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  moreEntriesIndicator: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 8,
+    padding: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    borderStyle: "dashed",
+    marginLeft: 4,
+    marginRight: 20,
+  },
+  moreEntriesText: {
+    fontSize: 10,
+    color: "#666",
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: 0.3,
   },
 });
 
@@ -589,6 +658,8 @@ MileStone.propTypes = {
   isLatest: PropTypes.bool,
   isCompleted: PropTypes.bool,
   onEditToggle: PropTypes.func,
+  onOpenJournal: PropTypes.func,
+  navigation: PropTypes.object,
 };
 
 MileStone.defaultProps = {
@@ -600,4 +671,6 @@ MileStone.defaultProps = {
   isLatest: false,
   isCompleted: false,
   onEditToggle: null,
+  onOpenJournal: null,
+  navigation: null,
 };

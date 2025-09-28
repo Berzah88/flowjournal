@@ -16,7 +16,8 @@ const { width } = Dimensions.get('window');
 
 const DailyMoodSummary = ({ 
   activeTasks = [], 
-  selectedDate
+  selectedDate,
+  hasMedia = false
 }) => {
   // Bugünkü mood'ları hesapla
   const todayMoodData = useMemo(() => {
@@ -223,45 +224,10 @@ const DailyMoodSummary = ({
   }
   
   return (
-    <View style={styles.container}>
-      {/* Mood Status - Inline Design */}
-      <View style={[
-        styles.moodStatus,
-        { 
-          borderLeftColor: todayMoodData.dominantMood?.color || '#4A90E2',
-          backgroundColor: todayMoodData.dominantMood ? 
-            'rgba(248, 249, 250, 0.8)' : 
-            'rgba(74, 144, 226, 0.05)'
-        }
-      ]}>
-        <View style={styles.moodIconContainer}>
-          <MaterialIcons 
-            name={todayMoodData.dominantMood?.icon || 'create'} 
-            size={20} 
-            color={todayMoodData.dominantMood?.color || '#4A90E2'} 
-          />
-        </View>
-        
-        <View style={styles.statusContent}>
-          <Text style={styles.statusText}>
-            {todayMoodData.dominantMood ? 
-              `${todayMoodData.dominantMood.label || todayMoodData.dominantMood.key} bir gün geçiriyorsunuz` :
-              "Bugün nasıl hissediyorsunuz?"
-            }
-          </Text>
-          
-          <Text style={[
-            styles.motivationText,
-            { color: todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2' }
-          ]}>
-            {todayMoodData.totalEntries > 0 ? 
-              "Duygularınızı kaydetmeye devam edin" :
-              "Hemen bir Milestone'a tıklayın ve günlük yazmaya başlayın"
-            }
-          </Text>
-        </View>
-      </View>
-      
+    <View style={[
+      styles.container,
+      hasMedia && styles.mediaOverlay
+    ]}>
       {/* Progress Status - Inline Design */}
       {progressData.total > 0 && (
         <View style={styles.progressStatus}>
@@ -300,53 +266,30 @@ const DailyMoodSummary = ({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 30,
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  moodStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    maxWidth: width * 0.75, // Horizontal daraltma
-  },
-  moodIconContainer: {
-    marginRight: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusContent: {
-    flex: 1,
-  },
-  statusText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: '#1D1D1F',
-    marginBottom: 2,
-    lineHeight: 18,
-  },
-  motivationText: {
-    fontSize: 12,
-    fontFamily: 'Poppins_400Regular',
-    color: '#8E8E93',
-    lineHeight: 16,
+  mediaOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    marginHorizontal: 16,
+    marginTop: 8,
   },
   // Progress Status Styles
   progressStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     backgroundColor: 'rgba(52, 199, 89, 0.05)',
-    borderRadius: 12,
+    borderRadius: 10,
     borderLeftWidth: 3,
     borderLeftColor: '#34C759',
-    marginTop: 8,
-    maxWidth: width * 0.75, // Horizontal daraltma
+    marginTop: 4,
+    marginHorizontal: 2, // Kartlarla aynı margin
   },
   progressIconContainer: {
     marginRight: 12,

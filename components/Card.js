@@ -143,49 +143,39 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
   return (
     <Pressable
       style={({ pressed }) => [
-        cardStyle,
+        styles.modernCard,
+        completed && styles.modernCompletedCard,
         {
           transform: [{ scale: pressed ? 0.98 : 1 }],
-          shadowOpacity: pressed ? 0.2 : 0.1,
-          elevation: pressed ? 6 : 4,
         }
       ]}
       onPress={onPress}
     >
-      <Text style={titleStyle}>{title}</Text>
-
-      <View style={styles.bottomRow}>
-        <View style={styles.daysLeft}>
-          <MaterialIcons name="schedule" size={18} color="#007AFF" />
-          <Text style={[daysLeftTextStyle, { marginLeft: 6 }]}>{Math.ceil(remainingDays)} days left</Text>
+      {/* Modern Header */}
+      <View style={styles.modernHeader}>
+        <View style={styles.modernTitleSection}>
+          <Text style={[styles.modernTitle, completed && styles.modernCompletedTitle]}>
+            {title}
+          </Text>
+          <View style={[styles.modernDateFrame, completed && styles.modernCompletedDateFrame]}>
+            <Text style={[styles.modernDateRange, completed && styles.modernCompletedDateText]}>
+              {new Date(startDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })} - {new Date(endDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
+            </Text>
+          </View>
         </View>
-
-        <Svg
-          height={radius * 2 + strokeWidth * 2}
-          width={radius * 2 + strokeWidth * 2}
-          style={{ transform: [{ rotate: "-90deg" }, { translateY: -12 }, { translateX: 15 }] }}
-        >
-          <Circle
-            cx={center}
-            cy={center}
-            r={radius}
-            stroke={completed ? "#555" : "#D0D0D0"}
-            strokeWidth={strokeWidth}
-            fill="none"
-          />
-          <AnimatedCircle
-            cx={center}
-            cy={center}
-            r={radius}
-            stroke={completed ? "#FFD700" : "#007AFF"}
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-          />
-        </Svg>
       </View>
+
+      {/* Modern Bottom Section */}
+      <View style={styles.modernBottomSection}>
+        <View style={styles.modernDaysLeft}>
+          <MaterialIcons name="schedule" size={16} color={completed ? "#A0A0A0" : "#007AFF"} />
+          <Text style={[styles.modernDaysLeftText, completed && styles.modernCompletedDaysText]}>
+            {Math.ceil(remainingDays)} gün kaldı
+          </Text>
+        </View>
+        
+      </View>
+
 
       {/* Active Milestones Listesi */}
       {activeMilestones.length > 0 && (
@@ -288,6 +278,92 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
 export default Card;
 
 const styles = StyleSheet.create({
+  // Modern Card Styles
+  modernCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    width: "100%",
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    borderWidth: 0.5,
+    borderColor: "rgba(0, 0, 0, 0.03)",
+  },
+  modernCompletedCard: {
+    backgroundColor: "#1A1A1A",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  modernHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  modernTitleSection: {
+    flex: 1,
+    marginRight: 16,
+  },
+  modernTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.BOLD,
+    letterSpacing: -0.3,
+    color: "#1D1D1F",
+    lineHeight: 24,
+    marginBottom: 4,
+  },
+  modernDateFrame: {
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  modernDateRange: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: '#8E8E93',
+    letterSpacing: -0.1,
+  },
+  modernBottomSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  modernDaysLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modernDaysLeftText: {
+    fontSize: 13,
+    fontFamily: FONTS.MEDIUM,
+    color: "#007AFF",
+    marginLeft: 6,
+  },
+  // Completed States
+  modernCompletedTitle: {
+    color: "#FFFFFF",
+  },
+  modernCompletedDateFrame: {
+    backgroundColor: '#2A2A2A',
+  },
+  modernCompletedDateText: {
+    color: "#A0A0A0",
+  },
+  modernCompletedDaysText: {
+    color: "#A0A0A0",
+  },
+  modernCompletedMilestoneText: {
+    color: "#A0A0A0",
+  },
+  // Legacy styles (keeping for compatibility)
   card: {
     backgroundColor: "#FFFFFF", // Temiz beyaz arka plan
     padding: 24, // Daha geniş padding
@@ -311,16 +387,45 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   title: {
     fontSize: 20,
     fontFamily: FONTS.BOLD,
     letterSpacing: -0.3,
-    marginBottom: 16,
     color: "#1D1D1F", // Apple'ın kullandığı koyu gri
     lineHeight: 26,
+    flex: 1,
+  },
+  dateContainer: {
+    alignItems: 'flex-end',
+  },
+  projectDateRange: {
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  dateText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: '#8E8E93',
   },
   completedTitle: {
     color: "#fff",
+  },
+  completedDateRange: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  completedDateText: {
+    color: '#fff',
   },
   bottomRow: {
     flexDirection: "row",

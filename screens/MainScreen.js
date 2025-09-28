@@ -9,23 +9,35 @@ import {
   Animated,
   PanResponder,
   Dimensions,
+  TouchableWithoutFeedback,
+  Image,
+  ScrollView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import AnimatedReanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useActiveTasks, useCompletedTasks, useTaskActions, useTaskSaving, useDataRecovery } from "../hooks/useTaskContext";
 import { useDataRecoveryOperations } from "../hooks/useDataRecoveryOperations";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
-import StatusBarComponent from "../components/StatusBar";
 import StatusTabs from "../components/StatusTabs";
+import StatusBarComponent from "../components/StatusBar";
 import Card from "../components/Card";
 import AddProjectScreen from "./AddProjectScreen";
 import ActiveProject from "./ActiveProject";
-import ActiveMilestone from "./ActiveMilestone";
+import Journal from "./Journal";
 import LoadingSpinner from "../components/LoadingSpinner";
 import DataRecoveryMenu from "../components/DataRecoveryMenu";
 import MyDayScreen from "./MyDayScreen";
 import AddMilestoneModal from "../components/AddMilestoneModal";
+import MoodStatement from "../components/MoodStatement";
+import DailyMoodSummary from "../components/DailyMoodSummary";
+import HorizontalCalendar from "../components/HorizontalCalendar";
 
 const { width, height } = Dimensions.get("window");
 
@@ -43,9 +55,16 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [activeIndex, setActiveIndex] = useState(0); // 0 = my day, 1 = active
   const [addVisible, setAddVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
-  const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [dataRecoveryMenuVisible, setDataRecoveryMenuVisible] = useState(false);
   const [mainMenuVisible, setMainMenuVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [forceUpdate, setForceUpdate] = useState(0);
+  
+  // Menu animasyon değerleri
+  const menuScale = useSharedValue(0);
+  const menuOpacity = useSharedValue(0);
+  const menuTranslateY = useSharedValue(-20);
   
   // MyDay screen states
   const [myDaySelectedCard, setMyDaySelectedCard] = useState(null);
@@ -62,23 +81,43 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const openCard = useCallback((card) => setSelectedCard(card), []);
   const closeCard = useCallback(() => setSelectedCard(null), []);
 
-  const openMilestone = useCallback((milestone, project) => {
-    const milestoneData = {
-      ...milestone,
-      taskId: project.id,
-      projectTitle: project.title,
-      autoOpenJournal: true // Journal'ı otomatik aç
-    };
-    setSelectedMilestone(milestoneData);
+
+  // MyDay screen için journal açma fonksiyonu
+  const handleMyDayOpenJournal = useCallback((milestoneData) => {
+    setMyDaySelectedMilestone(milestoneData);
   }, []);
 
-  const closeMilestone = useCallback(() => setSelectedMilestone(null), []);
+  // MyDay screen için proje ekleme fonksiyonu
+  const handleMyDayAddProject = useCallback(() => {
+    setAddVisible(true);
+  }, []);
+
 
   // Data recovery menu handlers
   const openDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(true), []);
   const closeDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(false), []);
 
   const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
+
+  // Menu açılma/kapanma animasyonu
+  useEffect(() => {
+    if (mainMenuVisible) {
+      menuScale.value = withSpring(1, {
+        damping: 25,
+        stiffness: 300,
+        mass: 0.5,
+      });
+      menuOpacity.value = withTiming(1, { duration: 200 });
+      menuTranslateY.value = withSpring(0, {
+        damping: 25,
+        stiffness: 300,
+      });
+    } else {
+      menuScale.value = withTiming(0, { duration: 150 });
+      menuOpacity.value = withTiming(0, { duration: 150 });
+      menuTranslateY.value = withTiming(-20, { duration: 150 });
+    }
+  }, [mainMenuVisible]);
 
   // Cleanup animations on unmount to prevent memory leaks
   useEffect(() => {
@@ -104,8 +143,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     Animated.spring(panX, {
       toValue: target,
       useNativeDriver: true,
-      bounciness: 0,
-      speed: 20,
+      tension: 300,
+      friction: 30,
     }).start(() => {
       // commit final state-cleanly
       offsetRef.current = target;
@@ -181,11 +220,19 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       endDate={item.endDate}
       completed={item.done}
       activeMilestones={item.milestones?.filter((m) => !m.completed) ?? []}
-      onMilestonePress={(milestone) => openMilestone(milestone, item)}
+      onMilestonePress={(milestone) => {
+        const milestoneData = {
+          ...milestone,
+          taskId: item.id,
+          projectTitle: item.title,
+          autoOpenJournal: true
+        };
+        setMyDaySelectedMilestone(milestoneData);
+      }}
       onPress={() => openCard(item)}
       style={{ marginBottom: 15 }}
     />
-  ), [openCard, openMilestone]);
+  ), [openCard]);
 
   const renderCompletedItem = useCallback(({ item }) => (
     <Card
@@ -201,6 +248,15 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   ), [openCard]);
 
   const keyExtractor = useCallback((item) => item.id.toString(), []);
+
+  // Menu animasyonlu style
+  const menuAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: menuScale.value },
+      { translateY: menuTranslateY.value }
+    ],
+    opacity: menuOpacity.value,
+  }));
 
   // Memoized data arrays with content-based dependencies
   const activeTasksReversed = useMemo(() => {
@@ -226,23 +282,39 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       >
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
-            <Text style={styles.header}>Flow Journal</Text>
+            <View style={styles.headerLeft}>
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../assets/Logo.png')} 
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.header}>Flow Journal</Text>
+              </View>
+            </View>
             <View style={styles.headerActions}>
               <TouchableOpacity 
-                style={styles.dataRecoveryButton} 
-                onPress={openDataRecoveryMenu}
+                style={styles.menuButton} 
+                onPress={() => setMainMenuVisible(true)}
                 accessible={true}
-                accessibilityLabel="Data recovery options"
+                accessibilityLabel="Menu options"
                 accessibilityRole="button"
               >
-                <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
+                <Ionicons name="ellipsis-horizontal" size={20} color="#667eea" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-      <StatusBarComponent activeCount={activeTasks.length} doneCount={completedTasks.length} />
+      {/* Mood Statement - Status Tabs'ın üstünde */}
+      <MoodStatement 
+        activeTasks={activeTasks} 
+        selectedDate={selectedDate}
+      />
 
+      {/* Status Tabs - Swipe alanı dışında */}
       <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
 
       <View style={styles.viewport}>
@@ -255,21 +327,52 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         >
           {/* My Day Screen (left) */}
           <View style={{ width }}>
-            <MyDayScreen 
-              navigation={navigation}
-              selectedCard={myDaySelectedCard}
-              setSelectedCard={setMyDaySelectedCard}
-              selectedMilestone={myDaySelectedMilestone}
-              setSelectedMilestone={setMyDaySelectedMilestone}
-              addMilestoneModalVisible={myDayAddMilestoneModalVisible}
-              setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
-              selectedProjectForMilestone={myDaySelectedProjectForMilestone}
-              setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
+            {/* Horizontal Calendar */}
+            <HorizontalCalendar
+              selectedDate={selectedDate}
+              onDateSelect={setSelectedDate}
+              tasksByDate={{}}
+              milestones={[]}
             />
+            
+            {/* Today's Summary Section */}
+            <View style={styles.summaryHeaderContainer}>
+              <Text style={styles.summaryHeaderTitle}>Today's Summary</Text>
+            </View>
+            
+            {/* Scrollable Content */}
+            <ScrollView 
+              style={styles.myDayScrollView}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.myDayScrollContent}
+            >
+              {/* Daily Mood Summary with Progress - MyDay'de */}
+              <DailyMoodSummary
+                activeTasks={activeTasks}
+                selectedDate={selectedDate}
+              />
+              <MyDayScreen 
+                navigation={navigation}
+                selectedCard={myDaySelectedCard}
+                setSelectedCard={setMyDaySelectedCard}
+                selectedMilestone={myDaySelectedMilestone}
+                setSelectedMilestone={setMyDaySelectedMilestone}
+                addMilestoneModalVisible={myDayAddMilestoneModalVisible}
+                setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
+                selectedProjectForMilestone={myDaySelectedProjectForMilestone}
+                setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
+                selectedDate={selectedDate}
+                onOpenJournal={handleMyDayOpenJournal}
+                onAddProject={handleMyDayAddProject}
+              />
+            </ScrollView>
           </View>
 
           {/* Active list (right) */}
           <View style={{ width }}>
+            {/* Status Bar */}
+            <StatusBarComponent activeCount={activeTasks.length} doneCount={completedTasks.length} />
+            
             <FlatList
               data={activeTasksReversed}
               keyExtractor={keyExtractor}
@@ -288,117 +391,86 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         </Animated.View>
       </View>
 
-      {/* Modern FAB with Menu */}
-      <TouchableOpacity 
-        style={styles.addButton} 
-        onPress={() => setMainMenuVisible(true)} 
-        activeOpacity={0.8}
-        accessible={true}
-        accessibilityLabel="Main menu"
-        accessibilityHint="Opens main menu with project options"
-        accessibilityRole="button"
-      >
-        <LinearGradient
-          colors={['#667eea', '#764ba2']}
-          style={styles.addButtonGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </LinearGradient>
-      </TouchableOpacity>
 
-      {/* Main Menu Modal */}
+      {/* Main Menu - ActiveTaskMenu Style */}
       {mainMenuVisible && (
-        <View style={styles.menuOverlay}>
-          <TouchableOpacity 
-            style={styles.menuBackdrop}
-            onPress={() => setMainMenuVisible(false)}
-            activeOpacity={1}
-          />
-          <View style={styles.menuContainer}>
-            <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>Menu</Text>
-              <TouchableOpacity 
-                onPress={() => setMainMenuVisible(false)}
-                style={styles.menuCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.menuItems}>
-              <TouchableOpacity 
+        <TouchableWithoutFeedback onPress={() => setMainMenuVisible(false)}>
+          <View style={styles.menuOverlay}>
+            <AnimatedReanimated.View style={[styles.menuContainer, menuAnimatedStyle]}>
+              {/* Add New Project */}
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setMainMenuVisible(false);
                   setAddVisible(true);
                 }}
+                accessible={true}
+                accessibilityLabel="Add new project"
+                accessibilityRole="button"
               >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="add-circle" size={24} color="#4A90E2" />
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="add-circle-outline" size={20} color="#4A90E2" />
+                  <Text style={styles.menuItemText}>Add New Project</Text>
                 </View>
-                <Text style={styles.menuItemText}>Add New Project</Text>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              {/* Completed Projects */}
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setMainMenuVisible(false);
                   navigation.navigate('CompletedProjects');
                 }}
+                accessible={true}
+                accessibilityLabel="View completed projects"
+                accessibilityRole="button"
               >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="checkmark-circle" size={24} color="#28a745" />
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#4ECDC4" />
+                  <Text style={styles.menuItemText}>Completed Projects</Text>
                 </View>
-                <Text style={styles.menuItemText}>Completed Projects</Text>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              {/* Settings & Data */}
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   setMainMenuVisible(false);
                   setDataRecoveryMenuVisible(true);
                 }}
+                accessible={true}
+                accessibilityLabel="Settings and data management"
+                accessibilityRole="button"
               >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="settings" size={24} color="#6c757d" />
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="settings-outline" size={20} color="#667eea" />
+                  <Text style={styles.menuItemText}>Settings & Data</Text>
                 </View>
-                <Text style={styles.menuItemText}>Settings & Data</Text>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setMainMenuVisible(false);
-                  // Clear storage functionality
-                  clearStorage();
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="trash" size={24} color="#dc3545" />
-                </View>
-                <Text style={styles.menuItemText}>Clear All Data</Text>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
-            </View>
+            </AnimatedReanimated.View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       )}
 
       <AddProjectScreen visible={addVisible} onClose={() => setAddVisible(false)} />
 
       {selectedCard && <ActiveProject selectedCard={selectedCard} onClose={closeCard} navigation={navigation} />}
       
-      {selectedMilestone && <ActiveMilestone milestone={selectedMilestone} onClose={closeMilestone} navigation={navigation} />}
-      
       {/* MyDay modals */}
       {myDaySelectedCard && <ActiveProject selectedCard={myDaySelectedCard} onClose={() => setMyDaySelectedCard(null)} navigation={navigation} />}
       
-      {myDaySelectedMilestone && <ActiveMilestone milestone={myDaySelectedMilestone} onClose={() => setMyDaySelectedMilestone(null)} navigation={navigation} />}
+      {myDaySelectedMilestone && <Journal 
+        visible={!!myDaySelectedMilestone} 
+        milestone={myDaySelectedMilestone} 
+        onClose={() => setMyDaySelectedMilestone(null)}
+        onSave={() => {
+          // Journal kaydedildiğinde refresh trigger
+          setRefreshKey(prev => prev + 1);
+          setForceUpdate(prev => prev + 1);
+        }}
+        fromMainScreen={true}
+      />}
 
       {/* MyDay AddMilestoneModal */}
       <AddMilestoneModal
@@ -450,7 +522,8 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingVertical: 20,
+    marginBottom: 8,
   },
   headerTop: {
     flexDirection: "row",
@@ -458,29 +531,48 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  logoContainer: {
+    marginRight: 16,
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   header: {
-    fontSize: 32,
+    fontSize: 26,
     fontFamily: "Poppins_700Bold",
-    color: "#2c3e50",
+    color: "#1a1a1a",
     letterSpacing: -0.5,
-    paddingBottom: 8,
+    lineHeight: 30,
   },
   headerActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 12,
+    alignItems: "center",
   },
-  dataRecoveryButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#4A90E2",
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    borderWidth: 1,
+    borderColor: 'rgba(102, 126, 234, 0.15)',
+    shadowColor: "#667eea",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   viewport: { 
     flex: 1, 
@@ -514,35 +606,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-  addButton: {
-    position: "absolute",
-    bottom: 30,
-    right: 30,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  addButtonGradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButtonText: { 
-    color: "#fff", 
-    fontSize: 36, 
-    textAlign: "center", 
-    fontFamily: "Poppins_300Light",
-    lineHeight: 36,
-  },
   
-  // Main Menu Styles
+  // Main Menu Styles - ActiveTaskMenu Style
   menuOverlay: {
     position: "absolute",
     top: 0,
@@ -551,64 +616,60 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 1000,
   },
-  menuBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
   menuContainer: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#ffffff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 40,
-    maxHeight: height * 0.6,
-  },
-  menuHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  menuTitle: {
-    fontSize: 20,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#1D1D1F",
-  },
-  menuCloseButton: {
-    padding: 4,
-  },
-  menuItems: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    top: 20,
+    right: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minWidth: 200,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    backdropFilter: "blur(20px)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   menuItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  menuItemContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 4,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  menuItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f8f9fa",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
   },
   menuItemText: {
-    flex: 1,
     fontSize: 16,
-    fontFamily: "Poppins_500Medium",
+    color: "#2c3e50",
+    fontFamily: "Poppins_600SemiBold",
+    marginLeft: 12,
+  },
+  deleteText: { 
+    color: "#E74C3C" 
+  },
+  // Summary Header Styles
+  summaryHeaderContainer: {
+    marginHorizontal: 30,
+    marginTop: 16,
+    marginBottom: 0,
+  },
+  summaryHeaderTitle: {
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
     color: "#1D1D1F",
+    marginBottom: 0,
+  },
+  // My Day ScrollView Styles
+  myDayScrollView: {
+    flex: 1,
+  },
+  myDayScrollContent: {
+    paddingBottom: 40,
   },
 });
 

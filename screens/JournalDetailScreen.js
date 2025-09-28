@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -10,54 +10,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import Journal from "./Journal";
-// import { useTaskActions } from "../context/TaskContext"; // Şimdilik kullanmıyoruz
-// import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 const { width, height } = Dimensions.get("window");
 
 const JournalDetailScreen = ({ 
   route, 
   navigation,
-  onTextEntryEdit = null
+  onTextEntryEdit
 }) => {
-  const { selectedMediaData } = route?.params || {};
-  const [journalModalVisible, setJournalModalVisible] = useState(false);
-  const [editingEntry, setEditingEntry] = useState(null);
-  const [editingMilestone, setEditingMilestone] = useState(null);
-
-  // Edit fonksiyonu - Journal modal'ını açmak için
-  const handleEditTextEntry = (entry) => {
-    if (!selectedMediaData) {
-      console.warn('SelectedMediaData not available');
-      return;
-    }
-    
-    // selectedMediaData'dan taskId ve milestoneId bilgilerini al
-    const taskId = selectedMediaData.taskId;
-    const milestoneId = selectedMediaData.milestoneId;
-    
-    if (!taskId || !milestoneId) {
-      console.warn('TaskId or MilestoneId not available for editing entry');
-      return;
-    }
-    
-    // Milestone objesini oluştur
-    const milestoneData = {
-      id: milestoneId,
-      taskId: taskId,
-      title: 'Edit Journal Entry' // Bu bilgiyi selectedMediaData'dan alabiliriz
-    };
-    
-    // Edit state'lerini set et
-    setEditingEntry(entry);
-    setEditingMilestone(milestoneData);
-    setJournalModalVisible(true);
-  };
+  const { selectedMediaData } = route.params;
 
   const renderMediaGrid = (entry) => {
-    if (!entry) return null;
-    
     const previews = [
       ...(entry.images?.map((uri) => ({ type: "image", content: uri })) || []),
       ...(entry.location ? [{ type: "map", content: entry.location }] : []),
@@ -95,12 +59,20 @@ const JournalDetailScreen = ({
         return (
           <View key={key} style={styles.mediaItem}>
             <View style={styles.mapWrapper}>
-              <View style={styles.mapFallback}>
-                <MaterialIcons name="location-on" size={24} color="#007AFF" />
-                <Text style={styles.mapFallbackText}>
-                  📍 {coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)}
-                </Text>
-              </View>
+              <MapView
+                style={styles.mapInner}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={{
+                  latitude: coords.latitude,
+                  longitude: coords.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                scrollEnabled={true}
+                zoomEnabled={true}
+              >
+                <Marker coordinate={coords} />
+              </MapView>
             </View>
           </View>
         );
@@ -165,8 +137,8 @@ const JournalDetailScreen = ({
           <MaterialIcons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <View style={styles.titleSection}>
-          <Text style={styles.date}>{selectedMediaData?.date || 'No date'}</Text>
-          {selectedMediaData?.mood && (
+          <Text style={styles.date}>{selectedMediaData.date}</Text>
+          {selectedMediaData.mood && (
             <View style={[styles.mood, { backgroundColor: selectedMediaData.mood.color || "#fff" }]}>
               <MaterialIcons name={getValidIconName(selectedMediaData.mood.icon)} size={16} color="#333" />
               <Text style={styles.moodText}>{selectedMediaData.mood.label}</Text>
@@ -193,27 +165,24 @@ const JournalDetailScreen = ({
             showsVerticalScrollIndicator={true}
             bounces={true}
           >
-            {selectedMediaData?.textEntries && selectedMediaData.textEntries.length > 0 ? (
+            {selectedMediaData.textEntries && selectedMediaData.textEntries.length > 0 ? (
               selectedMediaData.textEntries.map((entry, index) => (
                 <View key={index} style={styles.noteItem}>
                   <View style={styles.noteHeader}>
                     <Text style={styles.noteTime}>
-                      {entry?.createdAt ? new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
+                      {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
                         hour: '2-digit',
                         minute: '2-digit'
-                      }) : 'No time'}
+                      })}
                     </Text>
-                    {/* Edit butonunu sadece active milestone'lar için göster */}
-                    {selectedMediaData?.isCompleted !== true && (
-                      <TouchableOpacity 
-                        style={styles.editButton}
-                        onPress={() => handleEditTextEntry(entry)}
-                      >
-                        <MaterialIcons name="edit" size={16} color="#007AFF" />
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity 
+                      style={styles.editButton}
+                      onPress={() => onTextEntryEdit(entry)}
+                    >
+                      <MaterialIcons name="edit" size={16} color="#007AFF" />
+                    </TouchableOpacity>
                   </View>
-                  <Text style={styles.noteContent}>{entry?.text || 'No text'}</Text>
+                  <Text style={styles.noteContent}>{entry.text}</Text>
                 </View>
               ))
             ) : (
@@ -224,20 +193,6 @@ const JournalDetailScreen = ({
           </ScrollView>
         </View>
       </View>
-      
-      {/* Journal Modal */}
-      {journalModalVisible && editingMilestone && (
-        <Journal 
-          visible={journalModalVisible}
-          onClose={() => {
-            setJournalModalVisible(false);
-            setEditingEntry(null);
-            setEditingMilestone(null);
-          }}
-          milestone={editingMilestone}
-          existingEntry={editingEntry}
-        />
-      )}
     </SafeAreaView>
   );
 };
@@ -458,19 +413,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
     color: "#999",
-    textAlign: "center",
-  },
-  mapFallback: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-    borderRadius: 8,
-  },
-  mapFallbackText: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 4,
     textAlign: "center",
   },
 });

@@ -1,5 +1,5 @@
 // context/TaskContext.js
-import React, { createContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { createContext, useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { assignUniqueColor } from "../utils/milestoneColors";
 import { STORAGE_KEYS } from "../constants";
@@ -9,6 +9,15 @@ import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 // Context'i bölerek re-render optimizasyonu
 export const TaskContext = createContext();
 export const TaskActionsContext = createContext();
+
+// Hook to use task actions
+export const useTaskActions = () => {
+  const context = useContext(TaskActionsContext);
+  if (!context) {
+    throw new Error('useTaskActions must be used within a TaskProvider');
+  }
+  return context;
+};
 
 // Module-level flag to avoid double init within the same JS runtime
 let HAS_INITIALIZED = false;
@@ -106,6 +115,15 @@ export const TaskProvider = ({ children }) => {
       return;
     }
 
+    // Timeout ile lock'u otomatik serbest bırak
+    const lockTimeout = setTimeout(() => {
+      if (saveLockRef.current) {
+        console.warn("⚠️ Save lock timeout, force releasing...");
+        saveLockRef.current = false;
+        setIsSaving(false);
+      }
+    }, 10000); // 10 saniye timeout
+
     saveLockRef.current = true;
     setIsSaving(true);
 
@@ -142,6 +160,7 @@ export const TaskProvider = ({ children }) => {
         handleAsyncStorageError(error, "save");
       }
     } finally {
+      clearTimeout(lockTimeout);
       saveLockRef.current = false;
       setIsSaving(false);
     }
@@ -244,7 +263,7 @@ export const TaskProvider = ({ children }) => {
         
         const newMilestone = {
           ...milestone,
-          id: Date.now(),
+          id: `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           completed: false,
           journalEntries: [],
           media: [],
@@ -413,14 +432,31 @@ export const TaskProvider = ({ children }) => {
                 ms.id === msId
                   ? {
                       ...ms,
-                      journalEntries: [
-                        ...(ms.journalEntries || []),
-                        {
+                      journalEntries: (() => {
+                        const currentEntries = ms.journalEntries || [];
+                        const newEntry = {
                           id: Date.now(),
                           ...entry,
                           createdAt: new Date().toISOString(),
-                        },
-                      ],
+                        };
+
+                        // Eğer yeni entry'de mood varsa, aynı günün diğer entry'lerindeki mood'ları temizle
+                        if (entry.mood || entry.moodIcon || entry.moodColor) {
+                          const today = new Date().toDateString();
+                          const updatedEntries = currentEntries.map(existingEntry => {
+                            const existingDate = new Date(existingEntry.createdAt).toDateString();
+                            if (existingDate === today && (existingEntry.mood || existingEntry.moodIcon || existingEntry.moodColor)) {
+                              // Aynı günün mood bilgilerini temizle
+                              const { mood, moodIcon, moodColor, ...cleanedEntry } = existingEntry;
+                              return cleanedEntry;
+                            }
+                            return existingEntry;
+                          });
+                          return [...updatedEntries, newEntry];
+                        }
+
+                        return [...currentEntries, newEntry];
+                      })(),
                     }
                   : ms
               ),
@@ -440,11 +476,40 @@ export const TaskProvider = ({ children }) => {
                 ms.id === msId
                   ? {
                       ...ms,
-                      journalEntries: (ms.journalEntries || []).map((entry) =>
-                        entry.id === entryId
-                          ? { ...entry, ...updates, updatedAt: new Date().toISOString() }
-                          : entry
-                      ),
+                      journalEntries: (() => {
+                        const currentEntries = ms.journalEntries || [];
+                        
+                        // Eğer güncellenen entry'de mood varsa, aynı günün diğer entry'lerindeki mood'ları temizle
+                        if (updates.mood || updates.moodIcon || updates.moodColor) {
+                          const updatedEntry = currentEntries.find(entry => entry.id === entryId);
+                          if (updatedEntry) {
+                            const entryDate = new Date(updatedEntry.createdAt).toDateString();
+                            const updatedEntries = currentEntries.map(existingEntry => {
+                              const existingDate = new Date(existingEntry.createdAt).toDateString();
+                              if (existingDate === entryDate && existingEntry.id !== entryId && (existingEntry.mood || existingEntry.moodIcon || existingEntry.moodColor)) {
+                                // Aynı günün diğer entry'lerindeki mood bilgilerini temizle
+                                const { mood, moodIcon, moodColor, ...cleanedEntry } = existingEntry;
+                                return cleanedEntry;
+                              }
+                              return existingEntry;
+                            });
+                            
+                            // Güncellenen entry'yi de güncelle
+                            return updatedEntries.map((entry) =>
+                              entry.id === entryId
+                                ? { ...entry, ...updates, updatedAt: new Date().toISOString() }
+                                : entry
+                            );
+                          }
+                        }
+
+                        // Normal güncelleme
+                        return currentEntries.map((entry) =>
+                          entry.id === entryId
+                            ? { ...entry, ...updates, updatedAt: new Date().toISOString() }
+                            : entry
+                        );
+                      })(),
                     }
                   : ms
               ),
@@ -519,9 +584,22 @@ export const TaskProvider = ({ children }) => {
       if (currentTasks) {
         await AsyncStorage.setItem(`${STORAGE_KEYS.TASKS}_backup`, currentTasks);
         console.log("📦 Backup oluşturuldu");
+        return {
+          success: true,
+          message: "Backup başarıyla oluşturuldu"
+        };
+      } else {
+        return {
+          success: false,
+          message: "Kaydedilecek veri bulunamadı"
+        };
       }
     } catch (error) {
       console.warn("⚠️ Backup oluşturulamadı:", error);
+      return {
+        success: false,
+        message: error.message || "Backup oluşturulamadı"
+      };
     }
   }, []);
 

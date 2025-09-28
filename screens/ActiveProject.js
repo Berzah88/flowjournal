@@ -1,26 +1,27 @@
 import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
 import EditModal from "../components/EditModal";
-import ActiveMilestone from "./ActiveMilestone";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
 import ProjectCalendar from "../components/ProjectCalendar";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 import ActiveProjectHeader from "../components/ActiveProjectHeader";
 import ActiveProjectMilestones from "../components/ActiveProjectMilestones";
-import Animated, {
+import AnimatedReanimated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   runOnJS,
+  Easing,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 const { width, height } = Dimensions.get("window");
 
-export default function ActiveProject({ selectedCard, onClose, setMainActiveTab }) {
+
+export default function ActiveProject({ selectedCard, onClose, setMainActiveTab, navigation }) {
   const tasks = useTasks();
   const {
     deleteTask,
@@ -40,6 +41,12 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
   const [activeTab, setActiveTab] = useState(0); // 0 = milestones, 1 = calendar
   const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Journal entry sonrası refresh için
+  const [forceUpdate, setForceUpdate] = useState(0); // Force update için
+
+  // Horizontal tab switching animations (like MainScreen)
+  const panX = useRef(new Animated.Value(0)).current;
+  const offsetRef = useRef(0);
 
   // Reset editing milestone when modal closes
   useEffect(() => {
@@ -48,7 +55,44 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     }
   }, [addMilestoneModalVisible]);
 
-  // Get current task directly without memoization to ensure fresh data
+  // Cleanup animations on unmount
+  useEffect(() => {
+    return () => {
+      if (panX) {
+        panX.stopAnimation();
+      }
+    };
+  }, [panX]);
+
+  // Memoized animate to tab index (0 or 1)
+  const animateToTab = useCallback((index) => {
+    const target = -index * width;
+
+    // ensure no leftover offset/animation
+    panX.stopAnimation();
+    try {
+      panX.flattenOffset();
+    } catch (e) {
+      // some RN versions may throw if no offset - ignore
+    }
+
+    Animated.spring(panX, {
+      toValue: target,
+      useNativeDriver: true,
+      bounciness: 0,
+      speed: 20,
+    }).start(() => {
+      // commit final state-cleanly
+      offsetRef.current = target;
+      setActiveTab(index);
+      panX.setValue(target);
+      panX.setOffset(0);
+    });
+  }, [panX]);
+  
+  
+
+  // Get current task - NO MEMOIZATION to ensure updates
   const currentTask = tasks.find((t) => t.id === selectedCard?.id) || selectedCard;
   
   if (!currentTask) return null;
@@ -58,19 +102,71 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
   const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
   const isModalOpen = !!(editVisible || selectedMilestone || selectedJournalMilestone || addMilestoneModalVisible);
 
-  // Memoize progress calculation
+  // Progress calculation with proper memoization
   const progress = useMemo(() => {
     return currentTask?.milestones?.length
       ? currentTask.milestones.filter((m) => m.completed).length /
         currentTask.milestones.length
       : 0;
-  }, [currentTask]);
+  }, [currentTask?.milestones?.length, currentTask?.milestones?.filter(m => m.completed).length]);
 
   const translateY = useSharedValue(height);
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
   const dragY = useSharedValue(0);
   const progressAnim = useSharedValue(0);
+  
+  // Cleanup refs for memory leak prevention
+  const animationCleanupRef = useRef([]);
+
+  // PanResponder for horizontal tab switching
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        // only start when horizontal movement dominant and no modals open
+        return !isModalOpen && Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
+      },
+      onPanResponderGrant: () => {
+        // prepare to track delta relative to committed offset
+        panX.stopAnimation();
+        panX.setOffset(offsetRef.current);
+        panX.setValue(0);
+      },
+      onPanResponderMove: (_, gesture) => {
+        // compute allowed dx range so offset + dx ∈ [-width, 0]
+        const offset = offsetRef.current;
+        const minDx = -width - offset; // lowest allowed dx
+        const maxDx = -offset; // highest allowed dx
+        const clampedDx = Math.max(Math.min(gesture.dx, maxDx), minDx);
+        panX.setValue(clampedDx);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        // merge offset and value
+        try {
+          panX.flattenOffset();
+        } catch (e) {}
+        const currentOffset = offsetRef.current; // either 0 or -width
+        const threshold = width * 0.3; // 30% of screen width
+
+        // Decide navigation based on gesture.dx (not clamped) and current offset
+        if (gesture.dx <= -threshold && currentOffset === 0) {
+          // swipe left enough from milestones -> go to calendar (index 1)
+          animateToTab(1);
+        } else if (gesture.dx >= threshold && currentOffset === -width) {
+          // swipe right enough from calendar -> go to milestones (index 0)
+          animateToTab(0);
+        } else {
+          // snap back to the current page
+          animateToTab(currentOffset === 0 ? 0 : 1);
+        }
+      },
+      onPanResponderTerminate: () => {
+        // cancel -> snap back
+        animateToTab(offsetRef.current === 0 ? 0 : 1);
+      },
+      onShouldBlockNativeResponder: () => false,
+    })
+  ).current;
 
   useEffect(() => {
     translateY.value = withTiming(0, { duration: 320 });
@@ -104,6 +200,42 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     return () => sub.remove();
   }, [menuVisible, editVisible, selectedMilestone, selectedJournalMilestone]);
 
+  // Cleanup animations on unmount
+  useEffect(() => {
+    return () => {
+      // Stop all running animations
+      if (translateY) translateY.value = 0;
+      if (scale) scale.value = 1;
+      if (opacity) opacity.value = 0;
+      if (dragY) dragY.value = 0;
+      if (progressAnim) progressAnim.value = 0;
+      
+      // PanX cleanup
+      if (panX) {
+        panX.stopAnimation();
+        if (panX.removeAllListeners) {
+          panX.removeAllListeners();
+        }
+        panX.setValue(0);
+        try {
+          panX.flattenOffset();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+      }
+      
+      // Clear any pending animation callbacks
+      if (animationCleanupRef.current) {
+        animationCleanupRef.current.forEach(cleanup => {
+          if (typeof cleanup === 'function') {
+            cleanup();
+          }
+        });
+        animationCleanupRef.current = [];
+      }
+    };
+  }, [translateY, scale, opacity, dragY, progressAnim, panX]); // Dependencies eklendi
+
   const handleClose = useCallback(() => {
     translateY.value = withTiming(height, { duration: 200 });
     opacity.value = withTiming(0, { duration: 200 }, () => {
@@ -136,17 +268,31 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     setAddMilestoneModalVisible(true);
   }, []);
 
+  const handleOpenJournal = useCallback((milestone) => {
+    const milestoneData = {
+      ...milestone,
+      taskId: currentTask.id,
+      projectTitle: currentTask.title,
+    };
+    setSelectedJournalMilestone(milestoneData);
+  }, [currentTask]);
+
   const handleSaveMilestone = useCallback((milestoneData) => {
     if (!currentTask?.id) return;
     
-    if (editingMilestone) {
+    // Check if we're editing by looking at milestoneData.id
+    if (milestoneData.id && milestoneData.id.startsWith('milestone_')) {
       // Edit existing milestone
       updateMilestone(currentTask.id, milestoneData.id, milestoneData);
     } else {
       // Add new milestone
       addMilestone(currentTask.id, milestoneData);
     }
-  }, [currentTask?.id, addMilestone, updateMilestone, editingMilestone]);
+    
+    // Modal'ı kapat ve state'i temizle
+    setAddMilestoneModalVisible(false);
+    setEditingMilestone(null);
+  }, [currentTask?.id, addMilestone, updateMilestone]);
 
   const handleEdit = useCallback(() => {
     setMenuVisible(false);
@@ -161,6 +307,25 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     },
     [currentTask?.id, updateTask]
   );
+
+  // Memoize the EditModal close handler to prevent recreation
+  const handleEditClose = useCallback(() => {
+    setEditVisible(false);
+  }, []);
+
+  // Memoize the project prop for EditModal to prevent unnecessary re-renders
+  const editModalProject = useMemo(() => {
+    if (!editVisible) return null;
+    // Sadece gerekli field'ları döndür
+    return {
+      id: currentTask?.id,
+      title: currentTask?.title,
+      startDate: currentTask?.startDate,
+      endDate: currentTask?.endDate
+    };
+  }, [editVisible, currentTask?.id, currentTask?.title, currentTask?.startDate, currentTask?.endDate]);
+
+
 
   const panGesture = Gesture.Pan()
     .enabled(!isModalOpen)
@@ -192,34 +357,32 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
     width: progressAnim.value * 100 + "%",
   }));
 
-  // Simple tab switching function
+
+  // Tab switching with horizontal animation
   const handleTabSwitch = useCallback((newTab) => {
     if (newTab === activeTab) return;
+    // set activeIndex immediately so header animates right away
     setActiveTab(newTab);
-  }, [activeTab]);
+    // set offsetRef immediately so panResponderGrant later uses correct offset
+    offsetRef.current = -newTab * width;
+    animateToTab(newTab);
+  }, [activeTab, animateToTab]);
 
-  // Memoize milestone calculations to prevent unnecessary re-renders
-  const allMilestones = useMemo(() => {
-    return [...(currentTask?.milestones || [])].sort((a, b) => a.id - b.id);
-  }, [currentTask]);
+  // Milestone calculations - NO MEMOIZATION to ensure updates
+  const allMilestones = [...(currentTask?.milestones || [])].sort((a, b) => a.id - b.id);
   
-  const completedMilestones = useMemo(() => {
-    return allMilestones.filter((m) => m.completed);
-  }, [allMilestones]);
-  
-  const activeMilestones = useMemo(() => {
-    return allMilestones.filter((m) => !m.completed);
-  }, [allMilestones]);
+  const completedMilestones = allMilestones.filter((m) => m.completed);
+  const activeMilestones = allMilestones.filter((m) => !m.completed);
 
   return (
-    <Animated.View style={[
-      styles.overlayCard, 
-      isCompleted && styles.completedOverlay, 
-      activeTab === 1 && styles.calendarOverlay,
+    <AnimatedReanimated.View style={[
+      styles.modernContainer, 
+      isCompleted && styles.completedContainer, 
+      activeTab === 1 && styles.calendarContainer,
       animatedStyle
     ]}>
-      <View style={{ flex: 1 }}>
-        {/* Card Header */}
+      <View style={styles.contentWrapper}>
+        {/* Modern Header */}
         <ActiveProjectHeader
           currentTask={currentTask}
           isCompleted={isCompleted}
@@ -232,125 +395,182 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab 
           panGesture={panGesture}
         />
 
-        {/* Menu Button - Sadece Milestones tab'da görünür */}
-        {!isModalOpen && activeTab === 0 && (
-          <TouchableOpacity onPress={() => setMenuVisible((s) => !s)} style={styles.menuButton}>
-            <Ionicons name="ellipsis-vertical" size={22} color={isCompleted ? "#fff" : "#333"} />
-          </TouchableOpacity>
-        )}
-
-        <View style={{ flex: 1, minHeight: 400 }}>
-          {activeTab === 0 ? (
-            // Milestones Tab
-            <ActiveProjectMilestones
-              currentTask={currentTask}
-              allMilestones={allMilestones}
-              activeMilestones={activeMilestones}
-              completedMilestones={completedMilestones}
-              onUpdateMilestone={updateMilestone}
-              onCompleteMilestone={completeMilestone}
-              onDeleteMilestone={deleteMilestone}
-              onSetActiveMilestone={setActiveMilestone}
-              onOpenMilestoneDetail={setSelectedMilestone}
-              onOpenJournalEditor={setSelectedJournalMilestone}
-              onEditToggle={(milestone) => {
-                setEditingMilestone(milestone);
-                setAddMilestoneModalVisible(true);
-              }}
-              onAddMilestone={handleAddMilestone}
-            />
-          ) : (
-            // Calendar Tab
-            <ProjectCalendar 
-              milestones={allMilestones}
-              projectStartDate={currentTask?.startDate}
-              projectEndDate={currentTask?.endDate}
-            />
+        {/* Menu Button - Her iki tab'da da görünür */}
+          {!isModalOpen && (
+            <TouchableOpacity onPress={() => setMenuVisible((s) => !s)} style={styles.menuButton}>
+              <Ionicons name="ellipsis-vertical" size={22} color={isCompleted ? "#fff" : "#333"} />
+            </TouchableOpacity>
           )}
-        </View>
 
-        {/* Menüler ve Modallar - Sadece Milestones tab'da çalışır */}
-        {activeTab === 0 && (
-          <>
-            <ActiveTaskMenu
-              visible={menuVisible}
-              onClose={() => setMenuVisible(false)}
-              onToggleComplete={handleToggleComplete}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              isCompleted={isCompleted}
-            />
-            <EditModal visible={editVisible} onClose={() => setEditVisible(false)} project={currentTask} onSave={handleSaveEdit} />
-            {selectedMilestone && <ActiveMilestone milestone={selectedMilestone} onClose={() => setSelectedMilestone(null)} />}
-            {selectedJournalMilestone && <Journal visible={!!selectedJournalMilestone} milestone={selectedJournalMilestone} onClose={() => setSelectedJournalMilestone(null)} />}
-            <AddMilestoneModal 
-              visible={addMilestoneModalVisible} 
-              onClose={() => setAddMilestoneModalVisible(false)} 
-              onSave={handleSaveMilestone}
-              editingMilestone={editingMilestone}
-            />
-          </>
-        )}
-      </View>
-    </Animated.View>
+          <View style={{ flex: 1, minHeight: 400 }}>
+            {/* Horizontal tab container */}
+            <Animated.View
+              {...panResponder.panHandlers}
+              style={[
+                styles.tabContainer,
+                { width: width * 2, transform: [{ translateX: panX }] },
+              ]}
+            >
+              {/* Milestones Tab (left) */}
+              <View style={{ width }}>
+                <ActiveProjectMilestones
+                  key={refreshKey} // Refresh trigger
+                  currentTask={currentTask}
+                  allMilestones={allMilestones}
+                  activeMilestones={activeMilestones}
+                  completedMilestones={completedMilestones}
+                  onUpdateMilestone={updateMilestone}
+                  onCompleteMilestone={completeMilestone}
+                  onDeleteMilestone={deleteMilestone}
+                  onSetActiveMilestone={setActiveMilestone}
+                  onOpenMilestoneDetail={setSelectedMilestone}
+                  onOpenJournalEditor={setSelectedJournalMilestone}
+                  onEditToggle={(milestone) => {
+                    setEditingMilestone(milestone);
+                    setAddMilestoneModalVisible(true);
+                  }}
+                  onAddMilestone={handleAddMilestone}
+                  onOpenJournal={handleOpenJournal}
+                  navigation={navigation}
+                  refreshKey={refreshKey}
+                />
+              </View>
+
+              {/* Calendar Tab (right) */}
+              <View style={{ width }}>
+                <ProjectCalendar 
+                  milestones={allMilestones}
+                  projectStartDate={currentTask?.startDate}
+                  projectEndDate={currentTask?.endDate}
+                />
+              </View>
+            </Animated.View>
+          </View>
+
+          {/* Menüler ve Modallar - Her iki tab'da da çalışır */}
+          <ActiveTaskMenu
+                visible={menuVisible}
+                onClose={() => setMenuVisible(false)}
+                onToggleComplete={handleToggleComplete}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                isCompleted={isCompleted}
+              />
+              <EditModal visible={editVisible} onClose={handleEditClose} project={editModalProject} onSave={handleSaveEdit} />
+              {selectedJournalMilestone && <Journal 
+                visible={!!selectedJournalMilestone} 
+                milestone={selectedJournalMilestone} 
+                onSave={() => {
+                  // Journal kaydedildiğinde refresh trigger
+                  setRefreshKey(prev => prev + 1);
+                  setForceUpdate(prev => prev + 1);
+                }}
+                onClose={() => {
+                  setSelectedJournalMilestone(null);
+                }} 
+              />}
+              <AddMilestoneModal 
+                visible={addMilestoneModalVisible} 
+                onClose={() => {
+                  setAddMilestoneModalVisible(false);
+                  setEditingMilestone(null);
+                }} 
+                onSave={handleSaveMilestone}
+                editingMilestone={editingMilestone}
+              />
+          
+        </View>
+    </AnimatedReanimated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlayCard: { 
+  // Modern Container Styles
+  modernContainer: { 
     position: "absolute", 
-    top: 35, 
+    top: 40, // Daha az boşluk
     width: width, 
-    height: height - 35, 
-    backgroundColor: "#F5F1F1", 
-    borderRadius: 20, 
+    height: height - 40, // Yüksekliği artır
+    backgroundColor: "#FFFFFF", 
     zIndex: 100, 
     elevation: 10, 
-    overflow: "hidden" 
+    overflow: "hidden",
+    borderTopLeftRadius: 20, // Üst köşeleri yuvarla
+    borderTopRightRadius: 20,
   },
-  completedOverlay: { 
-    backgroundColor: "#111111" 
+  completedContainer: { 
+    backgroundColor: "#1A1A1A" 
   },
-  calendarOverlay: { 
-    backgroundColor: "#F8FBFF" 
+  calendarContainer: { 
+    backgroundColor: "#FFFFFF" 
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingTop: 12, // Header için minimal padding
   },
   menuButton: { 
     position: "absolute", 
-    top: 18, 
-    right: 18, 
-    padding: 6, 
-    zIndex: 110 
+    top: 10, 
+    right: 24, 
+    padding: 8, 
+    zIndex: 110,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
+  tabContainer: { 
+    flexDirection: "row", 
+    flex: 1 
+  },
+  // Milestone Styles - Modern
   milestoneHeader: { 
     flexDirection: "row", 
     justifyContent: "space-between", 
     alignItems: "center", 
-    paddingHorizontal: 20
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(248, 251, 255, 0.5)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   milestoneTitle: { 
-    fontFamily: "Poppins_700Bold", 
-    marginTop: 10, 
-    fontSize: 16, 
-    color: "#505050" 
+    fontFamily: "Poppins_600SemiBold", 
+    fontSize: 18, 
+    color: "#1D1D1F",
+    letterSpacing: -0.5,
   },
   addText: { 
-    fontSize: 30, 
+    fontSize: 24, 
     fontFamily: "Poppins_700Bold", 
-    color: "#4A90E2", 
-    padding: 5 
+    color: "#007AFF", 
+    padding: 8,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 16,
+    width: 40,
+    height: 40,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   emptyHint: { 
-    color: "#888", 
+    color: "#8E8E93", 
     fontStyle: "italic", 
-    marginVertical: 8, 
-    padding: 10 
+    marginVertical: 24, 
+    padding: 20,
+    textAlign: 'center',
+    fontSize: 16,
+    fontFamily: "Poppins_400Regular",
   },
   completedHeader: { 
-    fontFamily: "Poppins_700Bold", 
-    marginTop: 20, 
-    marginBottom: 6, 
+    fontFamily: "Poppins_600SemiBold", 
+    marginTop: 24, 
+    marginBottom: 12, 
     fontSize: 16, 
-    color: "#505050", 
-    marginHorizontal: 20 
+    color: "#1D1D1F", 
+    marginHorizontal: 24,
+    letterSpacing: -0.3,
   },
 });

@@ -7,7 +7,6 @@ import WelcomeScreen from './screens/WelcomeScreen';
 import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
 import ActiveProject from './screens/ActiveProject';
-import ActiveMilestone from './screens/ActiveMilestone';
 import JournalDetailScreen from './screens/JournalDetailScreen';
 import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
 import { TaskProvider } from './context/TaskContext';
@@ -46,7 +45,6 @@ function AppNavigator() {
         <Stack.Screen name="Main" component={MainScreen} />
         <Stack.Screen name="AddProject" component={AddProjectScreen} />
         <Stack.Screen name="ActiveProject" component={ActiveProject} />
-        <Stack.Screen name="ActiveMilestone" component={ActiveMilestone} />
         <Stack.Screen name="JournalDetail" component={JournalDetailScreen} />
         <Stack.Screen name="CompletedProjects" component={CompletedProjectsScreen} />
       </Stack.Navigator>

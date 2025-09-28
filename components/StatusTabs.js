@@ -8,10 +8,11 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
   const progress = useRef(new Animated.Value(activeIndex === 0 ? 0 : 1)).current;
 
   useEffect(() => {
-    Animated.timing(progress, {
+    Animated.spring(progress, {
       toValue: activeIndex === 0 ? 0 : 1,
-      duration: 100,
       useNativeDriver: false, // color interpolation doesn't support native driver
+      tension: 300,
+      friction: 30,
     }).start();
   }, [activeIndex]);
 

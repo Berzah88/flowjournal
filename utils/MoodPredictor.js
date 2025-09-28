@@ -8,7 +8,7 @@ export const MOODS = [
     key: "happy",
     label: "Happy",
     icon: "sentiment-satisfied",
-    color: "#4CAF50", // solid green
+    color: "#C8E6C9", // pastel green
   },
   {
     key: "excited",
@@ -49,7 +49,7 @@ export const EXTENDED_MOODS = [
     key: "happy",
     label: "Happy",
     icon: "sentiment-satisfied",
-    color: "#4CAF50",
+    color: "#C8E6C9",
     category: "positive"
   },
   {
@@ -231,24 +231,162 @@ export const EXTENDED_MOODS = [
   }
 ];
 
+// Sentence-based analysis for better context understanding
+export const analyzeSentimentBySentences = (text, userHistory = []) => {
+  if (!text || text.trim().length === 0) {
+    return { score: 0, label: 'neutral', confidence: 0, sentences: [] };
+  }
+
+  // Split text into sentences
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const sentenceAnalyses = sentences.map(sentence => analyzeSentiment(sentence.trim(), userHistory));
+  
+  // Calculate weighted average based on sentence length and confidence
+  let totalWeight = 0;
+  let weightedScore = 0;
+  let totalConfidence = 0;
+  
+  sentenceAnalyses.forEach((analysis, index) => {
+    const sentence = sentences[index];
+    const weight = sentence.length * (analysis.confidence || 0.5);
+    totalWeight += weight;
+    weightedScore += analysis.score * weight;
+    totalConfidence += analysis.confidence * weight;
+  });
+  
+  const finalScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
+  const finalConfidence = totalWeight > 0 ? totalConfidence / totalWeight : 0;
+  
+  // Determine final label based on weighted score
+  let finalLabel = 'neutral';
+  if (finalScore > 15) finalLabel = 'positive';
+  else if (finalScore < -15) finalLabel = 'negative';
+  
+  // Debug: Log sentence analysis results
+  console.log('MoodPredictor: Sentence-based analysis:', {
+    sentences: sentences,
+    sentenceAnalyses: sentenceAnalyses.map(a => ({ label: a.label, score: a.score, confidence: a.confidence })),
+    finalScore: finalScore,
+    finalLabel: finalLabel,
+    finalConfidence: finalConfidence
+  });
+  
+  return {
+    score: finalScore,
+    label: finalLabel,
+    confidence: finalConfidence,
+    sentences: sentenceAnalyses,
+    sentenceCount: sentences.length
+  };
+};
+
 // Enhanced Sentiment Analysis with Context Awareness
 export const analyzeSentiment = (text, userHistory = []) => {
   if (!text || text.trim().length === 0) return { score: 0, label: 'neutral', confidence: 0 };
   
-  // Enhanced word categories with intensity levels
+  // Ensure text is a string and safe to use
+  const safeText = String(text).trim();
+  if (!safeText) return { score: 0, label: 'neutral', confidence: 0 };
+  
+  // Smart sentence analysis for better mood detection
+  const analyzeSentenceStructure = (text) => {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const analysis = {
+      sentenceCount: sentences.length,
+      avgWordsPerSentence: 0,
+      hasQuestion: /[?]/.test(text),
+      hasExclamation: /[!]/.test(text),
+      hasPeriod: /[.]/.test(text),
+      emotionalIntensity: 'low',
+      completeness: 'incomplete'
+    };
+    
+    if (sentences.length > 0) {
+      const totalWords = sentences.reduce((sum, sentence) => 
+        sum + sentence.trim().split(/\s+/).length, 0);
+      analysis.avgWordsPerSentence = totalWords / sentences.length;
+    }
+    
+    // Determine emotional intensity based on punctuation
+    if (analysis.hasExclamation) {
+      analysis.emotionalIntensity = 'high';
+    } else if (analysis.hasQuestion) {
+      analysis.emotionalIntensity = 'medium';
+    }
+    
+    // Determine completeness
+    if (text.trim().endsWith('.') || text.trim().endsWith('!') || text.trim().endsWith('?')) {
+      analysis.completeness = 'complete';
+    }
+    
+    return analysis;
+  };
+  
+  // Enhanced text preprocessing - more comprehensive
+  const enhancedPreprocessText = (text) => {
+    if (!text || typeof text !== 'string') return [];
+    
+    const cleanText = text.toLowerCase()
+      .replace(/[^\w\sçğıöşü]/g, ' ') // Turkish characters preserved
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    const words = cleanText.split(' ');
+    const processedWords = [];
+    
+    // Enhanced negation detection with more patterns
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const nextWord = words[i + 1];
+      const prevWord = words[i - 1];
+      
+      // Turkish negation patterns - EXPANDED
+      const negationWords = ['değil', 'olmayan', 'olmuyor', 'olmaz', 'yok', 'hayır', 'hiç', 'asla', 'hiçbir'];
+      const negationPhrases = ['değil mi', 'olmuyor mu', 'yok mu', 'hiç değil'];
+      
+      // Check for negation phrases
+      if (i < words.length - 1) {
+        const phrase = `${word} ${nextWord}`;
+        if (negationPhrases.includes(phrase)) {
+          processedWords.push({ word: nextWord, negated: true, intensity: 1.5 });
+          i++; // Skip next word
+          continue;
+        }
+      }
+      
+      // Check for single negation words
+      if (negationWords.includes(word) && nextWord) {
+        processedWords.push({ word: nextWord, negated: true, intensity: 1.2 });
+        i++; // Skip next word
+      } else {
+        processedWords.push({ word, negated: false, intensity: 1 });
+      }
+    }
+    
+    return processedWords;
+  };
+  
+  // Enhanced word categories with intensity levels - EXPANDED
   const positiveWords = {
     high: [
-      // Türkçe yüksek pozitif kelimeler
+      // Türkçe yüksek pozitif kelimeler - EXPANDED
       'harika', 'mükemmel', 'muhteşem', 'süper', 'müthiş', 'olağanüstü',
       'fantastik', 'muazzam', 'nefes kesici', 'büyüleyici', 'etkileyici',
       'başarılı', 'başardım', 'tamamladım', 'kazandım', 'galip', 'zafer',
       'coşkulu', 'heyecanlı', 'neşeli', 'sevinçli', 'mutlu', 'gururlu',
       'aşık', 'kelebek', 'uçuşuyor', 'çarpıntı', 'kalp', 'sevgi', 'aşk',
+      'memnun', 'hoşnut', 'tatmin', 'rahat', 'huzurlu', 'sakin', 'ferah',
+      'enerjik', 'dinç', 'güçlü', 'aktif', 'canlı', 'diri', 'taze',
+      'güzel', 'hoş', 'keyifli', 'eğlenceli', 'zevkli', 'lezzetli',
+      'başarı', 'kazanç', 'galibiyet', 'zafer', 'triumph', 'victory',
+      'celebration', 'kutlama', 'sevinç', 'neşe', 'mutluluk', 'happiness',
       
-      // İngilizce yüksek pozitif kelimeler
+      // İngilizce yüksek pozitif kelimeler - EXPANDED
       'amazing', 'fantastic', 'incredible', 'phenomenal', 'outstanding',
       'brilliant', 'spectacular', 'magnificent', 'marvelous', 'superb',
-      'excellent', 'perfect', 'wonderful', 'awesome', 'extraordinary'
+      'excellent', 'perfect', 'wonderful', 'awesome', 'extraordinary',
+      'delighted', 'thrilled', 'ecstatic', 'overjoyed', 'elated',
+      'satisfied', 'content', 'pleased', 'grateful', 'blessed'
     ],
     medium: [
       // Türkçe orta pozitif kelimeler
@@ -275,26 +413,37 @@ export const analyzeSentiment = (text, userHistory = []) => {
   
   const negativeWords = {
     high: [
-      // Türkçe yüksek negatif kelimeler
+      // Türkçe yüksek negatif kelimeler - EXPANDED
       'korkunç', 'dehşet', 'felaket', 'berbat', 'çok kötü', 'iğrenç',
       'nefret', 'tiksinti', 'kızgın', 'öfkeli', 'sinirli', 'gergin',
       'başarısız', 'kaybettim', 'başaramadım', 'hayal kırıklığı',
       'mutsuz', 'hüzünlü', 'kederli', 'acılı', 'üzüntülü', 'kırgın',
       'panik', 'korku', 'endişe', 'stres', 'baskı', 'zorluk',
       'çaresiz', 'umutsuz', 'karamsar', 'bitkin', 'tükenmiş', 'yorgun',
+      'bezgin', 'bıktım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'yorucu', 'sıkıcı', 'can sıkıcı',
+      'sinir bozucu', 'huzursuz', 'tedirgin', 'kaygılı', 'engel',
+      'problem', 'sorun', 'hata', 'yanlış', 'kayıp', 'zarar', 'hasar',
+      'bozuk', 'çalışmıyor', 'işe yaramıyor', 'faydasız', 'yararsız',
+      'değersiz', 'önemsiz', 'anlamsız', 'boş', 'gereksiz',
+      'frustrated', 'overwhelmed', 'exhausted', 'drained', 'burned out',
       
-      // İngilizce yüksek negatif kelimeler
+      // İngilizce yüksek negatif kelimeler - EXPANDED
       'terrible', 'awful', 'horrible', 'disgusting', 'hate', 'horrifying',
-      'devastating', 'catastrophic', 'miserable', 'desperate', 'hopeless'
+      'devastating', 'catastrophic', 'miserable', 'desperate', 'hopeless',
+      'frustrated', 'annoyed', 'irritated', 'angry', 'furious', 'livid',
+      'depressed', 'sad', 'melancholy', 'gloomy', 'sorrowful', 'grief',
+      'anxious', 'worried', 'concerned', 'troubled', 'distressed', 'upset'
     ],
     medium: [
-      // Türkçe orta negatif kelimeler
-      'kötü', 'zor', 'bezgin', 'stresli', 'üzgün', 'sıkıldım', 'bıktım', 'pazar günü', 'akşamdan beri',
+      // Türkçe orta negatif kelimeler - FRUSTRATION FOCUSED
+      'kötü', 'zor', 'bezgin', 'stresli', 'üzgün', 'sıkıldım', 'bıktım', 'usandım', 'sıkılıyorum', 'sıkkın', 'sıkıntılı',
       'yorucu', 'sıkıcı', 'can sıkıcı', 'sinir bozucu', 'huzursuz',
       'tedirgin', 'endişeli', 'kaygılı', 'engel', 'problem', 'sorun',
       'hata', 'yanlış', 'kayıp', 'zarar', 'hasar', 'bozuk',
       'çalışmıyor', 'işe yaramıyor', 'faydasız', 'yararsız',
       'değersiz', 'önemsiz', 'anlamsız', 'boş', 'gereksiz',
+      'frustrated', 'overwhelmed', 'burned out', 'fed up', 'sick of',
+      'tired of', 'had enough', 'can\'t take it', 'too much',
       
       // İngilizce orta negatif kelimeler
       'bad', 'difficult', 'tired', 'stressed', 'sad', 'failed', 'struggled',
@@ -305,7 +454,7 @@ export const analyzeSentiment = (text, userHistory = []) => {
     ],
     low: [
       // Türkçe düşük negatif kelimeler
-      'fazla', 'aşırı', 'yavaş', 'gecikme', 'gecikti', 'gecikmiş',
+      'fazla', 'aşırı', 'yavaş', 'gecikme', 'gecikti', 'gecikmiş', 'sıkkın', 'sıkıntılı',
       'halsiz', 'güçsüz', 'zayıf', 'dermansız', 'takatsiz',
       'kudretsiz', 'normal değil', 'istediğim gibi değil',
       
@@ -316,37 +465,8 @@ export const analyzeSentiment = (text, userHistory = []) => {
     ]
   };
   
-  // Enhanced text preprocessing with negation detection
-  const preprocessText = (text) => {
-    const cleanText = text.toLowerCase()
-      .replace(/[^\w\sçğıöşü]/g, ' ') // Turkish characters preserved
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    const words = cleanText.split(' ');
-    const processedWords = [];
-    
-    // Detect negations and context
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      const nextWord = words[i + 1];
-      
-      // Turkish negation patterns
-      const negationWords = ['değil', 'olmayan', 'olmuyor', 'olmaz', 'yok', 'hayır'];
-      
-      if (negationWords.includes(word) && nextWord) {
-        // Mark next word as negated
-        processedWords.push({ word: nextWord, negated: true, intensity: 1 });
-        i++; // Skip next word as it's already processed
-      } else {
-        processedWords.push({ word, negated: false, intensity: 1 });
-      }
-    }
-    
-    return processedWords;
-  };
-  
-  const processedWords = preprocessText(text);
+  const processedWords = enhancedPreprocessText(safeText);
+  const sentenceAnalysis = analyzeSentenceStructure(safeText);
   
   // Enhanced scoring with intensity levels
   let positiveScore = 0;
@@ -394,9 +514,27 @@ export const analyzeSentiment = (text, userHistory = []) => {
     }
   });
   
-  // Calculate confidence based on sentiment word ratio and user history
+  // Calculate confidence based on sentiment word ratio, sentence structure, and user history
   const sentimentRatio = sentimentWords / totalWords;
   let confidence = Math.min(sentimentRatio * 2, 1); // Higher ratio = higher confidence
+  
+  // Boost confidence based on sentence structure
+  if (sentenceAnalysis.completeness === 'complete') {
+    confidence *= 1.3; // 30% boost for complete sentences
+  }
+  
+  if (sentenceAnalysis.emotionalIntensity === 'high') {
+    confidence *= 1.2; // 20% boost for high emotional intensity
+  } else if (sentenceAnalysis.emotionalIntensity === 'medium') {
+    confidence *= 1.1; // 10% boost for medium emotional intensity
+  }
+  
+  // Boost confidence for questions (often indicate emotional state)
+  if (sentenceAnalysis.hasQuestion) {
+    confidence *= 1.15; // 15% boost for questions
+  }
+  
+  confidence = Math.min(confidence, 1); // Cap at 1.0
   
   // Apply user history pattern learning
   if (userHistory.length > 0) {
@@ -427,9 +565,9 @@ export const analyzeSentiment = (text, userHistory = []) => {
   let normalizedScore = (totalSentimentScore / maxPossibleScore) * 100;
   normalizedScore = Math.max(-100, Math.min(100, normalizedScore));
   
-  // Dynamic thresholds based on confidence - lowered for better detection
-  const positiveThreshold = confidence > 0.7 ? 8 : 12;
-  const negativeThreshold = confidence > 0.7 ? -8 : -12;
+  // Dynamic thresholds based on confidence - STRICTER
+  const positiveThreshold = confidence > 0.7 ? 25 : 30;
+  const negativeThreshold = confidence > 0.7 ? -25 : -30;
   
   let label = 'neutral';
   if (normalizedScore > positiveThreshold) label = 'positive';
@@ -442,7 +580,8 @@ export const analyzeSentiment = (text, userHistory = []) => {
     negativeCount: negativeScore,
     confidence,
     sentimentWords,
-    totalWords
+    totalWords,
+    sentenceAnalysis // Include sentence structure analysis
   };
 };
 
@@ -465,6 +604,8 @@ export const analyzeContextualMood = (text, sentiment, userHistory = []) => {
 
 // Time-based context analysis
 const analyzeTimeContext = (text) => {
+  if (!text || typeof text !== 'string') return [];
+  
   const timeWords = {
     weekend: ['pazar', 'cumartesi', 'hafta sonu', 'tatil'],
     evening: ['akşam', 'gece', 'geç saat', 'akşamdan beri'],
@@ -486,11 +627,13 @@ const analyzeTimeContext = (text) => {
 
 // Situation-based context analysis  
 const analyzeSituationContext = (text) => {
+  if (!text || typeof text !== 'string') return [];
+  
   const situationWords = {
     forced: ['çağırdılar', 'zorla', 'mecbur', 'zorunda'],
     unexpected: ['beklenmedik', 'ani', 'birden', 'aniden'],
     repetitive: ['yeniden', 'tekrar', 'yine', 'sürekli'],
-    overwhelming: ['çok', 'aşırı', 'fazla', 'bitkin']
+    overwhelming: ['aşırı', 'fazla', 'bitkin', 'tükenmiş', 'bunalmış']
   };
   
   const lowerText = text.toLowerCase();
@@ -502,19 +645,46 @@ const analyzeSituationContext = (text) => {
     }
   });
   
+  // Special handling for "çok" - only overwhelming if it's with negative context
+  if (lowerText.includes('çok')) {
+    const negativeContext = ['yorgun', 'stresli', 'zor', 'kötü', 'berbat', 'bitkin', 'tükenmiş'];
+    const hasNegativeContext = negativeContext.some(word => lowerText.includes(word));
+    
+    if (hasNegativeContext) {
+      detected.push('overwhelming');
+    }
+  }
+  
   return detected;
 };
 
 // Emotional intensity analysis
 const analyzeEmotionalIntensity = (text) => {
+  if (!text || typeof text !== 'string') return 'low';
+  
   const intensityMarkers = {
-    high: ['çok', 'aşırı', 'müthiş', 'berbat', 'korkunç'],
+    high: ['aşırı', 'müthiş', 'berbat', 'korkunç', 'dehşet'],
     medium: ['biraz', 'az', 'orta', 'normal'],
     low: ['hafif', 'küçük', 'minimal']
   };
   
   const lowerText = text.toLowerCase();
   let maxIntensity = 'low';
+  
+  // Special handling for "çok" - only high intensity if it's with negative words
+  const negativeWords = ['kötü', 'berbat', 'korkunç', 'dehşet', 'üzgün', 'kızgın', 'sinirli', 'stresli', 'mutsuz', 'yorgun', 'bitkin', 'tükenmiş', 'bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'korku', 'endişe', 'kaygı', 'hasta', 'acı', 'ağrı', 'sıkıntı', 'problem', 'sorun', 'başarısız', 'kaybettim', 'hata', 'yanlış', 'felaket', 'trajedi', 'üzücü', 'acıklı', 'hüzünlü', 'kederli'];
+  const positiveWords = ['mutlu', 'güzel', 'harika', 'mükemmel', 'süper', 'muhteşem', 'iyi', 'başarılı', 'gururlu', 'sevinçli', 'neşeli', 'keyifli', 'hoş', 'güzel'];
+  
+  if (lowerText.includes('çok')) {
+    const hasNegative = negativeWords.some(word => lowerText.includes(word));
+    const hasPositive = positiveWords.some(word => lowerText.includes(word));
+    
+    if (hasNegative) {
+      maxIntensity = 'high'; // "çok mutsuz" = high intensity
+    } else if (hasPositive) {
+      maxIntensity = 'medium'; // Positive "çok" is medium intensity
+    }
+  }
   
   Object.entries(intensityMarkers).forEach(([level, words]) => {
     if (words.some(word => lowerText.includes(word))) {
@@ -528,6 +698,8 @@ const analyzeEmotionalIntensity = (text) => {
 
 // Social context analysis
 const analyzeSocialContext = (text) => {
+  if (!text || typeof text !== 'string') return [];
+  
   const socialWords = {
     alone: ['yalnız', 'tek başıma', 'kimse yok'],
     social: ['arkadaş', 'aile', 'insanlar', 'birlikte'],
@@ -549,6 +721,8 @@ const analyzeSocialContext = (text) => {
 
 // Physical context analysis
 const analyzePhysicalContext = (text) => {
+  if (!text || typeof text !== 'string') return [];
+  
   const physicalWords = {
     tired: ['yorgun', 'bitkin', 'tükenmiş', 'halsiz'],
     energetic: ['enerjik', 'dinç', 'güçlü', 'aktif'],
@@ -570,6 +744,8 @@ const analyzePhysicalContext = (text) => {
 
 // Sentence structure and context analysis
 const analyzeSentenceContext = (text) => {
+  if (!text || typeof text !== 'string') return { hasQuestion: false, hasExclamation: false, hasNegation: false, hasConjunction: false, emotionalWords: 0 };
+  
   const lowerText = text.toLowerCase();
   const context = {
     hasQuestion: /[?]/.test(text),
@@ -593,6 +769,8 @@ const analyzeSentenceContext = (text) => {
 
 // Causal relationship analysis
 const analyzeCausalContext = (text) => {
+  if (!text || typeof text !== 'string') return { because: false, result: false, condition: false };
+  
   const lowerText = text.toLowerCase();
   const causalPatterns = {
     // Cause-effect patterns
@@ -632,6 +810,8 @@ const analyzeCausalContext = (text) => {
 
 // Temporal relationship analysis
 const analyzeTemporalContext = (text) => {
+  if (!text || typeof text !== 'string') return { before: false, after: false, now: false, duration: false };
+  
   const lowerText = text.toLowerCase();
   const temporalPatterns = {
     // Time sequences
@@ -669,11 +849,36 @@ const analyzeTemporalContext = (text) => {
 export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [], text = '') => {
   const suggestions = [];
   
-  // Get contextual analysis
-  const context = analyzeContextualMood(text, sentiment, userHistory);
+  // Ensure text is safe to use
+  const safeText = text && typeof text === 'string' ? text.trim() : '';
   
-  // Confidence-based recommendation threshold
-  const minConfidence = 0.15; // Lowered threshold for better suggestions
+  // Get contextual analysis
+  const context = analyzeContextualMood(safeText, sentiment, userHistory);
+  
+  // Confidence-based recommendation threshold - VERY SELECTIVE
+  let minConfidence = 0.5; // Much higher threshold for better accuracy
+  
+  // Adaptive threshold based on sentence structure
+  if (sentiment.sentenceAnalysis) {
+    const { completeness, emotionalIntensity, hasQuestion } = sentiment.sentenceAnalysis;
+    
+    // Slightly lower threshold for complete sentences
+    if (completeness === 'complete') {
+      minConfidence *= 0.85; // 15% lower threshold
+    }
+    
+    // Slightly lower threshold for high emotional intensity
+    if (emotionalIntensity === 'high') {
+      minConfidence *= 0.75; // 25% lower threshold
+    } else if (emotionalIntensity === 'medium') {
+      minConfidence *= 0.9; // 10% lower threshold
+    }
+    
+    // Slightly lower threshold for questions (often emotional)
+    if (hasQuestion) {
+      minConfidence *= 0.9; // 10% lower threshold
+    }
+  }
   
   if (sentiment.confidence < minConfidence && text.length < 20) {
     console.log('MoodPredictor: Confidence too low or text too short', {
@@ -725,45 +930,46 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
       peaceful: 0
     };
     
-    // Physical context scoring
+    // Physical context scoring - MORE BALANCED
     if (physicalContext.includes('tired')) {
-      moodScores.tired += 0.8;
+      moodScores.tired += 0.6;
       if (temporalContext.duration) {
-        moodScores.tired += 0.2;
-        moodScores.exhausted += 0.3; // Uzun süre yorgunluk = exhausted
+        moodScores.tired += 0.1;
+        moodScores.exhausted += 0.2; // Uzun süre yorgunluk = exhausted
       }
     }
     
-    // Situational context scoring
+    // Situational context scoring - MORE BALANCED
     if (situationContext.includes('forced')) {
-      moodScores.frustrated += 0.7;
-      if (timeContext.includes('weekend')) moodScores.frustrated += 0.3;
+      moodScores.frustrated += 0.5;
+      if (timeContext.includes('weekend')) moodScores.frustrated += 0.2;
     }
     
-    if (situationContext.includes('overwhelming')) {
-      moodScores.overwhelmed += 0.8;
-      moodScores.stressed += 0.6; // Aşırı yüklenme = stress
+    // Only apply overwhelming if it's actually negative context
+    if (situationContext.includes('overwhelming') && sentiment.label === 'negative') {
+      moodScores.overwhelmed += 0.6;
+      moodScores.stressed += 0.4; // Aşırı yüklenme = stress
       if (sentenceContext.emotionalWords > 2) {
-        moodScores.overwhelmed += 0.2;
-        moodScores.stressed += 0.2;
+        moodScores.overwhelmed += 0.1;
+        moodScores.stressed += 0.1;
       }
     }
     
-    // Emotional intensity scoring
+    // Emotional intensity scoring - MORE BALANCED
     if (emotionalIntensity === 'high') {
       if (sentenceContext.hasExclamation) {
-        moodScores.angry += 0.6;
-        moodScores.surprised += 0.3; // Ünlem + yüksek yoğunluk = surprised
+        moodScores.angry += 0.4;
+        moodScores.surprised += 0.2; // Ünlem + yüksek yoğunluk = surprised
       } else {
-        moodScores.sad += 0.6;
-        moodScores.disappointed += 0.3; // Yüksek yoğunluk + üzüntü = disappointed
+        moodScores.sad += 0.4;
+        moodScores.disappointed += 0.2; // Yüksek yoğunluk + üzüntü = disappointed
       }
     }
     
     // Low emotional intensity
     if (emotionalIntensity === 'low') {
-      moodScores.bored += 0.4;
-      moodScores.content += 0.3; // Düşük yoğunluk = content veya bored
+      moodScores.bored += 0.3;
+      moodScores.content += 0.2; // Düşük yoğunluk = content veya bored
     }
     
     // Social context scoring
@@ -832,8 +1038,52 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
       moodScores.disappointed += 0.3;
     }
     
-    // Positive sentiment specific scoring
-    if (label === 'positive') {
+    // CRITICAL: Check for explicit negative words first - OVERRIDE POSITIVE BIAS
+    const explicitNegativeWords = ['mutsuz', 'üzgün', 'kızgın', 'sinirli', 'stresli', 'yorgun', 'bitkin', 'tükenmiş', 'bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'korku', 'endişe', 'kaygı', 'hasta', 'acı', 'ağrı', 'sıkıntı', 'problem', 'sorun', 'başarısız', 'kaybettim', 'hata', 'yanlış', 'kötü', 'berbat', 'korkunç', 'dehşet', 'felaket', 'trajedi', 'üzücü', 'acıklı', 'hüzünlü', 'kederli', 'mutsuzum', 'üzgünüm', 'kızgınım', 'sinirliyim', 'stresliyim', 'yorgunum', 'bitkinim', 'tükenmişim', 'bıktım', 'usandım', 'sıkıldım', 'sıkkınım', 'sıkıntılıyım', 'korkuyorum', 'endişeliyim', 'kaygılıyım', 'hastayım', 'acı çekiyorum', 'ağrım var', 'sıkıntıdayım', 'problemim var', 'sorum var', 'başarısızım', 'kaybettim', 'hatam var', 'yanlış yaptım', 'kötüyüm', 'berbatım', 'korkunçum', 'dehşetim', 'felaketim', 'trajediyim', 'üzücüyüm', 'acıklıyım', 'hüzünlüyüm', 'kederliyim'];
+    
+    const hasExplicitNegative = lowerText && explicitNegativeWords.some(word => lowerText.includes(word));
+    
+    // Debug: Log explicit negative detection
+    if (lowerText) {
+      const foundNegativeWords = explicitNegativeWords.filter(word => lowerText.includes(word));
+      if (foundNegativeWords.length > 0) {
+        console.log('MoodPredictor: Found explicit negative words:', foundNegativeWords);
+      }
+    }
+    
+    if (hasExplicitNegative) {
+      // OVERRIDE: If explicit negative words found, force negative sentiment
+      console.log('MoodPredictor: OVERRIDING to negative sentiment due to explicit negative words');
+      label = 'negative';
+      moodScores.sad += 0.8;
+      moodScores.disappointed += 0.6;
+      moodScores.tired += 0.4;
+      moodScores.anxious += 0.3;
+      moodScores.worried += 0.3;
+      moodScores.lonely += 0.2;
+      moodScores.overwhelmed += 0.2;
+      moodScores.stressed += 0.2;
+      moodScores.frustrated += 0.2;
+      moodScores.angry += 0.1;
+      moodScores.exhausted += 0.1;
+      moodScores.confused += 0.1;
+      moodScores.bored += 0.1;
+      
+      // ZERO out positive moods for explicit negative
+      moodScores.happy = 0;
+      moodScores.excited = 0;
+      moodScores.grateful = 0;
+      moodScores.hopeful = 0;
+      moodScores.proud = 0;
+      moodScores.peaceful = 0;
+      moodScores.content = 0;
+      moodScores.relieved = 0;
+      moodScores.motivated = 0;
+    } else if (label === 'positive') {
+      // Only apply positive bias if no explicit negative words
+      moodScores.happy += 0.8;
+      moodScores.excited += 0.6;
+      
       if (sentenceContext.emotionalWords > 1) {
         moodScores.excited += 0.3;
         moodScores.happy += 0.2;
@@ -842,25 +1092,132 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
         moodScores.excited += 0.4;
         moodScores.surprised += 0.2;
       }
+      
+      // Reduce negative mood scores for positive sentiment
+      moodScores.overwhelmed *= 0.1;
+      moodScores.stressed *= 0.1;
+      moodScores.frustrated *= 0.1;
+      moodScores.sad *= 0.1;
+      moodScores.angry *= 0.1;
     }
     
-    // Love/romance specific scoring
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('aşık') || lowerText.includes('kelebek') || lowerText.includes('uçuşuyor')) {
+  // Enhanced specific context scoring
+  const lowerText = safeText.toLowerCase();
+    
+    // Love/romance specific scoring - ENHANCED
+    if (lowerText.includes('aşık') || lowerText.includes('kelebek') || lowerText.includes('uçuşuyor') || 
+        lowerText.includes('sevgi') || lowerText.includes('aşk') || lowerText.includes('sevgili')) {
       moodScores.excited += 0.8;
       moodScores.happy += 0.6;
       moodScores.surprised += 0.4;
     }
     
-    if (lowerText.includes('çarpıntı') || lowerText.includes('kalp')) {
+    // Very positive expressions - STRONG POSITIVE BIAS
+    if (lowerText.includes('çok mutluyum') || lowerText.includes('çok mutlu') || 
+        lowerText.includes('harika') || lowerText.includes('mükemmel') || 
+        lowerText.includes('süper') || lowerText.includes('muhteşem')) {
+      moodScores.happy += 0.9;
+      moodScores.excited += 0.7;
+      moodScores.proud += 0.3;
+    }
+    
+    // Positive feelings - STRONG POSITIVE BIAS
+    if (lowerText.includes('mutluyum') || lowerText.includes('mutlu') || 
+        lowerText.includes('sevinçli') || lowerText.includes('neşeli') || 
+        lowerText.includes('gururlu') || lowerText.includes('başarılı')) {
+      moodScores.happy += 0.7;
+      moodScores.excited += 0.4;
+    }
+    
+    if (lowerText.includes('çarpıntı') || lowerText.includes('kalp') || lowerText.includes('kalp atışı')) {
       moodScores.excited += 0.6;
       moodScores.anxious += 0.3; // Positive anxiety from love
     }
     
-    // Find the mood with highest score
+    // Work/achievement specific scoring - MORE SPECIFIC
+    if (lowerText.includes('iş') || lowerText.includes('çalışma') || lowerText.includes('proje') || 
+        lowerText.includes('görev') || lowerText.includes('sorumluluk') || lowerText.includes('düşünmekten')) {
+      if (sentenceContext.emotionalWords > 1) {
+        moodScores.stressed += 0.3;
+        moodScores.overwhelmed += 0.2;
+      }
+      // Special case for repetitive work frustration
+      if (lowerText.includes('her gün') || lowerText.includes('sürekli') || lowerText.includes('durmadan')) {
+        moodScores.frustrated += 0.4;
+        moodScores.overwhelmed += 0.3;
+        moodScores.bored += 0.3;
+      }
+    }
+    
+    // Specific positive patterns
+    if (lowerText.includes('başardım') || lowerText.includes('tamamladım') || lowerText.includes('kazandım')) {
+      moodScores.proud += 0.6;
+      moodScores.happy += 0.4;
+    }
+    
+    if (lowerText.includes('güzel') || lowerText.includes('hoş') || lowerText.includes('keyifli')) {
+      moodScores.happy += 0.4;
+      moodScores.content += 0.3;
+    }
+    
+    // Specific negative patterns
+    if (lowerText.includes('başaramadım') || lowerText.includes('kaybettim') || lowerText.includes('hata')) {
+      moodScores.disappointed += 0.5;
+      moodScores.sad += 0.3;
+    }
+    
+    if (lowerText.includes('korku') || lowerText.includes('endişe') || lowerText.includes('kaygı')) {
+      moodScores.anxious += 0.5;
+      moodScores.worried += 0.3;
+    }
+    
+    // Frustration and boredom specific patterns - MORE SPECIFIC
+    if (lowerText.includes('sıkılıyorum') || lowerText.includes('sıkıldım') || lowerText.includes('bıktım') || 
+        lowerText.includes('usandım') || lowerText.includes('bezgin')) {
+      moodScores.frustrated += 0.5;
+      moodScores.bored += 0.4;
+      moodScores.overwhelmed += 0.2;
+    }
+    
+    // "Can't take it anymore" patterns - MORE SPECIFIC
+    if (lowerText.includes('daha ne yapayım') || lowerText.includes('yeter artık') || 
+        lowerText.includes('bıktım artık') || lowerText.includes('usandım artık')) {
+      moodScores.frustrated += 0.6;
+      moodScores.overwhelmed += 0.4;
+      moodScores.angry += 0.2;
+    }
+    
+    // Health/physical state scoring
+    if (lowerText.includes('hasta') || lowerText.includes('rahatsız') || lowerText.includes('ağrı') || 
+        lowerText.includes('sızı') || lowerText.includes('acı')) {
+      moodScores.tired += 0.6;
+      moodScores.sad += 0.4;
+    }
+    
+    // Social context scoring
+    if (lowerText.includes('arkadaş') || lowerText.includes('aile') || lowerText.includes('insanlar') || 
+        lowerText.includes('birlikte') || lowerText.includes('sosyal')) {
+      if (sentiment.label === 'positive') {
+        moodScores.happy += 0.3;
+        moodScores.excited += 0.2;
+      }
+    }
+    
+    // Weather/seasonal context scoring
+    if (lowerText.includes('güneş') || lowerText.includes('güzel hava') || lowerText.includes('bahar')) {
+      moodScores.happy += 0.3;
+      moodScores.excited += 0.2;
+    }
+    
+    if (lowerText.includes('yağmur') || lowerText.includes('kötü hava') || lowerText.includes('kış')) {
+      moodScores.sad += 0.2;
+      moodScores.tired += 0.2;
+    }
+    
+    // Find the mood with highest score - HIGHER MINIMUM THRESHOLD
     const sortedMoods = Object.entries(moodScores)
       .sort(([,a], [,b]) => b - a)
-      .filter(([,score]) => score > 0);
+      .filter(([,score]) => score > 0.5); // Higher minimum threshold for mood suggestion
     
     if (sortedMoods.length === 0) {
       // Fallback to basic sentiment analysis
@@ -1004,7 +1361,7 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
   }
   
   // Add alternative suggestions based on context
-  const getAlternativeSuggestions = (context, sentiment) => {
+  const getAlternativeSuggestions = (context, sentiment, text = '') => {
     const alternatives = [];
     const { 
       timeContext, situationContext, emotionalIntensity, socialContext, physicalContext,
@@ -1104,8 +1461,8 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
     }
     
     // Love/romance specific alternatives
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes('aşık') || lowerText.includes('kelebek') || lowerText.includes('uçuşuyor')) {
+    const lowerText = text && typeof text === 'string' ? text.toLowerCase() : '';
+    if (lowerText && (lowerText.includes('aşık') || lowerText.includes('kelebek') || lowerText.includes('uçuşuyor'))) {
       alternatives.push({
         mood: 'excited',
         reason: 'Aşk ve heyecan hissi.',
@@ -1124,8 +1481,79 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
   };
   
   // Add alternative suggestions
-  const alternatives = getAlternativeSuggestions(context, sentiment);
+  const alternatives = getAlternativeSuggestions(context, sentiment, safeText);
   suggestions.push(...alternatives);
+  
+  // Filter out conflicting suggestions - NO CONTRADICTORY MOODS
+  const filteredSuggestions = [];
+  const positiveMoods = ['happy', 'excited', 'calm', 'grateful', 'hopeful', 'motivated', 'peaceful', 'proud', 'relieved', 'content'];
+  const negativeMoods = ['sad', 'angry', 'tired', 'frustrated', 'anxious', 'overwhelmed', 'lonely', 'exhausted', 'stressed', 'confused', 'disappointed', 'worried', 'bored'];
+  const neutralMoods = ['calm', 'curious', 'nostalgic', 'surprised'];
+  
+  // Group suggestions by sentiment
+  const positiveSuggestions = suggestions.filter(s => positiveMoods.includes(s.mood));
+  const negativeSuggestions = suggestions.filter(s => negativeMoods.includes(s.mood));
+  const neutralSuggestions = suggestions.filter(s => neutralMoods.includes(s.mood));
+  
+  // Only keep suggestions that match the sentiment
+  if (sentiment.label === 'positive') {
+    filteredSuggestions.push(...positiveSuggestions);
+    if (positiveSuggestions.length === 0) {
+      // Add one positive fallback
+      filteredSuggestions.push({
+        mood: 'happy',
+        reason: 'Pozitif bir durum.',
+        confidence: 0.4,
+        type: 'fallback'
+      });
+    }
+  } else if (sentiment.label === 'negative') {
+    filteredSuggestions.push(...negativeSuggestions);
+    if (negativeSuggestions.length === 0) {
+      // Add one negative fallback
+      filteredSuggestions.push({
+        mood: 'sad',
+        reason: 'Olumsuz bir durum.',
+        confidence: 0.4,
+        type: 'fallback'
+      });
+    }
+  } else {
+    // Neutral - can mix but avoid extremes
+    filteredSuggestions.push(...neutralSuggestions);
+    if (neutralSuggestions.length === 0) {
+      filteredSuggestions.push({
+        mood: 'calm',
+        reason: 'Nötr bir durum.',
+        confidence: 0.4,
+        type: 'fallback'
+      });
+    }
+  }
+  
+  // Ensure minimum 2 suggestions but keep them consistent
+  if (filteredSuggestions.length < 2 && sentiment.confidence > 0.2) {
+    const compatibleMoods = sentiment.label === 'positive' ? positiveMoods : 
+                           sentiment.label === 'negative' ? negativeMoods : 
+                           neutralMoods;
+    
+    const usedMoods = filteredSuggestions.map(s => s.mood);
+    const availableMoods = compatibleMoods.filter(mood => !usedMoods.includes(mood));
+    
+    if (availableMoods.length > 0) {
+      const fallbackMood = availableMoods[0];
+      filteredSuggestions.push({
+        mood: fallbackMood,
+        reason: 'Alternatif mood önerisi',
+        confidence: 0.3,
+        type: 'fallback'
+      });
+    }
+  }
+  
+  // Replace original suggestions with filtered ones
+  suggestions.length = 0;
+  suggestions.push(...filteredSuggestions);
   
   // Check if current mood conflicts with sentiment
   const isMoodConflicting = (sentiment, currentMood) => {

@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  BackHandler,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -24,73 +25,62 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
-import MapView, { Marker } from "react-native-maps";
+// import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
 import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTaskActions } from "../hooks/useTaskContext";
+import { 
+  MOODS, 
+  analyzeSentiment, 
+  analyzeSentimentBySentences,
+  getSmartMoodSuggestion, 
+  getSentimentColor,
+  getSentimentEmoji,
+  getValidIconName,
+  analyzeMoodPatterns,
+  predictMood
+} from '../utils/MoodPredictor';
 
 const { width, height } = Dimensions.get("window");
 
-const TOP_GAP = 50;
+const TOP_GAP = 20;
 const SWIPE_AREA = 40;
 const CLOSE_THRESHOLD = 110;
-const MODAL_HEIGHT = height - TOP_GAP;
-const PREVIEW_HEIGHT = 150;
-const MAX_ITEMS = 4;
-
-const MOODS = [
-  {
-    key: "happy",
-    label: "Happy",
-    icon: "sentiment-satisfied",
-    color: "#C8E6C9", // pastel green
-  },
-  {
-    key: "excited",
-    label: "Excited",
-    icon: "celebration",
-    color: "#FFF3E0", // pastel orange
-  },
-  {
-    key: "calm",
-    label: "Calm",
-    icon: "self-improvement", // best available material-like calm icon
-    color: "#D1C4E9", // pastel purple
-  },
-  {
-    key: "angry",
-    label: "Angry",
-    icon: "sentiment-very-dissatisfied",
-    color: "#FFCDD2", // pastel red
-  },
-  {
-    key: "sad",
-    label: "Sad",
-    icon: "sentiment-dissatisfied",
-    color: "#E1F5FE", // pastel blue
-  },
-];
-
-// helper to find Material icon fallback compatibility
-const getValidIconName = (name) => {
-  // Some icon names used above may not exist on all sets; fallback map:
-  const fallback = {
-    "self-improvement": "self-improvement",
-    "celebration": "celebration",
-  };
-  return fallback[name] ? fallback[name] : name;
-};
+const PREVIEW_HEIGHT = 100; // Reduced from 120 to 100
+const UI_DISPLAY_LIMIT = 5; // UI'da gösterilecek maksimum resim sayısı
 
 export default function Journal({
   visible = false,
   onClose = () => {},
   milestone = null,
   existingEntry = null,
+  onSave = () => {},
+  fromMainScreen = false,
 }) {
 
   const { addJournalEntry, updateJournalEntry } = useTaskActions();
 
-  const translateY = useSharedValue(MODAL_HEIGHT);
+  // Dinamik TOP_GAP - MainScreen'den açılırken daha fazla boşluk
+  const dynamicTopGap = fromMainScreen ? 40 : TOP_GAP;
+  const modalHeight = height - dynamicTopGap;
+
+  // Dinamik styles
+  const dynamicStyles = StyleSheet.create({
+    modalContainer: {
+      position: "absolute",
+      left: 0,
+      width,
+      top: dynamicTopGap,
+      height: modalHeight,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      zIndex: 201,
+      elevation: 25,
+      overflow: "hidden",
+    },
+  });
+
+  const translateY = useSharedValue(modalHeight);
   const translateX = useSharedValue(width); // Sağdan başla
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
@@ -112,12 +102,73 @@ export default function Journal({
   const [selectedMood, setSelectedMood] = useState(null);
   const [showMoodPicker, setShowMoodPicker] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [autoMoodApplied, setAutoMoodApplied] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+
+  // sentiment analysis state
+  const [sentiment, setSentiment] = useState({ score: 0, label: 'neutral' });
+  const [moodSuggestions, setMoodSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [userHistory, setUserHistory] = useState([]); // User mood history for pattern learning
+  
+  // Dynamic layout management
+  const [hasMedia, setHasMedia] = useState(false);
+  const [hasMoodSuggestions, setHasMoodSuggestions] = useState(false);
 
   const todayText = new Date().toLocaleDateString("tr-TR", {
     day: "2-digit",
     month: "long",
   });
+
+  // Konum bilgisini al (previews'dan)
+  const locationData = previews.find(item => item.type === "map");
+  const [locationText, setLocationText] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  
+  // Reverse geocoding ile şehir/ilçe bilgisi al
+  const getLocationText = useCallback(async () => {
+    const locationSource = locationData || currentLocation;
+    if (!locationSource) return null;
+    const coords = locationSource.content?.coords || locationSource.coords || locationSource;
+    if (coords) {
+      try {
+        const reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+        
+        if (reverseGeocode && reverseGeocode.length > 0) {
+          const location = reverseGeocode[0];
+          // Şehir ve ilçe bilgisini al
+          const city = location.city || location.subregion || location.region;
+          const district = location.district || location.subLocality;
+          
+          if (city && district && city !== district) {
+            return `${district}, ${city}`;
+          } else if (city) {
+            return city;
+          } else {
+            // Fallback: koordinat
+            return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
+          }
+        }
+      } catch (error) {
+        console.warn('Reverse geocoding failed:', error);
+        // Fallback: koordinat
+        return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
+      }
+    }
+    return null;
+  }, [locationData]);
+  
+  // Location text'i güncelle
+  useEffect(() => {
+    if (locationData || currentLocation) {
+      getLocationText().then(setLocationText);
+    } else {
+      setLocationText(null);
+    }
+  }, [locationData, currentLocation, getLocationText]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", (e) =>
@@ -130,14 +181,97 @@ export default function Journal({
     };
   }, []);
 
+  // Advanced mood prediction trigger system - CONTINUOUS ANALYSIS
+  const shouldTriggerMoodAnalysis = (text) => {
+    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+    const wordCount = words.length;
+    
+    // Always trigger analysis when:
+    // 1. User has typed at least 2 words (lowered threshold)
+    // 2. User has typed at least 5 characters (lowered threshold)
+    // 3. User has completed a sentence (ends with . ! ?)
+    // 4. User has typed at least 15 characters (lowered threshold)
+    const hasMinimumWords = wordCount >= 2;
+    const hasMinimumChars = text.length >= 5;
+    const hasCompleteSentence = /[.!?]$/.test(text.trim());
+    const hasSubstantialContent = text.length >= 15;
+    
+    return hasMinimumWords && (hasMinimumChars || hasCompleteSentence || hasSubstantialContent);
+  };
+
+  // Continuous text analysis with sentence-based processing
+  const analyzeTextContinuously = useCallback((text) => {
+    if (!text || text.trim().length < 2) {
+      setMoodSuggestions([]);
+      return;
+    }
+
+    // Split text into sentences for better analysis
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const lastSentence = sentences[sentences.length - 1] || '';
+    const allText = text.trim();
+    
+    // Use sentence-based analysis for better context understanding
+    const analysis = analyzeSentimentBySentences(allText, userHistory);
+    
+    setSentiment(analysis);
+    
+    // Get mood suggestions with enhanced context
+    const moodSugs = getSmartMoodSuggestion(analysis, selectedMood?.key, userHistory, allText);
+    setMoodSuggestions(moodSugs);
+    
+    // Debug: Log analysis results
+    console.log('Continuous Mood Analysis:', {
+      text: allText,
+      lastSentence: lastSentence,
+      wordCount: allText.split(/\s+/).length,
+      sentenceCount: sentences.length,
+      sentiment: analysis.label,
+      confidence: analysis.confidence,
+      suggestions: moodSugs.length
+    });
+  }, [userHistory, selectedMood]);
+
+  // Sentiment analysis when text changes - SMART TRIGGER SYSTEM
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const shouldAnalyze = shouldTriggerMoodAnalysis(textValue);
+      
+      if (shouldAnalyze) {
+        // Use the new continuous analysis function
+        analyzeTextContinuously(textValue);
+        
+        // Show suggestions with relaxed conditions
+        const shouldShowSuggestions = (
+          moodSuggestions.length > 0 &&
+          !autoMoodApplied // Don't show if user already applied a mood
+        );
+        
+        setShowSuggestions(shouldShowSuggestions);
+        setHasMoodSuggestions(shouldShowSuggestions);
+      } else {
+        // Reset if conditions not met
+        setSentiment({ score: 0, label: 'neutral' });
+        setMoodSuggestions([]);
+        setShowSuggestions(false);
+        setAutoMoodApplied(false);
+        setHasMoodSuggestions(false);
+      }
+    }, 500); // Reduced debounce for faster response
+
+    return () => clearTimeout(timeoutId);
+  }, [textValue, analyzeTextContinuously, autoMoodApplied]);
+
   // Populate when editing existing entry
   useEffect(() => {
     if (existingEntry) {
       setTextValue(existingEntry.text || "");
-      setPreviews([
+      const existingPreviews = [
         ...(existingEntry.images || []).map((uri) => ({ type: "image", content: uri })),
         ...(existingEntry.location ? [{ type: "map", content: existingEntry.location }] : []),
-      ]);
+      ];
+      setPreviews(existingPreviews);
+      setHasMedia(existingPreviews.length > 0);
       // If previous code saved mood info (mood/moodIcon/moodColor), restore it
       if (existingEntry.mood) {
         const m = MOODS.find((mm) => mm.key === existingEntry.mood);
@@ -156,6 +290,8 @@ export default function Journal({
       setPreviews([]);
       setEditingEntryId(null);
       setSelectedMood(null);
+      setHasMedia(false);
+      setHasMoodSuggestions(false);
     }
   }, [existingEntry]);
 
@@ -166,16 +302,39 @@ export default function Journal({
       scale.value = withTiming(1, { duration: 320 });
       opacity.value = withTiming(1, { duration: 320 });
       const t = setTimeout(() => inputRef.current?.focus?.(), 340);
-      return () => clearTimeout(t);
+      
+      // State'leri reset et
+      setAutoMoodApplied(false);
+      
+      // Android geri tuşu için handler
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        handleClose();
+        return true; // Event'i yakala, uygulamadan çıkmasın
+      });
+      
+      return () => {
+        clearTimeout(t);
+        if (backHandler && backHandler.remove) {
+          backHandler.remove();
+        }
+        // Shared values'ları da reset et
+        translateY.value = modalHeight;
+        scale.value = 0.96;
+        opacity.value = 0;
+        dragY.value = 0;
+        moodPickerOpacity.value = 0;
+        moodPickerScale.value = 0.8;
+        moodPickerTranslateY.value = 20;
+      };
     } else {
       // Journal kapanırken shared value'ları reset et
       Keyboard.dismiss();
-      translateY.value = MODAL_HEIGHT;
+      translateY.value = modalHeight;
       scale.value = 0.96;
       opacity.value = 0;
       dragY.value = 0;
     }
-  }, [visible, translateY, scale, opacity, dragY]);
+  }, [visible, translateY, scale, opacity, dragY, handleClose]);
 
   // Mood picker animation control
   useEffect(() => {
@@ -191,7 +350,7 @@ export default function Journal({
   }, [showMoodPicker]);
 
   const backdropStyle = useAnimatedStyle(() => {
-    const o = interpolate(translateY.value, [0, MODAL_HEIGHT], [0.45, 0]);
+    const o = interpolate(translateY.value, [0, modalHeight], [0.45, 0]);
     return { opacity: o };
   });
 
@@ -228,6 +387,8 @@ export default function Journal({
     setEditingEntryId(null);
     setSelectedMood(null);
     setShowMoodPicker(false);
+    setHasMedia(false);
+    setHasMoodSuggestions(false);
     
     // Animasyonu başlat
     translateY.value = withTiming(height, { duration: 200 });
@@ -241,33 +402,34 @@ export default function Journal({
       }
     })
     .onEnd((e) => {
-      if (e.translationY > 120) {
+      if (e.translationY > 80) { // Daha düşük threshold
         dragY.value = withTiming(height, { duration: 200 }, () => {
           runOnJS(handleClose)();
         });
       } else {
         dragY.value = withTiming(0, { duration: 150 });
       }
-    });
+    })
+    .minDistance(10); // Minimum mesafe
 
   const backdropTap = Gesture.Tap().onEnd(() => {
     handleClose();
   });
 
-  const canAddMore = previews.length < MAX_ITEMS;
   const addPreviewImage = (uri) => {
-    if (!canAddMore) return false;
-    setPreviews((p) => [...p, { type: "image", content: uri }]);
-    return true;
-  };
-  const addPreviewLocation = (loc) => {
-    if (!canAddMore) return false;
-    setPreviews((p) => [...p, { type: "map", content: loc }]);
+    setPreviews((p) => {
+      const newPreviews = [...p, { type: "image", content: uri }];
+      // FIFO: Sadece son 3 resmi tut, eski resimleri tamamen sil
+      if (newPreviews.length > UI_DISPLAY_LIMIT) {
+        return newPreviews.slice(-UI_DISPLAY_LIMIT);
+      }
+      return newPreviews;
+    });
+    setHasMedia(true);
     return true;
   };
 
   const pickImage = async () => {
-    if (!canAddMore) return;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         quality: 0.7,
@@ -278,23 +440,27 @@ export default function Journal({
       else if (result?.uri) uri = result.uri;
       if (uri) addPreviewImage(uri);
     } catch (error) {
-      console.error("Image pick error:", error);
       // User'a error gösterme - sessizce logla
     }
   };
 
   const pickLocation = async () => {
-    if (!canAddMore) return;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        console.warn("Location permission denied");
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
-      addPreviewLocation(loc);
+      // Location'ı hem currentLocation state'ine hem de previews'e ekle
+      setCurrentLocation(loc);
+      
+      // Location'ı previews array'ine ekle (journal entry için)
+      setPreviews(prev => {
+        // Eğer zaten location varsa, eski olanı kaldır
+        const filteredPreviews = prev.filter(item => item.type !== "map");
+        return [...filteredPreviews, { type: "map", content: loc }];
+      });
     } catch (error) {
-      console.error("Location error:", error);
       // User'a error gösterme - sessizce logla
     }
   };
@@ -315,7 +481,6 @@ export default function Journal({
     }
     if (label === "Save") {
       if (!milestone || !milestone.id) {
-        console.warn("Cannot save journal entry: missing milestone id");
         handleClose();
         return;
       }
@@ -323,23 +488,79 @@ export default function Journal({
       const taskId = milestone.taskId || milestone.parentTaskId || milestone.task?.id;
       const msId = milestone.id;
 
+      // Otomatik mood seçimi - kullanıcı seçmemişse en uygun olanı seç
+      let finalMood = selectedMood;
+      if (!selectedMood && moodSuggestions.length > 0) {
+        const suggestedMood = MOODS.find(m => m.key === moodSuggestions[0].mood);
+        if (!suggestedMood) {
+          // Extended mood ise basic mood'a çevir
+          const { EXTENDED_MOODS } = require('../utils/MoodPredictor');
+          const extendedMood = EXTENDED_MOODS.find(m => m.key === moodSuggestions[0].mood);
+          if (extendedMood) {
+            // Extended mood'u basic mood'a map et
+            const moodMapping = {
+              'frustrated': 'angry',
+              'anxious': 'sad', 
+              'overwhelmed': 'tired',
+              'grateful': 'happy',
+              'hopeful': 'happy',
+              'nostalgic': 'calm',
+              'motivated': 'excited',
+              'lonely': 'sad',
+              'peaceful': 'calm'
+            };
+            const basicMoodKey = moodMapping[extendedMood.key] || 'calm';
+            finalMood = MOODS.find(m => m.key === basicMoodKey);
+          }
+        } else {
+          finalMood = suggestedMood;
+        }
+      }
+
       const payload = {
         text: textValue?.trim() || "",
         images: previews.filter((x) => x.type === "image").map((x) => x.content),
         location: previews.find((x) => x.type === "map")?.content?.coords || null,
         // include mood data (compatible keys)
-        mood: selectedMood?.key || null,
-        moodIcon: selectedMood ? getValidIconName(selectedMood.icon) : null,
-        moodColor: selectedMood?.color || null,
+        mood: finalMood?.key || null,
+        moodIcon: finalMood ? getValidIconName(finalMood.icon) : null,
+        moodColor: finalMood?.color || null,
+        // include sentiment data for pattern learning
+        sentiment: sentiment,
       };
 
-      if (editingEntryId) {
-        updateJournalEntry && updateJournalEntry(taskId, msId, editingEntryId, payload);
-      } else {
-        addJournalEntry && addJournalEntry(taskId, msId, payload);
+      // Save işlemini async olarak yap ve tamamlandıktan sonra modal'ı kapat
+      try {
+        if (editingEntryId) {
+          if (updateJournalEntry) {
+            updateJournalEntry(taskId, msId, editingEntryId, payload);
+          }
+        } else {
+          if (addJournalEntry) {
+            addJournalEntry(taskId, msId, payload);
+          }
+        }
+        
+        // Update user history for pattern learning
+        const newEntry = {
+          mood: selectedMood?.key || null,
+          sentiment: sentiment,
+          text: textValue?.trim() || "",
+          timestamp: new Date().toISOString()
+        };
+        setUserHistory(prev => [...prev.slice(-49), newEntry]); // Keep last 50 entries
+        
+        // onSave callback'ini çağır
+        onSave();
+        
+        // Kısa bir delay ile modal'ı kapat ki state güncellenmesi tamamlansın
+        setTimeout(() => {
+          handleClose();
+        }, 100);
+      } catch (error) {
+        console.warn('Journal save error:', error);
+        handleClose();
       }
-
-      handleClose();
     }
   };
 
@@ -360,72 +581,49 @@ export default function Journal({
         </TouchableOpacity>
       );
     }
-    if (item.type === "map") {
-      const coords = item.content?.coords || item.content;
-      return (
-        <View key={key} style={styles.mapWrapper}>
-          <MapView
-            style={styles.mapInner}
-            initialRegion={{
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-            pointerEvents="none"
-          >
-            <Marker
-              coordinate={{
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-              }}
-            />
-          </MapView>
-        </View>
-      );
-    }
+    // Harita artık medya alanında gösterilmiyor, konum bilgisi mood sticker'ının yanında gösterilecek
     return null;
   };
 
   const renderPreviewGrid = () => {
-    if (!previews || previews.length === 0) return null;
+    // Sadece resimleri filtrele, konum bilgisini hariç tut
+    const imagePreviews = previews.filter(item => item.type === "image");
+    if (!imagePreviews || imagePreviews.length === 0) return null;
 
-    const left = previews[0] ? [previews[0]] : [];
-    const right = previews.slice(1);
-    const rightCount = right.length;
-
-    let topRow = [];
-    let bottomRow = [];
-    if (rightCount === 1) topRow = [right[0]];
-    else if (rightCount === 2) topRow = right;
-    else if (rightCount === 3) {
-      topRow = [right[0]];
-      bottomRow = right.slice(1, 3);
-    } else if (rightCount >= 4) {
-      topRow = right.slice(0, 2);
-      bottomRow = right.slice(2, 4);
-    }
+    // Sadece son 5 resmi göster (UI_DISPLAY_LIMIT)
+    const displayPreviews = imagePreviews.slice(-UI_DISPLAY_LIMIT);
+    
+    // Asimetrik layout: Sol büyük + Sağ 4 küçük (üst 2, alt 2)
+    const leftImage = displayPreviews[0];
+    const rightImages = displayPreviews.slice(1);
 
     return (
       <View style={styles.previewWrapper}>
-        <View style={styles.leftGrid}>{left[0] && renderPreviewItem(left[0], "left-0")}</View>
-        <View style={styles.rightGrid}>
-          <View style={{ flexDirection: "row", flex: topRow.length === 1 ? 0.5 : 0.5, marginBottom: 4 }}>
-            {topRow.map((item, idx) => (
-              <View key={idx} style={{ flex: topRow.length === 1 ? 1 : 0.5, paddingRight: 4 }}>
-                {renderPreviewItem(item, `right-top-${idx}`)}
-              </View>
-            ))}
+        <View style={styles.asymmetricGrid}>
+          {/* Sol taraf - 1 büyük resim */}
+          <View style={styles.leftColumn}>
+            {leftImage && renderPreviewItem(leftImage, "left")}
           </View>
-          {bottomRow.length > 0 && (
-            <View style={{ flexDirection: "row", flex: 0.5 }}>
-              {bottomRow.map((item, idx) => (
-                <View key={idx} style={{ flex: 0.5, paddingRight: 4 }}>
-                  {renderPreviewItem(item, `right-bottom-${idx}`)}
-                </View>
-              ))}
+          
+          {/* Sağ taraf - 4 küçük resim */}
+          <View style={styles.rightColumn}>
+            <View style={styles.rightTop}>
+              <View style={styles.rightTopLeft}>
+                {rightImages[0] && renderPreviewItem(rightImages[0], "right-top-left")}
+              </View>
+              <View style={styles.rightTopRight}>
+                {rightImages[1] && renderPreviewItem(rightImages[1], "right-top-right")}
+              </View>
             </View>
-          )}
+            <View style={styles.rightBottom}>
+              <View style={styles.rightBottomLeft}>
+                {rightImages[2] && renderPreviewItem(rightImages[2], "right-bottom-left")}
+              </View>
+              <View style={styles.rightBottomRight}>
+                {rightImages[3] && renderPreviewItem(rightImages[3], "right-bottom-right")}
+              </View>
+            </View>
+          </View>
         </View>
       </View>
     );
@@ -438,9 +636,7 @@ export default function Journal({
     { label: "Save", icon: "save-outline" },
   ];
 
-  if (!visible) {
-    return null;
-  }
+  if (!visible) return null;
 
   return (
     <>
@@ -450,7 +646,7 @@ export default function Journal({
         </GestureDetector>
       </Animated.View>
 
-      <Animated.View style={[styles.modalContainer, modalStyle]}>
+      <Animated.View style={[dynamicStyles.modalContainer, modalStyle]}>
         <LinearGradient
           colors={['#f8f9fa', '#ffffff', '#f1f3f4']}
           style={styles.gradientBackground}
@@ -460,66 +656,166 @@ export default function Journal({
           <GestureDetector gesture={panGesture}>
             <View style={styles.topSpacer} />
           </GestureDetector>
+          
+          {/* Pan gesture için genişletilmiş alan */}
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.panGestureArea} />
+          </GestureDetector>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.dateRow}>
-            <Text style={styles.dateText}>{todayText}</Text>
-            {selectedMood && (
-              <View style={[styles.moodTag, { backgroundColor: selectedMood.color || "transparent" }]}>
-                <MaterialIcons
-                  name={getValidIconName(selectedMood.icon)}
-                  size={18}
-                  color="#333"
-                />
-                <Text style={styles.moodLabel}>{selectedMood.label}</Text>
+            <View style={styles.dateContainer}>
+              <View style={styles.dateAndMoodContainer}>
+                <Text style={styles.dateText}>{todayText}</Text>
+                {/* Mood tarihin yanında */}
+                {selectedMood && (
+                  <View style={[styles.moodTag, { backgroundColor: selectedMood.color || "transparent" }]}>
+                    <MaterialIcons
+                      name={getValidIconName(selectedMood.icon)}
+                      size={18}
+                      color="#333"
+                    />
+                    <Text style={styles.moodLabel}>{selectedMood.label}</Text>
+                  </View>
+                )}
+              </View>
+              
+              {/* Cool Sentiment Bar - Header'ın sağında */}
+              <View style={styles.coolSentimentContainer}>
+                <View style={styles.coolSentimentBar}>
+                  <View style={[styles.coolSentimentFill, { 
+                    width: `${Math.abs(sentiment.score)}%`,
+                    backgroundColor: getSentimentColor(sentiment)
+                  }]} />
+                </View>
+                <View style={styles.coolSentimentIcon}>
+                  <MaterialIcons 
+                    name={sentiment.label === 'positive' ? 'sentiment-satisfied' : 
+                          sentiment.label === 'negative' ? 'sentiment-dissatisfied' : 'sentiment-neutral'} 
+                    size={12} 
+                    color={getSentimentColor(sentiment)} 
+                  />
+                </View>
+              </View>
+            </View>
+            
+            {/* Location tarihin altında */}
+            {locationText && (
+              <View style={styles.locationRow}>
+                <View style={styles.locationSticker}>
+                  <Ionicons name="location" size={12} color="#007AFF" />
+                  <Text style={styles.locationText}>{locationText}</Text>
+                </View>
               </View>
             )}
           </View>
 
+          {/* Minimal Mood Suggestions - RELAXED visibility */}
+          {textValue.trim().split(/\s+/).length >= 4 && showSuggestions && moodSuggestions.length > 0 && (
+            <View style={styles.minimalMoodSuggestions}>
+              {moodSuggestions.map((suggestion, index) => {
+                // First try to find in basic MOODS, then in EXTENDED_MOODS
+                let suggestedMood = MOODS.find(m => m.key === suggestion.mood);
+                if (!suggestedMood) {
+                  // Import EXTENDED_MOODS if not already imported
+                  const { EXTENDED_MOODS } = require('../utils/MoodPredictor');
+                  suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);
+                }
+                
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.moodTag,
+                      { backgroundColor: suggestedMood?.color || '#4A90E2' }
+                    ]}
+                    onPress={() => {
+                      if (suggestedMood) {
+                        setSelectedMood(suggestedMood);
+                        setShowSuggestions(false);
+                        setAutoMoodApplied(true);
+                      }
+                    }}
+                  >
+                    <MaterialIcons 
+                      name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
+                      size={18} 
+                      color="#fff" 
+                    />
+                    <Text style={styles.moodTagText}>{suggestedMood?.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
           {renderPreviewGrid()}
 
-          <ScrollView style={{ flex: 1 }}>
+          <ScrollView 
+            style={{ flex: 1, marginBottom: 10 }}
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+          >
             <TextInput
               ref={inputRef}
               value={textValue}
               onChangeText={setTextValue}
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  // Dynamic height based on content
+                  minHeight: hasMedia && hasMoodSuggestions ? 150 : 200,
+                  maxHeight: hasMedia && hasMoodSuggestions ? 300 : 400,
+                  flex: hasMedia && hasMoodSuggestions ? 0.6 : 1,
+                }
+              ]}
               placeholder={(milestone?.title ? milestone.title + ": " : "") + "Hakkında yazın.."}
               multiline
               underlineColorAndroid="transparent"
               placeholderTextColor="#999"
               textAlignVertical="top"
-              editable = {true}
+              editable={true}
+              scrollEnabled={true}
             />
           </ScrollView>
 
-          {/* Mood picker popup */}
+          {/* Mood picker popup with backdrop */}
           {showMoodPicker && (
-            <Animated.View style={[styles.moodPicker, { bottom: keyboardHeight ? keyboardHeight + 70 : 86 }, moodPickerAnimatedStyle]}>
-              {MOODS.map((m) => (
-                <TouchableOpacity
-                  key={m.key}
-                  style={[
-                    styles.moodOption,
-                    selectedMood?.key === m.key ? { borderColor: "#999", borderWidth: 1 } : null,
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    // toggle selection (if selecting different mood, replace; if same, keep/replace)
-                    setSelectedMood((prev) => (prev?.key === m.key ? m : m));
-                    setShowMoodPicker(false);
-                  }}
-                >
-                  <View style={[styles.moodIconWrap, { backgroundColor: m.color }]}>
-                    <MaterialIcons name={getValidIconName(m.icon)} size={22} color="#333" />
-                  </View>
-                  <Text style={styles.moodOptionLabel}>{m.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </Animated.View>
+            <TouchableOpacity 
+              style={styles.moodPickerBackdrop}
+              activeOpacity={1}
+              onPress={() => setShowMoodPicker(false)}
+            >
+              <Animated.View 
+                style={[styles.moodPicker, { bottom: keyboardHeight ? keyboardHeight + 90 : 106 }, moodPickerAnimatedStyle]}
+                onStartShouldSetResponder={() => true}
+              >
+                {MOODS.map((m) => (
+                  <TouchableOpacity
+                    key={m.key}
+                    style={[
+                      styles.moodOption,
+                      selectedMood?.key === m.key ? { borderColor: "#999", borderWidth: 1 } : null,
+                    ]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      // toggle selection (if selecting different mood, replace; if same, keep/replace)
+                      setSelectedMood((prev) => (prev?.key === m.key ? m : m));
+                      setAutoMoodApplied(true); // Manuel seçim yapıldı
+                      setShowMoodPicker(false);
+                    }}
+                  >
+                    <View style={[styles.moodIconWrap, { backgroundColor: m.color }]}>
+                      <MaterialIcons name={getValidIconName(m.icon)} size={14} color="#333" />
+                    </View>
+                    <Text style={styles.moodOptionLabel}>{m.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
+            </TouchableOpacity>
           )}
 
-          <View style={[styles.buttonRow, { marginBottom: keyboardHeight ? keyboardHeight : 16 }]}>
+          <View style={[styles.buttonRow, { bottom: keyboardHeight || 0, marginBottom: 20 }]}>
             {buttons.map((btn, i) => (
               <TouchableOpacity
                 key={i}
@@ -568,36 +864,56 @@ export default function Journal({
 const styles = StyleSheet.create({
   backdropContainer: { position: "absolute", left: 0, top: 0, width, height, zIndex: 200 },
   backdrop: { flex: 1 },
-  modalContainer: {
-    position: "absolute",
-    left: 0,
-    width,
-    top: TOP_GAP,
-    height: MODAL_HEIGHT,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    zIndex: 201,
-    elevation: 25,
-    overflow: "hidden",
-  },
   gradientBackground: {
     flex: 1,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    backgroundColor: '#F5F5F5', // Eski hafif gri background
   },
-  topSpacer: { height: SWIPE_AREA },
+  topSpacer: { height: 8 },
+  panGestureArea: { 
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 1,
+  },
   dateRow: {
+    flexDirection: "column",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    paddingTop: 8,
+    minHeight: 60,
+    backgroundColor: "transparent",
+  },
+  dateContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  dateAndMoodContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  moodRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   dateText: { 
     paddingHorizontal: 0, 
-    fontSize: 16, 
+    fontSize: 20, 
     color: "#1d1d1f", 
-    fontFamily: "Poppins_500Medium",
+    fontFamily: "Poppins_600SemiBold",
     letterSpacing: -0.2,
+    marginRight: 12,
   },
   moodTag: {
     flexDirection: "row",
@@ -613,24 +929,80 @@ const styles = StyleSheet.create({
     color: "#333",
     fontFamily: "Poppins_400Regular",
   },
-  previewWrapper: {
+  locationSticker: {
     flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0, 122, 255, 0.3)",
+    gap: 4,
+  },
+  locationText: {
+    fontSize: 10,
+    color: "#007AFF",
+    fontFamily: "Poppins_500Medium",
+  },
+  previewWrapper: {
     paddingHorizontal: 16,
     marginTop: 8,
     height: PREVIEW_HEIGHT,
+  },
+  asymmetricGrid: {
+    flexDirection: "row",
+    height: PREVIEW_HEIGHT,
     alignItems: "stretch",
   },
-  leftGrid: { flex: 1, marginRight: 8, height: PREVIEW_HEIGHT },
-  rightGrid: { flex: 1, flexDirection: "column", height: PREVIEW_HEIGHT },
+  leftColumn: {
+    flex: 1,
+    marginRight: 8,
+    height: PREVIEW_HEIGHT,
+  },
+  rightColumn: {
+    flex: 1,
+    flexDirection: "column",
+    height: PREVIEW_HEIGHT,
+  },
+  rightTop: {
+    flex: 1,
+    flexDirection: "row",
+    marginBottom: 4,
+    height: (PREVIEW_HEIGHT - 8) / 2,
+  },
+  rightTopLeft: {
+    flex: 1,
+    marginRight: 4,
+    height: "100%",
+  },
+  rightTopRight: {
+    flex: 1,
+    height: "100%",
+  },
+  rightBottom: {
+    flex: 1,
+    flexDirection: "row",
+    height: (PREVIEW_HEIGHT - 8) / 2,
+  },
+  rightBottomLeft: {
+    flex: 1,
+    marginRight: 4,
+    height: "100%",
+  },
+  rightBottomRight: {
+    flex: 1,
+    height: "100%",
+  },
   previewImage: { 
     width: "100%", 
     height: "100%", 
-    borderRadius: 16, 
-    elevation: 8,
+    borderRadius: 12, 
+    elevation: 6,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   mapWrapper: { 
     flex: 1, 
@@ -647,14 +1019,34 @@ const styles = StyleSheet.create({
   input: { 
     flex: 1, 
     padding: 20, 
+    paddingTop: 30,
     fontSize: 18, 
     color: "#1d1d1f", 
     textAlignVertical: "top", 
     fontFamily: "Poppins_400Regular", 
     letterSpacing: -0.3,
     lineHeight: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    margin: 16,
+    marginTop: 20,
+    marginBottom: 10,
+    // Dynamic height properties
+    minHeight: 200,
+    maxHeight: 400,
   },
-  buttonRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20 },
+  buttonRow: { 
+    position: "absolute", 
+    left: 0, 
+    right: 0, 
+    flexDirection: "row", 
+    justifyContent: "space-around", 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    backgroundColor: "rgba(248, 249, 250, 0.95)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.1)"
+  },
   button: { 
     width: 72, 
     height: 52, 
@@ -662,8 +1054,6 @@ const styles = StyleSheet.create({
     borderRadius: 16, 
     justifyContent: "center", 
     alignItems: "center", 
-    marginVertical: 8, 
-    marginBottom: 50,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -682,13 +1072,21 @@ const styles = StyleSheet.create({
   },
 
   /* mood picker popup */
+  moodPickerBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
   moodPicker: {
     width: width - 80,
     position: "absolute",
     left: 40,
     right: 0,
     backgroundColor: "#ffffff",
-    padding: 16,
+    padding: 12,
     borderRadius: 20,
     flexDirection: "row",
     justifyContent: "space-around",
@@ -709,12 +1107,12 @@ const styles = StyleSheet.create({
   moodOption: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   moodIconWrap: {
-    width: 33,
-    height: 33,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 6,
@@ -755,5 +1153,93 @@ const styles = StyleSheet.create({
   imageModalImage: {
     width: "100%",
     height: "100%",
+  },
+
+  // Cool Sentiment Analysis Styles
+  coolSentimentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(135, 206, 250, 0.15)", // Soft mavi gövde
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(135, 206, 250, 0.4)", // Soft mavi çerçeve
+    minWidth: 70,
+    justifyContent: "center",
+  },
+  coolSentimentBar: {
+    width: 60,
+    height: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    borderRadius: 4,
+    position: "relative",
+    overflow: "visible",
+  },
+  coolSentimentFill: {
+    height: "100%",
+    borderRadius: 4,
+    opacity: 0.9,
+  },
+  coolSentimentIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  minimalMoodSuggestions: {
+    flexDirection: "row",
+    flexWrap: "wrap", // Allow wrapping for multiple tags
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    backgroundColor: "transparent",
+    marginHorizontal: 16,
+    marginTop: 6,
+    marginBottom: 2,
+    minHeight: 40,
+    alignItems: "center",
+  },
+  moodTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 6,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  moodTagText: {
+    fontSize: 12,
+    fontFamily: "Poppins_500Medium",
+    color: "#fff",
+    marginLeft: 4,
+    letterSpacing: -0.1,
+  },
+  mapFallback: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+  },
+  mapFallbackText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
+    textAlign: "center",
   },
 });

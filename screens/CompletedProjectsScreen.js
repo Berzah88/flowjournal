@@ -18,7 +18,6 @@ import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import StatusBarComponent from "../components/StatusBar";
 import Card from "../components/Card";
 import ActiveProject from "./ActiveProject";
-import ActiveMilestone from "./ActiveMilestone";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const { width } = Dimensions.get("window");
@@ -31,23 +30,12 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
   // usePerformanceMonitor('CompletedProjectsScreen');
 
   const [selectedCard, setSelectedCard] = useState(null);
-  const [selectedMilestone, setSelectedMilestone] = useState(null);
 
   // Memoized handlers to prevent unnecessary re-renders
   const openCard = useCallback((card) => setSelectedCard(card), []);
   const closeCard = useCallback(() => setSelectedCard(null), []);
 
-  const openMilestone = useCallback((milestone, project) => {
-    const milestoneData = {
-      ...milestone,
-      taskId: project.id,
-      projectTitle: project.title,
-      autoOpenJournal: true // Journal'ı otomatik aç
-    };
-    setSelectedMilestone(milestoneData);
-  }, []);
 
-  const closeMilestone = useCallback(() => setSelectedMilestone(null), []);
 
   // Memoized render functions for FlatList
   const renderCompletedItem = useCallback(({ item }) => (
@@ -136,14 +124,6 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
         />
       )}
 
-      {selectedMilestone && (
-        <ActiveMilestone
-          route={{ params: { milestone: selectedMilestone } }}
-          navigation={navigation}
-          milestone={selectedMilestone}
-          onClose={closeMilestone}
-        />
-      )}
     </View>
   );
 });

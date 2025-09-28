@@ -1,4 +1,4 @@
-import React, { useCallback, memo, useMemo } from "react";
+import React, { useCallback, memo, useMemo, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -16,7 +16,7 @@ const MOODS = MOODS_FROM_PREDICTOR;
 
 // Location tag component
 const LocationTag = memo(({ locationData, getLocationText }) => {
-  const [locationText, setLocationText] = React.useState("Location");
+  const [locationText, setLocationText] = useState("Location");
 
   React.useEffect(() => {
     if (locationData) {
@@ -35,7 +35,7 @@ const LocationTag = memo(({ locationData, getLocationText }) => {
 });
 
 const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, taskId, milestoneId, isCompleted }) {
-  const [locationTexts, setLocationTexts] = React.useState({});
+  const [locationTexts, setLocationTexts] = useState({});
 
   // Location koordinatlarını şehir/ilçe formatına çevir
   const getLocationText = useCallback(async (locationData) => {
@@ -59,9 +59,19 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       
       if (result && result.length > 0) {
         const location = result[0];
-        const city = location.city || location.district || location.subregion || "Unknown";
-        const district = location.district && location.district !== city ? location.district : "";
-        const locationText = district ? `${city}, ${district}` : city;
+        // Şehir ve ilçe bilgisini al
+        const city = location.city || location.subregion || location.region;
+        const district = location.district || location.subLocality;
+        
+        let locationText = "Location";
+        if (city && district && city !== district) {
+          locationText = `${district}, ${city}`;
+        } else if (city) {
+          locationText = city;
+        } else {
+          // Fallback: koordinat
+          locationText = `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
+        }
         
         // Cache'e kaydet
         setLocationTexts(prev => ({ ...prev, [key]: locationText }));
@@ -69,6 +79,10 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       }
     } catch (error) {
       console.warn('Reverse geocoding error:', error);
+      // Fallback: koordinat
+      const locationText = `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
+      setLocationTexts(prev => ({ ...prev, [key]: locationText }));
+      return locationText;
     }
     
     return "Location";

@@ -6,7 +6,7 @@ import { getMilestoneColor } from '../utils/milestoneColors';
 
 const { width } = Dimensions.get("window");
 const CELL_SIZE = (width - 40) / 7; // 7 gün için eşit genişlik
-const CELL_HEIGHT = CELL_SIZE + 20; // Hücre yüksekliğini daha fazla artır
+const CELL_HEIGHT = CELL_SIZE + 10; // Hücre yüksekliğini azalt
 
 export default function ProjectCalendar({ milestones = [], projectStartDate, projectEndDate }) {
   const [currentDate, setCurrentDate] = useState(new Date());
