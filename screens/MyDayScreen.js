@@ -25,21 +25,7 @@ import ActiveProject from "./ActiveProject";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 const { width } = Dimensions.get("window");
 
-const MyDayScreen = memo(function MyDayScreen({ 
-  navigation, 
-  selectedCard, 
-  setSelectedCard, 
-  selectedMilestone, 
-  setSelectedMilestone,
-  addMilestoneModalVisible,
-  setAddMilestoneModalVisible,
-  selectedProjectForMilestone,
-  setSelectedProjectForMilestone,
-  selectedDate,
-  setSelectedDate,
-  onAddProject,
-  onOpenJournal
-}) {
+const MyDayScreen = memo(function MyDayScreen({ navigation }) {
   const activeTasks = useActiveTasks();
   const { addMilestone, updateMilestone, completeMilestone, addJournalEntry } = useTaskActions();
   
@@ -48,6 +34,11 @@ const MyDayScreen = memo(function MyDayScreen({
 
   const [refreshing, setRefreshing] = useState(false);
   const [completingMilestones, setCompletingMilestones] = useState(new Set());
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
+  const [selectedProjectForMilestone, setSelectedProjectForMilestone] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
 
 
@@ -62,12 +53,13 @@ const MyDayScreen = memo(function MyDayScreen({
 
 
   // Memoized handlers to prevent unnecessary re-renders
-     const openCard = useCallback((card) => {
-       setSelectedCard(card);
-     }, [setSelectedCard]);
-     const closeCard = useCallback(() => {
-       setSelectedCard(null);
-     }, [setSelectedCard]);
+  const openCard = useCallback((card) => {
+    setSelectedCard(card);
+  }, []);
+  
+  const closeCard = useCallback(() => {
+    setSelectedCard(null);
+  }, []);
 
   const openMilestone = useCallback((milestone, project) => {
     console.log('openMilestone called with:', { milestone, project: project?.title });
@@ -79,8 +71,8 @@ const MyDayScreen = memo(function MyDayScreen({
       projectTitle: project.title,
       autoOpenJournal: true // Journal'ı otomatik aç
     };
-    onOpenJournal(milestoneData);
-  }, [onOpenJournal]);
+    setSelectedMilestone(milestoneData);
+  }, []);
 
   const handleMilestoneComplete = useCallback((milestone, project) => {
     if (milestone.completed) return;

@@ -1,9 +1,15 @@
 // components/StatusTabs.js
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { View, Animated, TouchableOpacity, StyleSheet, Text, Dimensions } from "react-native";
+import HorizontalCalendar from "./HorizontalCalendar";
+import { useTasks } from "../hooks/useTaskContext";
+
 const { width } = Dimensions.get("window");
 
-export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
+export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, selectedDate, onDateSelect, onCompletedPress }) {
+  const tasks = useTasks();
+  const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
+
   // progress: 0 => Active selected, 1 => Completed selected
   const progress = useRef(new Animated.Value(activeIndex === 0 ? 0 : 1)).current;
 
@@ -31,6 +37,29 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
     outputRange: [0, width * 0.5 - 20], // shift indicator half width minus some padding
   });
 
+  // Tarihe göre görevleri grupla
+  const tasksByDate = useMemo(() => {
+    const grouped = {};
+    tasks.forEach(task => {
+      if (task.startDate) {
+        const date = new Date(task.startDate).toDateString();
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(task);
+      }
+    });
+    return grouped;
+  }, [tasks]);
+
+  // Tüm milestone'ları topla
+  const allMilestones = useMemo(() => {
+    return tasks.flatMap(task => task.milestones || []);
+  }, [tasks]);
+
+  const handleDateSelect = (date) => {
+    setCurrentDate(date);
+    if (onDateSelect) onDateSelect(date);
+  };
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
@@ -47,10 +76,18 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
           <Animated.Text style={[styles.tabText, { color: activeColor }]}>Active Projects</Animated.Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => onTabPress(1)} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.tab} onPress={() => onCompletedPress && onCompletedPress()} activeOpacity={0.8}>
           <Animated.Text style={[styles.tabText, { color: completedColor }]}>Completed Projects</Animated.Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Horizontal Calendar */}
+      <HorizontalCalendar
+        selectedDate={currentDate}
+        onDateSelect={handleDateSelect}
+        tasksByDate={tasksByDate}
+        milestones={allMilestones}
+      />
     </View>
   );
 }

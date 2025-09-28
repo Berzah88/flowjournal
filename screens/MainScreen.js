@@ -43,11 +43,9 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [dataRecoveryMenuVisible, setDataRecoveryMenuVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // horizontal pan value (translateX)
-  const panX = useRef(new Animated.Value(0)).current;
-  // committed offset in px (either 0 or -width)
-  const offsetRef = useRef(0);
+  // Removed pan responder - using separate screens now
 
   // Memoized handlers to prevent unnecessary re-renders
   const openCard = useCallback((card) => setSelectedCard(card), []);
@@ -71,101 +69,11 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
 
   // Data recovery operations - artık hook'tan geliyor
 
-  const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
-
-  // Cleanup animations on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (panX) {
-        panX.stopAnimation();
-        // removeAllListeners method'u mevcut değil, sadece stopAnimation yeterli
-      }
-    };
-  }, [panX]);
-
-  // Memoized animate to page index (0 or 1)
-  const animateToIndex = useCallback((index) => {
-    const target = -index * width;
-
-    // ensure no leftover offset/animation
-    panX.stopAnimation();
-    try {
-      panX.flattenOffset();
-    } catch (e) {
-      // some RN versions may throw if no offset - ignore
-    }
-
-    Animated.spring(panX, {
-      toValue: target,
-      useNativeDriver: true,
-      bounciness: 0,
-      speed: 20,
-    }).start(() => {
-      // commit final state-cleanly
-      offsetRef.current = target;
-      setActiveIndex(index);
-      panX.setValue(target);
-      panX.setOffset(0);
-    });
-  }, [panX]);
-
-  // PanResponder: clamp dx so combined (offset + dx) is always within [-width, 0]
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) => {
-        // only start when horizontal movement dominant
-        return Math.abs(gesture.dx) > SWIPE_THRESHOLDS.PAN_RESPONDER && Math.abs(gesture.dx) > Math.abs(gesture.dy);
-      },
-      onPanResponderGrant: () => {
-        // prepare to track delta relative to committed offset
-        panX.stopAnimation();
-        panX.setOffset(offsetRef.current);
-        panX.setValue(0);
-      },
-      onPanResponderMove: (_, gesture) => {
-        // compute allowed dx range so offset + dx ∈ [-width, 0]
-        const offset = offsetRef.current;
-        const minDx = -width - offset; // lowest allowed dx
-        const maxDx = -offset; // highest allowed dx
-        const clampedDx = Math.max(Math.min(gesture.dx, maxDx), minDx);
-        panX.setValue(clampedDx);
-      },
-      onPanResponderRelease: (_, gesture) => {
-        // merge offset and value
-        try {
-          panX.flattenOffset();
-        } catch (e) {}
-        const currentOffset = offsetRef.current; // either 0 or -width
-
-        // Decide navigation based on gesture.dx (not clamped) and current offset
-        if (gesture.dx <= -threshold && currentOffset === 0) {
-          // swipe left enough from left page -> go to completed (index 1)
-          animateToIndex(1);
-        } else if (gesture.dx >= threshold && currentOffset === -width) {
-          // swipe right enough from right page -> go to active (index 0)
-          animateToIndex(0);
-        } else {
-          // snap back to the current page
-          animateToIndex(currentOffset === 0 ? 0 : 1);
-        }
-      },
-      onPanResponderTerminate: () => {
-        // cancel -> snap back
-        animateToIndex(offsetRef.current === 0 ? 0 : 1);
-      },
-      onShouldBlockNativeResponder: () => false,
-    })
-  ).current;
-
-  // Memoized tab press handler
+  // Simplified tab press handler - no more pan responder
   const handleTabPress = useCallback((index) => {
     if (index === activeIndex) return;
-    // set activeIndex immediately so StatusTabs animates right away
     setActiveIndex(index);
-    // set offsetRef immediately so panResponderGrant later uses correct offset
-    offsetRef.current = -index * width;
-    animateToIndex(index);
-  }, [activeIndex, animateToIndex]);
+  }, [activeIndex]);
 
   // Memoized render functions for FlatList
   const renderActiveItem = useCallback(({ item }) => (
@@ -189,25 +97,12 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
     </TouchableOpacity>
   ), [openCard, openMilestone]);
 
-  const renderCompletedItem = useCallback(({ item }) => (
-    <TouchableOpacity onPress={() => openCard(item)} activeOpacity={1}>
-      <Card
-        title={item.title}
-        startDate={item.startDate}
-        endDate={item.endDate}
-        completed={item.done}
-        activeMilestones={item.milestones?.filter((m) => !m.completed) ?? []}
-        onMilestonePress={null} // Completed cards don't allow milestone taps
-        style={{ marginBottom: 15 }}
-      />
-    </TouchableOpacity>
-  ), [openCard]);
+  // Removed renderCompletedItem - using separate screen now
 
   const keyExtractor = useCallback((item) => item.id.toString(), []);
 
   // Memoized data arrays
   const activeTasksReversed = useMemo(() => [...activeTasks].reverse(), [activeTasks]);
-  const completedTasksReversed = useMemo(() => [...completedTasks].reverse(), [completedTasks]);
 
   // Additional safety check
   if (!activeTasks || !completedTasks || !Array.isArray(activeTasks) || !Array.isArray(completedTasks)) {
@@ -254,52 +149,29 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
 
       <StatusBarComponent activeCount={activeTasks.length} doneCount={completedTasks.length} />
 
-      <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
+      <StatusTabs 
+        activeIndex={activeIndex} 
+        onTabPress={handleTabPress}
+        selectedDate={selectedDate}
+        onDateSelect={setSelectedDate}
+        onCompletedPress={() => navigation.navigate('CompletedProjects')}
+      />
 
       <View style={styles.viewport}>
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={[
-            styles.panContainer,
-            { width: width * 2, transform: [{ translateX: panX }] },
-          ]}
-        >
-          {/* Active list (left) */}
-          <View style={{ width }}>
-            <FlatList
-              data={activeTasksReversed}
-              keyExtractor={keyExtractor}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
-              renderItem={renderActiveItem}
-              ListEmptyComponent={
-                <View style={styles.emptyStateContainer}>
-                  <Text style={styles.emptyStateIcon}>📋</Text>
-                  <Text style={styles.emptyStateTitle}>No Active Projects</Text>
-                  <Text style={styles.emptyStateSubtitle}>Start your journey by creating your first project</Text>
-                </View>
-              }
-              showsVerticalScrollIndicator={false}
-            />
-          </View>
-
-          {/* Completed list (right) */}
-          <View style={{ width }}>
-            <FlatList
-              data={completedTasksReversed}
-              keyExtractor={keyExtractor}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
-              renderItem={renderCompletedItem}
-              ListEmptyComponent={
-                <View style={styles.emptyStateContainer}>
-                  <Text style={styles.emptyStateIcon}>🎯</Text>
-                  <Text style={styles.emptyStateTitle}>No Completed Projects</Text>
-                  <Text style={styles.emptyStateSubtitle}>Complete your active projects to see them here</Text>
-                </View>
-              }
-              showsVerticalScrollIndicator={false}
-            />
-          </View>
-        </Animated.View>
+        <FlatList
+          data={activeTasksReversed}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
+          renderItem={renderActiveItem}
+          ListEmptyComponent={
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateIcon}>📋</Text>
+              <Text style={styles.emptyStateTitle}>No Active Projects</Text>
+              <Text style={styles.emptyStateSubtitle}>Start your journey by creating your first project</Text>
+            </View>
+          }
+          showsVerticalScrollIndicator={false}
+        />
       </View>
 
       {/* Modern FAB */}
