@@ -1,0 +1,518 @@
+import React, { useCallback, memo, useMemo } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+// import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
+import PropTypes from "prop-types";
+import * as Location from "expo-location";
+import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/MoodPredictor";
+
+const { width } = Dimensions.get("window");
+const PREVIEW_HEIGHT = 120; // Medya alanı için 120px yükseklik
+
+// Use MOODS from MoodPredictor to ensure consistency
+const MOODS = MOODS_FROM_PREDICTOR;
+
+
+// Location tag component
+const LocationTag = memo(({ locationData, getLocationText }) => {
+  const [locationText, setLocationText] = React.useState("Location");
+
+  React.useEffect(() => {
+    if (locationData) {
+      getLocationText(locationData).then(text => {
+        setLocationText(text);
+      });
+    }
+  }, [locationData, getLocationText]);
+
+  return (
+    <View style={styles.locationTag}>
+      <Ionicons name="location" size={12} color="#007AFF" />
+      <Text style={styles.locationTagText}>{locationText}</Text>
+    </View>
+  );
+});
+
+const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, taskId, milestoneId, isCompleted }) {
+  const [locationTexts, setLocationTexts] = React.useState({});
+
+  // Location koordinatlarını şehir/ilçe formatına çevir
+  const getLocationText = useCallback(async (locationData) => {
+    if (!locationData) return "Location";
+    
+    const coords = locationData.coords || locationData;
+    if (!coords || !coords.latitude || !coords.longitude) return "Location";
+    
+    const key = `${coords.latitude}_${coords.longitude}`;
+    
+    // Eğer daha önce çevrilmişse cache'den dön
+    if (locationTexts[key]) {
+      return locationTexts[key];
+    }
+    
+    try {
+      const result = await Location.reverseGeocodeAsync({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+      
+      if (result && result.length > 0) {
+        const location = result[0];
+        const city = location.city || location.district || location.subregion || "Unknown";
+        const district = location.district && location.district !== city ? location.district : "";
+        const locationText = district ? `${city}, ${district}` : city;
+        
+        // Cache'e kaydet
+        setLocationTexts(prev => ({ ...prev, [key]: locationText }));
+        return locationText;
+      }
+    } catch (error) {
+      console.warn('Reverse geocoding error:', error);
+    }
+    
+    return "Location";
+  }, [locationTexts]);
+
+  // O günün tüm medyalarını birleştir
+  const allMedia = useMemo(() => {
+    const media = [];
+    dayGroup.allEntries.forEach(entry => {
+      if (entry.images) {
+        media.push(...entry.images.map(uri => ({ type: "image", content: uri })));
+      }
+      if (entry.location) {
+        media.push({ type: "map", content: entry.location });
+      }
+    });
+    return media;
+  }, [dayGroup.allEntries]);
+
+  // O günün mood bilgisini al (mood bilgisi olan en son girişten)
+  const dayMoodObj = useMemo(() => {
+    const moodEntries = dayGroup.allEntries.filter(entry => 
+      entry.mood || entry.moodIcon || entry.moodColor
+    );
+    
+    const moodEntry = moodEntries.length > 0 
+      ? moodEntries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+      : null;
+    
+    if (moodEntry) {
+      if (moodEntry.mood) {
+        const found = MOODS.find((m) => m.key === moodEntry.mood);
+        if (found) return found;
+        return { key: moodEntry.mood, label: moodEntry.mood, icon: moodEntry.moodIcon || "happy", color: moodEntry.moodColor || "#eee" };
+      } else if (moodEntry.moodIcon || moodEntry.moodColor) {
+        return { key: moodEntry.mood || null, label: moodEntry.mood || "", icon: moodEntry.moodIcon || "happy", color: moodEntry.moodColor || "#eee" };
+      }
+    }
+    return null;
+  }, [dayGroup.allEntries]);
+
+  // Metin içeren girişleri al ve sırala
+  const textEntries = useMemo(() => {
+    return dayGroup.allEntries.filter(entry => {
+      return entry.text && entry.text.trim().length > 0;
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [dayGroup.allEntries]);
+
+  const firstTextEntry = textEntries.length > 0 ? textEntries[0] : null;
+  const otherTextEntries = textEntries.slice(1);
+
+  // Eğer hiç metin içeren giriş yoksa ve medya da yoksa hiçbir şey render etme
+  if (textEntries.length === 0 && allMedia.length === 0 && !dayMoodObj) {
+    return null;
+  }
+
+  // Modal açma fonksiyonu
+  const openJournalDetail = useCallback((mediaData) => {
+    if (navigation && navigation.navigate) {
+      navigation.navigate('JournalDetail', { 
+        selectedMediaData: {
+          ...mediaData,
+          taskId,
+          milestoneId,
+          isCompleted
+        }
+      });
+    } else {
+      console.warn('Navigation not available for JournalDetail');
+    }
+  }, [navigation, taskId, milestoneId, isCompleted]);
+
+  // Metin özetleme fonksiyonu
+  const truncateText = useCallback((text, maxLength = 100) => {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
+  }, []);
+
+  // Medya preview render fonksiyonu
+  const renderPreviewGridForEntry = useCallback((entry) => {
+    const previews = [
+      ...(entry.images?.map((uri) => ({ type: "image", content: uri })) || []),
+      ...(entry.location ? [{ type: "map", content: entry.location }] : []),
+    ];
+
+    if (!previews || previews.length === 0) return null;
+
+    const left = previews[0] ? [previews[0]] : [];
+    const right = previews.slice(1);
+    const rightCount = right.length;
+
+    let topRow = [];
+    let bottomRow = [];
+    if (rightCount === 1) topRow = [right[0]];
+    else if (rightCount === 2) topRow = right;
+    else if (rightCount === 3) {
+      topRow = [right[0]];
+      bottomRow = right.slice(1, 3);
+    } else if (rightCount >= 4) {
+      topRow = right.slice(0, 2);
+      bottomRow = right.slice(2, 4);
+    }
+
+    const renderPreviewItem = (item, key) => {
+      if (!item) return null;
+      if (item.type === "image") {
+        return <Image key={key} source={{ uri: item.content }} style={styles.previewImage} resizeMode="cover" />;
+      }
+      if (item.type === "map") {
+        const coords = item.content?.coords || item.content;
+        return (
+          <View key={key} style={styles.mapWrapper}>
+            <View style={styles.mapFallback}>
+              <Ionicons name="location" size={20} color="#007AFF" />
+              <Text style={styles.mapFallbackText}>
+                📍 {coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)}
+              </Text>
+            </View>
+          </View>
+        );
+      }
+      return null;
+    };
+
+    return (
+      <View style={styles.previewWrapper}>
+        <View style={styles.leftGrid}>{left[0] && renderPreviewItem(left[0], "left-0")}</View>
+        <View style={styles.rightGrid}>
+          <View style={{ flexDirection: "row", flex: topRow.length === 1 ? 0.5 : 0.5, marginBottom: 1 }}>
+            {topRow.map((item, idx) => (
+              <View key={idx} style={{ flex: topRow.length === 1 ? 1 : 0.5, paddingRight: 1 }}>
+                {renderPreviewItem(item, `right-top-${idx}`)}
+              </View>
+            ))}
+          </View>
+          {bottomRow.length > 0 && (
+            <View style={{ flexDirection: "row", flex: 0.5 }}>
+              {bottomRow.map((item, idx) => (
+                <View key={idx} style={{ flex: 0.5, paddingRight: 1 }}>
+                  {renderPreviewItem(item, `right-bottom-${idx}`)}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }, []);
+
+  return (
+    <TouchableOpacity 
+      style={styles.dayCard}
+      onPress={() => {
+        openJournalDetail({
+          images: allMedia.filter(m => m.type === "image").map(m => m.content),
+          location: allMedia.find(m => m.type === "map")?.content,
+          date: dayGroup.date,
+          mood: dayMoodObj,
+          textEntries: textEntries
+        });
+      }}
+      activeOpacity={0.8}
+    >
+      {/* Medya bölümü - o günün tüm medyaları */}
+      {allMedia.length > 0 && (
+        <View style={styles.dayMediaSection}>
+          {renderPreviewGridForEntry({ 
+            images: allMedia.filter(m => m.type === "image").map(m => m.content), 
+            location: allMedia.find(m => m.type === "map")?.content 
+          })}
+        </View>
+      )}
+      
+      {/* Tarih başlığı ve mood */}
+      <View style={styles.dayHeader}>
+        <View style={styles.dayHeaderContent}>
+          <Text style={styles.dayHeaderText}>{dayGroup.date}</Text>
+          {dayMoodObj && (
+            <View style={[styles.dayMoodTag, { backgroundColor: dayMoodObj.color || "#fff", marginLeft: 4 }]}>
+              <MaterialIcons name={getValidIconName(dayMoodObj.icon)} size={16} color="#333" />
+              <Text style={styles.dayMoodLabel}>{dayMoodObj.label}</Text>
+            </View>
+          )}
+        </View>
+        {/* Location etiketi - tarihin altında */}
+        {allMedia.find(m => m.type === "map") && (
+          <LocationTag locationData={allMedia.find(m => m.type === "map")?.content} getLocationText={getLocationText} />
+        )}
+      </View>
+      
+      {/* İlk metin girişi - saat ile birlikte */}
+      {firstTextEntry && (
+        <View style={styles.firstTextSection}>
+          <Text style={styles.firstTextTime}>
+            {new Date(firstTextEntry.createdAt).toLocaleTimeString('tr-TR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </Text>
+          <Text style={styles.firstTextContent}>{truncateText(firstTextEntry.text, 120)}</Text>
+        </View>
+      )}
+      
+      {/* Diğer metin girişleri - etiket olarak alt kısımda */}
+      {otherTextEntries.length > 0 && (
+        <View style={styles.additionalTextTags}>
+          {otherTextEntries.map((entry, index) => (
+            <View key={index} style={styles.textTag}>
+              <Text style={styles.textTagTime}>
+                {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for better performance
+  return (
+    prevProps.dayGroup.date === nextProps.dayGroup.date &&
+    prevProps.dayGroup.allEntries.length === nextProps.dayGroup.allEntries.length &&
+    prevProps.dayGroup.allEntries.every((entry, index) => {
+      const nextEntry = nextProps.dayGroup.allEntries[index];
+      return entry.id === nextEntry.id &&
+             entry.text === nextEntry.text &&
+             entry.createdAt === nextEntry.createdAt &&
+             entry.mood === nextEntry.mood &&
+             entry.moodIcon === nextEntry.moodIcon &&
+             entry.moodColor === nextEntry.moodColor;
+    })
+  );
+});
+
+export default JournalCard;
+
+const styles = StyleSheet.create({
+  dayCard: {
+    backgroundColor: "#FFFFFF", 
+    borderRadius: 8, 
+    padding: 6, 
+    marginBottom: 4,
+    marginLeft: 4,
+    marginRight: 20,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    shadowOpacity: 0.05,
+    borderWidth: 0.5,
+    borderColor: "#F0F0F0",
+    minHeight: 300,
+  },
+  dayHeader: {
+    marginBottom: 6,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  dayHeaderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dayHeaderText: {
+    fontSize: 12,
+    fontFamily: "Poppins_500Medium",
+    color: "#666",
+    textTransform: "capitalize",
+    flex: 1,
+    letterSpacing: 0.3,
+  },
+  dayMoodTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+    minWidth: 50,
+    justifyContent: "center",
+  },
+  dayMoodLabel: {
+    marginLeft: 3,
+    fontSize: 9,
+    color: "#555",
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: 0.3,
+  },
+  firstTextSection: {
+    marginTop: 4,
+    marginBottom: 4,
+    height: 80,
+  },
+  firstTextTime: {
+    fontSize: 9,
+    fontFamily: "Poppins_500Medium",
+    color: "#888",
+    marginBottom: 2,
+    paddingHorizontal: 2,
+    letterSpacing: 0.4,
+  },
+  firstTextContent: {
+    fontSize: 11,
+    color: "#333",
+    fontFamily: "Poppins_400Regular",
+    lineHeight: 15,
+    letterSpacing: 0.2,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 6,
+    padding: 6,
+  },
+  additionalTextTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    marginTop: 4,
+  },
+  textTag: {
+    backgroundColor: "#E9ECEF",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#DEE2E6",
+  },
+  textTagTime: {
+    fontSize: 8,
+    fontFamily: "Poppins_500Medium",
+    color: "#6C757D",
+    letterSpacing: 0.3,
+  },
+  // Medya preview stilleri
+  dayMediaSection: {
+    marginBottom: 6,
+    marginHorizontal: -2,
+  },
+  previewWrapper: { 
+    flexDirection: "row", 
+    paddingHorizontal: 1, 
+    marginTop: 1, 
+    height: PREVIEW_HEIGHT, 
+    alignItems: "stretch", 
+    elevation: 2 
+  },
+  leftGrid: { 
+    flex: 1, 
+    marginRight: 1, 
+    height: PREVIEW_HEIGHT 
+  },
+  rightGrid: { 
+    flex: 1, 
+    flexDirection: "column", 
+    height: PREVIEW_HEIGHT 
+  },
+  previewImage: { 
+    width: "100%", 
+    height: "100%", 
+    borderRadius: 6, 
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    shadowOpacity: 0.1,
+  },
+  mapWrapper: { 
+    flex: 1, 
+    borderRadius: 6, 
+    overflow: "hidden", 
+    backgroundColor: "#f8f8f8", 
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    shadowOpacity: 0.1,
+  },
+  mapInner: { 
+    width: "100%", 
+    height: "100%" 
+  },
+  mapFallback: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+  },
+  mapFallbackText: {
+    fontSize: 10,
+    color: "#666",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  // Location tag stilleri
+  locationTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: "#F0F8FF",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+    alignSelf: "flex-start",
+  },
+  locationTagText: {
+    fontSize: 10,
+    color: "#007AFF",
+    fontFamily: "Poppins_500Medium",
+    marginLeft: 4,
+    letterSpacing: 0.2,
+  },
+});
+
+JournalCard.propTypes = {
+  dayGroup: PropTypes.shape({
+    date: PropTypes.string.isRequired,
+    allEntries: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      text: PropTypes.string,
+      createdAt: PropTypes.string,
+      mood: PropTypes.string,
+      moodIcon: PropTypes.string,
+      moodColor: PropTypes.string,
+      images: PropTypes.arrayOf(PropTypes.string),
+      location: PropTypes.object,
+    })).isRequired,
+  }).isRequired,
+  onPress: PropTypes.func,
+  navigation: PropTypes.object,
+  taskId: PropTypes.string,
+  milestoneId: PropTypes.string,
+  isCompleted: PropTypes.bool,
+};
+
+
+JournalCard.defaultProps = {
+  onPress: null,
+  navigation: null,
+  taskId: null,
+  milestoneId: null,
+  isCompleted: false,
+};

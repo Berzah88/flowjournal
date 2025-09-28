@@ -227,6 +227,15 @@ const MainScreen = React.memo(function MainScreen({ navigation }) {
             <Text style={styles.header}>Flow Journal</Text>
             <View style={styles.headerActions}>
               <TouchableOpacity 
+                style={styles.myDayButton} 
+                onPress={() => navigation.navigate('MyDay')}
+                accessible={true}
+                accessibilityLabel="My Day"
+                accessibilityRole="button"
+              >
+                <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity 
                 style={styles.dataRecoveryButton} 
                 onPress={openDataRecoveryMenu}
                 accessible={true}
@@ -454,6 +463,20 @@ const styles = StyleSheet.create({
     textAlign: "center", 
     fontFamily: "Poppins_300Light",
     lineHeight: 36,
+  },
+  myDayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#4A90E2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
 });
 

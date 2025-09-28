@@ -1,0 +1,323 @@
+import React, { useMemo, memo } from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import PropTypes from "prop-types";
+import { FONTS, COLORS } from '../constants';
+
+const CompletedProjectCard = memo(({ 
+  title, 
+  startDate, 
+  endDate, 
+  milestones = [], 
+  onPress,
+  style,
+  compact = false // Grid view için compact mode
+}) => {
+  // Milestone istatistikleri
+  const milestoneStats = useMemo(() => {
+    const total = milestones.length;
+    const completed = milestones.filter(m => m.completed).length;
+    const journalEntries = milestones.reduce((acc, m) => acc + (m.journalEntries?.length || 0), 0);
+    
+    return { total, completed, journalEntries };
+  }, [milestones]);
+
+  // Tarih formatı
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('tr-TR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  };
+
+  // Proje süresi hesaplama
+  const projectDuration = useMemo(() => {
+    if (!startDate || !endDate) return '';
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 gün';
+    if (diffDays < 7) return `${diffDays} gün`;
+    if (diffDays < 30) return `${Math.round(diffDays / 7)} hafta`;
+    return `${Math.round(diffDays / 30)} ay`;
+  }, [startDate, endDate]);
+
+  return (
+    <Pressable 
+      style={[styles.container, style]} 
+      onPress={onPress}
+      android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
+    >
+      <LinearGradient
+        colors={['#FFFFFF', '#F8F9FA']}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title} numberOfLines={2}>
+              {title}
+            </Text>
+            <View style={styles.completedBadge}>
+              <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+              <Text style={styles.completedText}>Tamamlandı</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Date Range */}
+        <View style={styles.dateContainer}>
+          <View style={styles.dateItem}>
+            <Ionicons name="calendar-outline" size={14} color="#8E8E93" />
+            <Text style={styles.dateText}>
+              {formatDate(startDate)} - {formatDate(endDate)}
+            </Text>
+          </View>
+          <View style={styles.durationBadge}>
+            <Text style={styles.durationText}>{projectDuration}</Text>
+          </View>
+        </View>
+
+        {/* Statistics */}
+        {!compact && (
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Ionicons name="flag" size={16} color="#FF9800" />
+              <Text style={styles.statNumber}>{milestoneStats.total}</Text>
+              <Text style={styles.statLabel}>Milestone</Text>
+            </View>
+            
+            <View style={styles.statItem}>
+              <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+              <Text style={styles.statNumber}>{milestoneStats.completed}</Text>
+              <Text style={styles.statLabel}>Tamamlandı</Text>
+            </View>
+            
+            <View style={styles.statItem}>
+              <Ionicons name="journal" size={16} color="#2196F3" />
+              <Text style={styles.statNumber}>{milestoneStats.journalEntries}</Text>
+              <Text style={styles.statLabel}>Günlük</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Compact Statistics for Grid View */}
+        {compact && (
+          <View style={styles.compactStatsContainer}>
+            <View style={styles.compactStatItem}>
+              <Ionicons name="flag" size={12} color="#FF9800" />
+              <Text style={styles.compactStatText}>{milestoneStats.total}</Text>
+            </View>
+            <View style={styles.compactStatItem}>
+              <Ionicons name="checkmark-circle" size={12} color="#4CAF50" />
+              <Text style={styles.compactStatText}>{milestoneStats.completed}</Text>
+            </View>
+            <View style={styles.compactStatItem}>
+              <Ionicons name="journal" size={12} color="#2196F3" />
+              <Text style={styles.compactStatText}>{milestoneStats.journalEntries}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View 
+              style={[
+                styles.progressFill, 
+                { width: `${milestoneStats.total > 0 ? (milestoneStats.completed / milestoneStats.total) * 100 : 0}%` }
+              ]} 
+            />
+          </View>
+          <Text style={styles.progressText}>
+            %{milestoneStats.total > 0 ? Math.round((milestoneStats.completed / milestoneStats.total) * 100) : 0} tamamlandı
+          </Text>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View style={styles.footerLeft}>
+            <Ionicons name="trophy" size={14} color="#FFD700" />
+            <Text style={styles.footerText}>Başarıyla tamamlandı</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+});
+
+CompletedProjectCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  startDate: PropTypes.string,
+  endDate: PropTypes.string,
+  milestones: PropTypes.array,
+  onPress: PropTypes.func,
+  style: PropTypes.object,
+  compact: PropTypes.bool,
+};
+
+const styles = StyleSheet.create({
+  container: {
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  gradient: {
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+  },
+  header: {
+    marginBottom: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: FONTS.SEMI_BOLD,
+    color: '#1D1D1F',
+    flex: 1,
+    marginRight: 12,
+    lineHeight: 24,
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  completedText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: '#4CAF50',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dateText: {
+    fontSize: 14,
+    fontFamily: FONTS.REGULAR,
+    color: '#8E8E93',
+  },
+  durationBadge: {
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  durationText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: '#4A90E2',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderRadius: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  statNumber: {
+    fontSize: 18,
+    fontFamily: FONTS.BOLD,
+    color: '#1D1D1F',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.MEDIUM,
+    color: '#8E8E93',
+  },
+  progressContainer: {
+    marginBottom: 16,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    borderRadius: 3,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: '#4CAF50',
+    textAlign: 'center',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(0, 0, 0, 0.04)',
+  },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  footerText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: '#8E8E93',
+  },
+  // Compact styles for grid view
+  compactStatsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderRadius: 8,
+  },
+  compactStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  compactStatText: {
+    fontSize: 12,
+    fontFamily: FONTS.SEMI_BOLD,
+    color: '#1D1D1F',
+  },
+});
+
+export default CompletedProjectCard;
