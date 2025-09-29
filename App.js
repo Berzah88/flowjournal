@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from 'react-native';
 import WelcomeScreen from './screens/WelcomeScreen';
+import TutorialScreen from './screens/TutorialScreen';
 import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
 import ActiveProject from './screens/ActiveProject';
@@ -42,6 +43,7 @@ function AppNavigator() {
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
+        <Stack.Screen name="Tutorial" component={TutorialScreen} />
         <Stack.Screen name="Main" component={MainScreen} />
         <Stack.Screen name="AddProject" component={AddProjectScreen} />
         <Stack.Screen name="ActiveProject" component={ActiveProject} />

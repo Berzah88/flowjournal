@@ -34,9 +34,9 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
   const [endDate, setEndDate] = useState(null);
   const [isSelectingRange, setIsSelectingRange] = useState(false);
 
-  // Modal rengini belirle - Her zaman beyaz/Apple tarzı
+  // Determine modal color - Always white/Apple style
   const getModalColor = () => {
-    return getMilestoneCardColor(); // Her zaman aynı beyaz renk
+    return getMilestoneCardColor(); // Always the same white color
   };
   
   // Use spring animation hook - same as Add Project screen
@@ -105,7 +105,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     }
 
     const milestoneData = {
-      id: editingMilestone ? editingMilestone.id : Date.now().toString(),
+      ...(editingMilestone && { id: editingMilestone.id }), // Only provide ID in edit mode
       title: title.trim(),
       startDate: (startDate || selectedDate).toISOString(),
       endDate: (endDate || selectedDate).toISOString(),
@@ -375,23 +375,23 @@ const styles = StyleSheet.create({
     // Yeni layout - column direction
     flexDirection: "column",
     borderRadius: 16,
-    marginHorizontal: 10, // Daha az margin - daha geniş modal
-    marginBottom: height * 0.05, // Ekranın altında %5 görünsün - daha yukarıda
+    marginHorizontal: 10, // Less margin - wider modal
+    marginBottom: height * 0.05, // Show 5% from bottom of screen - higher up
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 12,
-    // backgroundColor dinamik olarak belirleniyor
-    width: width - 20, // Daha geniş modal
-    minHeight: 400, // Minimum yükseklik - takvim için daha büyük
+    // backgroundColor determined dynamically
+    width: width - 20, // Wider modal
+    minHeight: 400, // Minimum height - larger for calendar
   },
   editMilestoneCard: {
     // backgroundColor dinamik olarak belirleniyor
   },
   cardContent: {
     flexDirection: "row",
-    alignItems: "flex-start", // flex-start yaparak üstten hizalama
+    alignItems: "flex-start", // Align from top with flex-start
     padding: 14,
     flex: 1,
   },
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "#5AC8FA", // Soft Apple mavi - daha yumuşak ton
+    backgroundColor: "#5AC8FA", // Soft Apple blue - softer tone
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -426,15 +426,15 @@ const styles = StyleSheet.create({
     paddingRight: 50,
     borderWidth: 0,
     backgroundColor: 'transparent',
-    minHeight: 20, // Minimum yükseklik
-    maxHeight: 80, // Maksimum yükseklik (4 satır)
+    minHeight: 20, // Minimum height
+    maxHeight: 80, // Maximum height (4 lines)
     textAlignVertical: 'top',
   },
   actionButtons: {
     flexDirection: 'row',
-    alignItems: 'flex-start', // Üstten hizalama
+    alignItems: 'flex-start', // Align from top
     gap: 8,
-    marginTop: 4, // Icon ile aynı hizada olması için
+    marginTop: 4, // To align with icon
   },
   cancelBtn: {
     width: 32,
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#5AC8FA', // Soft Apple mavi - daha yumuşak ton
+    backgroundColor: '#5AC8FA', // Soft Apple blue - softer tone
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -495,8 +495,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
-    padding: 12, // Padding'i azalt
-    marginHorizontal: -8, // Container'ı çok daha geniş yap
+    padding: 12, // Reduce padding
+    marginHorizontal: -8, // Make container much wider
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   navButton: {
-    width: 28, // Küçültülmüş navigasyon butonları
+    width: 28, // Reduced navigation buttons
     height: 28,
     borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   monthYearText: {
-    fontSize: 14, // Küçültülmüş başlık
+    fontSize: 14, // Reduced title
     fontFamily: FONTS.MEDIUM,
     color: '#1a1a1a',
   },
@@ -522,13 +522,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   dayHeaderText: {
-    width: (width - 96) / 7, // Gün hücreleri ile aynı genişlik
+    width: (width - 96) / 7, // Same width as day cells
     textAlign: 'center',
-    fontSize: 11, // Küçültülmüş gün başlıkları
+    fontSize: 11, // Reduced day headers
     fontFamily: FONTS.REGULAR,
     color: '#7f8c8d',
-    marginBottom: 4, // Daha az boşluk
-    marginHorizontal: 0.5, // Gün hücreleri ile aynı margin
+    marginBottom: 4, // Less spacing
+    marginHorizontal: 0.5, // Same margin as day cells
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -538,23 +538,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   calendarDay: {
-    width: (width - 96) / 7, // 7 columns, container padding'leri dahil
-    height: 32, // Küçültülmüş gün hücreleri
+    width: (width - 96) / 7, // 7 columns, including container padding
+    height: 32, // Reduced day cells
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4, // Daha az boşluk
-    marginHorizontal: 0.5, // Minimal yan boşluklar
+    marginBottom: 4, // Less spacing
+    marginHorizontal: 0.5, // Minimal side spacing
   },
   selectedDay: {
-    backgroundColor: '#5AC8FA', // Soft Apple mavi
+    backgroundColor: '#5AC8FA', // Soft Apple blue
     borderRadius: 16,
   },
   todayDay: {
-    backgroundColor: 'rgba(90, 200, 250, 0.3)', // Soft Apple mavi - şeffaf
+    backgroundColor: 'rgba(90, 200, 250, 0.3)', // Soft Apple blue - transparent
     borderRadius: 16,
   },
   dayText: {
-    fontSize: 13, // Küçültülmüş font
+    fontSize: 13, // Reduced font
     fontFamily: FONTS.REGULAR,
     color: '#1a1a1a',
   },
@@ -568,21 +568,21 @@ const styles = StyleSheet.create({
   },
   // Range Selection Styles
   rangeStartDay: {
-    backgroundColor: '#5AC8FA', // Soft Apple mavi
+    backgroundColor: '#5AC8FA', // Soft Apple blue
     borderTopLeftRadius: 16,
     borderBottomLeftRadius: 16,
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
   },
   rangeEndDay: {
-    backgroundColor: '#5AC8FA', // Soft Apple mavi
+    backgroundColor: '#5AC8FA', // Soft Apple blue
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
   },
   rangeDay: {
-    backgroundColor: 'rgba(90, 200, 250, 0.3)', // Soft Apple mavi - şeffaf
+    backgroundColor: 'rgba(90, 200, 250, 0.3)', // Soft Apple blue - transparent
     borderRadius: 0,
   },
   rangeEndDayText: {

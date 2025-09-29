@@ -49,7 +49,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const { recoverData, createManualBackup, getDataStatus } = useDataRecovery();
   const { handleDataRecovery, handleCreateBackup, handleCheckDataStatus } = useDataRecoveryOperations();
   
-  // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
+  // Performance monitoring (only in development) - temporarily disabled
   // usePerformanceMonitor('MainScreen');
 
   const [activeIndex, setActiveIndex] = useState(0); // 0 = my day, 1 = active
@@ -61,7 +61,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [forceUpdate, setForceUpdate] = useState(0);
   
-  // Menu animasyon değerleri
+  // Menu animation values
   const menuScale = useSharedValue(0);
   const menuOpacity = useSharedValue(0);
   const menuTranslateY = useSharedValue(-20);
@@ -82,12 +82,12 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const closeCard = useCallback(() => setSelectedCard(null), []);
 
 
-  // MyDay screen için journal açma fonksiyonu
+  // Function to open journal for MyDay screen
   const handleMyDayOpenJournal = useCallback((milestoneData) => {
     setMyDaySelectedMilestone(milestoneData);
   }, []);
 
-  // MyDay screen için proje ekleme fonksiyonu
+  // Function to add project for MyDay screen
   const handleMyDayAddProject = useCallback(() => {
     setAddVisible(true);
   }, []);
@@ -99,7 +99,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
   const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
 
-  // Menu açılma/kapanma animasyonu
+  // Menu open/close animation
   useEffect(() => {
     if (mainMenuVisible) {
       menuScale.value = withSpring(1, {
@@ -295,6 +295,17 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               </View>
             </View>
             <View style={styles.headerActions}>
+              {/* Temporary Welcome Screen Button - For testing */}
+              <TouchableOpacity 
+                style={styles.welcomeButton} 
+                onPress={() => navigation.navigate('Welcome')}
+                accessible={true}
+                accessibilityLabel="Go to Welcome Screen"
+                accessibilityRole="button"
+              >
+                <Ionicons name="home-outline" size={20} color="#8E7DBE" />
+              </TouchableOpacity>
+              
               <TouchableOpacity 
                 style={styles.menuButton} 
                 onPress={() => setMainMenuVisible(true)}
@@ -465,7 +476,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         milestone={myDaySelectedMilestone} 
         onClose={() => setMyDaySelectedMilestone(null)}
         onSave={() => {
-          // Journal kaydedildiğinde refresh trigger
+          // Refresh trigger when journal is saved
           setRefreshKey(prev => prev + 1);
           setForceUpdate(prev => prev + 1);
         }}
@@ -569,6 +580,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(102, 126, 234, 0.15)',
     shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  welcomeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(142, 125, 190, 0.1)',
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: 'rgba(142, 125, 190, 0.2)',
+    shadowColor: "#8E7DBE",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,

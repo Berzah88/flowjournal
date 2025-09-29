@@ -88,16 +88,16 @@ function MileStone({
 
   const handleDelete = useCallback(() => {
     Alert.alert(
-      "Emin misiniz? Silinen Milestone Geri alınamaz",
+      "Are you sure? Deleted Milestone cannot be recovered",
       "",
       [
         {
-          text: "İptal",
+          text: "Cancel",
           style: "cancel",
           onPress: hideDeleteOptionWithAnimation,
         },
         {
-          text: "Sil",
+          text: "Delete",
           style: "destructive",
           onPress: () => {
             hideDeleteOptionWithAnimation();
@@ -175,7 +175,7 @@ function MileStone({
     const groups = {};
     entries.forEach(entry => {
       const date = new Date(entry.createdAt);
-      const dateKey = date.toLocaleDateString('tr-TR', {
+      const dateKey = date.toLocaleDateString('en-US', {
         day: '2-digit',
         month: 'long',
         year: 'numeric'

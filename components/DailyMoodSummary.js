@@ -83,25 +83,25 @@ const DailyMoodSummary = ({
     
     if (totalEntries === 0) {
       return {
-        title: "Bugün nasıl hissediyorsun?",
-        subtitle: "Duygularını kaydetmeye başla ve gününü anlamlandır",
-        action: "İlk günlüğünü yaz"
+        title: "How are you feeling today?",
+        subtitle: "Start recording your emotions and make sense of your day",
+        action: "Write your first journal"
       };
     }
     
     if (totalEntries === 1) {
       return {
-        title: "Harika başlangıç!",
-        subtitle: "Duygularını paylaşmaya devam et, bu çok değerli",
-        action: "Daha fazla yaz"
+        title: "Great start!",
+        subtitle: "Keep sharing your emotions, this is very valuable",
+        action: "Write more"
       };
     }
     
     if (totalEntries >= 3) {
       return {
-        title: "Çok aktif bir gün!",
-        subtitle: "Duygularını çok güzel ifade ediyorsun, bu harika",
-        action: "Devam et"
+        title: "Very active day!",
+        subtitle: "You express your emotions beautifully, this is great",
+        action: "Continue"
       };
     }
     
@@ -109,43 +109,43 @@ const DailyMoodSummary = ({
     if (dominantMood) {
       const moodMessages = {
         'happy': {
-          title: "Mutlu bir gün!",
-          subtitle: "Bu pozitif enerjiyi kaydetmeye devam et",
-          action: "Mutluluğunu paylaş"
+          title: "Happy day!",
+          subtitle: "Keep recording this positive energy",
+          action: "Share your happiness"
         },
         'calm': {
-          title: "Sakin bir gün",
-          subtitle: "Bu huzurlu anları kaydetmek çok güzel",
-          action: "Huzurunu yaz"
+          title: "Calm day",
+          subtitle: "Recording these peaceful moments is beautiful",
+          action: "Write your peace"
         },
         'angry': {
-          title: "Zorlu bir gün",
-          subtitle: "Duygularını yazmak seni rahatlatacak",
-          action: "Duygularını ifade et"
+          title: "Challenging day",
+          subtitle: "Writing your emotions will relax you",
+          action: "Express your emotions"
         },
         'sick': {
-          title: "Dinlenme zamanı",
-          subtitle: "Nasıl hissettiğini kaydetmek iyileşmene yardım eder",
-          action: "Durumunu yaz"
+          title: "Time to rest",
+          subtitle: "Recording how you feel helps your recovery",
+          action: "Write your condition"
         },
         'Natural': {
-          title: "Normal bir gün",
-          subtitle: "Her günün kendine özgü hikayesi var",
-          action: "Gününü kaydet"
+          title: "Normal day",
+          subtitle: "Every day has its own unique story",
+          action: "Record your day"
         }
       };
       
       return moodMessages[dominantMood.key] || {
-        title: "Güzel gidiyor!",
-        subtitle: "Duygularını kaydetmeye devam et",
-        action: "Daha fazla yaz"
+        title: "Going well!",
+        subtitle: "Keep recording your emotions",
+        action: "Write more"
       };
     }
     
     return {
-      title: "Güzel gidiyor!",
-      subtitle: "Duygularını kaydetmeye devam et",
-      action: "Daha fazla yaz"
+      title: "Going well!",
+      subtitle: "Keep recording your emotions",
+      action: "Write more"
     };
   };
   
@@ -157,14 +157,14 @@ const DailyMoodSummary = ({
     const moodKeys = Object.keys(moodCounts);
     
     if (moodKeys.length === 0) return null;
-    if (moodKeys.length === 1) return "Tutarlı";
+    if (moodKeys.length === 1) return "Consistent";
     
     const maxCount = Math.max(...Object.values(moodCounts));
     const totalCount = Object.values(moodCounts).reduce((a, b) => a + b, 0);
     
-    if (maxCount / totalCount > 0.7) return "Tutarlı";
-    if (maxCount / totalCount > 0.5) return "Karışık";
-    return "Değişken";
+    if (maxCount / totalCount > 0.7) return "Consistent";
+    if (maxCount / totalCount > 0.5) return "Mixed";
+    return "Variable";
   };
   
   const moodTrend = getMoodTrend();

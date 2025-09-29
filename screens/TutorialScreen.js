@@ -1,0 +1,777 @@
+import React, { useRef, useEffect, useState } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Animated, 
+  Dimensions,
+  SafeAreaView,
+  StatusBar 
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../constants";
+import AddProjectScreen from "./AddProjectScreen";
+import ActiveProject from "./ActiveProject";
+import Journal from "./Journal";
+import MainScreen from "./MainScreen";
+
+const { width, height } = Dimensions.get("window");
+
+export default function TutorialScreen({ navigation }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const [currentStep, setCurrentStep] = useState(0);
+
+  const tutorialSteps = [
+    {
+      id: 1,
+      title: "Create Project",
+      description: "Add a new project and set start-end dates",
+      color: "#10B981",
+      screen: "AddProject"
+    },
+    {
+      id: 2,
+      title: "Add Milestones",
+      description: "Add step-by-step milestones to your project and track your progress",
+      color: "#3B82F6",
+      screen: "ActiveProject"
+    },
+    {
+      id: 3,
+      title: "Emotion Journal",
+      description: "Record how you feel at each milestone and track your personal experience",
+      color: "#F59E0B",
+      screen: "Journal"
+    },
+    {
+      id: 4,
+      title: "View Progress",
+      description: "Analyze your project progress and emotional journey",
+      color: "#8B5CF6",
+      screen: "Main"
+    }
+  ];
+
+  useEffect(() => {
+    // Staggered entrance animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: ANIMATION_DURATIONS.SLOW,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: ANIMATION_DURATIONS.SLOW,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handleNext = () => {
+    if (currentStep < tutorialSteps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      navigation?.replace("Main");
+    }
+  };
+
+  const handleSkip = () => {
+    navigation?.replace("Main");
+  };
+
+  const currentTutorial = tutorialSteps[currentStep];
+
+  const renderScreenPreview = () => {
+    const screenProps = {
+      navigation: { navigate: () => {}, replace: () => {}, goBack: () => {} },
+      selectedCard: null,
+      onClose: () => {},
+      setMainActiveTab: () => {},
+      selectedMilestone: null,
+      setSelectedMilestone: () => {},
+      autoOpenJournal: false
+    };
+
+    switch (currentTutorial.screen) {
+      case "AddProject":
+        // Real AddProject modal view - only modal, no background
+        return (
+          <View style={styles.mockModal}>
+            <View style={styles.mockInputOverlay}>
+              <Text style={styles.mockInputText}>My New Project</Text>
+            </View>
+            
+            <View style={styles.mockDateButton}>
+              <Text style={styles.mockDateButtonText}>Add Date</Text>
+            </View>
+          </View>
+        );
+      case "ActiveProject":
+        // Mock ActiveProject - matches real design
+        return (
+          <View style={styles.mockActiveProject}>
+            {/* Modern Header - like ActiveProjectHeader */}
+            <View style={styles.mockModernHeader}>
+              <View style={styles.mockHeaderContent}>
+                {/* Project Title Section */}
+                <View style={styles.mockTitleSection}>
+                  <Text style={styles.mockModernTitle}>My New Project</Text>
+                  <Text style={styles.mockDateRange}>15 Dec 2024 - 15 Jan 2025</Text>
+                </View>
+                
+                {/* Tab Switcher */}
+                <View style={styles.mockTabSwitcher}>
+                  <View style={[styles.mockTabButton, styles.mockActiveTabButton]}>
+                    <Text style={[styles.mockTabButtonText, styles.mockActiveTabButtonText]}>
+                      Milestones
+                    </Text>
+                  </View>
+                  <View style={styles.mockTabButton}>
+                    <Text style={styles.mockTabButtonText}>Calendar</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Progress Section */}
+              <View style={styles.mockProgressSection}>
+                <View style={styles.mockProgressHeader}>
+                  <Text style={styles.mockProgressLabel}>Progress</Text>
+                  <Text style={styles.mockProgressPercentage}>33%</Text>
+                </View>
+                <View style={styles.mockProgressBarContainer}>
+                  <View style={[styles.mockProgressBar, { width: "33%" }]} />
+                </View>
+              </View>
+            </View>
+
+            {/* Milestones Content - like ActiveProjectMilestones */}
+            <View style={styles.mockMilestonesContainer}>
+              {/* Milestones Header */}
+              <View style={styles.mockMilestoneHeader}>
+                <View style={styles.mockMilestoneHeaderContent}>
+                  <Text style={styles.mockMilestoneTitle}>Milestones</Text>
+                  <View style={styles.mockMinimalAddButton}>
+                    <Text style={styles.mockMinimalAddText}>+</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Milestones List */}
+              <View style={styles.mockMilestonesList}>
+                <View style={styles.mockMilestoneCard}>
+                  <View style={styles.mockMilestoneContent}>
+                    <View style={styles.mockMilestoneIcon}>
+                      <Ionicons name="ellipse" size={16} color="#10B981" />
+                    </View>
+                    <View style={styles.mockMilestoneTextContainer}>
+                      <Text style={styles.mockMilestoneText}>First Milestone</Text>
+                      <Text style={styles.mockMilestoneSubtext}>Completed</Text>
+                    </View>
+                    <View style={styles.mockMilestoneStatus}>
+                      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.mockMilestoneCard}>
+                  <View style={styles.mockMilestoneContent}>
+                    <View style={styles.mockMilestoneIcon}>
+                      <Ionicons name="ellipse" size={16} color="#007AFF" />
+                    </View>
+                    <View style={styles.mockMilestoneTextContainer}>
+                      <Text style={styles.mockMilestoneText}>Second Milestone</Text>
+                      <Text style={styles.mockMilestoneSubtext}>In Progress</Text>
+                    </View>
+                    <View style={styles.mockMilestoneStatus}>
+                      <Ionicons name="time" size={20} color="#666" />
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.mockMilestoneCard}>
+                  <View style={styles.mockMilestoneContent}>
+                    <View style={styles.mockMilestoneIcon}>
+                      <Ionicons name="ellipse" size={16} color="#F59E0B" />
+                    </View>
+                    <View style={styles.mockMilestoneTextContainer}>
+                      <Text style={styles.mockMilestoneText}>Third Milestone</Text>
+                      <Text style={styles.mockMilestoneSubtext}>Pending</Text>
+                    </View>
+                    <View style={styles.mockMilestoneStatus}>
+                      <Ionicons name="time" size={20} color="#666" />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        );
+      case "Journal":
+        return <Journal {...screenProps} />;
+      case "Main":
+        return <MainScreen {...screenProps} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <LinearGradient
+        colors={[
+          "#FAFAFA", 
+          "#F5F3FF", 
+          "#EDE9FE", 
+          "#DDD6FE", 
+          "#C4B5FD", 
+          "#A78BFA", 
+          "#8B5CF6"
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        {/* Header */}
+        <Animated.View 
+          style={[
+            styles.header,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.headerLeft}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoText}>FJ</Text>
+            </View>
+          </View>
+          <TouchableOpacity 
+            style={styles.skipButton}
+            onPress={handleSkip}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Progress Indicator */}
+        <Animated.View 
+          style={[
+            styles.progressContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.progressTrack}>
+            {tutorialSteps.map((_, index) => (
+              <View 
+                key={index}
+                style={[
+                  styles.progressDot,
+                  index === currentStep && styles.progressDotActive,
+                  index < currentStep && styles.progressDotCompleted
+                ]}
+              >
+                {index < currentStep && (
+                  <Ionicons name="checkmark" size={12} color="white" />
+                )}
+              </View>
+            ))}
+          </View>
+          <Text style={styles.progressText}>
+            Step {currentStep + 1} of {tutorialSteps.length}
+          </Text>
+        </Animated.View>
+
+        {/* Tutorial Content */}
+        <Animated.View 
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          {/* Screen Preview */}
+          <View style={styles.screenPreviewContainer}>
+            {renderScreenPreview()}
+          </View>
+
+          {/* Title */}
+          <Text style={styles.title}>{currentTutorial.title}</Text>
+
+          {/* Description */}
+          <Text style={styles.description}>
+            {currentStep === 0 
+              ? "Create your own task manager for your events, manifesting, personal journey or any topic"
+              : currentTutorial.description
+            }
+          </Text>
+
+        </Animated.View>
+
+        {/* Navigation Buttons */}
+        <Animated.View 
+          style={[
+            styles.buttonContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+            <TouchableOpacity
+              style={[styles.button, styles.nextButton]}
+              onPress={handleNext}
+              accessible={true}
+              accessibilityLabel={currentStep === tutorialSteps.length - 1 ? "Get Started" : "Next Step"}
+              accessibilityRole="button"
+            >
+              <LinearGradient
+                colors={[currentTutorial.color, `${currentTutorial.color}CC`]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.buttonText}>
+                  {currentStep === tutorialSteps.length - 1 ? "Get Started" : "Continue"}
+                </Text>
+                <Ionicons 
+                  name={currentStep === tutorialSteps.length - 1 ? "arrow-forward" : "chevron-forward"} 
+                  size={20} 
+                  color="white" 
+                  style={styles.buttonIcon} 
+                />
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            {/* Back Button */}
+            {currentStep > 0 && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => setCurrentStep(currentStep - 1)}
+                accessible={true}
+                accessibilityLabel="Previous Step"
+                accessibilityRole="button"
+              >
+                <Ionicons name="chevron-back" size={20} color={currentTutorial.color} />
+                <Text style={[styles.backButtonText, { color: currentTutorial.color }]}>
+                  Back
+                </Text>
+              </TouchableOpacity>
+            )}
+        </Animated.View>
+      </LinearGradient>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#8B5CF6",
+  },
+  container: {
+    flex: 1,
+    width: "100%",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: SPACING.XL,
+    paddingTop: SPACING.LG,
+    paddingBottom: SPACING.SM,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  logoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoText: {
+    fontSize: 16,
+    fontFamily: FONTS.BOLD,
+    color: "rgba(107, 70, 193, 0.9)",
+  },
+  skipButton: {
+    paddingHorizontal: SPACING.LG,
+    paddingVertical: SPACING.SM,
+    borderRadius: BORDER_RADIUS.MD,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  skipText: {
+    fontSize: 16,
+    fontFamily: FONTS.MEDIUM,
+    color: "rgba(107, 70, 193, 0.8)",
+  },
+  progressContainer: {
+    alignItems: "center",
+    paddingVertical: SPACING.LG,
+  },
+  progressTrack: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: SPACING.SM,
+  },
+  progressDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "rgba(107, 70, 193, 0.3)",
+    marginHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressDotActive: {
+    backgroundColor: "#6B46C1",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  progressDotCompleted: {
+    backgroundColor: "#10B981",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  progressText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: "rgba(107, 70, 193, 0.6)",
+    textAlign: "center",
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: SPACING.XL,
+  },
+  screenPreviewContainer: {
+    alignItems: "center",
+    marginBottom: SPACING.XXL,
+    width: "100%",
+    maxWidth: 400,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: FONTS.BOLD,
+    color: "#6B46C1",
+    textAlign: "center",
+    marginBottom: SPACING.LG,
+    letterSpacing: -0.5,
+  },
+  description: {
+    fontSize: 16,
+    fontFamily: FONTS.REGULAR,
+    color: "rgba(107, 70, 193, 0.7)",
+    textAlign: "center",
+    lineHeight: 24,
+    maxWidth: 300,
+    marginBottom: SPACING.XL,
+  },
+  stepCounter: {
+    fontSize: 14,
+    fontFamily: FONTS.MEDIUM,
+    color: "rgba(107, 70, 193, 0.6)",
+    textAlign: "center",
+  },
+  buttonContainer: {
+    paddingHorizontal: SPACING.XL,
+    paddingBottom: SPACING.XXL,
+    minHeight: 120, // Reserve space for back button height
+  },
+  button: {
+    width: "100%",
+    borderRadius: BORDER_RADIUS.XL,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  nextButton: {
+    // Specific styles for next button if needed
+  },
+  buttonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SPACING.LG,
+    paddingHorizontal: SPACING.XL,
+    minHeight: 56,
+  },
+  buttonText: {
+    fontSize: 18,
+    fontFamily: FONTS.BOLD,
+    color: "white",
+    marginRight: SPACING.SM,
+    letterSpacing: -0.3,
+  },
+  buttonIcon: {
+    marginLeft: SPACING.XS,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: SPACING.MD,
+    paddingHorizontal: SPACING.LG,
+    paddingVertical: SPACING.SM,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontFamily: FONTS.MEDIUM,
+    marginLeft: SPACING.XS,
+  },
+  // Mock Modal Styles - matches real AddProjectScreen, scaled down
+  mockModal: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    width: 280,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  mockInputOverlay: {
+    width: "100%",
+    fontSize: 18,
+    fontFamily: "Poppins_700Bold",
+    color: "#525252",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+    marginVertical: 12,
+    paddingVertical: 4,
+    minHeight: 50,
+    maxHeight: 100,
+  },
+  mockInputText: {
+    fontSize: 18,
+    fontFamily: "Poppins_700Bold",
+    color: "#525252",
+  },
+  mockDateButton: {
+    paddingVertical: 12,
+    marginVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+    alignItems: "center",
+    backgroundColor: "#4A90E2",
+  },
+  mockDateButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Poppins_600SemiBold",
+  },
+  // Mock ActiveProject Styles - matches real design
+  mockActiveProject: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 16,
+    overflow: "hidden",
+    width: "100%",
+    maxWidth: 380,
+    height: 520,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  // Modern Header Styles
+  mockModernHeader: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+  },
+  mockHeaderContent: {
+    flexDirection: "column",
+    gap: 12,
+  },
+  mockTitleSection: {
+    flexDirection: "column",
+    gap: 4,
+  },
+  mockModernTitle: {
+    fontSize: 24,
+    fontFamily: "Poppins_700Bold",
+    color: "#1D1D1F",
+    letterSpacing: -0.5,
+    lineHeight: 28,
+  },
+  mockDateRange: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E8E93",
+    letterSpacing: -0.2,
+  },
+  mockTabSwitcher: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    borderRadius: 12,
+    padding: 4,
+  },
+  mockTabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mockActiveTabButton: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mockTabButtonText: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E8E93",
+  },
+  mockActiveTabButtonText: {
+    color: "#1D1D1F",
+    fontFamily: "Poppins_600SemiBold",
+  },
+  // Progress Section
+  mockProgressSection: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  mockProgressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  mockProgressLabel: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E8E93",
+    letterSpacing: -0.2,
+  },
+  mockProgressPercentage: {
+    fontSize: 14,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#007AFF",
+  },
+  mockProgressBarContainer: {
+    height: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  mockProgressBar: {
+    height: "100%",
+    backgroundColor: "#007AFF",
+    borderRadius: 3,
+  },
+  // Milestones Container
+  mockMilestonesContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  mockMilestoneHeader: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+  },
+  mockMilestoneHeaderContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  mockMilestoneTitle: {
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#1D1D1F",
+  },
+  mockMinimalAddButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mockMinimalAddText: {
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#007AFF",
+  },
+  mockMilestonesList: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  mockMilestoneCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.05)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  mockMilestoneContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  mockMilestoneIcon: {
+    width: 24,
+    alignItems: "center",
+    marginRight: 12,
+  },
+  mockMilestoneTextContainer: {
+    flex: 1,
+  },
+  mockMilestoneText: {
+    fontSize: 16,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#1D1D1F",
+    marginBottom: 2,
+  },
+  mockMilestoneSubtext: {
+    fontSize: 12,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E8E93",
+  },
+  mockMilestoneStatus: {
+    width: 24,
+    alignItems: "center",
+  },
+});

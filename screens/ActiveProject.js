@@ -41,8 +41,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   const [activeTab, setActiveTab] = useState(0); // 0 = milestones, 1 = calendar
   const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // Journal entry sonrası refresh için
-  const [forceUpdate, setForceUpdate] = useState(0); // Force update için
+  const [refreshKey, setRefreshKey] = useState(0); // For refresh after journal entry
+  const [forceUpdate, setForceUpdate] = useState(0); // For force update
 
   // Horizontal tab switching animations (like MainScreen)
   const panX = useRef(new Animated.Value(0)).current;
@@ -294,7 +294,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     setRefreshKey(prev => prev + 1);
     setForceUpdate(prev => prev + 1);
     
-    // Modal'ı kapat ve state'i temizle
+    // Close modal and clear state
     setAddMilestoneModalVisible(false);
     setEditingMilestone(null);
   }, [currentTask?.id, addMilestone, updateMilestone]);
@@ -321,7 +321,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   // Memoize the project prop for EditModal to prevent unnecessary re-renders
   const editModalProject = useMemo(() => {
     if (!editVisible) return null;
-    // Sadece gerekli field'ları döndür
+    // Return only necessary fields
     return {
       id: currentTask?.id,
       title: currentTask?.title,
@@ -400,7 +400,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
           panGesture={panGesture}
         />
 
-        {/* Menu Button - Her iki tab'da da görünür */}
+        {/* Menu Button - Visible in both tabs */}
           {!isModalOpen && (
             <TouchableOpacity onPress={() => setMenuVisible((s) => !s)} style={styles.menuButton}>
               <Ionicons name="ellipsis-vertical" size={22} color={isCompleted ? "#fff" : "#333"} />
@@ -452,7 +452,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
             </Animated.View>
           </View>
 
-          {/* Menüler ve Modallar - Her iki tab'da da çalışır */}
+          {/* Menus and Modals - Works in both tabs */}
           <ActiveTaskMenu
                 visible={menuVisible}
                 onClose={() => setMenuVisible(false)}
@@ -466,7 +466,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 visible={!!selectedJournalMilestone} 
                 milestone={selectedJournalMilestone} 
                 onSave={() => {
-                  // Journal kaydedildiğinde refresh trigger
+                  // Refresh trigger when journal is saved
                   setRefreshKey(prev => prev + 1);
                   setForceUpdate(prev => prev + 1);
                 }}
@@ -493,14 +493,14 @@ const styles = StyleSheet.create({
   // Modern Container Styles
   modernContainer: { 
     position: "absolute", 
-    top: 40, // Daha az boşluk
+    top: 40, // Less spacing
     width: width, 
-    height: height - 40, // Yüksekliği artır
+    height: height - 40, // Increase height
     backgroundColor: "#FFFFFF", 
     zIndex: 100, 
     elevation: 10, 
     overflow: "hidden",
-    borderTopLeftRadius: 20, // Üst köşeleri yuvarla
+    borderTopLeftRadius: 20, // Round top corners
     borderTopRightRadius: 20,
   },
   completedContainer: { 
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
-    paddingTop: 12, // Header için minimal padding
+    paddingTop: 12, // Minimal padding for header
   },
   menuButton: { 
     position: "absolute", 

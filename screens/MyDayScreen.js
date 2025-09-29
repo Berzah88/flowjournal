@@ -41,7 +41,7 @@ const MyDayScreen = memo(function MyDayScreen({
   const activeTasks = useActiveTasks();
   const { addMilestone, updateMilestone, completeMilestone, addJournalEntry } = useTaskActions();
   
-  // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
+  // Performance monitoring (only in development) - temporarily disabled
   // usePerformanceMonitor('MyDayScreen');
 
   const [completingMilestones, setCompletingMilestones] = useState(new Set());
@@ -58,12 +58,12 @@ const MyDayScreen = memo(function MyDayScreen({
   const openMilestone = useCallback((milestone, project) => {
     console.log('openMilestone called with:', { milestone, project: project?.title });
     
-    // Milestone'a tıklayınca direkt journal aç
+    // Open journal directly when milestone is clicked
     const milestoneData = {
       ...milestone,
       taskId: project.id,
       projectTitle: project.title,
-      autoOpenJournal: true // Journal'ı otomatik aç
+      autoOpenJournal: true // Auto open journal
     };
     onOpenJournal(milestoneData);
   }, [onOpenJournal]);
@@ -76,7 +76,7 @@ const MyDayScreen = memo(function MyDayScreen({
     // Milestone'u completing state'e ekle
     setCompletingMilestones(prev => new Set([...prev, milestoneKey]));
     
-    // 1.5 saniye sonra milestone'u tamamla ve completing state'den çıkar
+    // Complete milestone after 1.5 seconds and remove from completing state
     setTimeout(() => {
       try {
         completeMilestone(project.id, milestone.id);
@@ -96,39 +96,39 @@ const MyDayScreen = memo(function MyDayScreen({
     }, 1500);
   }, [completeMilestone]);
 
-  // Milestone'ın bugün için uygun olup olmadığını kontrol et
+  // Check if milestone is suitable for today
   const isMilestoneActiveToday = useCallback((milestone, selectedDate) => {
     const today = new Date(selectedDate);
-    today.setHours(0, 0, 0, 0); // Sadece tarih kısmını al
+    today.setHours(0, 0, 0, 0); // Take only date part
     
-    // Başlangıç tarihi kontrolü
+    // Start date check
     if (milestone.startDate) {
       const milestoneStartDate = new Date(milestone.startDate);
       milestoneStartDate.setHours(0, 0, 0, 0);
       
-      // Milestone henüz başlamamışsa gösterme
+      // Don't show if milestone hasn't started yet
       if (milestoneStartDate > today) {
         return false;
       }
     }
     
-    // Bitiş tarihi kontrolü
+    // End date check
     if (milestone.endDate) {
       const milestoneEndDate = new Date(milestone.endDate);
-      milestoneEndDate.setHours(23, 59, 59, 999); // Günün sonuna kadar
+      milestoneEndDate.setHours(23, 59, 59, 999); // Until end of day
       
-      // Milestone bitmişse gösterme
+      // Don't show if milestone is finished
       if (milestoneEndDate < today) {
         return false;
       }
     }
     
-    return true; // Başlangıç ve bitiş tarihleri arasında
+    return true; // Between start and end dates
   }, []);
 
-  // Milestone'ın günü geçip geçmediğini kontrol et
+  // Check if milestone is overdue
   const isMilestoneOverdue = useCallback((milestone, selectedDate) => {
-    if (!milestone.endDate) return false; // Bitiş tarihi yoksa günü geçmiş sayma
+    if (!milestone.endDate) return false; // Don't consider overdue if no end date
     
     const milestoneEndDate = new Date(milestone.endDate);
     const today = new Date(selectedDate);
@@ -136,9 +136,9 @@ const MyDayScreen = memo(function MyDayScreen({
     return milestoneEndDate < today;
   }, []);
 
-  // Milestone'ın son günü olup olmadığını kontrol et
+  // Check if milestone is on its last day
   const isMilestoneLastDay = useCallback((milestone, selectedDate) => {
-    if (!milestone.endDate) return false; // Bitiş tarihi yoksa son gün değil
+    if (!milestone.endDate) return false; // Not last day if no end date
     
     const milestoneEndDate = new Date(milestone.endDate);
     const today = new Date(selectedDate);
@@ -150,10 +150,10 @@ const MyDayScreen = memo(function MyDayScreen({
 
 
 
-  // Seçili tarihin string formatı
+  // String format of selected date
   const selectedDateString = selectedDate.toDateString();
 
-  // Seçili tarihteki görevleri filtrele (tarih aralığına göre)
+  // Filter tasks for selected date (by date range)
   const selectedDateActiveTasks = useMemo(() => {
      if (!activeTasks || activeTasks.length === 0) {
        return [];
@@ -164,18 +164,18 @@ const MyDayScreen = memo(function MyDayScreen({
       const endDate = new Date(task.endDate);
       const selectedDateObj = new Date(selectedDate);
       
-      // Tarih karşılaştırması için sadece tarih kısmını al (saat bilgisini kaldır)
+      // Take only date part for date comparison (remove time information)
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
       selectedDateObj.setHours(0, 0, 0, 0);
       
-      // Seçili tarih proje tarih aralığında mı kontrol et
+      // Check if selected date is in project date range
       const isInRange = selectedDateObj >= startDate && selectedDateObj <= endDate;
       
       
       return isInRange;
     }).map(task => {
-      // Son gününde olan projeleri işaretle
+      // Mark projects on their last day
       const endDate = new Date(task.endDate);
       const selectedDateObj = new Date(selectedDate);
       
@@ -194,7 +194,7 @@ const MyDayScreen = memo(function MyDayScreen({
     return filtered;
   }, [activeTasks, selectedDate]);
 
-  // Bugünün özeti için milestone'ları hesapla - o gün aktif olan milestone'ları baz al
+  // Calculate milestones for today's summary - based on milestones active on that day
   const todaySummary = useMemo(() => {
     const totalMilestones = selectedDateActiveTasks.reduce((total, project) => {
       return total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length || 0);
@@ -221,7 +221,7 @@ const MyDayScreen = memo(function MyDayScreen({
 
   const keyExtractor = useCallback((item) => item.id.toString(), []);
 
-  // Tarih bazında görevleri organize et (takvim için)
+  // Organize tasks by date (for calendar)
   const tasksByDate = useMemo(() => {
     const tasks = {};
     return tasks;
@@ -235,7 +235,7 @@ const MyDayScreen = memo(function MyDayScreen({
         {selectedDateActiveTasks.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
-            <Text style={styles.emptyTitle}>Bu tarihte proje yok</Text>
+            <Text style={styles.emptyTitle}>No project on this date</Text>
             <Text style={styles.emptyText}>
               {(() => {
                 const today = new Date();
@@ -244,9 +244,9 @@ const MyDayScreen = memo(function MyDayScreen({
                 selected.setHours(0, 0, 0, 0);
                 
                 if (selected < today) {
-                  return "Bu tarihte proje yok";
+                  return "No project on this date";
                 } else {
-                  return "Seçili tarihte aktif proje bulunmuyor.\nYeni bir proje oluşturmak ister misin?";
+                  return "No active project on selected date.\nWould you like to create a new project?";
                 }
               })()}
             </Text>
@@ -256,7 +256,7 @@ const MyDayScreen = memo(function MyDayScreen({
               today.setHours(0, 0, 0, 0);
               selected.setHours(0, 0, 0, 0);
               
-              // Sadece bugün veya gelecek tarihleri için buton göster
+              // Show button only for today or future dates
               if (selected >= today) {
                 return (
                   <TouchableOpacity 
@@ -265,7 +265,7 @@ const MyDayScreen = memo(function MyDayScreen({
                     activeOpacity={0.7}
                   >
                     <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                    <Text style={styles.addProjectButtonText}>Proje Ekle</Text>
+                    <Text style={styles.addProjectButtonText}>Add Project</Text>
                   </TouchableOpacity>
                 );
               }
@@ -299,19 +299,19 @@ const MyDayScreen = memo(function MyDayScreen({
                       styles.dateText,
                       project.isLastDay && styles.lastDayDateText
                     ]}>
-                      {new Date(project.startDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })} - {new Date(project.endDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
+                      {new Date(project.startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(project.endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
                     </Text>
                   </View>
                   {project.isLastDay && (
                     <View style={styles.lastDayBadge}>
                       <Ionicons name="warning" size={12} color="#FFFFFF" />
-                      <Text style={styles.lastDayText}>Son Gün</Text>
+                      <Text style={styles.lastDayText}>Last Day</Text>
                     </View>
                   )}
                 </View>
               </View>
               
-              {/* Tarih altında + sembolü */}
+              {/* Plus symbol under date */}
               <TouchableOpacity 
                 style={styles.minimalAddMilestoneButton}
                 onPress={() => {
@@ -363,17 +363,17 @@ const MyDayScreen = memo(function MyDayScreen({
                               {milestone.title}
                             </Text>
                           </View>
-                          {/* Mood sticker - sadece seçili güne ait */}
+                          {/* Mood sticker - only for selected day */}
                           {milestone.journalEntries && milestone.journalEntries.length > 0 && (
                             <View style={styles.moodStickers}>
                               {milestone.journalEntries
                                 .filter(entry => {
-                                  // Sadece seçili güne ait mood'ları göster
+                                  // Show only moods for selected day
                                   const entryDate = new Date(entry.createdAt).toDateString();
                                   const selectedDateStr = selectedDate.toDateString();
                                   return entryDate === selectedDateStr && (entry.mood || entry.moodIcon || entry.moodColor);
                                 })
-                                .slice(0, 3) // Maksimum 3 mood sticker
+                                .slice(0, 3) // Maximum 3 mood stickers
                                 .map((entry, index) => (
                                   <View 
                                     key={index} 
@@ -409,7 +409,7 @@ const MyDayScreen = memo(function MyDayScreen({
                   activeOpacity={0.7}
                 >
                   <Ionicons name="add" size={16} color="#007AFF" />
-                  <Text style={styles.addMilestoneText}>Add milestone</Text>
+                  <Text style={styles.addMilestoneText}>Add Milestone</Text>
                 </TouchableOpacity>
               )}
             </TouchableOpacity>

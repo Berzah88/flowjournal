@@ -110,8 +110,8 @@ const MoodStatement = ({
         <View style={styles.statusContent}>
           <Text style={styles.statusText}>
             {todayMoodData.dominantMood ? 
-              `Bugün biraz ${todayMoodData.dominantMood.label || todayMoodData.dominantMood.key} hissediyorsunuz` :
-              "Bugün nasıl hissediyorsunuz?"
+              `Today you feel a bit ${todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}` :
+              "How are you feeling today?"
             }
           </Text>
           
@@ -120,8 +120,8 @@ const MoodStatement = ({
             { color: todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2' }
           ]}>
             {todayMoodData.totalEntries > 0 ? 
-              "Duygularınızı kaydetmeye devam edin" :
-              "Hemen bir Milestone'a tıklayın ve günlük yazmaya başlayın"
+              "Keep recording your emotions" :
+              "Click on a Milestone right away and start writing your journal"
             }
           </Text>
         </View>

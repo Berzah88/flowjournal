@@ -6,7 +6,7 @@ import { STORAGE_KEYS } from "../constants";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 
-// Context'i bölerek re-render optimizasyonu
+// Re-render optimization by splitting context
 export const TaskContext = createContext();
 export const TaskActionsContext = createContext();
 
@@ -91,31 +91,31 @@ export const TaskProvider = ({ children }) => {
 
   // ---------- RACE CONDITION SAFE SAVE FUNCTION ----------
   const saveTasks = useCallback(async (tasksToSave, version) => {
-    // Lock kontrolü - concurrent save'leri önle
+    // Lock control - prevent concurrent saves
     if (saveLockRef.current) {
-      console.log("🔄 Save işlemi devam ediyor, atlanıyor...");
+      console.log("🔄 Save operation in progress, skipping...");
       return;
     }
 
-    // Version kontrolü - eski veri ile save'i önle
+    // Version control - prevent save with old data
     if (version <= lastSaveVersionRef.current) {
-      console.log("⏰ Eski veri, save işlemi atlanıyor");
+      console.log("⏰ Old data, skipping save operation");
       return;
     }
 
-    // Mount kontrolü
+    // Mount control
     if (!isMountedRef.current) {
-      console.log("🚫 Component unmounted, save işlemi atlanıyor");
+      console.log("🚫 Component unmounted, skipping save operation");
       return;
     }
 
-    // Array kontrolü
+    // Array control
     if (!Array.isArray(tasksToSave)) {
-      console.warn("⚠️ Invalid tasks data, save işlemi atlanıyor");
+      console.warn("⚠️ Invalid tasks data, skipping save operation");
       return;
     }
 
-    // Timeout ile lock'u otomatik serbest bırak
+    // Automatically release lock with timeout
     const lockTimeout = setTimeout(() => {
       if (saveLockRef.current) {
         console.warn("⚠️ Save lock timeout, force releasing...");
@@ -128,35 +128,35 @@ export const TaskProvider = ({ children }) => {
     setIsSaving(true);
 
     try {
-      // Save işleminden önce backup oluştur
+      // Create backup before save operation
       try {
         const currentTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
         if (currentTasks) {
           await AsyncStorage.setItem(`${STORAGE_KEYS.TASKS}_backup`, currentTasks);
-          console.log("📦 Backup oluşturuldu");
+          console.log("📦 Backup created");
         }
       } catch (backupError) {
-        console.warn("⚠️ Backup oluşturulamadı:", backupError);
+        console.warn("⚠️ Could not create backup:", backupError);
       }
       
       const serialized = JSON.stringify(tasksToSave);
       await AsyncStorage.setItem(STORAGE_KEYS.TASKS, serialized);
       lastSaveVersionRef.current = version;
-      console.log("✅ Veri başarıyla kaydedildi, version:", version);
+      console.log("✅ Data saved successfully, version:", version);
     } catch (error) {
-      console.error("❌ Save işlemi başarısız:", error);
+      console.error("❌ Save operation failed:", error);
       
-      // Save başarısız olursa backup'tan geri yükle
+      // If save fails, restore from backup
       try {
         const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
         if (backupData) {
           await AsyncStorage.setItem(STORAGE_KEYS.TASKS, backupData);
           const parsedTasks = JSON.parse(backupData);
           if (isMountedRef.current) setTasks(parsedTasks);
-          console.log("🔄 Backup'tan geri yüklendi");
+          console.log("🔄 Restored from backup");
         }
       } catch (restoreError) {
-        console.error("❌ Backup'tan geri yükleme başarısız:", restoreError);
+        console.error("❌ Failed to restore from backup:", restoreError);
         handleAsyncStorageError(error, "save");
       }
     } finally {
@@ -200,7 +200,7 @@ export const TaskProvider = ({ children }) => {
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
-        // Uygulama arka plana geçerken hemen kaydet
+        // Save immediately when app goes to background
         if (tasks.length > 0 && !isLoading) {
           console.log("🚨 Emergency save on app background");
           const currentVersion = Date.now();

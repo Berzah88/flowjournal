@@ -159,7 +159,7 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
           </Text>
           <View style={[styles.modernDateFrame, completed && styles.modernCompletedDateFrame]}>
             <Text style={[styles.modernDateRange, completed && styles.modernCompletedDateText]}>
-              {new Date(startDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })} - {new Date(endDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
+              {new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
             </Text>
           </View>
         </View>

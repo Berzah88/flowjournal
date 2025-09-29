@@ -39,7 +39,7 @@ import {
   getValidIconName,
   analyzeMoodPatterns,
   predictMood
-} from '../utils/MoodPredictor';
+} from '../utils/AIMoodPredictor';
 
 const { width, height } = Dimensions.get("window");
 
@@ -115,7 +115,7 @@ export default function Journal({
   const [hasMedia, setHasMedia] = useState(false);
   const [hasMoodSuggestions, setHasMoodSuggestions] = useState(false);
 
-  const todayText = new Date().toLocaleDateString("tr-TR", {
+  const todayText = new Date().toLocaleDateString("en-US", {
     day: "2-digit",
     month: "long",
   });
@@ -200,7 +200,7 @@ export default function Journal({
   };
 
   // Continuous text analysis with sentence-based processing
-  const analyzeTextContinuously = useCallback((text) => {
+  const analyzeTextContinuously = useCallback(async (text) => {
     if (!text || text.trim().length < 2) {
       setMoodSuggestions([]);
       return;
@@ -211,34 +211,42 @@ export default function Journal({
     const lastSentence = sentences[sentences.length - 1] || '';
     const allText = text.trim();
     
-    // Use sentence-based analysis for better context understanding
-    const analysis = analyzeSentimentBySentences(allText, userHistory);
-    
-    setSentiment(analysis);
-    
-    // Get mood suggestions with enhanced context
-    const moodSugs = getSmartMoodSuggestion(analysis, selectedMood?.key, userHistory, allText);
-    setMoodSuggestions(moodSugs);
+    try {
+      // Use sentence-based analysis for better context understanding
+      const analysis = await analyzeSentimentBySentences(allText, userHistory);
+      
+      setSentiment(analysis);
+      
+      // Get mood suggestions with enhanced context
+      const moodSugs = await getSmartMoodSuggestion(analysis, selectedMood?.key, userHistory, allText);
+      console.log('Mood suggestions:', moodSugs);
+      setMoodSuggestions(moodSugs);
+    } catch (error) {
+      console.error('Mood analysis error:', error);
+      setMoodSuggestions([]);
+    }
     
   }, [userHistory, selectedMood]);
 
   // Sentiment analysis when text changes - SMART TRIGGER SYSTEM
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       const shouldAnalyze = shouldTriggerMoodAnalysis(textValue);
       
       if (shouldAnalyze) {
         // Use the new continuous analysis function
-        analyzeTextContinuously(textValue);
+        await analyzeTextContinuously(textValue);
         
-        // Show suggestions with relaxed conditions
-        const shouldShowSuggestions = (
-          moodSuggestions.length > 0 &&
-          !autoMoodApplied // Don't show if user already applied a mood
-        );
-        
-        setShowSuggestions(shouldShowSuggestions);
-        setHasMoodSuggestions(shouldShowSuggestions);
+        // Show suggestions with relaxed conditions - check after async call
+        setTimeout(() => {
+          const shouldShowSuggestions = (
+            moodSuggestions.length > 0 &&
+            !autoMoodApplied // Don't show if user already applied a mood
+          );
+          
+          setShowSuggestions(shouldShowSuggestions);
+          setHasMoodSuggestions(shouldShowSuggestions);
+        }, 100); // Small delay to ensure state is updated
       } else {
         // Reset if conditions not met
         setSentiment({ score: 0, label: 'neutral' });
@@ -484,7 +492,7 @@ export default function Journal({
         const suggestedMood = MOODS.find(m => m.key === moodSuggestions[0].mood);
         if (!suggestedMood) {
           // Extended mood ise basic mood'a çevir
-          const { EXTENDED_MOODS } = require('../utils/MoodPredictor');
+          const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
           const extendedMood = EXTENDED_MOODS.find(m => m.key === moodSuggestions[0].mood);
           if (extendedMood) {
             // Extended mood'u basic mood'a map et
@@ -701,14 +709,14 @@ export default function Journal({
           </View>
 
           {/* Minimal Mood Suggestions - RELAXED visibility */}
-          {textValue.trim().split(/\s+/).length >= 4 && showSuggestions && moodSuggestions.length > 0 && (
+          {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
             <View style={styles.minimalMoodSuggestions}>
               {moodSuggestions.map((suggestion, index) => {
                 // First try to find in basic MOODS, then in EXTENDED_MOODS
                 let suggestedMood = MOODS.find(m => m.key === suggestion.mood);
                 if (!suggestedMood) {
                   // Import EXTENDED_MOODS if not already imported
-                  const { EXTENDED_MOODS } = require('../utils/MoodPredictor');
+                  const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
                   suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);
                 }
                 
@@ -759,7 +767,7 @@ export default function Journal({
                   flex: hasMedia && hasMoodSuggestions ? 0.6 : 1,
                 }
               ]}
-              placeholder={(milestone?.title ? milestone.title + ": " : "") + "Hakkında yazın.."}
+              placeholder={(milestone?.title ? milestone.title + ": " : "") + "Write about it..."}
               multiline
               underlineColorAndroid="transparent"
               placeholderTextColor="#999"

@@ -361,7 +361,7 @@ export const analyzeSentiment = (text, userHistory = []) => {
   // Enhanced word categories with intensity levels - EXPANDED
   const positiveWords = {
     high: [
-      // Türkçe yüksek pozitif kelimeler - EXPANDED
+      // Turkish high positive words - EXPANDED
       'harika', 'mükemmel', 'muhteşem', 'süper', 'müthiş', 'olağanüstü',
       'fantastik', 'muazzam', 'nefes kesici', 'büyüleyici', 'etkileyici',
       'başarılı', 'başardım', 'tamamladım', 'kazandım', 'galip', 'zafer',
@@ -1034,18 +1034,21 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
       'bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'korku', 'endişe', 'kaygı', 
       'hasta', 'acı', 'ağrı', 'sıkıntı', 'problem', 'sorun', 'başarısız', 'kaybettim', 
       'hata', 'yanlış', 'kötü', 'berbat', 'korkunç', 'dehşet', 'felaket', 'trajedi', 
-      'üzücü', 'acıklı', 'hüzünlü', 'kederli',
+      'üzücü', 'acıklı', 'hüzünlü', 'kederli', 'yorucu', 'sıkıcı', 'can sıkıcı',
       // Personal forms
       'mutsuzum', 'üzgünüm', 'kızgınım', 'sinirliyim', 'stresliyim', 'yorgunum', 
       'bitkinim', 'tükenmişim', 'sıkkınım', 'sıkıntılıyım', 'korkuyorum', 'endişeliyim', 
       'kaygılıyım', 'hastayım', 'başarısızım', 'kötüyüm', 'berbatım', 'korkunçum',
+      'sıkılıyorum', 'sıkılmaya başladım', 'sıkılmaya başlıyorum', 'sıkılmaya başlıyorum',
       // Intensity modifiers with negative words
       'çok yorgun', 'çok bitkin', 'çok tükenmiş', 'çok mutsuz', 'çok üzgün', 
       'çok kızgın', 'çok sinirli', 'çok stresli', 'çok sıkkın', 'çok sıkıntılı',
       'çok kötü', 'çok berbat', 'çok korkunç', 'çok dehşet', 'çok hasta',
+      'çok yorucu', 'çok sıkıcı', 'çok can sıkıcı',
       // English equivalents
       'very tired', 'very exhausted', 'very sad', 'very angry', 'very stressed',
-      'very frustrated', 'very overwhelmed', 'very sick', 'very bad', 'very terrible'
+      'very frustrated', 'very overwhelmed', 'very sick', 'very bad', 'very terrible',
+      'very boring', 'very tiring', 'very exhausting'
     ];
     
     const hasExplicitNegative = lowerText && explicitNegativeWords.some(word => lowerText.includes(word));

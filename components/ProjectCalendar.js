@@ -6,14 +6,14 @@ import { getMilestoneColor } from '../utils/milestoneColors';
 import { useTasks } from '../hooks/useTaskContext';
 
 const { width } = Dimensions.get("window");
-const CELL_SIZE = (width - 40) / 7; // 7 gün için eşit genişlik
-const CELL_HEIGHT = CELL_SIZE + 10; // Hücre yüksekliğini azalt
+const CELL_SIZE = (width - 40) / 7; // Equal width for 7 days
+const CELL_HEIGHT = CELL_SIZE + 10; // Reduce cell height
 
 export default function ProjectCalendar({ milestones = [], projectStartDate, projectEndDate }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const tasks = useTasks(); // Tüm task'ları al
+  const tasks = useTasks(); // Get all tasks
   
-  // Tüm task'lardan tüm journal entry'leri topla
+  // Collect all journal entries from all tasks
   const getAllJournalEntries = () => {
     const allEntries = [];
     tasks.forEach(task => {
@@ -35,34 +35,34 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
     return allEntries;
   };
   
-  // O günde yazılmış günlük girdisini bulan fonksiyon - TÜM PROJELERDEN
+  // Function to find journal entry written on that day - FROM ALL PROJECTS
   const getJournalEntryForDate = (currentDate) => {
     const allEntries = getAllJournalEntries();
     
-    // O günde yazılmış journal entry'leri bul
+    // Find journal entries written on that day
     const entriesForThisDate = allEntries.filter(entry => {
       const entryDate = new Date(entry.createdAt);
       return entryDate.toDateString() === currentDate.toDateString();
     });
 
-    // Mood bilgisi olan entry'yi bul (öncelik)
+    // Find entry with mood information (priority)
     const moodEntry = entriesForThisDate.find(entry => entry.mood || entry.moodIcon || entry.moodColor);
     
     if (moodEntry) {
       return moodEntry;
     }
 
-    // Mood bilgisi yoksa ilk entry'yi döndür
+    // If no mood information, return first entry
     return entriesForThisDate[0] || null;
   };
   
-  // Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
+  // Color system is now managed from utils/milestoneColors.js
 
-  // Milestone ismini kısaltan fonksiyon
+  // Function to shorten milestone name
   const getShortMilestoneTitle = (title, index) => {
     if (!title) return `M${index + 1}`;
     
-    // Eğer title çok uzunsa kısalt
+    // If title is too long, shorten it
     if (title.length > 12) {
       return title.substring(0, 12) + "...";
     }
