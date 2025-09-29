@@ -21,6 +21,9 @@ import { ANIMATION_DURATIONS } from "../constants";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ActiveProject from "./ActiveProject";
 import AddMilestoneModal from "../components/AddMilestoneModal";
+import DailyMoodSummary from "../components/DailyMoodSummary";
+import MoodStatement from "../components/MoodStatement";
+import HorizontalCalendar from "../components/HorizontalCalendar";
 const { width } = Dimensions.get("window");
 
 const MyDayScreen = memo(function MyDayScreen({ 
@@ -56,8 +59,6 @@ const MyDayScreen = memo(function MyDayScreen({
      }, [setSelectedCard]);
 
   const openMilestone = useCallback((milestone, project) => {
-    console.log('openMilestone called with:', { milestone, project: project?.title });
-    
     // Open journal directly when milestone is clicked
     const milestoneData = {
       ...milestone,
@@ -230,6 +231,32 @@ const MyDayScreen = memo(function MyDayScreen({
 
   return (
     <View style={styles.container}>
+        {/* Horizontal Calendar */}
+        <HorizontalCalendar
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          tasksByDate={{}}
+          milestones={[]}
+        />
+        
+        {/* Today's Summary Header */}
+        <View style={styles.summaryHeaderContainer}>
+          <Text style={styles.summaryHeaderTitle}>Today's Summary</Text>
+        </View>
+        
+        {/* Mood Statement */}
+        <MoodStatement 
+          activeTasks={activeTasks} 
+          selectedDate={selectedDate}
+          onPress={() => navigation.navigate('EmotionalJournal')}
+        />
+        
+        {/* Daily Mood Summary with Progress */}
+        <DailyMoodSummary
+          activeTasks={activeTasks}
+          selectedDate={selectedDate}
+        />
+        
         {/* Today's Summary Section */}
         <View style={styles.summaryContainer}>
         {selectedDateActiveTasks.length === 0 ? (
@@ -428,15 +455,27 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
   },
+  summaryHeaderContainer: {
+    marginHorizontal: 30,
+    marginTop: 0, // 8'den 0'a düşürdüm - progress status üstüne aldım
+    marginBottom: 8,
+    paddingTop: 10, // Today's Summary padding top
+  },
+  summaryHeaderTitle: {
+    fontSize: 18, // 24'ten 18'e düşürdüm - eski haline getirdim
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#1D1D1F',
+    letterSpacing: -0.5,
+  },
   summaryContainer: {
     marginHorizontal: 30,
-    marginTop: 16,
+    marginTop: 8, // 16'dan 8'e düşürdüm - header'ı yukarıya aldım
   },
   emptyState: {
     backgroundColor: '#F2F2F7',
     borderRadius: 16,
     padding: 32,
-    marginTop: 12,
+    marginTop: 6, // 12'den 6'ya düşürdüm - daha kompakt
     alignItems: 'center',
   },
   emptyTitle: {
@@ -479,7 +518,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    marginTop: 12,
+    marginTop: 6, // 12'den 6'ya düşürdüm - daha kompakt
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,

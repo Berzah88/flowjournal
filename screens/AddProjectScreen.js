@@ -142,8 +142,8 @@ export default function AddProjectScreen({ visible, onClose }) {
 
       <FlashCalendar
         visible={calendarVisible}
-        initialStart={new Date()}
-        initialEnd={endDate}
+        initialStart={null}
+        initialEnd={null}
         onConfirm={handleCalendarConfirm}
         onCancel={() => setCalendarVisible(false)}
         minDate={new Date()}

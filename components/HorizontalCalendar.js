@@ -156,23 +156,24 @@ export default HorizontalCalendar;
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 5,
+    paddingTop: 8, // 0'dan 8'e çıkardım - biraz padding top
     paddingBottom: 0,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16, // 20'den 16'ya düşürdüm
+    marginBottom: 20, // Horizontal calendar margin bottom
     width: '100%',
     backgroundColor: 'transparent',
   },
   calendarStrip: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 2, // 4'ten 2'ye düşürdüm - daha kompakt
   },
   dayContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    minWidth: 60,
+    paddingVertical: 4, // 6'dan 4'e düşürdüm - daha da kompakt
+    paddingHorizontal: 12, // 16'dan 12'ye düşürdüm
+    marginHorizontal: 10, // 8'den 10'a çıkardım - günler arası boşluğu daha da artırdım
+    borderRadius: 10, // 12'den 10'a düşürdüm
+    minWidth: 45, // 55'ten 45'e düşürdüm - mavi seçiciyi daraltım
   },
   selectedContainer: {
     backgroundColor: "#4A90E2",
@@ -214,6 +215,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Poppins_400Regular",
     color: "#8E8E93",
+    marginTop: -4, // -2'den -4'e düşürdüm - daha da yakınlaştırdım
   },
   todayAbbr: {
     color: "#FFFFFF",

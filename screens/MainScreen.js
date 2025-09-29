@@ -35,9 +35,6 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import DataRecoveryMenu from "../components/DataRecoveryMenu";
 import MyDayScreen from "./MyDayScreen";
 import AddMilestoneModal from "../components/AddMilestoneModal";
-import MoodStatement from "../components/MoodStatement";
-import DailyMoodSummary from "../components/DailyMoodSummary";
-import HorizontalCalendar from "../components/HorizontalCalendar";
 
 const { width, height } = Dimensions.get("window");
 
@@ -51,6 +48,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   
   // Performance monitoring (only in development) - temporarily disabled
   // usePerformanceMonitor('MainScreen');
+
 
   const [activeIndex, setActiveIndex] = useState(0); // 0 = my day, 1 = active
   const [addVisible, setAddVisible] = useState(false);
@@ -308,12 +306,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           </View>
         </View>
 
-      {/* Mood Statement - Status Tabs'ın üstünde */}
-      <MoodStatement 
-        activeTasks={activeTasks} 
-        selectedDate={selectedDate}
-        onPress={() => navigation.navigate('EmotionalJournal')}
-      />
 
       {/* Status Tabs - Swipe alanı dışında */}
       <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
@@ -328,30 +320,12 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         >
           {/* My Day Screen (left) */}
           <View style={{ width }}>
-            {/* Horizontal Calendar */}
-            <HorizontalCalendar
-              selectedDate={selectedDate}
-              onDateSelect={setSelectedDate}
-              tasksByDate={{}}
-              milestones={[]}
-            />
-            
-            {/* Today's Summary Section */}
-            <View style={styles.summaryHeaderContainer}>
-              <Text style={styles.summaryHeaderTitle}>Today's Summary</Text>
-            </View>
-            
             {/* Scrollable Content */}
             <ScrollView 
               style={styles.myDayScrollView}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.myDayScrollContent}
             >
-              {/* Daily Mood Summary with Progress - MyDay'de */}
-              <DailyMoodSummary
-                activeTasks={activeTasks}
-                selectedDate={selectedDate}
-              />
               <MyDayScreen 
                 navigation={navigation}
                 selectedCard={myDaySelectedCard}
@@ -363,6 +337,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 selectedProjectForMilestone={myDaySelectedProjectForMilestone}
                 setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
                 selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
                 onOpenJournal={handleMyDayOpenJournal}
                 onAddProject={handleMyDayAddProject}
               />
@@ -463,7 +438,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       
       {myDaySelectedMilestone && <Journal 
         visible={!!myDaySelectedMilestone} 
-        milestone={myDaySelectedMilestone} 
+        milestone={myDaySelectedMilestone}
+        existingEntry={myDaySelectedMilestone?.editEntry || null}
         onClose={() => setMyDaySelectedMilestone(null)}
         onSave={() => {
           // Refresh trigger when journal is saved
@@ -519,17 +495,18 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    paddingTop: 60 
+    paddingTop: 50 // 60'tan 50'ye düşürdüm - daha kompakt
   },
   headerContainer: {
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 20, // 12'den 20'ye çıkardım - header'ı vertical genişlettim
     marginBottom: 8,
   },
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 20, // Logo ve başlığa margin top
     marginBottom: 4,
   },
   headerLeft: {
@@ -652,18 +629,6 @@ const styles = StyleSheet.create({
   },
   deleteText: { 
     color: "#E74C3C" 
-  },
-  // Summary Header Styles
-  summaryHeaderContainer: {
-    marginHorizontal: 30,
-    marginTop: 16,
-    marginBottom: 0,
-  },
-  summaryHeaderTitle: {
-    fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#1D1D1F",
-    marginBottom: 0,
   },
   // My Day ScrollView Styles
   myDayScrollView: {

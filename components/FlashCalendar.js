@@ -134,6 +134,26 @@ export default function FlashCalendar({
             }}
           />
 
+          {/* Seçim durumu göstergesi */}
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusText}>
+              {!localStart ? "Başlangıç tarihi seçin" : 
+               !localEnd ? "Bitiş tarihi seçin" : 
+               "Tarih aralığı seçildi"}
+            </Text>
+            {localStart && (
+              <TouchableOpacity 
+                style={styles.clearBtn}
+                onPress={() => {
+                  setLocalStart(null);
+                  setLocalEnd(null);
+                }}
+              >
+                <Text style={styles.clearText}>Temizle</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <View style={styles.presetsRow}>
             <TouchableOpacity
               style={styles.presetBtn}
@@ -145,7 +165,20 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={styles.presetText}>Next 7 days</Text>
+              <Text style={styles.presetText}>1 Hafta</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.presetBtn}
+              onPress={() => {
+                const today = new Date();
+                const end = new Date();
+                end.setDate(today.getDate() + 14);
+                setLocalStart(today);
+                setLocalEnd(end);
+              }}
+            >
+              <Text style={styles.presetText}>2 Hafta</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -158,7 +191,20 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={styles.presetText}>30 days</Text>
+              <Text style={styles.presetText}>1 Ay</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.presetBtn}
+              onPress={() => {
+                const today = new Date();
+                const end = new Date();
+                end.setDate(today.getDate() + 90);
+                setLocalStart(today);
+                setLocalEnd(end);
+              }}
+            >
+              <Text style={styles.presetText}>3 Ay</Text>
             </TouchableOpacity>
           </View>
 
@@ -198,8 +244,31 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
   heading: { fontSize: 16, fontFamily: "Poppins_700Bold", color: "#222", marginBottom: 8, textAlign: "left" },
-  presetsRow: { flexDirection: "row", justifyContent: "flex-start", marginTop: 10 },
-  presetBtn: { backgroundColor: "#F0F0F5", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginRight: 8 },
+  statusContainer: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center", 
+    marginTop: 8, 
+    marginBottom: 4 
+  },
+  statusText: { 
+    fontSize: 14, 
+    fontFamily: "Poppins_500Medium", 
+    color: "#666" 
+  },
+  clearBtn: { 
+    backgroundColor: "#FFE5E5", 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 6 
+  },
+  clearText: { 
+    color: "#E53E3E", 
+    fontSize: 12, 
+    fontFamily: "Poppins_500Medium" 
+  },
+  presetsRow: { flexDirection: "row", justifyContent: "flex-start", marginTop: 10, flexWrap: "wrap" },
+  presetBtn: { backgroundColor: "#F0F0F5", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginRight: 8, marginBottom: 6 },
   presetText: { color: "#444", fontSize: 13, fontFamily: "Poppins_500Medium" },
   actionsRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 12 },
   actionLeft: { paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 },

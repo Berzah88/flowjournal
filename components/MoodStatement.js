@@ -144,10 +144,9 @@ const MoodStatement = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginLeft: 16,
-    marginRight: 40,
-    marginTop: 4,
-    marginBottom: 10,
+    marginHorizontal: 30, // DailyMoodSummary ile aynı
+    marginTop: 8, // DailyMoodSummary ile aynı
+    marginBottom: 4, // DailyMoodSummary ile aynı
   },
   moodStatus: {
     flexDirection: 'row',

@@ -40,6 +40,12 @@ export const MOODS = [
     icon: "mood-bad",
     color: "#FFEBEE", // light red
   },
+  {
+    key: "neutral",
+    label: "Neutral",
+    icon: "sentiment-neutral",
+    color: "#F5F5F5", // light gray
+  },
 ];
 
 // Extended mood definitions for compatibility
@@ -907,12 +913,91 @@ export const analyzeSentimentBySentences = async (text, userHistory = []) => {
 export const getSmartMoodSuggestion = async (sentiment, currentMood, userHistory = [], text = '') => {
   const prediction = await aiMoodPredictor.predictMood(text, userHistory);
   
-  return [{
+  // Check if confidence is too low - suggest neutral mood
+  if (prediction.confidence < 0.4) {
+    return [{
+      mood: 'neutral',
+      reason: 'Low confidence prediction - suggesting neutral mood',
+      confidence: 0.8,
+      type: 'neutral'
+    }];
+  }
+  
+  // Primary mood suggestion
+  const suggestions = [{
     mood: prediction.mood,
     reason: prediction.reason,
     confidence: prediction.confidence,
     type: 'primary'
   }];
+  
+  // Add secondary mood suggestions based on sentiment
+  const secondaryMoods = getSecondaryMoodSuggestions(sentiment, prediction.mood);
+  suggestions.push(...secondaryMoods);
+  
+  // Return 2-3 suggestions maximum
+  return suggestions.slice(0, 3);
+};
+
+// Helper function to get secondary mood suggestions
+const getSecondaryMoodSuggestions = (sentiment, primaryMood) => {
+  const suggestions = [];
+  
+  // Based on sentiment score and primary mood, suggest complementary moods
+  if (sentiment.score > 0.3) {
+    // Positive sentiment - suggest happy, excited, calm
+    const positiveMoods = ['happy', 'excited', 'calm'].filter(mood => mood !== primaryMood);
+    if (positiveMoods.length > 0) {
+      suggestions.push({
+        mood: positiveMoods[0],
+        reason: 'Positive sentiment detected',
+        confidence: 0.7,
+        type: 'secondary'
+      });
+    }
+  } else if (sentiment.score < -0.3) {
+    // Negative sentiment - suggest sad, tired, angry
+    const negativeMoods = ['sad', 'tired', 'angry'].filter(mood => mood !== primaryMood);
+    if (negativeMoods.length > 0) {
+      suggestions.push({
+        mood: negativeMoods[0],
+        reason: 'Negative sentiment detected',
+        confidence: 0.7,
+        type: 'secondary'
+      });
+    }
+  } else {
+    // Neutral sentiment - suggest neutral, calm, tired
+    const neutralMoods = ['neutral', 'calm', 'tired'].filter(mood => mood !== primaryMood);
+    if (neutralMoods.length > 0) {
+      suggestions.push({
+        mood: neutralMoods[0],
+        reason: 'Neutral sentiment detected',
+        confidence: 0.6,
+        type: 'secondary'
+      });
+    }
+  }
+  
+  // Add a third suggestion if we have space
+  if (suggestions.length < 2) {
+    const allMoods = ['happy', 'excited', 'calm', 'tired', 'sad', 'angry', 'neutral'];
+    const availableMoods = allMoods.filter(mood => 
+      mood !== primaryMood && 
+      !suggestions.some(s => s.mood === mood)
+    );
+    
+    if (availableMoods.length > 0) {
+      suggestions.push({
+        mood: availableMoods[0],
+        reason: 'Alternative mood option',
+        confidence: 0.5,
+        type: 'tertiary'
+      });
+    }
+  }
+  
+  return suggestions;
 };
 
 // Advanced mood pattern learning and analytics

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,16 +12,40 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import Journal from "./Journal";
+import { useActiveTasks } from "../hooks/useTaskContext";
 
 const { width, height } = Dimensions.get("window");
 
 const JournalDetailScreen = ({ 
   route, 
-  navigation,
-  onTextEntryEdit
+  navigation
 }) => {
-  const { selectedMediaData } = route.params;
+  const { selectedMediaData: initialMediaData } = route.params;
+  const activeTasks = useActiveTasks();
   const [locationText, setLocationText] = useState(null);
+  const [journalModalVisible, setJournalModalVisible] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // TaskContext'ten güncel veriyi al
+  const selectedMediaData = useMemo(() => {
+    if (!activeTasks || activeTasks.length === 0) return initialMediaData;
+    
+    // Güncel task ve milestone'ı bul
+    const task = activeTasks.find(t => t.id === initialMediaData.taskId);
+    if (!task || !task.milestones) return initialMediaData;
+    
+    const milestone = task.milestones.find(m => m.id === initialMediaData.milestoneId);
+    if (!milestone) return initialMediaData;
+    
+    // initialMediaData'yı güncel verilerle güncelle
+    return {
+      ...initialMediaData,
+      textEntries: milestone.journalEntries || [],
+      // Diğer alanları da güncelle
+    };
+  }, [activeTasks, initialMediaData, refreshKey]);
 
   // Konum bilgisini al
   useEffect(() => {
@@ -202,7 +226,12 @@ const JournalDetailScreen = ({
                     </Text>
                     <TouchableOpacity 
                       style={styles.editButton}
-                      onPress={() => onTextEntryEdit(entry)}
+                      onPress={() => {
+                        // Journal modal'ını edit modunda aç
+                        console.log('Editing entry:', entry);
+                        setEditingEntry(entry);
+                        setJournalModalVisible(true);
+                      }}
                     >
                       <MaterialIcons name="edit" size={16} color="#007AFF" />
                     </TouchableOpacity>
@@ -218,6 +247,30 @@ const JournalDetailScreen = ({
           </ScrollView>
         </View>
       </View>
+
+      {/* Journal Modal */}
+      {journalModalVisible && (
+        <Journal 
+          visible={journalModalVisible}
+          milestone={{
+            id: selectedMediaData.milestoneId,
+            taskId: selectedMediaData.taskId
+          }}
+          existingEntry={editingEntry}
+          onClose={() => {
+            setJournalModalVisible(false);
+            setEditingEntry(null);
+          }}
+          onSave={() => {
+            // Modal kapandıktan sonra sayfayı yenile
+            setJournalModalVisible(false);
+            setEditingEntry(null);
+            // refreshKey'i artırarak component'i yeniden render et
+            setRefreshKey(prev => prev + 1);
+          }}
+          fromMainScreen={false}
+        />
+      )}
     </SafeAreaView>
   );
 };

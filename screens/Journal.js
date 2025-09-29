@@ -118,7 +118,7 @@ export default function Journal({
 
   const todayText = new Date().toLocaleDateString("en-US", {
     day: "2-digit",
-    month: "long",
+    month: "short", // "long" yerine "short" - ay kısaltması
   });
 
   // Konum bilgisini al (previews'dan)
@@ -268,6 +268,7 @@ export default function Journal({
   // Populate when editing existing entry
   useEffect(() => {
     if (existingEntry) {
+      console.log('Journal existingEntry:', existingEntry);
       setTextValue(existingEntry.text || "");
       const existingPreviews = [
         ...(existingEntry.images || []).map((uri) => ({ type: "image", content: uri })),
@@ -534,12 +535,15 @@ export default function Journal({
 
       // Save işlemini async olarak yap ve tamamlandıktan sonra modal'ı kapat
       try {
+        console.log('Save - editingEntryId:', editingEntryId, 'payload:', payload);
         if (editingEntryId) {
           if (updateJournalEntry) {
+            console.log('Updating journal entry:', editingEntryId);
             updateJournalEntry(taskId, msId, editingEntryId, payload);
           }
         } else {
           if (addJournalEntry) {
+            console.log('Adding new journal entry');
             addJournalEntry(taskId, msId, payload);
           }
         }
@@ -593,34 +597,8 @@ export default function Journal({
     const imagePreviews = previews.filter(item => item.type === "image");
     if (!imagePreviews || imagePreviews.length === 0) return null;
 
-    // Klavye açıkken ikon olarak göster
-    if (isKeyboardOpen) {
-      return (
-        <View style={styles.mediaIconsContainer}>
-          {imagePreviews.map((item, index) => (
-            <LinearGradient
-              key={index}
-              colors={['#667eea', '#764ba2']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.mediaIcon}
-            >
-              <Ionicons name="image" size={16} color="#FFFFFF" />
-            </LinearGradient>
-          ))}
-          {previews.find(item => item.type === "map") && (
-            <LinearGradient
-              colors={['#f093fb', '#f5576c']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.mediaIcon}
-            >
-              <Ionicons name="location" size={16} color="#FFFFFF" />
-            </LinearGradient>
-          )}
-        </View>
-      );
-    }
+    // Sadece klavye kapalı olduğunda grid göster
+    if (isKeyboardOpen) return null;
 
     // Sadece son 5 resmi göster (UI_DISPLAY_LIMIT)
     const displayPreviews = imagePreviews.slice(-UI_DISPLAY_LIMIT);
@@ -742,52 +720,61 @@ export default function Journal({
             )}
           </View>
 
-          {/* Minimal Mood Suggestions - RELAXED visibility */}
-          {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
-            <View style={styles.minimalMoodSuggestions}>
-              {moodSuggestions.map((suggestion, index) => {
-                // First try to find in basic MOODS, then in EXTENDED_MOODS
-                let suggestedMood = MOODS.find(m => m.key === suggestion.mood);
-                if (!suggestedMood) {
-                  // Import EXTENDED_MOODS if not already imported
-                  const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
-                  suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);
-                }
-                
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.moodTag,
-                      { backgroundColor: suggestedMood?.color || '#4A90E2' }
-                    ]}
-                    onPress={() => {
-                      if (suggestedMood) {
-                        setSelectedMood(suggestedMood);
-                        setShowSuggestions(false);
-                        setAutoMoodApplied(true);
-                      }
-                    }}
-                  >
-                    <MaterialIcons 
-                      name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
-                      size={18} 
-                      color="#000" 
-                    />
-                    <Text style={styles.moodTagText}>{suggestedMood?.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+          {/* Mood Suggestions + Media Counter Row */}
+          <View style={styles.moodMediaRow}>
+            {/* Mood Suggestions - Left Side */}
+            {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
+              <View style={styles.moodSuggestionsContainer}>
+                {moodSuggestions.map((suggestion, index) => {
+                  // First try to find in basic MOODS, then in EXTENDED_MOODS
+                  let suggestedMood = MOODS.find(m => m.key === suggestion.mood);
+                  if (!suggestedMood) {
+                    // Import EXTENDED_MOODS if not already imported
+                    const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
+                    suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);
+                  }
+                  
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.moodTag,
+                        { backgroundColor: suggestedMood?.color || '#4A90E2' }
+                      ]}
+                      onPress={() => {
+                        if (suggestedMood) {
+                          setSelectedMood(suggestedMood);
+                          setShowSuggestions(false);
+                          setAutoMoodApplied(true);
+                        }
+                      }}
+                    >
+                      <MaterialIcons 
+                        name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
+                        size={18} 
+                        color="#000" 
+                      />
+                      <Text style={styles.moodTagText}>{suggestedMood?.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+            
+            {/* Media Counter - Right Side */}
+            {previews.length > 0 && (
+              <View style={styles.mediaCounterContainer}>
+                <View style={styles.mediaCounter}>
+                  <Ionicons name="image" size={16} color="#007AFF" />
+                  <Text style={styles.mediaCounterText}>{previews.length}</Text>
+                </View>
+              </View>
+            )}
+          </View>
 
           {renderPreviewGrid()}
 
-          <ScrollView 
-            style={{ flex: 1, marginBottom: 10 }}
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-          >
+          <View style={styles.textInputContainer}>
             <TextInput
               ref={inputRef}
               value={textValue}
@@ -795,10 +782,9 @@ export default function Journal({
               style={[
                 styles.input,
                 {
-                  // Dynamic height based on content
-                  minHeight: hasMedia && hasMoodSuggestions ? 150 : 200,
-                  maxHeight: hasMedia && hasMoodSuggestions ? 300 : 400,
-                  flex: hasMedia && hasMoodSuggestions ? 0.6 : 1,
+                   // Dynamic height using same logic as buttons + 50% margin bottom
+                   height: Math.max(150, (modalHeight - (keyboardHeight || 0)) * 0.5), // 50% of available space (50% margin bottom)
+                  minHeight: 150,
                 }
               ]}
               placeholder={(milestone?.title ? milestone.title + ": " : "") + "Write about it..."}
@@ -807,9 +793,11 @@ export default function Journal({
               placeholderTextColor="#999"
               textAlignVertical="top"
               editable={true}
-              scrollEnabled={true}
+               scrollEnabled={true}
+               showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
             />
-          </ScrollView>
+          </View>
 
           {/* Mood picker popup with backdrop */}
           {showMoodPicker && (
@@ -847,7 +835,7 @@ export default function Journal({
             </TouchableOpacity>
           )}
 
-          <View style={[styles.buttonRow, { bottom: keyboardHeight || 0, marginBottom: 40 }]}>
+          <View style={[styles.buttonRow, { bottom: keyboardHeight || 0, marginBottom: 15 }]}>
             {buttons.map((btn, i) => (
               <TouchableOpacity
                 key={i}
@@ -941,7 +929,7 @@ const styles = StyleSheet.create({
   },
   dateText: { 
     paddingHorizontal: 0, 
-    fontSize: 20, 
+    fontSize: 18, // 20'den 18'e düşürdüm - 2 punto küçük
     color: "#1d1d1f", 
     fontFamily: "Poppins_600SemiBold",
     letterSpacing: -0.2,
@@ -979,7 +967,7 @@ const styles = StyleSheet.create({
   },
   previewWrapper: {
     paddingHorizontal: 16,
-    marginTop: 8,
+    marginTop: -4, // 0'dan -4'e düşürdüm - daha yukarıya aldım
     height: PREVIEW_HEIGHT,
   },
   asymmetricGrid: {
@@ -1048,8 +1036,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   mapInner: { width: "100%", height: "100%", borderWidth:1, },
+  textInputContainer: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginTop: 0,
+    marginBottom: 0, // Height ile kontrol ediyoruz, margin gerek yok
+  },
   input: { 
-    flex: 1, 
     padding: 20, 
     paddingTop: 30,
     fontSize: 18, 
@@ -1060,12 +1053,9 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 12,
-    margin: 16,
-    marginTop: 20,
-    marginBottom: 10,
-    // Dynamic height properties
-    minHeight: 200,
-    maxHeight: 400,
+    // Ensure cursor starts at top
+    includeFontPadding: false,
+    textAlignVertical: 'top',
   },
   buttonRow: { 
     position: "absolute", 
@@ -1227,18 +1217,39 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  minimalMoodSuggestions: {
+  moodMediaRow: {
     flexDirection: "row",
-    flexWrap: "wrap", // Allow wrapping for multiple tags
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-    backgroundColor: "transparent",
-    marginHorizontal: 16,
-    marginTop: 6,
-    marginBottom: 2,
-    minHeight: 40,
+    justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 40,
+  },
+  moodSuggestionsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    flex: 1,
+    gap: 6,
+  },
+  mediaCounterContainer: {
+    alignItems: "flex-end",
+  },
+  mediaCounter: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0, 122, 255, 0.3)",
+    gap: 4,
+  },
+  mediaCounterText: {
+    fontSize: 12,
+    color: "#007AFF",
+    fontFamily: "Poppins_500Medium",
+    fontWeight: "600",
   },
   moodTag: {
     flexDirection: "row",
