@@ -94,6 +94,7 @@ export default function Journal({
   const moodPickerTranslateY = useSharedValue(20);
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [textValue, setTextValue] = useState("");
   const [previews, setPreviews] = useState([]);
   const [editingEntryId, setEditingEntryId] = useState(null);
@@ -171,10 +172,14 @@ export default function Journal({
   }, [locationData, currentLocation, getLocationText]);
 
   useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", (e) =>
-      setKeyboardHeight(e.endCoordinates.height)
-    );
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardHeight(0));
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setIsKeyboardOpen(true);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+      setIsKeyboardOpen(false);
+    });
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -588,6 +593,35 @@ export default function Journal({
     const imagePreviews = previews.filter(item => item.type === "image");
     if (!imagePreviews || imagePreviews.length === 0) return null;
 
+    // Klavye açıkken ikon olarak göster
+    if (isKeyboardOpen) {
+      return (
+        <View style={styles.mediaIconsContainer}>
+          {imagePreviews.map((item, index) => (
+            <LinearGradient
+              key={index}
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.mediaIcon}
+            >
+              <Ionicons name="image" size={16} color="#FFFFFF" />
+            </LinearGradient>
+          ))}
+          {previews.find(item => item.type === "map") && (
+            <LinearGradient
+              colors={['#f093fb', '#f5576c']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.mediaIcon}
+            >
+              <Ionicons name="location" size={16} color="#FFFFFF" />
+            </LinearGradient>
+          )}
+        </View>
+      );
+    }
+
     // Sadece son 5 resmi göster (UI_DISPLAY_LIMIT)
     const displayPreviews = imagePreviews.slice(-UI_DISPLAY_LIMIT);
     
@@ -813,7 +847,7 @@ export default function Journal({
             </TouchableOpacity>
           )}
 
-          <View style={[styles.buttonRow, { bottom: keyboardHeight || 0, marginBottom: 20 }]}>
+          <View style={[styles.buttonRow, { bottom: keyboardHeight || 0, marginBottom: 40 }]}>
             {buttons.map((btn, i) => (
               <TouchableOpacity
                 key={i}
@@ -1239,5 +1273,31 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 4,
     textAlign: "center",
+  },
+  // Media icons for keyboard open state
+  mediaIconsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    backgroundColor: "rgba(0, 122, 255, 0.05)",
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    minHeight: 40,
+    alignItems: "center",
+  },
+  mediaIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

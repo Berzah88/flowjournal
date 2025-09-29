@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     borderWidth: 0.5,
     borderColor: "#F0F0F0",
-    minHeight: 300,
+    minHeight: 80,
   },
   dayHeader: {
     marginBottom: 6,
@@ -378,7 +378,8 @@ const styles = StyleSheet.create({
   firstTextSection: {
     marginTop: 4,
     marginBottom: 4,
-    height: 80,
+    minHeight: 40,
+    maxHeight: 80,
   },
   firstTextTime: {
     fontSize: 9,

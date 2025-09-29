@@ -237,7 +237,7 @@ const DailyMoodSummary = ({
           
           <View style={styles.progressContent}>
             <View style={styles.progressHeader}>
-              <Text style={styles.progressText}>İlerleme Durumu</Text>
+              <Text style={styles.progressText}>Progress Status</Text>
               <Text style={styles.progressPercentage}>{progressData.percentage}%</Text>
             </View>
             

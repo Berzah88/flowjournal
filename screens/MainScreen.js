@@ -295,17 +295,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               </View>
             </View>
             <View style={styles.headerActions}>
-              {/* Temporary Welcome Screen Button - For testing */}
-              <TouchableOpacity 
-                style={styles.welcomeButton} 
-                onPress={() => navigation.navigate('Welcome')}
-                accessible={true}
-                accessibilityLabel="Go to Welcome Screen"
-                accessibilityRole="button"
-              >
-                <Ionicons name="home-outline" size={20} color="#8E7DBE" />
-              </TouchableOpacity>
-              
               <TouchableOpacity 
                 style={styles.menuButton} 
                 onPress={() => setMainMenuVisible(true)}
@@ -580,21 +569,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(102, 126, 234, 0.15)',
     shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  welcomeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(142, 125, 190, 0.1)',
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: 'rgba(142, 125, 190, 0.2)',
-    shadowColor: "#8E7DBE",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,

@@ -6,9 +6,10 @@ import {
   TouchableOpacity, 
   Animated, 
   Dimensions,
-  SafeAreaView,
-  StatusBar 
+  StatusBar,
+  Image
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../constants";
@@ -42,7 +43,7 @@ export default function TutorialScreen({ navigation }) {
     {
       id: 3,
       title: "Emotion Journal",
-      description: "Record how you feel at each milestone and track your personal experience",
+      description: "Write journals and record your emotions. Transform your experiences throughout your projects into valuable memories",
       color: "#F59E0B",
       screen: "Journal"
     },
@@ -111,109 +112,38 @@ export default function TutorialScreen({ navigation }) {
           </View>
         );
       case "ActiveProject":
-        // Mock ActiveProject - matches real design
+        // Use the wedding plan screenshot
         return (
-          <View style={styles.mockActiveProject}>
-            {/* Modern Header - like ActiveProjectHeader */}
-            <View style={styles.mockModernHeader}>
-              <View style={styles.mockHeaderContent}>
-                {/* Project Title Section */}
-                <View style={styles.mockTitleSection}>
-                  <Text style={styles.mockModernTitle}>My New Project</Text>
-                  <Text style={styles.mockDateRange}>15 Dec 2024 - 15 Jan 2025</Text>
-                </View>
-                
-                {/* Tab Switcher */}
-                <View style={styles.mockTabSwitcher}>
-                  <View style={[styles.mockTabButton, styles.mockActiveTabButton]}>
-                    <Text style={[styles.mockTabButtonText, styles.mockActiveTabButtonText]}>
-                      Milestones
-                    </Text>
-                  </View>
-                  <View style={styles.mockTabButton}>
-                    <Text style={styles.mockTabButtonText}>Calendar</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Progress Section */}
-              <View style={styles.mockProgressSection}>
-                <View style={styles.mockProgressHeader}>
-                  <Text style={styles.mockProgressLabel}>Progress</Text>
-                  <Text style={styles.mockProgressPercentage}>33%</Text>
-                </View>
-                <View style={styles.mockProgressBarContainer}>
-                  <View style={[styles.mockProgressBar, { width: "33%" }]} />
-                </View>
-              </View>
-            </View>
-
-            {/* Milestones Content - like ActiveProjectMilestones */}
-            <View style={styles.mockMilestonesContainer}>
-              {/* Milestones Header */}
-              <View style={styles.mockMilestoneHeader}>
-                <View style={styles.mockMilestoneHeaderContent}>
-                  <Text style={styles.mockMilestoneTitle}>Milestones</Text>
-                  <View style={styles.mockMinimalAddButton}>
-                    <Text style={styles.mockMinimalAddText}>+</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Milestones List */}
-              <View style={styles.mockMilestonesList}>
-                <View style={styles.mockMilestoneCard}>
-                  <View style={styles.mockMilestoneContent}>
-                    <View style={styles.mockMilestoneIcon}>
-                      <Ionicons name="ellipse" size={16} color="#10B981" />
-                    </View>
-                    <View style={styles.mockMilestoneTextContainer}>
-                      <Text style={styles.mockMilestoneText}>First Milestone</Text>
-                      <Text style={styles.mockMilestoneSubtext}>Completed</Text>
-                    </View>
-                    <View style={styles.mockMilestoneStatus}>
-                      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                    </View>
-                  </View>
-                </View>
-                
-                <View style={styles.mockMilestoneCard}>
-                  <View style={styles.mockMilestoneContent}>
-                    <View style={styles.mockMilestoneIcon}>
-                      <Ionicons name="ellipse" size={16} color="#007AFF" />
-                    </View>
-                    <View style={styles.mockMilestoneTextContainer}>
-                      <Text style={styles.mockMilestoneText}>Second Milestone</Text>
-                      <Text style={styles.mockMilestoneSubtext}>In Progress</Text>
-                    </View>
-                    <View style={styles.mockMilestoneStatus}>
-                      <Ionicons name="time" size={20} color="#666" />
-                    </View>
-                  </View>
-                </View>
-                
-                <View style={styles.mockMilestoneCard}>
-                  <View style={styles.mockMilestoneContent}>
-                    <View style={styles.mockMilestoneIcon}>
-                      <Ionicons name="ellipse" size={16} color="#F59E0B" />
-                    </View>
-                    <View style={styles.mockMilestoneTextContainer}>
-                      <Text style={styles.mockMilestoneText}>Third Milestone</Text>
-                      <Text style={styles.mockMilestoneSubtext}>Pending</Text>
-                    </View>
-                    <View style={styles.mockMilestoneStatus}>
-                      <Ionicons name="time" size={20} color="#666" />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
+          <View style={[styles.mockActiveProject, styles.mockActiveProjectNarrow]}>
+            <Image 
+              source={require('../assets/wedding-plan-screenshot.jpg')}
+              style={styles.mockScreenshot}
+              resizeMode="contain"
+            />
           </View>
         );
       case "Journal":
-        return <Journal {...screenProps} />;
+        // Use the emotion journal screenshot
+        return (
+          <View style={[styles.mockActiveProject, styles.mockActiveProjectNarrow]}>
+            <Image 
+              source={require('../assets/emotion-journal-screenshot.jpg')}
+              style={styles.mockScreenshot}
+              resizeMode="contain"
+            />
+          </View>
+        );
       case "Main":
-        return <MainScreen {...screenProps} />;
+        // Use the view progress screenshot
+        return (
+          <View style={[styles.mockActiveProject, styles.mockActiveProjectSmall]}>
+            <Image 
+              source={require('../assets/viev-progress-screenshot.jpg')}
+              style={styles.mockScreenshot}
+              resizeMode="contain"
+            />
+          </View>
+        );
       default:
         return null;
     }
@@ -322,6 +252,7 @@ export default function TutorialScreen({ navigation }) {
         <Animated.View 
           style={[
             styles.buttonContainer,
+            currentStep > 0 && styles.buttonContainerLower,
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }]
@@ -329,18 +260,13 @@ export default function TutorialScreen({ navigation }) {
           ]}
         >
             <TouchableOpacity
-              style={[styles.button, styles.nextButton]}
+              style={[styles.button, styles.nextButton, { backgroundColor: currentTutorial.color }]}
               onPress={handleNext}
               accessible={true}
               accessibilityLabel={currentStep === tutorialSteps.length - 1 ? "Get Started" : "Next Step"}
               accessibilityRole="button"
             >
-              <LinearGradient
-                colors={[currentTutorial.color, `${currentTutorial.color}CC`]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.buttonGradient}
-              >
+              <View style={styles.buttonGradient}>
                 <Text style={styles.buttonText}>
                   {currentStep === tutorialSteps.length - 1 ? "Get Started" : "Continue"}
                 </Text>
@@ -350,7 +276,7 @@ export default function TutorialScreen({ navigation }) {
                   color="white" 
                   style={styles.buttonIcon} 
                 />
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
             
             {/* Back Button */}
@@ -498,6 +424,9 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.XXL,
     minHeight: 120, // Reserve space for back button height
   },
+  buttonContainerLower: {
+    marginTop: 40,
+  },
   button: {
     width: "100%",
     borderRadius: BORDER_RADIUS.XL,
@@ -518,6 +447,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.LG,
     paddingHorizontal: SPACING.XL,
     minHeight: 56,
+    borderRadius: BORDER_RADIUS.XL,
   },
   buttonText: {
     fontSize: 18,
@@ -585,20 +515,87 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Poppins_600SemiBold",
   },
-  // Mock ActiveProject Styles - matches real design
+  // Mock ActiveProject Styles - matches the provided screenshot
   mockActiveProject: {
-    flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#F8F9FA",
     borderRadius: 16,
     overflow: "hidden",
-    width: "100%",
-    maxWidth: 380,
-    height: 520,
+    width: 240,
+    height: 280,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
+    marginTop: 30,
+  },
+  mockActiveProjectNarrow: {
+    height: 240,
+  },
+  mockActiveProjectSmall: {
+    width: 200,
+    height: 240,
+    marginTop: 50,
+  },
+  mockScreenshot: {
+    width: "100%",
+    height: "100%",
+  },
+  mockScreenshotPlaceholder: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  mockScreenshotText: {
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#1D1D1F",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  mockScreenshotSubtext: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E8E93",
+    textAlign: "center",
+  },
+  mockScreenshotIcon: {
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+    borderRadius: 50,
+  },
+  // Header Styles
+  mockHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  mockHeaderContent: {
+    flex: 1,
+  },
+  mockTitle: {
+    fontSize: 24,
+    fontFamily: "Poppins_700Bold",
+    color: "#1D1D1F",
+    marginBottom: 4,
+  },
+  mockDateRange: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E8E93",
+  },
+  mockMenuButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   // Modern Header Styles
   mockModernHeader: {
@@ -635,6 +632,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.05)",
     borderRadius: 12,
     padding: 4,
+    marginHorizontal: 20,
+    marginBottom: 16,
   },
   mockTabButton: {
     flex: 1,
