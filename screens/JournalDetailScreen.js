@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 
 const { width, height } = Dimensions.get("window");
 
@@ -20,11 +21,49 @@ const JournalDetailScreen = ({
   onTextEntryEdit
 }) => {
   const { selectedMediaData } = route.params;
+  const [locationText, setLocationText] = useState(null);
+
+  // Konum bilgisini al
+  useEffect(() => {
+    const getLocationText = async () => {
+      if (selectedMediaData.location) {
+        const coords = selectedMediaData.location.coords || selectedMediaData.location;
+        if (coords && coords.latitude && coords.longitude) {
+          try {
+            const result = await Location.reverseGeocodeAsync({
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            });
+            
+            if (result && result.length > 0) {
+              const location = result[0];
+              const city = location.city || location.subregion || location.region;
+              const district = location.district || location.subLocality;
+              
+              let locationText = "Location";
+              if (city && district && city !== district) {
+                locationText = `${district}, ${city}`;
+              } else if (city) {
+                locationText = city;
+              }
+              
+              setLocationText(locationText);
+            }
+          } catch (error) {
+            console.warn('Reverse geocoding error:', error);
+          }
+        }
+      }
+    };
+
+    getLocationText();
+  }, [selectedMediaData.location]);
 
   const renderMediaGrid = (entry) => {
     const previews = [
       ...(entry.images?.map((uri) => ({ type: "image", content: uri })) || []),
-      ...(entry.location ? [{ type: "map", content: entry.location }] : []),
+      // Harita preview kaldırıldı - APK crash sorunu nedeniyle
+      // ...(entry.location ? [{ type: "map", content: entry.location }] : []),
     ];
 
     if (!previews || previews.length === 0) return null;
@@ -54,29 +93,7 @@ const JournalDetailScreen = ({
           </View>
         );
       }
-      if (item.type === "map") {
-        const coords = item.content?.coords || item.content;
-        return (
-          <View key={key} style={styles.mediaItem}>
-            <View style={styles.mapWrapper}>
-              <MapView
-                style={styles.mapInner}
-                provider={PROVIDER_GOOGLE}
-                initialRegion={{
-                  latitude: coords.latitude,
-                  longitude: coords.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-                scrollEnabled={true}
-                zoomEnabled={true}
-              >
-                <Marker coordinate={coords} />
-              </MapView>
-            </View>
-          </View>
-        );
-      }
+      // Harita render kaldırıldı - APK crash sorunu nedeniyle
       return null;
     };
 
@@ -138,12 +155,20 @@ const JournalDetailScreen = ({
         </TouchableOpacity>
         <View style={styles.titleSection}>
           <Text style={styles.date}>{selectedMediaData.date}</Text>
-          {selectedMediaData.mood && (
-            <View style={[styles.mood, { backgroundColor: selectedMediaData.mood.color || "#fff" }]}>
-              <MaterialIcons name={getValidIconName(selectedMediaData.mood.icon)} size={16} color="#333" />
-              <Text style={styles.moodText}>{selectedMediaData.mood.label}</Text>
-            </View>
-          )}
+          <View style={styles.tagsContainer}>
+            {selectedMediaData.mood && (
+              <View style={[styles.mood, { backgroundColor: selectedMediaData.mood.color || "#fff" }]}>
+                <MaterialIcons name={getValidIconName(selectedMediaData.mood.icon)} size={16} color="#333" />
+                <Text style={styles.moodText}>{selectedMediaData.mood.label}</Text>
+              </View>
+            )}
+            {locationText && (
+              <View style={styles.locationTag}>
+                <Ionicons name="location" size={12} color="#007AFF" />
+                <Text style={styles.locationTagText}>{locationText}</Text>
+              </View>
+            )}
+          </View>
         </View>
         <View style={styles.placeholder} />
       </View>
@@ -243,7 +268,6 @@ const styles = StyleSheet.create({
 
   titleSection: {
     flex: 1,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -252,6 +276,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
     color: "#333",
+    marginBottom: 4,
+  },
+
+  tagsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 6,
   },
 
   mood: {
@@ -262,13 +295,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E9ECEF",
-    marginLeft: 8,
   },
 
   moodText: {
     fontSize: 10,
     fontFamily: "Poppins_500Medium",
     color: "#333",
+    marginLeft: 4,
+  },
+
+  locationTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#F0F8FF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+  },
+
+  locationTagText: {
+    fontSize: 10,
+    color: "#007AFF",
+    fontFamily: "Poppins_500Medium",
     marginLeft: 4,
   },
 

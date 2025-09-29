@@ -4,13 +4,15 @@ import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MOODS } from '../utils/MoodPredictor';
 
 const MoodStatement = ({ 
   activeTasks = [], 
-  selectedDate
+  selectedDate,
+  onPress = null
 }) => {
   // Bugünkü mood'ları hesapla
   const todayMoodData = useMemo(() => {
@@ -82,7 +84,7 @@ const MoodStatement = ({
     return null;
   }
   
-  return (
+  const content = (
     <View style={styles.container}>
       {/* Mood Status - Inline Design */}
       <View style={[
@@ -128,6 +130,16 @@ const MoodStatement = ({
       </View>
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 };
 
 const styles = StyleSheet.create({

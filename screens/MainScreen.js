@@ -302,7 +302,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 accessibilityLabel="Menu options"
                 accessibilityRole="button"
               >
-                <Ionicons name="ellipsis-horizontal" size={20} color="#667eea" />
+                <Ionicons name="menu" size={20} color="#667eea" />
               </TouchableOpacity>
             </View>
           </View>
@@ -312,6 +312,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       <MoodStatement 
         activeTasks={activeTasks} 
         selectedDate={selectedDate}
+        onPress={() => navigation.navigate('EmotionalJournal')}
       />
 
       {/* Status Tabs - Swipe alanı dışında */}

@@ -83,7 +83,7 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
         horizontal 
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.calendarStrip}
-        snapToInterval={340} // 5 günün toplam genişliği (5 × 68px) - 7 gün görünür ama 5 gün snap
+        snapToInterval={68} // Tek günün genişliği (68px)
         snapToAlignment="start"
         decelerationRate="fast"
         pagingEnabled={false}

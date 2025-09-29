@@ -88,16 +88,17 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
     return "Location";
   }, [locationTexts]);
 
-  // O günün tüm medyalarını birleştir
+  // O günün tüm medyalarını birleştir (harita hariç - APK crash sorunu)
   const allMedia = useMemo(() => {
     const media = [];
     dayGroup.allEntries.forEach(entry => {
       if (entry.images) {
         media.push(...entry.images.map(uri => ({ type: "image", content: uri })));
       }
-      if (entry.location) {
-        media.push({ type: "map", content: entry.location });
-      }
+      // Harita medyası kaldırıldı - APK crash sorunu nedeniyle
+      // if (entry.location) {
+      //   media.push({ type: "map", content: entry.location });
+      // }
     });
     return media;
   }, [dayGroup.allEntries]);
@@ -161,11 +162,12 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
     return text.substring(0, maxLength) + "...";
   }, []);
 
-  // Medya preview render fonksiyonu
+  // Medya preview render fonksiyonu (harita hariç - APK crash sorunu)
   const renderPreviewGridForEntry = useCallback((entry) => {
     const previews = [
       ...(entry.images?.map((uri) => ({ type: "image", content: uri })) || []),
-      ...(entry.location ? [{ type: "map", content: entry.location }] : []),
+      // Harita preview kaldırıldı - APK crash sorunu nedeniyle
+      // ...(entry.location ? [{ type: "map", content: entry.location }] : []),
     ];
 
     if (!previews || previews.length === 0) return null;
@@ -191,19 +193,7 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       if (item.type === "image") {
         return <Image key={key} source={{ uri: item.content }} style={styles.previewImage} resizeMode="cover" />;
       }
-      if (item.type === "map") {
-        const coords = item.content?.coords || item.content;
-        return (
-          <View key={key} style={styles.mapWrapper}>
-            <View style={styles.mapFallback}>
-              <Ionicons name="location" size={20} color="#007AFF" />
-              <Text style={styles.mapFallbackText}>
-                📍 {coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)}
-              </Text>
-            </View>
-          </View>
-        );
-      }
+      // Harita preview kaldırıldı - konum bilgisi etiket olarak gösterilecek
       return null;
     };
 
@@ -238,7 +228,7 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       onPress={() => {
         openJournalDetail({
           images: allMedia.filter(m => m.type === "image").map(m => m.content),
-          location: allMedia.find(m => m.type === "map")?.content,
+          location: dayGroup.allEntries.find(entry => entry.location)?.location,
           date: dayGroup.date,
           mood: dayMoodObj,
           textEntries: textEntries
@@ -250,8 +240,8 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       {allMedia.length > 0 && (
         <View style={styles.dayMediaSection}>
           {renderPreviewGridForEntry({ 
-            images: allMedia.filter(m => m.type === "image").map(m => m.content), 
-            location: allMedia.find(m => m.type === "map")?.content 
+            images: allMedia.filter(m => m.type === "image").map(m => m.content)
+            // location kaldırıldı - APK crash sorunu nedeniyle
           })}
         </View>
       )}
@@ -268,8 +258,11 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
           )}
         </View>
         {/* Location etiketi - tarihin altında */}
-        {allMedia.find(m => m.type === "map") && (
-          <LocationTag locationData={allMedia.find(m => m.type === "map")?.content} getLocationText={getLocationText} />
+        {dayGroup.allEntries.some(entry => entry.location) && (
+          <LocationTag 
+            locationData={dayGroup.allEntries.find(entry => entry.location)?.location} 
+            getLocationText={getLocationText} 
+          />
         )}
       </View>
       

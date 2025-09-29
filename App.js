@@ -10,6 +10,7 @@ import AddProjectScreen from './screens/AddProjectScreen';
 import ActiveProject from './screens/ActiveProject';
 import JournalDetailScreen from './screens/JournalDetailScreen';
 import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
+import EmotionalJournalScreen from './screens/EmotionalJournalScreen';
 import { TaskProvider } from './context/TaskContext';
 import { useHasAnyTasks, useTaskLoading } from './hooks/useTaskContext';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -46,9 +47,18 @@ function AppNavigator() {
         <Stack.Screen name="Tutorial" component={TutorialScreen} />
         <Stack.Screen name="Main" component={MainScreen} />
         <Stack.Screen name="AddProject" component={AddProjectScreen} />
-        <Stack.Screen name="ActiveProject" component={ActiveProject} />
+        <Stack.Screen 
+          name="ActiveProject" 
+          component={ActiveProject} 
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            headerShown: false
+          }}
+        />
         <Stack.Screen name="JournalDetail" component={JournalDetailScreen} />
         <Stack.Screen name="CompletedProjects" component={CompletedProjectsScreen} />
+        <Stack.Screen name="EmotionalJournal" component={EmotionalJournalScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

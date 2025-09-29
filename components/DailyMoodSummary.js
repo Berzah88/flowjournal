@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,8 @@ const { width } = Dimensions.get('window');
 const DailyMoodSummary = ({ 
   activeTasks = [], 
   selectedDate,
-  hasMedia = false
+  hasMedia = false,
+  onPress = null
 }) => {
   // Bugünkü mood'ları hesapla
   const todayMoodData = useMemo(() => {
@@ -223,7 +225,7 @@ const DailyMoodSummary = ({
     return null;
   }
   
-  return (
+  const content = (
     <View style={[
       styles.container,
       hasMedia && styles.mediaOverlay
@@ -261,6 +263,16 @@ const DailyMoodSummary = ({
       )}
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 };
 
 const styles = StyleSheet.create({
