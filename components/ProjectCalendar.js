@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { getMilestoneColor } from '../utils/milestoneColors';
+import { useTasks } from '../hooks/useTaskContext';
 
 const { width } = Dimensions.get("window");
 const CELL_SIZE = (width - 40) / 7; // 7 gün için eşit genişlik
@@ -10,25 +11,49 @@ const CELL_HEIGHT = CELL_SIZE + 10; // Hücre yüksekliğini azalt
 
 export default function ProjectCalendar({ milestones = [], projectStartDate, projectEndDate }) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const tasks = useTasks(); // Tüm task'ları al
   
-  // O günde yazılmış günlük girdisini bulan fonksiyon
+  // Tüm task'lardan tüm journal entry'leri topla
+  const getAllJournalEntries = () => {
+    const allEntries = [];
+    tasks.forEach(task => {
+      if (task.milestones) {
+        task.milestones.forEach(milestone => {
+          if (milestone.journalEntries) {
+            milestone.journalEntries.forEach(entry => {
+              allEntries.push({
+                ...entry,
+                taskId: task.id,
+                milestoneId: milestone.id,
+                projectTitle: task.title
+              });
+            });
+          }
+        });
+      }
+    });
+    return allEntries;
+  };
+  
+  // O günde yazılmış günlük girdisini bulan fonksiyon - TÜM PROJELERDEN
   const getJournalEntryForDate = (currentDate) => {
-    // Tüm milestone'lardan o günde yazılmış journal entry'yi bul
-    for (const milestone of milestones) {
-      if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
-        continue;
-      }
+    const allEntries = getAllJournalEntries();
+    
+    // O günde yazılmış journal entry'leri bul
+    const entriesForThisDate = allEntries.filter(entry => {
+      const entryDate = new Date(entry.createdAt);
+      return entryDate.toDateString() === currentDate.toDateString();
+    });
 
-      const entryForThisDate = milestone.journalEntries.find(entry => {
-        const entryDate = new Date(entry.createdAt);
-        return entryDate.toDateString() === currentDate.toDateString();
-      });
-
-      if (entryForThisDate) {
-        return entryForThisDate;
-      }
+    // Mood bilgisi olan entry'yi bul (öncelik)
+    const moodEntry = entriesForThisDate.find(entry => entry.mood || entry.moodIcon || entry.moodColor);
+    
+    if (moodEntry) {
+      return moodEntry;
     }
-    return null;
+
+    // Mood bilgisi yoksa ilk entry'yi döndür
+    return entriesForThisDate[0] || null;
   };
   
   // Renk sistemi artık utils/milestoneColors.js'den yönetiliyor
@@ -69,11 +94,30 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
     return days;
   };
 
-  // Belirli bir tarihte milestone var mı kontrol et
+  // Tüm task'lardan tüm milestone'ları topla
+  const getAllMilestones = () => {
+    const allMilestones = [];
+    tasks.forEach(task => {
+      if (task.milestones) {
+        task.milestones.forEach(milestone => {
+          allMilestones.push({
+            ...milestone,
+            taskId: task.id,
+            projectTitle: task.title
+          });
+        });
+      }
+    });
+    return allMilestones;
+  };
+
+  // Belirli bir tarihte milestone var mı kontrol et - TÜM PROJELERDEN
   const getMilestonesForDate = (date) => {
     if (!date) return [];
     
-    return milestones.filter(milestone => {
+    const allMilestones = getAllMilestones();
+    
+    return allMilestones.filter(milestone => {
       const startDate = new Date(milestone.startDate);
       const endDate = new Date(milestone.endDate);
       
@@ -211,7 +255,8 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
                   {/* Mood tag - Sağ alt köşe */}
                   {(() => {
                     const journalEntry = getJournalEntryForDate(date);
-                    if (!journalEntry || (!journalEntry.mood && !journalEntry.moodIcon)) {
+                    
+                    if (!journalEntry || (!journalEntry.mood && !journalEntry.moodIcon && !journalEntry.moodColor)) {
                       return null;
                     }
                     
@@ -241,42 +286,50 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
       <View style={styles.legend}>
         <Text style={styles.legendTitle}>Milestone Types</Text>
         
-        {/* Aktif milestone'lar */}
-        {milestones.filter(milestone => !milestone.completed).length > 0 && (
-          <View style={styles.legendSection}>
-            <View style={styles.legendGrid}>
-              {milestones
-                .filter(milestone => !milestone.completed)
-                .map((milestone, index) => (
-                  <View key={milestone.id} style={styles.legendItem}>
-                    <View style={[styles.legendColor, { backgroundColor: getMilestoneColor(milestone) }]} />
-                    <Text style={styles.legendText} numberOfLines={1}>
-                      {getShortMilestoneTitle(milestone.title, index)}
-                    </Text>
-                  </View>
-                ))}
+        {/* Aktif milestone'lar - TÜM PROJELERDEN */}
+        {(() => {
+          const allMilestones = getAllMilestones();
+          const activeMilestones = allMilestones.filter(milestone => !milestone.completed);
+          
+          return activeMilestones.length > 0 && (
+            <View style={styles.legendSection}>
+              <View style={styles.legendGrid}>
+                {activeMilestones
+                  .map((milestone, index) => (
+                    <View key={milestone.id} style={styles.legendItem}>
+                      <View style={[styles.legendColor, { backgroundColor: getMilestoneColor(milestone) }]} />
+                      <Text style={styles.legendText} numberOfLines={1}>
+                        {getShortMilestoneTitle(milestone.title, index)}
+                      </Text>
+                    </View>
+                  ))}
+              </View>
             </View>
-          </View>
-        )}
+          );
+        })()}
 
-        {/* Completed milestone'lar */}
-        {milestones.some(m => m.completed) && (
-          <View style={styles.legendSection}>
-            <Text style={styles.legendSectionTitle}>Completed</Text>
-            <View style={styles.legendGrid}>
-              {milestones
-                .filter(milestone => milestone.completed)
-                .map((milestone, index) => (
-                  <View key={milestone.id} style={styles.legendItem}>
-                    <View style={[styles.legendColor, { backgroundColor: "#BFBFBF" }]} />
-                    <Text style={styles.legendText} numberOfLines={1}>
-                      {getShortMilestoneTitle(milestone.title, index)}
-                    </Text>
-                  </View>
-                ))}
+        {/* Completed milestone'lar - TÜM PROJELERDEN */}
+        {(() => {
+          const allMilestones = getAllMilestones();
+          const completedMilestones = allMilestones.filter(milestone => milestone.completed);
+          
+          return completedMilestones.length > 0 && (
+            <View style={styles.legendSection}>
+              <Text style={styles.legendSectionTitle}>Completed</Text>
+              <View style={styles.legendGrid}>
+                {completedMilestones
+                  .map((milestone, index) => (
+                    <View key={milestone.id} style={styles.legendItem}>
+                      <View style={[styles.legendColor, { backgroundColor: "#BFBFBF" }]} />
+                      <Text style={styles.legendText} numberOfLines={1}>
+                        {getShortMilestoneTitle(milestone.title, index)}
+                      </Text>
+                    </View>
+                  ))}
+              </View>
             </View>
-          </View>
-        )}
+          );
+        })()}
       </View>
     </View>
   );
@@ -339,8 +392,8 @@ const styles = StyleSheet.create({
     paddingTop: 3,
   },
   dayText: {
-    fontSize: 12,
-    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    fontFamily: "Poppins_600SemiBold",
     color: "#333",
     marginBottom: 2,
     borderWidth: 0,
@@ -355,7 +408,7 @@ const styles = StyleSheet.create({
   todayText: {
     color: "#FFFFFF",
     fontWeight: "bold",
-    fontSize: 15,
+    fontSize: 13,
   },
   dayTextWithBackground: {
     color: "#333",
@@ -429,18 +482,18 @@ const styles = StyleSheet.create({
   },
   moodTagContainer: {
     position: "absolute",
-    bottom: 4,
-    right: 4,
+    bottom: 2,
+    right: 2,
   },
   moodTag: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 4,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 4,
     minWidth: 16,
     minHeight: 16,
-    elevation: 1,
+    elevation: 2,
   },
 });

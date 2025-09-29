@@ -9,7 +9,7 @@ import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
 
-const MileStone = memo(function MileStone({
+function MileStone({
   milestone,
   onUpdate,
   onComplete,
@@ -113,6 +113,7 @@ const MileStone = memo(function MileStone({
   }, [onDelete, hideDeleteOptionWithAnimation]);
 
   const handleEditToggle = useCallback(() => {
+    console.log('MileStone: handleEditToggle called', { milestoneId: milestone.id, milestoneTitle: milestone.title });
     // Open modal for editing
     onEditToggle?.(milestone);
   }, [onEditToggle, milestone]);
@@ -442,22 +443,7 @@ const MileStone = memo(function MileStone({
       />
     </>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
-  // Check if milestone content has changed efficiently
-  const milestoneChanged = !prevProps.milestone || !nextProps.milestone ||
-    prevProps.milestone.id !== nextProps.milestone.id ||
-    prevProps.milestone.title !== nextProps.milestone.title ||
-    prevProps.milestone.completed !== nextProps.milestone.completed ||
-    prevProps.milestone.startDate !== nextProps.milestone.startDate ||
-    prevProps.milestone.endDate !== nextProps.milestone.endDate;
-  
-  return (
-    !milestoneChanged &&
-    prevProps.isLatest === nextProps.isLatest &&
-    prevProps.isCompleted === nextProps.isCompleted
-  );
-});
+}
 
 export default MileStone;
 

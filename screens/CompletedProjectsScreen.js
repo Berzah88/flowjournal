@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useCompletedTasks, useTaskActions } from "../hooks/useTaskContext";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
-import StatusBarComponent from "../components/StatusBar";
 import Card from "../components/Card";
 import ActiveProject from "./ActiveProject";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -65,8 +64,6 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
 
   return (
     <View style={styles.container}>
-      <StatusBarComponent />
-      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -83,6 +80,43 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
         
         <View style={styles.headerSpacer} />
       </View>
+
+      {/* Statistics Bar */}
+      {completedTasksReversed.length > 0 && (
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+            <Text style={styles.statNumber}>{completedTasksReversed.length}</Text>
+            <Text style={styles.statLabel}>Projects</Text>
+          </View>
+          
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statItem}>
+            <Ionicons name="flag" size={20} color="#FF9500" />
+            <Text style={styles.statNumber}>
+              {completedTasksReversed.reduce((total, task) => 
+                total + (task.milestones?.filter(m => m.completed).length || 0), 0
+              )}
+            </Text>
+            <Text style={styles.statLabel}>Milestones</Text>
+          </View>
+          
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statItem}>
+            <Ionicons name="journal" size={20} color="#007AFF" />
+            <Text style={styles.statNumber}>
+              {completedTasksReversed.reduce((total, task) => 
+                total + (task.milestones?.reduce((milestoneTotal, milestone) => 
+                  milestoneTotal + (milestone.journalEntries?.length || 0), 0
+                ) || 0), 0
+              )}
+            </Text>
+            <Text style={styles.statLabel}>Entries</Text>
+          </View>
+        </View>
+      )}
 
       {/* Content */}
       <View style={styles.content}>
@@ -162,6 +196,45 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  statsBar: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statNumber: {
+    fontSize: 20,
+    fontFamily: "Poppins_700Bold",
+    color: "#1D1D1F",
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E8E93",
+    textAlign: "center",
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "#E5E5E5",
+    marginHorizontal: 8,
   },
   content: {
     flex: 1,

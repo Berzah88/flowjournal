@@ -220,16 +220,6 @@ export default function Journal({
     const moodSugs = getSmartMoodSuggestion(analysis, selectedMood?.key, userHistory, allText);
     setMoodSuggestions(moodSugs);
     
-    // Debug: Log analysis results
-    console.log('Continuous Mood Analysis:', {
-      text: allText,
-      lastSentence: lastSentence,
-      wordCount: allText.split(/\s+/).length,
-      sentenceCount: sentences.length,
-      sentiment: analysis.label,
-      confidence: analysis.confidence,
-      suggestions: moodSugs.length
-    });
   }, [userHistory, selectedMood]);
 
   // Sentiment analysis when text changes - SMART TRIGGER SYSTEM
@@ -740,7 +730,7 @@ export default function Journal({
                     <MaterialIcons 
                       name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
                       size={18} 
-                      color="#fff" 
+                      color="#000" 
                     />
                     <Text style={styles.moodTagText}>{suggestedMood?.label}</Text>
                   </TouchableOpacity>
@@ -1225,7 +1215,7 @@ const styles = StyleSheet.create({
   moodTagText: {
     fontSize: 12,
     fontFamily: "Poppins_500Medium",
-    color: "#fff",
+    color: "#000",
     marginLeft: 4,
     letterSpacing: -0.1,
   },

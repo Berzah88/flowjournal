@@ -11,6 +11,10 @@ export default function StatusBarComponent({ activeCount, doneCount }) {
   const activeCountAnim = useRef(new Animated.Value(0)).current;
   const doneCountAnim = useRef(new Animated.Value(0)).current;
 
+  // Safe input ranges to prevent interpolation errors
+  const activeInputRange = activeCount > 0 ? [0, activeCount] : [0, 1];
+  const doneInputRange = doneCount > 0 ? [0, doneCount] : [0, 1];
+
   useEffect(() => {
     // Entrance animation
     Animated.parallel([
@@ -27,69 +31,60 @@ export default function StatusBarComponent({ activeCount, doneCount }) {
       }),
     ]).start();
 
-    // Count animations
-    Animated.timing(activeCountAnim, {
-      toValue: activeCount,
-      duration: 800,
-      useNativeDriver: false,
-    }).start();
+    // Count animations - only animate if count > 0
+    if (activeCount > 0) {
+      Animated.timing(activeCountAnim, {
+        toValue: activeCount,
+        duration: 800,
+        useNativeDriver: false,
+      }).start();
+    }
 
-    Animated.timing(doneCountAnim, {
-      toValue: doneCount,
-      duration: 800,
-      useNativeDriver: false,
-    }).start();
+    if (doneCount > 0) {
+      Animated.timing(doneCountAnim, {
+        toValue: doneCount,
+        duration: 800,
+        useNativeDriver: false,
+      }).start();
+    }
   }, [activeCount, doneCount]);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.95)', 'rgba(248, 251, 255, 0.9)']}
-        style={styles.statusCard}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={styles.statusCard}>
         {/* Active Projects */}
         <View style={styles.statusItem}>
-          <View style={[styles.statusIconContainer, styles.activeIconContainer]}>
-            <Ionicons name="play-circle" size={18} color="#007AFF" />
-          </View>
-          <View style={styles.statusInfo}>
-            <Animated.Text style={[styles.statusNumber, { 
-              transform: [{ scale: activeCountAnim.interpolate({
-                inputRange: [0, activeCount],
-                outputRange: [0.8, 1],
-                extrapolate: 'clamp',
-              })}]
-            }]}>
-              {activeCount}
-            </Animated.Text>
-            <Text style={styles.statusLabel}>Active</Text>
-          </View>
+          <Ionicons name="play-circle" size={16} color="#007AFF" />
+          <Animated.Text style={[styles.statusNumber, { 
+            transform: [{ scale: activeCount > 0 ? activeCountAnim.interpolate({
+              inputRange: activeInputRange,
+              outputRange: [0.9, 1],
+              extrapolate: 'clamp',
+            }) : 1 }]
+          }]}>
+            {activeCount}
+          </Animated.Text>
+          <Text style={styles.statusLabel}>Active</Text>
         </View>
 
-        {/* Modern Divider */}
+        {/* Minimal Divider */}
         <View style={styles.divider} />
 
         {/* Completed Projects */}
         <View style={styles.statusItem}>
-          <View style={[styles.statusIconContainer, styles.completedIconContainer]}>
-            <Ionicons name="checkmark-circle" size={18} color="#34C759" />
-          </View>
-          <View style={styles.statusInfo}>
-            <Animated.Text style={[styles.statusNumber, { 
-              transform: [{ scale: doneCountAnim.interpolate({
-                inputRange: [0, doneCount],
-                outputRange: [0.8, 1],
-                extrapolate: 'clamp',
-              })}]
-            }]}>
-              {doneCount}
-            </Animated.Text>
-            <Text style={styles.statusLabel}>Done</Text>
-          </View>
+          <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+          <Animated.Text style={[styles.statusNumber, { 
+            transform: [{ scale: doneCount > 0 ? doneCountAnim.interpolate({
+              inputRange: doneInputRange,
+              outputRange: [0.9, 1],
+              extrapolate: 'clamp',
+            }) : 1 }]
+          }]}>
+            {doneCount}
+          </Animated.Text>
+          <Text style={styles.statusLabel}>Done</Text>
         </View>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 }
@@ -97,65 +92,44 @@ export default function StatusBarComponent({ activeCount, doneCount }) {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 4,
   },
   statusCard: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: 'rgba(248, 249, 250, 0.5)',
+    borderRadius: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
+    borderWidth: 0.1,
+    borderColor: 'rgba(0, 0, 0, 0.01)',
   },
   statusItem: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-  },
-  statusIconContainer: {
-    marginRight: 8,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-  },
-  activeIconContainer: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-  },
-  completedIconContainer: {
-    backgroundColor: 'rgba(52, 199, 89, 0.1)',
-  },
-  statusInfo: {
-    alignItems: 'flex-start',
+    gap: 4,
   },
   statusNumber: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: 'Poppins_600SemiBold',
     color: '#1D1D1F',
-    marginBottom: 1,
     letterSpacing: -0.2,
   },
   statusLabel: {
-    fontSize: 12,
+    fontSize: 9,
     fontFamily: 'Poppins_400Regular',
     color: '#8E8E93',
     letterSpacing: -0.1,
   },
   divider: {
     width: 1,
-    height: 28,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    marginHorizontal: 16,
+    height: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    marginHorizontal: 8,
     borderRadius: 0.5,
   },
 });

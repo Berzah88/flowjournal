@@ -288,25 +288,49 @@ export const TaskProvider = ({ children }) => {
   }, [shouldUpdateProjectEndDate]);
 
   const updateMilestone = useCallback((taskId, msId, updates) => {
-    setTasks((prev) =>
-      prev.map((task) => {
+    console.log('TaskContext: updateMilestone called', { taskId, msId, updates });
+    
+    setTasks((prev) => {
+      console.log('TaskContext: Current tasks before update', prev.length);
+      
+      const updatedTasks = prev.map((task) => {
         if (task.id !== taskId) return task;
         
+        console.log('TaskContext: Found task to update', { taskId, milestonesCount: task.milestones?.length });
+        
         // Update the milestone
-        const updatedMilestones = task.milestones.map((ms) =>
-          ms.id === msId ? { ...ms, ...updates } : ms
-        );
+        const updatedMilestones = task.milestones.map((ms) => {
+          if (ms.id === msId) {
+            console.log('TaskContext: Updating milestone', { 
+              oldMilestone: { id: ms.id, title: ms.title, startDate: ms.startDate, endDate: ms.endDate },
+              newMilestone: { id: msId, title: updates.title, startDate: updates.startDate, endDate: updates.endDate }
+            });
+            return { ...ms, ...updates };
+          }
+          return ms;
+        });
         
         // Check if project end date should be updated
         const newEndDate = shouldUpdateProjectEndDate(updatedMilestones, task.endDate);
         
-        return {
+        const updatedTask = {
           ...task,
           milestones: updatedMilestones,
           ...(newEndDate && { endDate: newEndDate }),
         };
-      })
-    );
+        
+        console.log('TaskContext: Task updated', { 
+          taskId, 
+          milestonesCount: updatedTask.milestones.length,
+          milestones: updatedTask.milestones.map(m => ({ id: m.id, title: m.title }))
+        });
+        
+        return updatedTask;
+      });
+      
+      console.log('TaskContext: All tasks updated', updatedTasks.length);
+      return updatedTasks;
+    });
   }, [shouldUpdateProjectEndDate]);
 
   const setMilestoneWasEdited = useCallback((taskId, msId) => {

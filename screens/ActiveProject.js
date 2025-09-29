@@ -280,14 +280,19 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   const handleSaveMilestone = useCallback((milestoneData) => {
     if (!currentTask?.id) return;
     
-    // Check if we're editing by looking at milestoneData.id
-    if (milestoneData.id && milestoneData.id.startsWith('milestone_')) {
+    // Check if we're editing by looking at milestoneData.id - SAFE CHECK
+    // Milestone ID can be either string (milestone_xxx) or number (legacy)
+    if (milestoneData.id && (typeof milestoneData.id === 'string' || typeof milestoneData.id === 'number')) {
       // Edit existing milestone
       updateMilestone(currentTask.id, milestoneData.id, milestoneData);
     } else {
       // Add new milestone
       addMilestone(currentTask.id, milestoneData);
     }
+    
+    // Refresh trigger for milestone updates
+    setRefreshKey(prev => prev + 1);
+    setForceUpdate(prev => prev + 1);
     
     // Modal'ı kapat ve state'i temizle
     setAddMilestoneModalVisible(false);

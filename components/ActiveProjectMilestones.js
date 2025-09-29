@@ -3,7 +3,7 @@ import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import MileStone from './MileStone';
 
-const ActiveProjectMilestones = memo(function ActiveProjectMilestones({
+function ActiveProjectMilestones({
   currentTask,
   allMilestones,
   activeMilestones,
@@ -82,7 +82,10 @@ const ActiveProjectMilestones = memo(function ActiveProjectMilestones({
               })}
               onOpenEditor={(ms) => onOpenJournalEditor(ms)}
               isCompleted={false}
-              onEditToggle={(milestone) => onEditToggle(milestone)}
+              onEditToggle={(milestone) => {
+                console.log('ActiveProjectMilestones: onEditToggle called', { milestoneId: milestone.id, milestoneTitle: milestone.title });
+                onEditToggle(milestone);
+              }}
               onOpenJournal={onOpenJournal}
               navigation={navigation}
             />
@@ -116,28 +119,7 @@ const ActiveProjectMilestones = memo(function ActiveProjectMilestones({
       )}
     </View>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
-  // Check if milestones content has changed efficiently
-  const milestonesChanged = prevProps.allMilestones?.length !== nextProps.allMilestones?.length ||
-    prevProps.allMilestones?.some((milestone, index) => {
-      const nextMilestone = nextProps.allMilestones?.[index];
-      return !nextMilestone || 
-        milestone.id !== nextMilestone.id ||
-        milestone.title !== nextMilestone.title ||
-        milestone.completed !== nextMilestone.completed ||
-        milestone.startDate !== nextMilestone.startDate ||
-        milestone.endDate !== nextMilestone.endDate;
-    });
-  
-  return (
-    prevProps.currentTask?.id === nextProps.currentTask?.id &&
-    prevProps.currentTask?.title === nextProps.currentTask?.title &&
-    prevProps.currentTask?.startDate === nextProps.currentTask?.startDate &&
-    prevProps.currentTask?.endDate === nextProps.currentTask?.endDate &&
-    !milestonesChanged
-  );
-});
+}
 
 export default ActiveProjectMilestones;
 

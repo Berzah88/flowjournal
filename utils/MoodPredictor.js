@@ -262,14 +262,6 @@ export const analyzeSentimentBySentences = (text, userHistory = []) => {
   if (finalScore > 15) finalLabel = 'positive';
   else if (finalScore < -15) finalLabel = 'negative';
   
-  // Debug: Log sentence analysis results
-  console.log('MoodPredictor: Sentence-based analysis:', {
-    sentences: sentences,
-    sentenceAnalyses: sentenceAnalyses.map(a => ({ label: a.label, score: a.score, confidence: a.confidence })),
-    finalScore: finalScore,
-    finalLabel: finalLabel,
-    finalConfidence: finalConfidence
-  });
   
   return {
     score: finalScore,
@@ -856,7 +848,7 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
   const context = analyzeContextualMood(safeText, sentiment, userHistory);
   
   // Confidence-based recommendation threshold - VERY SELECTIVE
-  let minConfidence = 0.5; // Much higher threshold for better accuracy
+  let minConfidence = 0.7; // Much higher threshold for better accuracy and consistency
   
   // Adaptive threshold based on sentence structure
   if (sentiment.sentenceAnalysis) {
@@ -881,11 +873,6 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
   }
   
   if (sentiment.confidence < minConfidence && text.length < 20) {
-    console.log('MoodPredictor: Confidence too low or text too short', {
-      confidence: sentiment.confidence,
-      textLength: text.length,
-      threshold: minConfidence
-    });
     return suggestions;
   }
   
@@ -1038,38 +1025,95 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
       moodScores.disappointed += 0.3;
     }
     
-    // CRITICAL: Check for explicit negative words first - OVERRIDE POSITIVE BIAS
-    const explicitNegativeWords = ['mutsuz', 'üzgün', 'kızgın', 'sinirli', 'stresli', 'yorgun', 'bitkin', 'tükenmiş', 'bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'korku', 'endişe', 'kaygı', 'hasta', 'acı', 'ağrı', 'sıkıntı', 'problem', 'sorun', 'başarısız', 'kaybettim', 'hata', 'yanlış', 'kötü', 'berbat', 'korkunç', 'dehşet', 'felaket', 'trajedi', 'üzücü', 'acıklı', 'hüzünlü', 'kederli', 'mutsuzum', 'üzgünüm', 'kızgınım', 'sinirliyim', 'stresliyim', 'yorgunum', 'bitkinim', 'tükenmişim', 'bıktım', 'usandım', 'sıkıldım', 'sıkkınım', 'sıkıntılıyım', 'korkuyorum', 'endişeliyim', 'kaygılıyım', 'hastayım', 'acı çekiyorum', 'ağrım var', 'sıkıntıdayım', 'problemim var', 'sorum var', 'başarısızım', 'kaybettim', 'hatam var', 'yanlış yaptım', 'kötüyüm', 'berbatım', 'korkunçum', 'dehşetim', 'felaketim', 'trajediyim', 'üzücüyüm', 'acıklıyım', 'hüzünlüyüm', 'kederliyim'];
+    // CRITICAL: Check for explicit negative words first - STRONGER OVERRIDE
+    const lowerText = safeText.toLowerCase(); // Define lowerText first
+    
+    const explicitNegativeWords = [
+      // Physical/emotional states
+      'mutsuz', 'üzgün', 'kızgın', 'sinirli', 'stresli', 'yorgun', 'bitkin', 'tükenmiş', 
+      'bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'korku', 'endişe', 'kaygı', 
+      'hasta', 'acı', 'ağrı', 'sıkıntı', 'problem', 'sorun', 'başarısız', 'kaybettim', 
+      'hata', 'yanlış', 'kötü', 'berbat', 'korkunç', 'dehşet', 'felaket', 'trajedi', 
+      'üzücü', 'acıklı', 'hüzünlü', 'kederli',
+      // Personal forms
+      'mutsuzum', 'üzgünüm', 'kızgınım', 'sinirliyim', 'stresliyim', 'yorgunum', 
+      'bitkinim', 'tükenmişim', 'sıkkınım', 'sıkıntılıyım', 'korkuyorum', 'endişeliyim', 
+      'kaygılıyım', 'hastayım', 'başarısızım', 'kötüyüm', 'berbatım', 'korkunçum',
+      // Intensity modifiers with negative words
+      'çok yorgun', 'çok bitkin', 'çok tükenmiş', 'çok mutsuz', 'çok üzgün', 
+      'çok kızgın', 'çok sinirli', 'çok stresli', 'çok sıkkın', 'çok sıkıntılı',
+      'çok kötü', 'çok berbat', 'çok korkunç', 'çok dehşet', 'çok hasta',
+      // English equivalents
+      'very tired', 'very exhausted', 'very sad', 'very angry', 'very stressed',
+      'very frustrated', 'very overwhelmed', 'very sick', 'very bad', 'very terrible'
+    ];
     
     const hasExplicitNegative = lowerText && explicitNegativeWords.some(word => lowerText.includes(word));
     
-    // Debug: Log explicit negative detection
-    if (lowerText) {
-      const foundNegativeWords = explicitNegativeWords.filter(word => lowerText.includes(word));
-      if (foundNegativeWords.length > 0) {
-        console.log('MoodPredictor: Found explicit negative words:', foundNegativeWords);
-      }
-    }
     
     if (hasExplicitNegative) {
-      // OVERRIDE: If explicit negative words found, force negative sentiment
-      console.log('MoodPredictor: OVERRIDING to negative sentiment due to explicit negative words');
-      label = 'negative';
-      moodScores.sad += 0.8;
-      moodScores.disappointed += 0.6;
-      moodScores.tired += 0.4;
-      moodScores.anxious += 0.3;
-      moodScores.worried += 0.3;
-      moodScores.lonely += 0.2;
-      moodScores.overwhelmed += 0.2;
-      moodScores.stressed += 0.2;
-      moodScores.frustrated += 0.2;
-      moodScores.angry += 0.1;
-      moodScores.exhausted += 0.1;
-      moodScores.confused += 0.1;
-      moodScores.bored += 0.1;
+      // STRONG OVERRIDE: If explicit negative words found, force negative sentiment and specific moods
+      // Don't modify label directly, use it in the override logic
       
-      // ZERO out positive moods for explicit negative
+      // Reset all mood scores first
+      Object.keys(moodScores).forEach(key => moodScores[key] = 0);
+      
+      // Apply specific negative mood scoring based on detected words
+      if (lowerText.includes('yorgun') || lowerText.includes('bitkin') || lowerText.includes('tükenmiş')) {
+        moodScores.tired = 0.9;
+        moodScores.exhausted = 0.8;
+        moodScores.overwhelmed = 0.6;
+      }
+      
+      if (lowerText.includes('mutsuz') || lowerText.includes('üzgün') || lowerText.includes('hüzünlü')) {
+        moodScores.sad = 0.9;
+        moodScores.disappointed = 0.7;
+        moodScores.lonely = 0.5;
+      }
+      
+      if (lowerText.includes('kızgın') || lowerText.includes('sinirli') || lowerText.includes('öfkeli')) {
+        moodScores.angry = 0.9;
+        moodScores.frustrated = 0.8;
+        moodScores.stressed = 0.6;
+      }
+      
+      if (lowerText.includes('stresli') || lowerText.includes('baskı') || lowerText.includes('zorluk')) {
+        moodScores.stressed = 0.9;
+        moodScores.overwhelmed = 0.8;
+        moodScores.anxious = 0.7;
+      }
+      
+      if (lowerText.includes('endişe') || lowerText.includes('kaygı') || lowerText.includes('korku')) {
+        moodScores.anxious = 0.9;
+        moodScores.worried = 0.8;
+        moodScores.stressed = 0.6;
+      }
+      
+      if (lowerText.includes('bıktım') || lowerText.includes('usandım') || lowerText.includes('sıkıldım')) {
+        moodScores.frustrated = 0.9;
+        moodScores.bored = 0.8;
+        moodScores.overwhelmed = 0.6;
+      }
+      
+      if (lowerText.includes('hasta') || lowerText.includes('acı') || lowerText.includes('ağrı')) {
+        moodScores.tired = 0.8;
+        moodScores.sad = 0.7;
+        moodScores.anxious = 0.5;
+      }
+      
+      // Fallback: if no specific mood detected, apply general negative scoring
+      if (Object.values(moodScores).every(score => score === 0)) {
+        moodScores.sad = 0.8;
+        moodScores.disappointed = 0.6;
+        moodScores.tired = 0.4;
+        moodScores.anxious = 0.3;
+        moodScores.worried = 0.3;
+        moodScores.overwhelmed = 0.2;
+        moodScores.stressed = 0.2;
+        moodScores.frustrated = 0.2;
+      }
+      
+      // Ensure ALL positive moods are ZERO
       moodScores.happy = 0;
       moodScores.excited = 0;
       moodScores.grateful = 0;
@@ -1079,6 +1123,7 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
       moodScores.content = 0;
       moodScores.relieved = 0;
       moodScores.motivated = 0;
+      moodScores.curious = 0; // Add curious to positive moods to prevent it
     } else if (label === 'positive') {
       // Only apply positive bias if no explicit negative words
       moodScores.happy += 0.8;
@@ -1102,7 +1147,6 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
     }
     
   // Enhanced specific context scoring
-  const lowerText = safeText.toLowerCase();
     
     // Love/romance specific scoring - ENHANCED
     if (lowerText.includes('aşık') || lowerText.includes('kelebek') || lowerText.includes('uçuşuyor') || 
@@ -1214,14 +1258,23 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
       moodScores.tired += 0.2;
     }
     
-    // Find the mood with highest score - HIGHER MINIMUM THRESHOLD
+    // Find the mood with highest score - BALANCED MINIMUM THRESHOLD for consistency
     const sortedMoods = Object.entries(moodScores)
       .sort(([,a], [,b]) => b - a)
-      .filter(([,score]) => score > 0.5); // Higher minimum threshold for mood suggestion
+      .filter(([,score]) => score > 0.3); // Balanced threshold for better consistency
     
     if (sortedMoods.length === 0) {
-      // Fallback to basic sentiment analysis
-      if (label === 'positive') {
+      // Fallback to basic sentiment analysis with explicit negative word check
+      if (hasExplicitNegative) {
+        // If explicit negative words found but no mood scored high enough, force tired/sad
+        if (lowerText.includes('yorgun') || lowerText.includes('bitkin') || lowerText.includes('tükenmiş')) {
+          return { mood: 'tired', reason: 'Yorgunluk belirtileri tespit edildi.' };
+        } else if (lowerText.includes('mutsuz') || lowerText.includes('üzgün')) {
+          return { mood: 'sad', reason: 'Üzüntü belirtileri tespit edildi.' };
+        } else {
+          return { mood: 'sad', reason: 'Olumsuz duygular tespit edildi.' };
+        }
+      } else if (label === 'positive') {
         return { mood: 'happy', reason: 'Pozitif bir durum.' };
       } else if (label === 'negative') {
         return { mood: 'sad', reason: 'Olumsuz bir durum.' };
@@ -1351,13 +1404,18 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
   const contextualSuggestion = getContextualMoodSuggestion(sentiment, context);
   
   // Add primary suggestion
-  if (contextualSuggestion.mood) {
+  if (contextualSuggestion && contextualSuggestion.mood) {
     suggestions.push({
       mood: contextualSuggestion.mood,
       reason: contextualSuggestion.reason,
       confidence: sentiment.confidence,
       type: 'primary'
     });
+  }
+  
+  // If we have suggestions from contextual analysis, return early
+  if (suggestions.length > 0) {
+    return suggestions;
   }
   
   // Add alternative suggestions based on context
@@ -1531,8 +1589,8 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
     }
   }
   
-  // Ensure minimum 2 suggestions but keep them consistent
-  if (filteredSuggestions.length < 2 && sentiment.confidence > 0.2) {
+  // Ensure minimum 2 suggestions but keep them consistent - STRICTER CONSISTENCY
+  if (filteredSuggestions.length < 2 && sentiment.confidence > 0.5) { // Higher confidence threshold
     const compatibleMoods = sentiment.label === 'positive' ? positiveMoods : 
                            sentiment.label === 'negative' ? negativeMoods : 
                            neutralMoods;
@@ -1545,7 +1603,7 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
       filteredSuggestions.push({
         mood: fallbackMood,
         reason: 'Alternatif mood önerisi',
-        confidence: 0.3,
+        confidence: 0.4, // Higher confidence for fallback
         type: 'fallback'
       });
     }
@@ -1602,23 +1660,15 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
     );
   };
   
-  // Generate suggestions
-  if (!currentMood || currentMood === '') {
-    // No mood selected - suggest based on sentiment
-    const patternSuggestion = getUserPatternSuggestion(sentiment, userHistory);
-    if (patternSuggestion) {
-      console.log('MoodPredictor: Using pattern suggestion', patternSuggestion);
-      suggestions.push(patternSuggestion);
-    } else {
-      // Use contextual suggestion as fallback
-      console.log('MoodPredictor: Using contextual suggestion as fallback');
-    }
-  } else if (isMoodConflicting(sentiment, currentMood)) {
-    // Mood conflicts with sentiment - suggest correction
-    console.log('MoodPredictor: Mood conflict detected', {
-      currentMood,
-      sentiment: sentiment.label
-    });
+    // Generate suggestions
+    if (!currentMood || currentMood === '') {
+      // No mood selected - suggest based on sentiment
+      const patternSuggestion = getUserPatternSuggestion(sentiment, userHistory);
+      if (patternSuggestion) {
+        suggestions.push(patternSuggestion);
+      }
+    } else if (isMoodConflicting(sentiment, currentMood)) {
+      // Mood conflicts with sentiment - suggest correction
     
     // Add conflict resolution suggestion using contextual analysis
     if (contextualSuggestion.mood && contextualSuggestion.mood !== currentMood) {
@@ -1629,13 +1679,7 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
         type: 'conflict-resolution'
       });
     }
-  } else {
-    console.log('MoodPredictor: No suggestions needed', {
-      currentMood,
-      sentiment: sentiment.label,
-      conflicting: isMoodConflicting(sentiment, currentMood)
-    });
-  }
+    }
   
   // Add confidence indicator to suggestions
   return suggestions.map(suggestion => ({
