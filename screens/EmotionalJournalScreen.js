@@ -422,6 +422,41 @@ const EmotionalJournalScreen = ({ navigation }) => {
     return moodSentences[Math.floor(Math.random() * moodSentences.length)];
   }, []);
 
+  // Get projects without mood entries for encouragement
+  const getProjectsWithoutMoods = useCallback(() => {
+    const projectsWithoutMoods = [];
+    
+    activeTasks.forEach(task => {
+      if (task.milestones && task.milestones.length > 0) {
+        let hasMoodEntries = false;
+        
+        // Check if any milestone has mood entries
+        task.milestones.forEach(milestone => {
+          if (milestone.journalEntries) {
+            milestone.journalEntries.forEach(entry => {
+              if (entry.mood) {
+                hasMoodEntries = true;
+              }
+            });
+          }
+        });
+        
+        // If no mood entries, add to encouragement list
+        if (!hasMoodEntries) {
+          projectsWithoutMoods.push({
+            projectId: task.id,
+            projectTitle: task.title,
+            milestoneCount: task.milestones.length,
+            totalEntries: task.milestones.reduce((total, milestone) => 
+              total + (milestone.journalEntries ? milestone.journalEntries.length : 0), 0)
+          });
+        }
+      }
+    });
+    
+    return projectsWithoutMoods;
+  }, [activeTasks]);
+
   // Project emotional progress analysis - Mood-based evaluation
   const getProjectEmotionalProgress = useCallback(() => {
     const projectProgress = [];
@@ -798,32 +833,73 @@ const EmotionalJournalScreen = ({ navigation }) => {
             </View>
           )}
 
-          {/* Project Emotional Progress */}
-          <View style={styles.topMoodsContainer}>
-            <Text style={styles.sectionTitle}>Project Emotional Progress</Text>
-            <View style={[
-              styles.moodsList,
-              { 
-                borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY,
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                borderWidth: 1,
-                borderColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY
-              }
-            ]}>
-               {getProjectEmotionalProgress().map((project) => (
-                 <View key={project.projectId} style={styles.moodItem}>
-                   <View style={[styles.moodIcon, { backgroundColor: project.progressColor }]}>
-                     <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
+           {/* Project Emotional Progress */}
+           {getProjectEmotionalProgress().length > 0 && (
+             <View style={styles.topMoodsContainer}>
+               <Text style={styles.sectionTitle}>Project Emotional Progress</Text>
+               <View style={[
+                 styles.moodsList,
+                 { 
+                   borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY,
+                   backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                   borderWidth: 1,
+                   borderColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY
+                 }
+               ]}>
+                 {getProjectEmotionalProgress().map((project) => (
+                   <View key={project.projectId} style={styles.moodItem}>
+                     <View style={[styles.moodIcon, { backgroundColor: project.progressColor }]}>
+                       <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
+                     </View>
+                     <View style={styles.moodInfo}>
+                       <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
+                       <Text style={styles.moodCount}>{project.progressMessage}</Text>
+                       <Text style={styles.motivationText}>{project.motivationSentence}</Text>
+                     </View>
                    </View>
-                   <View style={styles.moodInfo}>
-                     <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
-                     <Text style={styles.moodCount}>{project.progressMessage}</Text>
-                     <Text style={styles.motivationText}>{project.motivationSentence}</Text>
+                 ))}
+               </View>
+             </View>
+           )}
+
+           {/* Projects Without Mood Entries - Encouragement */}
+           {getProjectsWithoutMoods().length > 0 && (
+             <View style={styles.topMoodsContainer}>
+               <Text style={styles.sectionTitle}>Start Your Emotional Journey</Text>
+               <View style={[
+                 styles.moodsList,
+                 { 
+                   borderLeftColor: '#FF9800',
+                   backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                   borderWidth: 1,
+                   borderColor: '#FF9800'
+                 }
+               ]}>
+                 {getProjectsWithoutMoods().map((project) => (
+                   <View key={project.projectId} style={styles.moodItem}>
+                     <View style={[styles.moodIcon, { backgroundColor: '#FF9800' }]}>
+                       <MaterialIcons name="edit" size={22} color="#FFFFFF" />
+                     </View>
+                     <View style={styles.moodInfo}>
+                       <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
+                       <Text style={styles.moodCount}>
+                         {project.totalEntries > 0 
+                           ? `You have ${project.totalEntries} journal entries - add mood tags to track your emotional journey!`
+                           : `You have ${project.milestoneCount} milestones - start writing journal entries with mood tags!`
+                         }
+                       </Text>
+                       <Text style={styles.motivationText}>
+                         {project.totalEntries > 0 
+                           ? "Your thoughts are valuable! Adding mood tags will help you understand your emotional patterns and growth."
+                           : "Every journey begins with a single step. Start documenting your progress and feelings today!"
+                         }
+                       </Text>
+                     </View>
                    </View>
-                 </View>
-               ))}
-            </View>
-          </View>
+                 ))}
+               </View>
+             </View>
+           )}
 
           {/* Recent Entries */}
           <View style={styles.recentContainer}>
