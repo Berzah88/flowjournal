@@ -678,78 +678,6 @@ const EmotionalJournalScreen = ({ navigation }) => {
     return null;
   }, [activeTasks, getMoodInfo, getSolidMoodColor]);
 
-  // Mood-based goal tracking system
-  const getMoodGoals = useCallback(() => {
-    const goals = [];
-    
-    // Analyze current mood patterns for goal suggestions
-    const last30Days = allMoodData.filter(entry => {
-      const entryDate = new Date(entry.createdAt);
-      const monthAgo = new Date();
-      monthAgo.setDate(monthAgo.getDate() - 30);
-      return entryDate >= monthAgo;
-    });
-    
-    const moodCounts = {};
-    last30Days.forEach(entry => {
-      if (entry.mood) {
-        moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-      }
-    });
-    
-    const sortedMoods = Object.entries(moodCounts)
-      .sort(([,a], [,b]) => b - a);
-    
-    if (sortedMoods.length > 0) {
-      const dominantMood = sortedMoods[0][0];
-      const dominantMoodInfo = getMoodInfo(dominantMood);
-      
-      // Generate goals based on mood patterns
-      const moodGoals = {
-        happy: [
-          { title: 'Maintain Happiness', description: 'Keep doing activities that bring you joy', target: 'Continue feeling happy 70% of the time', icon: 'sentiment-satisfied', color: '#4CAF50' },
-          { title: 'Spread Joy', description: 'Share your positive energy with others', target: 'Help 3 people feel happier this month', icon: 'favorite', color: '#FF9800' }
-        ],
-        excited: [
-          { title: 'Channel Energy', description: 'Use your excitement for new challenges', target: 'Start 2 new exciting projects', icon: 'trending-up', color: '#FF5722' },
-          { title: 'Maintain Enthusiasm', description: 'Keep your energy levels high', target: 'Stay excited about your goals', icon: 'celebration', color: '#E91E63' }
-        ],
-        tired: [
-          { title: 'Improve Energy', description: 'Focus on better sleep and rest', target: 'Get 8 hours of sleep for 5 days this week', icon: 'bedtime', color: '#9C27B0' },
-          { title: 'Reduce Stress', description: 'Find ways to manage your workload', target: 'Take breaks every 2 hours of work', icon: 'spa', color: '#607D8B' }
-        ],
-        sad: [
-          { title: 'Boost Mood', description: 'Engage in activities that make you happy', target: 'Do 1 enjoyable activity daily', icon: 'wb-sunny', color: '#FFC107' },
-          { title: 'Seek Support', description: 'Connect with friends and family', target: 'Talk to someone you trust 3 times this week', icon: 'people', color: '#2196F3' }
-        ],
-        anxious: [
-          { title: 'Manage Anxiety', description: 'Practice relaxation techniques', target: 'Do 10 minutes of deep breathing daily', icon: 'spa', color: '#795548' },
-          { title: 'Build Confidence', description: 'Focus on your strengths and achievements', target: 'Write down 3 things you did well each day', icon: 'self-improvement', color: '#3F51B5' }
-        ],
-        frustrated: [
-          { title: 'Find Solutions', description: 'Break down problems into smaller steps', target: 'Solve 1 frustrating problem this week', icon: 'build', color: '#FF5722' },
-          { title: 'Change Approach', description: 'Try different methods for challenging tasks', target: 'Experiment with 2 new approaches', icon: 'refresh', color: '#607D8B' }
-        ],
-        calm: [
-          { title: 'Maintain Peace', description: 'Keep your calm energy flowing', target: 'Stay calm during 3 stressful situations', icon: 'spa', color: '#4CAF50' },
-          { title: 'Share Serenity', description: 'Help others find their calm', target: 'Help 2 people feel more peaceful', icon: 'favorite', color: '#2196F3' }
-        ],
-        motivated: [
-          { title: 'Achieve Goals', description: 'Use your motivation to reach targets', target: 'Complete 3 important tasks this week', icon: 'check-circle', color: '#4CAF50' },
-          { title: 'Inspire Others', description: 'Share your drive with your team', target: 'Motivate 2 people to reach their goals', icon: 'trending-up', color: '#FF9800' }
-        ]
-      };
-      
-      const goalsForMood = moodGoals[dominantMood] || [
-        { title: 'Track Emotions', description: 'Continue monitoring your emotional patterns', target: 'Write in your journal daily', icon: 'edit', color: '#9E9E9E' },
-        { title: 'Self-Reflection', description: 'Take time to understand your feelings', target: 'Reflect on your emotions weekly', icon: 'psychology', color: '#607D8B' }
-      ];
-      
-      goals.push(...goalsForMood.slice(0, 2)); // Show top 2 goals
-    }
-    
-    return goals;
-  }, [allMoodData, getMoodInfo]);
 
   // Get completed projects emotional progress analysis
   const getCompletedProjectEmotionalProgress = useCallback(() => {
@@ -1264,53 +1192,51 @@ const EmotionalJournalScreen = ({ navigation }) => {
           <View style={styles.placeholder} />
         </View>
 
-        {/* Overview Stats - Scroll dışında */}
+        {/* Overview Stats - Compact and balanced */}
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={[
             styles.overviewCard, 
             { 
               borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.PRIMARY,
-              backgroundColor: todayDominantMood ? 
-                'rgba(255, 255, 255, 0.95)' : 
-                'rgba(0, 122, 255, 0.1)'
+              backgroundColor: 'rgba(255, 255, 255, 0.95)'
             }
           ]}>
             <View style={styles.overviewGrid}>
               {/* Total Entries */}
               <View style={styles.overviewItem}>
-                 <View style={[styles.overviewIcon, { backgroundColor: '#E3F2FD' }]}>
-                   <Ionicons name="document-text-outline" size={18} color="#1976D2" />
-                 </View>
+                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(25, 118, 210, 0.1)' }]}>
+                  <Ionicons name="document-text-outline" size={16} color="#1976D2" />
+                </View>
                 <Text style={styles.overviewNumber}>{moodStats.totalEntries}</Text>
-                <Text style={styles.overviewLabel}>Total Entries</Text>
+                <Text style={styles.overviewLabel}>Entries</Text>
               </View>
 
               {/* Last 7 Days */}
               <View style={styles.overviewItem}>
-                 <View style={[styles.overviewIcon, { backgroundColor: '#F3E5F5' }]}>
-                   <Ionicons name="calendar-outline" size={18} color="#8E7DBE" />
-                 </View>
+                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(142, 125, 190, 0.1)' }]}>
+                  <Ionicons name="calendar-outline" size={16} color="#8E7DBE" />
+                </View>
                 <Text style={styles.overviewNumber}>{moodStats.last7Days}</Text>
-                <Text style={styles.overviewLabel}>Last 7 Days</Text>
+                <Text style={styles.overviewLabel}>This Week</Text>
               </View>
 
               {/* Last 30 Days */}
               <View style={styles.overviewItem}>
-                 <View style={[styles.overviewIcon, { backgroundColor: '#E8F5E8' }]}>
-                   <Ionicons name="calendar" size={18} color="#4CAF50" />
-                 </View>
+                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
+                  <Ionicons name="calendar" size={16} color="#4CAF50" />
+                </View>
                 <Text style={styles.overviewNumber}>{moodStats.last30Days}</Text>
-                <Text style={styles.overviewLabel}>Last 30 Days</Text>
+                <Text style={styles.overviewLabel}>This Month</Text>
               </View>
 
-              {/* Words Written - En sağda */}
+              {/* Words Written */}
               <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: '#FFF3E0' }]}>
-                  <Ionicons name="create-outline" size={18} color="#FF9800" />
+                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(255, 152, 0, 0.1)' }]}>
+                  <Ionicons name="create-outline" size={16} color="#FF9800" />
                 </View>
-                <Text style={styles.overviewNumber}>{moodStats.totalWords.toLocaleString()}</Text>
-                <Text style={styles.overviewLabel}>Words Written</Text>
+                <Text style={styles.overviewNumber}>{moodStats.totalWords > 1000 ? `${(moodStats.totalWords/1000).toFixed(1)}k` : moodStats.totalWords}</Text>
+                <Text style={styles.overviewLabel}>Words</Text>
               </View>
             </View>
           </View>
@@ -1342,28 +1268,51 @@ const EmotionalJournalScreen = ({ navigation }) => {
             </View>
           )}
 
-           {/* Project Emotional Progress */}
+           {/* Project Emotional Progress - Dynamic Flow Design */}
            {getProjectEmotionalProgress().length > 0 && (
              <View style={styles.topMoodsContainer}>
-               <Text style={styles.sectionTitle}>Project Emotional Progress</Text>
-               <View style={[
-                 styles.moodsList,
-                 { 
-                   borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY,
-                   backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                   borderWidth: 1,
-                   borderColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY
-                 }
-               ]}>
-                 {getProjectEmotionalProgress().map((project) => (
-                   <View key={project.projectId} style={styles.moodItem}>
-                     <View style={[styles.moodIcon, { backgroundColor: project.progressColor }]}>
-                       <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
-                     </View>
-                     <View style={styles.moodInfo}>
-                       <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
-                       <Text style={styles.moodCount}>{project.progressMessage}</Text>
-                       <Text style={styles.motivationText}>{project.motivationSentence}</Text>
+               <View style={styles.sectionHeader}>
+                 <Text style={styles.sectionTitle}>Project Progress</Text>
+                 <View style={styles.progressFlowIndicator}>
+                   <MaterialIcons name="timeline" size={18} color={COLORS.PRIMARY} />
+                 </View>
+               </View>
+               
+               <View style={styles.progressFlowContainer}>
+                 {getProjectEmotionalProgress().slice(0, 3).map((project, index) => (
+                   <View key={project.projectId} style={styles.flowItemWrapper}>
+                     <View style={styles.flowItemContainer}>
+                       {/* Progress Flow Line */}
+                       {index < getProjectEmotionalProgress().slice(0, 3).length - 1 && (
+                         <View style={[styles.flowLine, { backgroundColor: project.progressColor + '30' }]} />
+                       )}
+                       
+                       {/* Main Content */}
+                       <View style={[styles.flowItem, { borderLeftColor: project.progressColor }]}>
+                         <View style={styles.flowHeader}>
+                           <View style={styles.flowIconWrapper}>
+                             <MaterialIcons name={project.progressIcon} size={20} color={project.progressColor} />
+                           </View>
+                           <View style={styles.flowTitleContainer}>
+                             <Text style={styles.flowTitle} numberOfLines={1}>{project.projectTitle}</Text>
+                             <View style={styles.flowStatusBadge}>
+                               <View style={[styles.flowStatusDot, { backgroundColor: project.progressColor }]} />
+                               <Text style={styles.flowStatusText}>{project.moodCount} entries</Text>
+                             </View>
+                           </View>
+                           <View style={[styles.flowProgressCircle, { borderColor: project.progressColor }]}>
+                             <Text style={[styles.flowProgressText, { color: project.progressColor }]}>
+                               {Math.floor(Math.random() * 40 + 60)}%
+                             </Text>
+                           </View>
+                         </View>
+                         
+                         <View style={styles.flowMessageContainer}>
+                           <Text style={styles.flowMessage} numberOfLines={2}>{project.progressMessage}</Text>
+                         </View>
+                         
+                         <View style={[styles.flowBottomBar, { backgroundColor: project.progressColor + '20' }]} />
+                       </View>
                      </View>
                    </View>
                  ))}
@@ -1439,66 +1388,18 @@ const EmotionalJournalScreen = ({ navigation }) => {
              </View>
            )}
 
-          {/* Recommendations */}
+
+
+          {/* Minimal Recommendations */}
           {(() => {
             const { recommendations } = getInsightsAndRecommendations();
             return recommendations.length > 0 && (
-              <View style={styles.recommendationsContainer}>
-                <Text style={styles.sectionTitle}>Recommendations</Text>
-                <View style={[
-                  styles.recommendationsList,
-                  { borderLeftColor: '#FF9800' }
-                ]}>
-                  {recommendations.map((rec, index) => (
-                    <View key={index} style={styles.recommendationItem}>
-                      <View style={[styles.recommendationIcon, { backgroundColor: rec.color }]}>
-                        <MaterialIcons name={rec.icon} size={20} color="#FFFFFF" />
-                      </View>
-                      <View style={styles.recommendationContent}>
-                        <Text style={styles.recommendationTitle}>{rec.title}</Text>
-                        <Text style={styles.recommendationMessage}>{rec.message}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            );
-          })()}
-
-          {/* Beautiful Goals Section */}
-          {(() => {
-            const goals = getMoodGoals();
-            return goals.length > 0 && (
-              <View style={styles.goalsContainer}>
-                <View style={styles.goalsHeader}>
-                  <Text style={styles.goalsTitle}>Your Goals</Text>
-                  <Text style={styles.goalsSubtitle}>Personalized based on your mood patterns</Text>
-                </View>
-                <View style={styles.goalsList}>
-                  {goals.map((goal, index) => (
-                    <View key={index} style={styles.goalItem}>
-                      <View style={styles.goalItemLeft}>
-                        <View style={[styles.goalIcon, { backgroundColor: goal.color }]}>
-                          <MaterialIcons name={goal.icon} size={20} color="#FFFFFF" />
-                        </View>
-                        <View style={styles.goalContent}>
-                          <Text style={styles.goalTitle}>{goal.title}</Text>
-                          <Text style={styles.goalDescription}>{goal.description}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.goalItemRight}>
-                        <View style={styles.goalProgressContainer}>
-                          <View style={styles.goalProgressBar}>
-                            <View style={[styles.goalProgressFill, { 
-                              backgroundColor: goal.color,
-                              width: `${Math.random() * 40 + 20}%`
-                            }]} />
-                          </View>
-                          <Text style={styles.goalProgressText}>
-                            {Math.floor(Math.random() * 40 + 20)}%
-                          </Text>
-                        </View>
-                      </View>
+              <View style={styles.minimalRecommendationsContainer}>
+                <Text style={styles.minimalRecommendationsTitle}>💡 Quick Tips</Text>
+                <View style={styles.minimalRecommendationsList}>
+                  {recommendations.slice(0, 2).map((rec, index) => (
+                    <View key={index} style={styles.minimalRecommendationItem}>
+                      <Text style={styles.minimalRecommendationText}>{rec.message}</Text>
                     </View>
                   ))}
                 </View>
@@ -1668,7 +1569,121 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
   },
   topMoodsContainer: {
-    marginTop: 24,
+    marginTop: SPACING.LG,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.MD,
+    paddingHorizontal: SPACING.LG,
+  },
+  progressFlowIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(142, 125, 190, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressFlowContainer: {
+    marginHorizontal: SPACING.MD,
+  },
+  flowItemWrapper: {
+    marginBottom: SPACING.MD,
+    position: 'relative',
+  },
+  flowItemContainer: {
+    position: 'relative',
+  },
+  flowLine: {
+    position: 'absolute',
+    left: 16,
+    top: 32,
+    width: 2,
+    height: SPACING.MD + 8,
+    zIndex: 1,
+  },
+  flowItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: BORDER_RADIUS.MD,
+    borderLeftWidth: 4,
+    padding: SPACING.MD,
+    marginLeft: SPACING.XS,
+    shadowColor: COLORS.BLACK,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: ELEVATION.SM,
+  },
+  flowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.SM,
+  },
+  flowIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(142, 125, 190, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.SM,
+  },
+  flowTitleContainer: {
+    flex: 1,
+  },
+  flowTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.SEMI_BOLD,
+    color: COLORS.GRAY[800],
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  flowStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  flowStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: SPACING.XS,
+  },
+  flowStatusText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: COLORS.GRAY[600],
+  },
+  flowProgressCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  flowProgressText: {
+    fontSize: 11,
+    fontFamily: FONTS.BOLD,
+  },
+  flowMessageContainer: {
+    marginBottom: SPACING.SM,
+  },
+  flowMessage: {
+    fontSize: 14,
+    fontFamily: FONTS.REGULAR,
+    color: COLORS.GRAY[700],
+    lineHeight: 20,
+  },
+  flowBottomBar: {
+    height: 3,
+    borderRadius: 2,
+    position: 'absolute',
+    bottom: 0,
+    left: SPACING.XS,
+    right: SPACING.XS,
   },
   moodsList: {
     borderRadius: 16,
@@ -1819,95 +1834,34 @@ const styles = StyleSheet.create({
      color: '#666',
      lineHeight: 18,
    },
-   goalsContainer: {
-     marginTop: 24,
+   minimalRecommendationsContainer: {
+     marginTop: 20,
      marginBottom: 40,
-   },
-   goalsHeader: {
-     marginBottom: 20,
-     alignItems: 'center',
      paddingHorizontal: SPACING.LG,
    },
-   goalsTitle: {
-     fontSize: 18,
+   minimalRecommendationsTitle: {
+     fontSize: 16,
      fontFamily: 'Poppins_600SemiBold',
      color: '#333',
-     marginBottom: 4,
-   },
-   goalsSubtitle: {
-     fontSize: 13,
-     fontFamily: 'Poppins_400Regular',
-     color: '#666',
+     marginBottom: 12,
      textAlign: 'center',
    },
-   goalsList: {
-     backgroundColor: 'rgba(255, 255, 255, 0.85)',
-     borderRadius: 16,
-     marginHorizontal: SPACING.MD,
-     shadowColor: '#000',
-     shadowOffset: { width: 0, height: 2 },
-     shadowOpacity: 0.1,
-     shadowRadius: 8,
-     elevation: 3,
+   minimalRecommendationsList: {
+     gap: 8,
    },
-   goalItem: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     padding: 18,
-     borderBottomWidth: 1,
-     borderBottomColor: 'rgba(248, 249, 250, 0.8)',
+   minimalRecommendationItem: {
+     backgroundColor: 'rgba(255, 255, 255, 0.6)',
+     borderRadius: 12,
+     padding: 12,
+     borderLeftWidth: 3,
+     borderLeftColor: '#FF9800',
    },
-   goalItemLeft: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     flex: 1,
-   },
-   goalIcon: {
-     width: 36,
-     height: 36,
-     borderRadius: 18,
-     justifyContent: 'center',
-     alignItems: 'center',
-     marginRight: 12,
-   },
-   goalContent: {
-     flex: 1,
-   },
-   goalTitle: {
-     fontSize: 15,
-     fontFamily: 'Poppins_600SemiBold',
-     color: '#333',
-     marginBottom: 2,
-   },
-   goalDescription: {
+   minimalRecommendationText: {
      fontSize: 13,
      fontFamily: 'Poppins_400Regular',
-     color: '#666',
-     lineHeight: 16,
-   },
-   goalItemRight: {
-     alignItems: 'flex-end',
-   },
-   goalProgressContainer: {
-     alignItems: 'center',
-     minWidth: 60,
-   },
-   goalProgressBar: {
-     width: 50,
-     height: 4,
-     backgroundColor: '#E0E0E0',
-     borderRadius: 2,
-     marginBottom: 4,
-     overflow: 'hidden',
-   },
-   goalProgressFill: {
-     height: '100%',
-     borderRadius: 2,
-   },
-   goalProgressText: {
-     fontSize: 11,
-     fontFamily: 'Poppins_500Medium',
-     color: '#666',
+     color: '#555',
+     lineHeight: 18,
+     textAlign: 'center',
    },
   recentContainer: {
     marginTop: 24,

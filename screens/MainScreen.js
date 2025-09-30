@@ -238,7 +238,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       startDate={item.startDate}
       endDate={item.endDate}
       completed={item.done}
-      activeMilestones={item.milestones?.filter((m) => !m.completed) ?? []}
+      activeMilestones={item.milestones ?? []} // Show all milestones (both completed and active)
       onMilestonePress={null} // Completed cards don't allow milestone taps
       onPress={() => openCard(item)}
       style={{ marginBottom: 15 }}

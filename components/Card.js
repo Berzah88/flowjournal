@@ -166,50 +166,89 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
       </View>
 
       {/* Modern Bottom Section */}
-      <View style={styles.modernBottomSection}>
+      <View style={[styles.modernBottomSection, completed && styles.modernCompletedBottomSection]}>
         <View style={styles.modernDaysLeft}>
-          <MaterialIcons name="schedule" size={16} color={completed ? "#A0A0A0" : "#007AFF"} />
+          <MaterialIcons name="schedule" size={16} color={completed ? "#636366" : "#007AFF"} />
           <Text style={[styles.modernDaysLeftText, completed && styles.modernCompletedDaysText]}>
-            {Math.ceil(remainingDays)} gün kaldı
+            {completed ? `${Math.ceil(totalDays)} days completed` : `${Math.ceil(remainingDays)} gün kaldı`}
           </Text>
         </View>
         
       </View>
 
 
-      {/* Active Milestones Listesi */}
-      {activeMilestones.length > 0 && (
-        <View style={styles.milestoneList}>
-          {activeMilestones.map((ms, index) => (
-            <View key={ms.id}>
-              <Pressable 
-                onPress={() => handleMilestonePress(ms)}
-                accessible={true}
-                accessibilityLabel={`${ms.title || "Untitled"} milestone`}
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.milestoneItemClickable,
-                  { 
-                    transform: [{ scale: pressed ? 0.96 : 1 }],
-                  }
-                ]}
-              >
-                <View style={styles.iconContainer}>
-                  <Ionicons 
-                    name="ellipse" 
-                    size={18} 
-                    color={getMilestoneColor(ms)} 
-                  />
-                </View>
-                <View style={styles.milestoneContent}>
-                  <Text style={[styles.milestoneText, completed ? styles.completedDaysText : {}]}>
-                    {ms.title || "Untitled"}
-                  </Text>
-                  <MoodTags milestone={ms} />
-                </View>
-              </Pressable>
+      {/* Completed Stats Section */}
+      {completed && (
+        <View style={styles.completedStatsSection}>
+          <View style={styles.statRow}>
+            <View style={styles.statItem}>
+              <Ionicons name="list" size={16} color="#636366" />
+              <Text style={styles.statText}>
+                {activeMilestones.length} milestone
+              </Text>
             </View>
-          ))}
+            <View style={styles.statItem}>
+              <Ionicons name="location" size={16} color="#636366" />
+              <Text style={styles.statText}>
+                {activeMilestones.reduce((total, ms) => 
+                  total + (ms.journalEntries?.filter(entry => entry.location).length || 0), 0
+                )} konum
+              </Text>
+            </View>
+          </View>
+          <View style={styles.statRow}>
+            <View style={styles.statItem}>
+              <Ionicons name="journal" size={16} color="#636366" />
+              <Text style={styles.statText}>
+                {activeMilestones.reduce((total, ms) => total + (ms.journalEntries?.length || 0), 0)} günlük
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="image" size={16} color="#636366" />
+              <Text style={styles.statText}>
+                {activeMilestones.reduce((total, ms) => 
+                  total + (ms.journalEntries?.reduce((entryTotal, entry) => 
+                    entryTotal + (entry.images?.length || 0), 0) || 0), 0
+                )} medya
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Milestones Listesi - Sadece active projeler için göster */}
+      {!completed && activeMilestones.length > 0 && (
+        <View style={styles.milestoneList}>
+          {activeMilestones.map((ms, index) => {
+            return (
+              <View key={ms.id}>
+                <View 
+                  style={[
+                    styles.milestoneItemClickable,
+                    completed && styles.completedMilestoneItem,
+                  ]}
+                >
+                  <View style={styles.iconContainer}>
+                    <Ionicons 
+                      name={ms.completed ? "checkmark-circle" : "ellipse"} 
+                      size={18} 
+                      color={ms.completed ? "#636366" : getMilestoneColor(ms)} 
+                    />
+                  </View>
+                  <View style={styles.milestoneContent}>
+                    <Text style={[
+                      styles.milestoneText, 
+                      completed ? styles.completedMilestoneText : {},
+                      ms.completed ? { opacity: 0.9 } : {}
+                    ]}>
+                      {ms.title || "Untitled"}
+                    </Text>
+                    <MoodTags milestone={ms} />
+                  </View>
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
     </Pressable>
@@ -294,14 +333,22 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0, 0, 0, 0.03)",
   },
   modernCompletedCard: {
-    backgroundColor: "#1A1A1A",
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#F2F2F7", // Hafif koyu gri arka plan
+    borderColor: "#000000", // Siyah border
+    borderWidth: 1.5,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+    paddingVertical: 20, // Üst-alt boşluk artırıldı
+    paddingHorizontal: 20, // Yan boşluklar artırıldı
   },
   modernHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 20, // Boşluk artırıldı
   },
   modernTitleSection: {
     flex: 1,
@@ -321,7 +368,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     alignSelf: 'flex-start',
-    marginTop: 4,
+    marginTop: 8, // Boşluk artırıldı
   },
   modernDateRange: {
     fontSize: 12,
@@ -333,9 +380,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 16, // Boşluk artırıldı
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  modernCompletedBottomSection: {
+    borderTopColor: 'rgba(199, 199, 204, 0.3)',
   },
   modernDaysLeft: {
     flexDirection: 'row',
@@ -347,21 +397,21 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     marginLeft: 6,
   },
-  // Completed States
+  // Completed States - Dengeli Gri Tema
   modernCompletedTitle: {
-    color: "#FFFFFF",
+    color: "#1D1D1F", // Koyu gri metin
   },
   modernCompletedDateFrame: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: '#D1D1D6', // Orta gri arka plan
   },
   modernCompletedDateText: {
-    color: "#A0A0A0",
+    color: "#636366", // Orta koyu gri metin
   },
   modernCompletedDaysText: {
-    color: "#A0A0A0",
+    color: "#636366", // Orta koyu gri metin
   },
   modernCompletedMilestoneText: {
-    color: "#A0A0A0",
+    color: "#1D1D1F", // Koyu gri metin
   },
   // Legacy styles (keeping for compatibility)
   card: {
@@ -467,6 +517,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     backgroundColor: "rgba(0, 122, 255, 0.04)", // Çok hafif mavi arka plan
   },
+  completedMilestoneItem: {
+    backgroundColor: "rgba(199, 199, 204, 0.1)", // Şeffaf gri arka plan
+    borderWidth: 1,
+    borderColor: "rgba(199, 199, 204, 0.2)",
+  },
   iconContainer: {
     width: 30,
     alignItems: "center",
@@ -509,6 +564,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1D1D1F", // Apple'ın koyu gri rengi
     lineHeight: 20,
+    letterSpacing: -0.1,
+  },
+  // Completed Stats Section
+  completedStatsSection: {
+    marginTop: 20, // Boşluk artırıldı
+    paddingTop: 18, // Boşluk artırıldı
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(199, 199, 204, 0.3)',
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    marginBottom: 12, // Satırlar arası boşluk artırıldı
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-start',
+  },
+  statText: {
+    fontSize: 13,
+    fontFamily: FONTS.MEDIUM,
+    color: "#636366",
+    marginLeft: 6,
     letterSpacing: -0.1,
   },
 });
