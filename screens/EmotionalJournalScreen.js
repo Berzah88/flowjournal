@@ -297,86 +297,106 @@ const EmotionalJournalScreen = ({ navigation }) => {
           let progressIcon = 'trending-flat';
           let progressColor = '#9E9E9E';
           
-          // Mood-specific messages
+          // Mood-specific messages and icons
           if (averageScore > 0.3) {
             progressType = 'positive';
-            progressIcon = 'trending-up';
             progressColor = '#4CAF50';
             
-            // Positive mood-specific messages
+            // Positive mood-specific messages and icons
             switch (dominantMood?.key) {
               case 'happy':
                 progressMessage = 'This project brings you joy and satisfaction!';
+                progressIcon = 'sentiment-satisfied';
                 break;
               case 'excited':
                 progressMessage = 'You\'re enthusiastic and energized about this project!';
+                progressIcon = 'celebration';
                 break;
               case 'grateful':
                 progressMessage = 'You feel grateful and appreciative of this project!';
+                progressIcon = 'favorite';
                 break;
               case 'hopeful':
                 progressMessage = 'This project fills you with hope and optimism!';
+                progressIcon = 'wb-sunny';
                 break;
               case 'proud':
                 progressMessage = 'You\'re proud of your progress on this project!';
+                progressIcon = 'emoji-events';
                 break;
               case 'relieved':
                 progressMessage = 'This project gives you a sense of relief and peace!';
+                progressIcon = 'spa';
                 break;
               case 'motivated':
                 progressMessage = 'You feel highly motivated to continue this project!';
+                progressIcon = 'trending-up';
                 break;
               case 'peaceful':
                 progressMessage = 'This project brings you inner peace and calm!';
+                progressIcon = 'spa';
                 break;
               case 'content':
                 progressMessage = 'You feel content and satisfied with this project!';
+                progressIcon = 'sentiment-satisfied';
                 break;
               default:
                 progressMessage = 'This project is going great for you!';
+                progressIcon = 'trending-up';
             }
           } else if (averageScore < -0.3) {
             progressType = 'negative';
-            progressIcon = 'trending-down';
             progressColor = '#F44336';
             
-            // Negative mood-specific messages
+            // Negative mood-specific messages and icons
             switch (dominantMood?.key) {
               case 'sad':
                 progressMessage = 'This project is making you feel down and discouraged';
+                progressIcon = 'sentiment-dissatisfied';
                 break;
               case 'angry':
                 progressMessage = 'This project is frustrating and angering you';
+                progressIcon = 'mood-bad';
                 break;
               case 'tired':
                 progressMessage = 'This project is exhausting and draining your energy';
+                progressIcon = 'bedtime';
                 break;
               case 'frustrated':
                 progressMessage = 'You\'re feeling frustrated and stuck with this project';
+                progressIcon = 'psychology';
                 break;
               case 'anxious':
                 progressMessage = 'This project is causing you anxiety and worry';
+                progressIcon = 'warning';
                 break;
               case 'overwhelmed':
                 progressMessage = 'This project feels overwhelming and too much to handle';
+                progressIcon = 'psychology';
                 break;
               case 'lonely':
                 progressMessage = 'This project makes you feel isolated and alone';
+                progressIcon = 'person-off';
                 break;
               case 'confused':
                 progressMessage = 'This project is confusing and unclear to you';
+                progressIcon = 'help';
                 break;
               case 'disappointed':
                 progressMessage = 'This project is disappointing and not meeting expectations';
+                progressIcon = 'sentiment-dissatisfied';
                 break;
               case 'worried':
                 progressMessage = 'This project is causing you worry and concern';
+                progressIcon = 'psychology';
                 break;
               case 'bored':
                 progressMessage = 'This project feels boring and unengaging';
+                progressIcon = 'sentiment-neutral';
                 break;
               default:
                 progressMessage = 'This project seems challenging for you';
+                progressIcon = 'trending-down';
             }
           } else if (recentMoods.length >= 2) {
             // Check recent trend
@@ -398,22 +418,27 @@ const EmotionalJournalScreen = ({ navigation }) => {
               progressColor = '#FF5722';
             }
           } else {
-            // Neutral mood-specific messages
+            // Neutral mood-specific messages and icons
             switch (dominantMood?.key) {
               case 'calm':
                 progressMessage = 'This project keeps you calm and composed';
+                progressIcon = 'spa';
                 break;
               case 'curious':
                 progressMessage = 'This project sparks your curiosity and interest';
+                progressIcon = 'explore';
                 break;
               case 'nostalgic':
                 progressMessage = 'This project brings back fond memories';
+                progressIcon = 'history';
                 break;
               case 'surprised':
                 progressMessage = 'This project continues to surprise you';
+                progressIcon = 'surprise';
                 break;
               default:
                 progressMessage = 'This project is progressing steadily';
+                progressIcon = 'trending-flat';
             }
           }
           
@@ -609,11 +634,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 borderColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY
               }
             ]}>
-              {getProjectEmotionalProgress().map((project, index) => (
+              {getProjectEmotionalProgress().map((project) => (
                 <View key={project.projectId} style={styles.moodItem}>
-                  <View style={styles.moodRank}>
-                    <Text style={styles.moodRankText}>#{index + 1}</Text>
-                  </View>
                   <View style={[styles.moodIcon, { backgroundColor: project.progressColor }]}>
                     <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
                   </View>
@@ -831,6 +853,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   moodRank: {
     width: 32,
