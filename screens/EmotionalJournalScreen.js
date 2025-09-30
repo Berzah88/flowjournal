@@ -213,25 +213,31 @@ const EmotionalJournalScreen = ({ navigation }) => {
   const getSolidMoodColor = useCallback((originalColor) => {
     // Solgun renkleri daha solid hale getir
     const colorMap = {
-      // Basic MOODS
-      '#C8E6C9': '#4CAF50', // Happy - daha koyu yeşil
-      '#FFE0B2': '#FF9800', // Excited - daha koyu turuncu
-      '#E1F5FE': '#2196F3', // Calm - daha koyu mavi
-      '#F3E5F5': '#9C27B0', // Tired - daha koyu mor
-      '#FFCDD2': '#F44336', // Sad - daha koyu kırmızı
-      '#FFEBEE': '#E91E63', // Angry - daha koyu pembe
-      '#F5F5F5': '#9E9E9E', // Neutral - daha koyu gri
+      // Basic MOODS (Updated colors)
+      '#C8E6C9': '#4CAF50', // Happy - Light green
+      '#FFE0B2': '#FF9800', // Excited - Light orange
+      '#E1BEE7': '#9C27B0', // Tired - Light purple
+      '#FFCDD2': '#F44336', // Sad - Light red
+      '#FFAB91': '#FF5722', // Angry - Light deep orange
       
-      // EXTENDED_MOODS (AI mood'ları)
-      '#FFF9C4': '#FBC02D', // Anxious - daha koyu sarı
-      '#FFE0B2': '#FF9800', // Frustrated - daha koyu turuncu
-      '#E8F5E8': '#4CAF50', // Grateful - daha koyu yeşil
-      '#E3F2FD': '#2196F3', // Hopeful - daha koyu mavi
-      '#F3E5F5': '#9C27B0', // Nostalgic - daha koyu mor
-      '#FFE0B2': '#FF9800', // Motivated - daha koyu turuncu
-      '#FFCDD2': '#F44336', // Lonely - daha koyu kırmızı
-      '#E1F5FE': '#2196F3', // Peaceful - daha koyu mavi
-      '#FFF3E0': '#FF9800', // Overwhelmed - daha koyu turuncu
+      // EXTENDED_MOODS (AI mood'ları) - Updated colors
+      '#FFCCBC': '#FF7043', // Frustrated - Light brown
+      '#FFF3E0': '#FFB74D', // Anxious - Light amber
+      '#E8F5E8': '#66BB6A', // Grateful - Light mint green
+      '#E1F5FE': '#42A5F5', // Hopeful - Light blue
+      '#FFF8E1': '#FFCA28', // Proud - Light yellow
+      '#F3E5F5': '#BA68C8', // Relieved - Light lavender
+      '#FFEBEE': '#EF5350', // Overwhelmed - Light pink
+      '#E0E0E0': '#90A4AE', // Lonely - Light gray
+      '#DCEDC8': '#8BC34A', // Motivated - Light lime green
+      '#F5F5F5': '#BDBDBD', // Confused - Very light gray
+      '#FFE0E6': '#F48FB1', // Disappointed - Light rose
+      '#E8EAF6': '#7986CB', // Nostalgic - Light indigo
+      '#E0F2F1': '#4DB6AC', // Peaceful - Light teal
+      '#FFFDE7': '#FFF176', // Curious - Light cream
+      '#FAFAFA': '#E0E0E0', // Bored - Very light gray
+      '#FFF9C4': '#FFF59D', // Surprised - Light yellow
+      '#FCE4EC': '#F06292', // Worried - Light magenta
     };
     
     return colorMap[originalColor] || originalColor;
