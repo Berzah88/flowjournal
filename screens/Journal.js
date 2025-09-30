@@ -856,13 +856,9 @@ export default function Journal({
                 style={[styles.moodPicker, { bottom: keyboardHeight ? keyboardHeight + 90 : 106 }, moodPickerAnimatedStyle]}
                 onStartShouldSetResponder={() => true}
               >
-                {/* Mood Picker Title */}
-                <Text style={styles.moodPickerTitle}>Choose Your Mood</Text>
-                
                 {/* AI Suggestions Section */}
                 {moodSuggestions.length > 0 && (
                   <View style={styles.suggestionsSection}>
-                    <Text style={styles.suggestionsTitle}>AI Suggestions</Text>
                     <View style={styles.suggestionsContainer}>
                       {moodSuggestions.slice(0, 3).map((suggestion, index) => {
                         const suggestedMood = MOODS.find(m => m.key === suggestion.mood) || 
@@ -894,7 +890,6 @@ export default function Journal({
                 )}
                 
                 {/* Manual Selection Section */}
-                <Text style={styles.manualSelectionTitle}>Manual Selection</Text>
                 <View style={styles.manualMoodContainer}>
                   {BASIC_MOODS.map((m) => (
                     <TouchableOpacity
@@ -1208,7 +1203,7 @@ const styles = StyleSheet.create({
     left: 40,
     right: 0,
     backgroundColor: "#ffffff",
-    padding: 20,
+    padding: 12,
     borderRadius: 20,
     elevation: 8,
     shadowColor: "#000",
@@ -1220,57 +1215,40 @@ const styles = StyleSheet.create({
     zIndex: 500,
     elevation: 10,
   },
-  moodPickerTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#1D1D1F',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
   suggestionsSection: {
-    marginBottom: 20,
-  },
-  suggestionsTitle: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: '#007AFF',
     marginBottom: 8,
   },
   suggestionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 4,
   },
   suggestionMoodOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 4,
+    marginBottom: 4,
   },
   suggestionMoodLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Poppins_500Medium',
     color: '#333',
-    marginLeft: 6,
-  },
-  manualSelectionTitle: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
-    color: '#666',
-    marginBottom: 12,
+    marginLeft: 4,
   },
   manualMoodContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 4,
   },
   moodOption: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
   },
   moodIconWrap: {
     width: 24,
