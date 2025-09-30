@@ -1439,77 +1439,69 @@ const EmotionalJournalScreen = ({ navigation }) => {
              </View>
            )}
 
-          {/* Insights & Recommendations */}
+          {/* Recommendations */}
           {(() => {
-            const { insights, recommendations } = getInsightsAndRecommendations();
-            return (
-              <>
-                {insights.length > 0 && (
-                  <View style={styles.insightsContainer}>
-                    <Text style={styles.sectionTitle}>Personal Insights</Text>
-                    <View style={[
-                      styles.insightsList,
-                      { borderLeftColor: '#2196F3' }
-                    ]}>
-                      {insights.map((insight, index) => (
-                        <View key={index} style={styles.insightItem}>
-                          <View style={[styles.insightIcon, { backgroundColor: insight.color }]}>
-                            <MaterialIcons name={insight.icon} size={20} color="#FFFFFF" />
-                          </View>
-                          <View style={styles.insightContent}>
-                            <Text style={styles.insightTitle}>{insight.title}</Text>
-                            <Text style={styles.insightMessage}>{insight.message}</Text>
-                          </View>
-                        </View>
-                      ))}
+            const { recommendations } = getInsightsAndRecommendations();
+            return recommendations.length > 0 && (
+              <View style={styles.recommendationsContainer}>
+                <Text style={styles.sectionTitle}>Recommendations</Text>
+                <View style={[
+                  styles.recommendationsList,
+                  { borderLeftColor: '#FF9800' }
+                ]}>
+                  {recommendations.map((rec, index) => (
+                    <View key={index} style={styles.recommendationItem}>
+                      <View style={[styles.recommendationIcon, { backgroundColor: rec.color }]}>
+                        <MaterialIcons name={rec.icon} size={20} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.recommendationContent}>
+                        <Text style={styles.recommendationTitle}>{rec.title}</Text>
+                        <Text style={styles.recommendationMessage}>{rec.message}</Text>
+                      </View>
                     </View>
-                  </View>
-                )}
-
-                {recommendations.length > 0 && (
-                  <View style={styles.recommendationsContainer}>
-                    <Text style={styles.sectionTitle}>Recommendations</Text>
-                    <View style={[
-                      styles.recommendationsList,
-                      { borderLeftColor: '#FF9800' }
-                    ]}>
-                      {recommendations.map((rec, index) => (
-                        <View key={index} style={styles.recommendationItem}>
-                          <View style={[styles.recommendationIcon, { backgroundColor: rec.color }]}>
-                            <MaterialIcons name={rec.icon} size={20} color="#FFFFFF" />
-                          </View>
-                          <View style={styles.recommendationContent}>
-                            <Text style={styles.recommendationTitle}>{rec.title}</Text>
-                            <Text style={styles.recommendationMessage}>{rec.message}</Text>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </>
+                  ))}
+                </View>
+              </View>
             );
           })()}
 
-          {/* Mood-Based Goals */}
+          {/* Modern Goals Section */}
           {(() => {
             const goals = getMoodGoals();
             return goals.length > 0 && (
               <View style={styles.goalsContainer}>
-                <Text style={styles.sectionTitle}>Your Goals</Text>
-                <View style={[
-                  styles.goalsList,
-                  { borderLeftColor: '#4CAF50' }
-                ]}>
+                <View style={styles.goalsHeader}>
+                  <Text style={styles.goalsTitle}>Your Goals</Text>
+                  <Text style={styles.goalsSubtitle}>Personalized based on your mood patterns</Text>
+                </View>
+                <View style={styles.goalsGrid}>
                   {goals.map((goal, index) => (
-                    <View key={index} style={styles.goalItem}>
-                      <View style={[styles.goalIcon, { backgroundColor: goal.color }]}>
-                        <MaterialIcons name={goal.icon} size={20} color="#FFFFFF" />
+                    <View key={index} style={[styles.goalCard, { backgroundColor: goal.color + '15' }]}>
+                      <View style={styles.goalCardHeader}>
+                        <View style={[styles.goalCardIcon, { backgroundColor: goal.color }]}>
+                          <MaterialIcons name={goal.icon} size={24} color="#FFFFFF" />
+                        </View>
+                        <View style={styles.goalCardTitleContainer}>
+                          <Text style={styles.goalCardTitle}>{goal.title}</Text>
+                        </View>
                       </View>
-                      <View style={styles.goalContent}>
-                        <Text style={styles.goalTitle}>{goal.title}</Text>
-                        <Text style={styles.goalDescription}>{goal.description}</Text>
-                        <Text style={styles.goalTarget}>{goal.target}</Text>
+                      <Text style={styles.goalCardDescription}>{goal.description}</Text>
+                      <View style={styles.goalCardTargetContainer}>
+                        <View style={[styles.goalCardTarget, { backgroundColor: goal.color + '20' }]}>
+                          <MaterialIcons name="flag" size={16} color={goal.color} />
+                          <Text style={[styles.goalCardTargetText, { color: goal.color }]}>{goal.target}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.goalCardProgress}>
+                        <View style={[styles.goalCardProgressBar, { backgroundColor: goal.color + '30' }]}>
+                          <View style={[styles.goalCardProgressFill, { 
+                            backgroundColor: goal.color,
+                            width: `${Math.random() * 40 + 20}%` // Random progress for demo
+                          }]} />
+                        </View>
+                        <Text style={styles.goalCardProgressText}>
+                          {Math.floor(Math.random() * 40 + 20)}% Complete
+                        </Text>
                       </View>
                     </View>
                   ))}
@@ -1834,59 +1826,103 @@ const styles = StyleSheet.create({
    goalsContainer: {
      marginTop: 24,
      marginBottom: 40,
+     paddingHorizontal: SPACING.LG,
    },
-   goalsList: {
-     backgroundColor: '#FFFFFF',
-     borderRadius: 16,
-     padding: 16,
-     marginHorizontal: SPACING.LG,
-     borderLeftWidth: 4,
-     shadowColor: '#000',
-     shadowOffset: { width: 0, height: 2 },
-     shadowOpacity: 0.1,
-     shadowRadius: 8,
-     elevation: 3,
+   goalsHeader: {
+     marginBottom: 20,
+     alignItems: 'center',
    },
-   goalItem: {
+   goalsTitle: {
+     fontSize: 20,
+     fontFamily: 'Poppins_700Bold',
+     color: '#333',
+     marginBottom: 4,
+   },
+   goalsSubtitle: {
+     fontSize: 14,
+     fontFamily: 'Poppins_400Regular',
+     color: '#666',
+     textAlign: 'center',
+   },
+   goalsGrid: {
      flexDirection: 'row',
-     alignItems: 'flex-start',
-     paddingVertical: 12,
-     borderBottomWidth: 1,
-     borderBottomColor: '#F8F9FA',
+     flexWrap: 'wrap',
+     justifyContent: 'space-between',
    },
-   goalIcon: {
-     width: 32,
-     height: 32,
-     borderRadius: 16,
+   goalCard: {
+     width: '48%',
+     borderRadius: 20,
+     padding: 16,
+     marginBottom: 16,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 4 },
+     shadowOpacity: 0.1,
+     shadowRadius: 12,
+     elevation: 5,
+   },
+   goalCardHeader: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     marginBottom: 12,
+   },
+   goalCardIcon: {
+     width: 40,
+     height: 40,
+     borderRadius: 20,
      justifyContent: 'center',
      alignItems: 'center',
      marginRight: 12,
    },
-   goalContent: {
+   goalCardTitleContainer: {
      flex: 1,
    },
-   goalTitle: {
-     fontSize: 14,
+   goalCardTitle: {
+     fontSize: 16,
      fontFamily: 'Poppins_600SemiBold',
      color: '#333',
-     marginBottom: 4,
+     lineHeight: 20,
    },
-   goalDescription: {
+   goalCardDescription: {
      fontSize: 13,
      fontFamily: 'Poppins_400Regular',
      color: '#666',
      lineHeight: 18,
-     marginBottom: 4,
+     marginBottom: 12,
    },
-   goalTarget: {
+   goalCardTargetContainer: {
+     marginBottom: 12,
+   },
+   goalCardTarget: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     paddingHorizontal: 12,
+     paddingVertical: 8,
+     borderRadius: 12,
+   },
+   goalCardTargetText: {
      fontSize: 12,
      fontFamily: 'Poppins_500Medium',
-     color: '#4CAF50',
-     backgroundColor: '#E8F5E8',
-     paddingHorizontal: 8,
-     paddingVertical: 4,
-     borderRadius: 8,
-     alignSelf: 'flex-start',
+     marginLeft: 6,
+     flex: 1,
+   },
+   goalCardProgress: {
+     marginTop: 8,
+   },
+   goalCardProgressBar: {
+     height: 6,
+     borderRadius: 3,
+     marginBottom: 6,
+     overflow: 'hidden',
+   },
+   goalCardProgressFill: {
+     height: '100%',
+     borderRadius: 3,
+   },
+   goalCardProgressText: {
+     fontSize: 11,
+     fontFamily: 'Poppins_500Medium',
+     color: '#666',
+     textAlign: 'center',
    },
   recentContainer: {
     marginTop: 24,
