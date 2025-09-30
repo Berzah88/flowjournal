@@ -1841,9 +1841,9 @@ const styles = StyleSheet.create({
      textAlign: 'center',
    },
    goalsList: {
-     backgroundColor: '#FFFFFF',
+     backgroundColor: 'rgba(255, 255, 255, 0.85)',
      borderRadius: 16,
-     marginHorizontal: SPACING.LG,
+     marginHorizontal: SPACING.MD,
      shadowColor: '#000',
      shadowOffset: { width: 0, height: 2 },
      shadowOpacity: 0.1,
@@ -1853,9 +1853,9 @@ const styles = StyleSheet.create({
    goalItem: {
      flexDirection: 'row',
      alignItems: 'center',
-     padding: 16,
+     padding: 18,
      borderBottomWidth: 1,
-     borderBottomColor: '#F8F9FA',
+     borderBottomColor: 'rgba(248, 249, 250, 0.8)',
    },
    goalItemLeft: {
      flexDirection: 'row',
