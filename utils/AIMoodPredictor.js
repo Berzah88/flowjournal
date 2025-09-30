@@ -914,6 +914,61 @@ export const analyzeSentiment = async (text, userHistory = []) => {
   };
 };
 
+// Sentence-based analysis for better context understanding
+export const analyzeSentimentBySentences = async (text, userHistory = []) => {
+  if (!text || text.trim().length === 0) {
+    return { score: 0, label: 'neutral', confidence: 0, sentences: [] };
+  }
+
+  // Split text into sentences
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const sentenceAnalyses = [];
+  
+  // Analyze each sentence
+  for (const sentence of sentences) {
+    const analysis = await smartMoodDetector.detectMood(sentence.trim(), userHistory);
+    sentenceAnalyses.push({
+      sentence: sentence.trim(),
+      sentiment: {
+        score: analysis.confidence.score * 100,
+        label: analysis.mood === 'happy' || analysis.mood === 'excited' ? 'positive' : 
+               analysis.mood === 'sad' || analysis.mood === 'angry' || analysis.mood === 'tired' ? 'negative' : 'neutral',
+        confidence: analysis.confidence.score
+      }
+    });
+  }
+  
+  // Calculate weighted average based on sentence length and confidence
+  let totalWeight = 0;
+  let weightedScore = 0;
+  let totalConfidence = 0;
+  
+  sentenceAnalyses.forEach((analysis) => {
+    const weight = analysis.sentence.length * (analysis.sentiment.confidence || 0.5);
+    totalWeight += weight;
+    weightedScore += analysis.sentiment.score * weight;
+    totalConfidence += analysis.sentiment.confidence * weight;
+  });
+  
+  const finalScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
+  const finalConfidence = totalWeight > 0 ? totalConfidence / totalWeight : 0;
+  
+  // Determine final label based on weighted score
+  let finalLabel = 'neutral';
+  if (finalScore > 20) {
+    finalLabel = 'positive';
+  } else if (finalScore < -20) {
+    finalLabel = 'negative';
+  }
+  
+  return {
+    score: finalScore,
+    label: finalLabel,
+    confidence: finalConfidence,
+    sentences: sentenceAnalyses
+  };
+};
+
 export const getSmartMoodSuggestion = async (sentiment, currentMood, userHistory = [], text = '') => {
   const suggestions = await smartMoodDetector.getMoodSuggestions(text, currentMood);
   return suggestions.map(suggestion => ({
