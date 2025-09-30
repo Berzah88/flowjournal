@@ -206,9 +206,16 @@ const EmotionalJournalScreen = ({ navigation }) => {
   }, [allMoodData]);
 
   const getMoodInfo = useCallback((moodKey) => {
-    return MOODS.find(m => m.key === moodKey) || 
-           EXTENDED_MOODS.find(m => m.key === moodKey) || 
-           { key: moodKey, label: moodKey, icon: 'sentiment-neutral', color: '#8E8E93' };
+    const mood = MOODS.find(m => m.key === moodKey) || 
+                 EXTENDED_MOODS.find(m => m.key === moodKey) || 
+                 { key: moodKey, label: moodKey, icon: 'sentiment-neutral', color: '#8E8E93', category: 'neutral' };
+    
+    // Ensure category is set
+    if (!mood.category) {
+      mood.category = 'neutral';
+    }
+    
+    return mood;
   }, []);
 
   const getSolidMoodColor = useCallback((originalColor) => {
