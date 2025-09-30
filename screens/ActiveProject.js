@@ -472,7 +472,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 }}
                 onClose={() => {
                   setSelectedJournalMilestone(null);
-                }} 
+                }}
+                fromActiveProject={true}
               />}
               <AddMilestoneModal 
                 visible={addMilestoneModalVisible} 

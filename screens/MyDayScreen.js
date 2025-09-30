@@ -283,8 +283,8 @@ const MyDayScreen = memo(function MyDayScreen({
               today.setHours(0, 0, 0, 0);
               selected.setHours(0, 0, 0, 0);
               
-              // Show button only for today or future dates
-              if (selected >= today) {
+              // Show button for today or future dates, OR when there are active projects
+              if (selected >= today || selectedDateActiveTasks.length > 0) {
                 return (
                   <TouchableOpacity 
                     style={styles.addProjectButton}
@@ -443,6 +443,18 @@ const MyDayScreen = memo(function MyDayScreen({
           ))
         )}
 
+        {/* Add Project Button - Always visible when there are active projects */}
+        {selectedDateActiveTasks.length > 0 && (
+          <TouchableOpacity 
+            style={styles.addProjectButton}
+            onPress={onAddProject}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle" size={18} color="#1976D2" />
+            <Text style={styles.addProjectButtonText}>Add Project</Text>
+          </TouchableOpacity>
+        )}
+
       </View>
     </View>
   );
@@ -497,35 +509,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    marginTop: 8,
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#F0F8FF', // Açık mavi arka plan
+    borderColor: '#1976D2', // Mavi border
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 20,
+    marginBottom: 20,
+    marginHorizontal: 30, // Proje kartlarıyla aynı margin
   },
   addProjectButtonText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#FFFFFF',
-    marginLeft: 8,
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    color: '#1976D2', // Mavi ton
+    marginLeft: 6,
   },
   projectSummaryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F0F8FF', // Açık mavi arka plan
     borderRadius: 12,
     padding: 16,
     marginTop: 6, // 12'den 6'ya düşürdüm - daha kompakt
+    borderColor: '#1976D2', // Solid mavi border
+    borderWidth: 1.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
     marginHorizontal: 2,
   },
   projectHeader: {
@@ -545,11 +556,11 @@ const styles = StyleSheet.create({
   projectTitle: {
     fontSize: 18,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#1D1D1F',
+    color: '#1976D2', // Mavi ton
     flex: 1,
   },
   projectDateRange: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#E3F2FD', // Açık mavi arka plan
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -557,7 +568,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     fontFamily: 'Poppins_500Medium',
-    color: '#8E8E93',
+    color: '#1976D2', // Mavi ton
   },
   milestonesList: {
     marginTop: 8,
@@ -569,7 +580,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+    borderBottomColor: 'rgba(25, 118, 210, 0.1)', // Mavi ton border
   },
   milestoneInfo: {
     flexDirection: 'row',
@@ -583,7 +594,7 @@ const styles = StyleSheet.create({
   milestoneText: {
     fontSize: 14,
     fontFamily: 'Poppins_400Regular',
-    color: '#1D1D1F',
+    color: '#1976D2', // Mavi ton
     marginBottom: 4,
   },
   completedMilestoneText: {

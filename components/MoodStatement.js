@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { MOODS } from '../utils/MoodPredictor';
+import { MOODS } from '../utils/AIMoodPredictor';
 
 const MoodStatement = ({ 
   activeTasks = [], 
@@ -57,12 +57,29 @@ const MoodStatement = ({
     Object.entries(moodCounts).forEach(([mood, count]) => {
       if (count > maxCount) {
         maxCount = count;
-        dominantMood = MOODS.find(m => m.key === mood) || {
-          key: mood,
-          label: mood,
-          icon: 'sentiment-satisfied',
-          color: '#4A90E2'
-        };
+        
+        // Önce MOODS'da ara
+        let foundMood = MOODS.find(m => m.key === mood);
+        
+        // MOODS'da bulunamazsa EXTENDED_MOODS'da ara
+        if (!foundMood) {
+          const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
+          foundMood = EXTENDED_MOODS.find(m => m.key === mood);
+        }
+        
+        // Hiçbirinde bulunamazsa, journal entry'den gelen bilgileri kullan
+        if (!foundMood) {
+          // Bu mood'a sahip ilk entry'yi bul
+          const entryWithMood = todayMoods.find(entry => entry.mood === mood);
+          foundMood = {
+            key: mood,
+            label: mood.charAt(0).toUpperCase() + mood.slice(1), // Capitalize first letter
+            icon: entryWithMood?.moodIcon || 'sentiment-neutral',
+            color: entryWithMood?.moodColor || '#4A90E2'
+          };
+        }
+        
+        dominantMood = foundMood;
       }
     });
     
@@ -122,7 +139,7 @@ const MoodStatement = ({
             { color: todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2' }
           ]}>
             {todayMoodData.totalEntries > 0 ? 
-              "Keep recording your emotions" :
+              "View more details" :
               "Click on a Milestone right away and start writing your journal"
             }
           </Text>

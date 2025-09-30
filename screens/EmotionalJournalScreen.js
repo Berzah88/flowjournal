@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -211,6 +210,33 @@ const EmotionalJournalScreen = ({ navigation }) => {
            { key: moodKey, label: moodKey, icon: 'sentiment-neutral', color: '#8E8E93' };
   }, []);
 
+  const getSolidMoodColor = useCallback((originalColor) => {
+    // Solgun renkleri daha solid hale getir
+    const colorMap = {
+      // Basic MOODS
+      '#C8E6C9': '#4CAF50', // Happy - daha koyu yeşil
+      '#FFE0B2': '#FF9800', // Excited - daha koyu turuncu
+      '#E1F5FE': '#2196F3', // Calm - daha koyu mavi
+      '#F3E5F5': '#9C27B0', // Tired - daha koyu mor
+      '#FFCDD2': '#F44336', // Sad - daha koyu kırmızı
+      '#FFEBEE': '#E91E63', // Angry - daha koyu pembe
+      '#F5F5F5': '#9E9E9E', // Neutral - daha koyu gri
+      
+      // EXTENDED_MOODS (AI mood'ları)
+      '#FFF9C4': '#FBC02D', // Anxious - daha koyu sarı
+      '#FFE0B2': '#FF9800', // Frustrated - daha koyu turuncu
+      '#E8F5E8': '#4CAF50', // Grateful - daha koyu yeşil
+      '#E3F2FD': '#2196F3', // Hopeful - daha koyu mavi
+      '#F3E5F5': '#9C27B0', // Nostalgic - daha koyu mor
+      '#FFE0B2': '#FF9800', // Motivated - daha koyu turuncu
+      '#FFCDD2': '#F44336', // Lonely - daha koyu kırmızı
+      '#E1F5FE': '#2196F3', // Peaceful - daha koyu mavi
+      '#FFF3E0': '#FF9800', // Overwhelmed - daha koyu turuncu
+    };
+    
+    return colorMap[originalColor] || originalColor;
+  }, []);
+
   const getTrendIcon = useCallback(() => {
     switch (moodTrend) {
       case 'improving': return 'trending-up';
@@ -248,17 +274,17 @@ const EmotionalJournalScreen = ({ navigation }) => {
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     
-    // Daha belirgin tonlar oluştur
-    const lightColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
-    const mediumColor = `rgba(${r}, ${g}, ${b}, 0.4)`;
-    const baseColorWithAlpha = `rgba(${r}, ${g}, ${b}, 0.6)`;
+    // Daha solgun tonlar oluştur - alt kısım daha koyu
+    const lightColor = `rgba(${r}, ${g}, ${b}, 0.08)`;
+    const mediumColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
+    const baseColorWithAlpha = `rgba(${r}, ${g}, ${b}, 0.25)`;
     
     return [lightColor, mediumColor, baseColorWithAlpha];
   }, [todayDominantMood]);
 
   if (allMoodData.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <LinearGradient
           colors={getMoodGradientColors()}
           style={styles.gradientBackground}
@@ -282,20 +308,17 @@ const EmotionalJournalScreen = ({ navigation }) => {
             </Text>
           </View>
         </LinearGradient>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <LinearGradient
         colors={getMoodGradientColors()}
         style={styles.gradientBackground}
       >
-        <View style={[
-          styles.header,
-          { backgroundColor: 'transparent' }
-        ]}>
+        <View style={styles.header}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
             style={styles.backButton}
@@ -321,8 +344,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
             <View style={styles.overviewGrid}>
               {/* Total Entries */}
               <View style={styles.overviewItem}>
-                 <View style={[styles.overviewIcon, { backgroundColor: COLORS.GRAY[100] }]}>
-                   <MaterialIcons name="article" size={20} color={COLORS.GRAY[500]} />
+                 <View style={[styles.overviewIcon, { backgroundColor: '#E3F2FD' }]}>
+                   <Ionicons name="document-text-outline" size={18} color="#1976D2" />
                  </View>
                 <Text style={styles.overviewNumber}>{moodStats.totalEntries}</Text>
                 <Text style={styles.overviewLabel}>Total Entries</Text>
@@ -330,8 +353,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
               {/* Last 7 Days */}
               <View style={styles.overviewItem}>
-                 <View style={[styles.overviewIcon, { backgroundColor: COLORS.GRAY[100] }]}>
-                   <MaterialIcons name="date-range" size={20} color={COLORS.GRAY[500]} />
+                 <View style={[styles.overviewIcon, { backgroundColor: '#F3E5F5' }]}>
+                   <Ionicons name="calendar-outline" size={18} color="#8E7DBE" />
                  </View>
                 <Text style={styles.overviewNumber}>{moodStats.last7Days}</Text>
                 <Text style={styles.overviewLabel}>Last 7 Days</Text>
@@ -339,8 +362,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
               {/* Last 30 Days */}
               <View style={styles.overviewItem}>
-                 <View style={[styles.overviewIcon, { backgroundColor: COLORS.GRAY[100] }]}>
-                   <MaterialIcons name="calendar-month" size={20} color={COLORS.GRAY[500]} />
+                 <View style={[styles.overviewIcon, { backgroundColor: '#E8F5E8' }]}>
+                   <Ionicons name="calendar" size={18} color="#4CAF50" />
                  </View>
                 <Text style={styles.overviewNumber}>{moodStats.last30Days}</Text>
                 <Text style={styles.overviewLabel}>Last 30 Days</Text>
@@ -348,8 +371,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
               {/* Words Written - En sağda */}
               <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: COLORS.GRAY[200] }]}>
-                  <MaterialIcons name="edit" size={16} color={COLORS.GRAY[500]} />
+                <View style={[styles.overviewIcon, { backgroundColor: '#FFF3E0' }]}>
+                  <Ionicons name="create-outline" size={18} color="#FF9800" />
                 </View>
                 <Text style={styles.overviewNumber}>{moodStats.totalWords.toLocaleString()}</Text>
                 <Text style={styles.overviewLabel}>Words Written</Text>
@@ -390,18 +413,20 @@ const EmotionalJournalScreen = ({ navigation }) => {
             <View style={[
               styles.moodsList,
               { 
-                borderLeftColor: COLORS.SECONDARY,
-                backgroundColor: 'transparent'
+                borderLeftColor: todayDominantMood?.color || COLORS.SECONDARY,
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                borderWidth: 1,
+                borderColor: todayDominantMood?.color || COLORS.SECONDARY
               }
             ]}>
               {moodStats.topMoods.map(([moodKey, count], index) => {
                 const moodInfo = getMoodInfo(moodKey);
                 return (
                   <View key={moodKey} style={styles.moodItem}>
-                    <View style={[styles.moodRank, { backgroundColor: moodInfo.color }]}>
-                      <Text style={[styles.moodRankText, { color: '#FFFFFF' }]}>#{index + 1}</Text>
+                    <View style={styles.moodRank}>
+                      <Text style={styles.moodRankText}>#{index + 1}</Text>
                     </View>
-                     <View style={[styles.moodIcon, { backgroundColor: moodInfo.color }]}>
+                     <View style={[styles.moodIcon, { backgroundColor: getSolidMoodColor(moodInfo.color) }]}>
                        <MaterialIcons name={moodInfo.icon} size={22} color="#FFFFFF" />
                      </View>
                     <View style={styles.moodInfo}>
@@ -446,7 +471,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
           </View>
         </ScrollView>
       </LinearGradient>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -624,7 +649,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#333333', // Solid dark background
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -632,7 +657,7 @@ const styles = StyleSheet.create({
   moodRankText: {
     fontSize: 12,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#8E8E93',
+    color: '#FFFFFF', // White text for solid background
   },
   moodIcon: {
     width: 36,

@@ -41,6 +41,40 @@ import {
   predictMood
 } from '../utils/AIMoodPredictor';
 
+// Temel mood picker için sadece 5 mood
+const BASIC_MOODS = [
+  {
+    key: "happy",
+    label: "Happy",
+    icon: "sentiment-satisfied",
+    color: "#C8E6C9", // pastel green
+  },
+  {
+    key: "excited",
+    label: "Excited",
+    icon: "celebration",
+    color: "#FFE0B2", // pastel orange
+  },
+  {
+    key: "tired",
+    label: "Tired",
+    icon: "bedtime",
+    color: "#F3E5F5", // pastel purple
+  },
+  {
+    key: "sad",
+    label: "Sad",
+    icon: "sentiment-dissatisfied",
+    color: "#FFCDD2", // pastel red
+  },
+  {
+    key: "angry",
+    label: "Angry",
+    icon: "mood-bad",
+    color: "#FFEBEE", // light red
+  },
+];
+
 const { width, height } = Dimensions.get("window");
 
 const TOP_GAP = 20;
@@ -56,12 +90,13 @@ export default function Journal({
   existingEntry = null,
   onSave = () => {},
   fromMainScreen = false,
+  fromActiveProject = false,
 }) {
 
   const { addJournalEntry, updateJournalEntry } = useTaskActions();
 
-  // Dinamik TOP_GAP - MainScreen'den açılırken daha fazla boşluk
-  const dynamicTopGap = fromMainScreen ? 40 : TOP_GAP;
+  // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler
+  const dynamicTopGap = fromActiveProject ? 0 : (fromMainScreen ? 40 : TOP_GAP);
   const modalHeight = height - dynamicTopGap;
 
   // Dinamik styles
@@ -278,13 +313,24 @@ export default function Journal({
       setHasMedia(existingPreviews.length > 0);
       // If previous code saved mood info (mood/moodIcon/moodColor), restore it
       if (existingEntry.mood) {
-        const m = MOODS.find((mm) => mm.key === existingEntry.mood);
-        if (m) setSelectedMood(m);
-        else setSelectedMood({
-          key: existingEntry.mood || null,
-          icon: existingEntry.moodIcon || null,
-          color: existingEntry.moodColor || null,
-        });
+        // Önce MOODS'da ara
+        let m = MOODS.find((mm) => mm.key === existingEntry.mood);
+        if (!m) {
+          // EXTENDED_MOODS'da ara
+          const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
+          m = EXTENDED_MOODS.find((mm) => mm.key === existingEntry.mood);
+        }
+        if (m) {
+          setSelectedMood(m);
+        } else {
+          // Hiçbirinde bulunamazsa custom mood objesi oluştur
+          setSelectedMood({
+            key: existingEntry.mood || null,
+            label: existingEntry.mood || 'Unknown',
+            icon: existingEntry.moodIcon || 'sentiment-neutral',
+            color: existingEntry.moodColor || '#F5F5F5',
+          });
+        }
       } else {
         setSelectedMood(null);
       }
@@ -492,31 +538,19 @@ export default function Journal({
       const taskId = milestone.taskId || milestone.parentTaskId || milestone.task?.id;
       const msId = milestone.id;
 
-      // Otomatik mood seçimi - kullanıcı seçmemişse en uygun olanı seç
+      // Mood seçimi - kullanıcının seçtiği mood'u veya otomatik öneriyi kullan
       let finalMood = selectedMood;
+      
+      // Eğer kullanıcı mood seçmemişse otomatik öneriyi kullan
       if (!selectedMood && moodSuggestions.length > 0) {
-        const suggestedMood = MOODS.find(m => m.key === moodSuggestions[0].mood);
+        // Önerilen mood'u MOODS veya EXTENDED_MOODS'dan bul
+        let suggestedMood = MOODS.find(m => m.key === moodSuggestions[0].mood);
         if (!suggestedMood) {
-          // Extended mood ise basic mood'a çevir
+          // EXTENDED_MOODS'dan bul
           const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
-          const extendedMood = EXTENDED_MOODS.find(m => m.key === moodSuggestions[0].mood);
-          if (extendedMood) {
-            // Extended mood'u basic mood'a map et
-            const moodMapping = {
-              'frustrated': 'angry',
-              'anxious': 'sad', 
-              'overwhelmed': 'tired',
-              'grateful': 'happy',
-              'hopeful': 'happy',
-              'nostalgic': 'calm',
-              'motivated': 'excited',
-              'lonely': 'sad',
-              'peaceful': 'calm'
-            };
-            const basicMoodKey = moodMapping[extendedMood.key] || 'calm';
-            finalMood = MOODS.find(m => m.key === basicMoodKey);
-          }
-        } else {
+          suggestedMood = EXTENDED_MOODS.find(m => m.key === moodSuggestions[0].mood);
+        }
+        if (suggestedMood) {
           finalMood = suggestedMood;
         }
       }
@@ -550,7 +584,7 @@ export default function Journal({
         
         // Update user history for pattern learning
         const newEntry = {
-          mood: selectedMood?.key || null,
+          mood: finalMood?.key || null,
           sentiment: sentiment,
           text: textValue?.trim() || "",
           timestamp: new Date().toISOString()
@@ -723,9 +757,9 @@ export default function Journal({
           {/* Mood Suggestions + Media Counter Row */}
           <View style={styles.moodMediaRow}>
             {/* Mood Suggestions - Left Side */}
-            {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
-              <View style={styles.moodSuggestionsContainer}>
-                {moodSuggestions.map((suggestion, index) => {
+            <View style={styles.moodSuggestionsContainer}>
+              {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
+                moodSuggestions.map((suggestion, index) => {
                   // First try to find in basic MOODS, then in EXTENDED_MOODS
                   let suggestedMood = MOODS.find(m => m.key === suggestion.mood);
                   if (!suggestedMood) {
@@ -741,6 +775,7 @@ export default function Journal({
                         styles.moodTag,
                         { backgroundColor: suggestedMood?.color || '#4A90E2' }
                       ]}
+                      activeOpacity={0.7}
                       onPress={() => {
                         if (suggestedMood) {
                           setSelectedMood(suggestedMood);
@@ -748,6 +783,7 @@ export default function Journal({
                           setAutoMoodApplied(true);
                         }
                       }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <MaterialIcons 
                         name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
@@ -757,16 +793,16 @@ export default function Journal({
                       <Text style={styles.moodTagText}>{suggestedMood?.label}</Text>
                     </TouchableOpacity>
                   );
-                })}
-              </View>
-            )}
+                })
+              )}
+            </View>
             
             {/* Media Counter - Right Side */}
-            {previews.length > 0 && (
+            {previews.filter(p => p.type === "image").length > 0 && (
               <View style={styles.mediaCounterContainer}>
                 <View style={styles.mediaCounter}>
                   <Ionicons name="image" size={16} color="#007AFF" />
-                  <Text style={styles.mediaCounterText}>{previews.length}</Text>
+                  <Text style={styles.mediaCounterText}>{previews.filter(p => p.type === "image").length}</Text>
                 </View>
               </View>
             )}
@@ -810,7 +846,7 @@ export default function Journal({
                 style={[styles.moodPicker, { bottom: keyboardHeight ? keyboardHeight + 90 : 106 }, moodPickerAnimatedStyle]}
                 onStartShouldSetResponder={() => true}
               >
-                {MOODS.map((m) => (
+                {BASIC_MOODS.map((m) => (
                   <TouchableOpacity
                     key={m.key}
                     style={[
@@ -835,7 +871,10 @@ export default function Journal({
             </TouchableOpacity>
           )}
 
-          <View style={[styles.buttonRow, { bottom: keyboardHeight || 0, marginBottom: 15 }]}>
+          <View style={[styles.buttonRow, { 
+            bottom: fromActiveProject ? (keyboardHeight || 0) + 20 : (keyboardHeight || 0), 
+            marginBottom: 15 
+          }]}>
             {buttons.map((btn, i) => (
               <TouchableOpacity
                 key={i}
@@ -1255,10 +1294,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     marginRight: 6,
     marginBottom: 4,
+    minHeight: 36,
+    minWidth: 60,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
