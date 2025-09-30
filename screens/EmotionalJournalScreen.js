@@ -252,6 +252,99 @@ const EmotionalJournalScreen = ({ navigation }) => {
     }
   }, [moodTrend]);
 
+  // Project emotional progress analysis
+  const getProjectEmotionalProgress = useCallback(() => {
+    const projectProgress = [];
+    
+    activeTasks.forEach(task => {
+      if (task.milestones && task.milestones.length > 0) {
+        const projectMoods = [];
+        let totalMoodScore = 0;
+        let moodCount = 0;
+        
+        // Collect all moods from this project
+        task.milestones.forEach(milestone => {
+          if (milestone.journalEntries) {
+            milestone.journalEntries.forEach(entry => {
+              if (entry.mood) {
+                const moodInfo = getMoodInfo(entry.mood);
+                projectMoods.push({
+                  mood: entry.mood,
+                  moodInfo,
+                  date: new Date(entry.createdAt)
+                });
+                
+                // Calculate mood score (positive = 1, neutral = 0, negative = -1)
+                const score = moodInfo.category === 'positive' ? 1 : 
+                             moodInfo.category === 'negative' ? -1 : 0;
+                totalMoodScore += score;
+                moodCount++;
+              }
+            });
+          }
+        });
+        
+        if (moodCount > 0) {
+          const averageScore = totalMoodScore / moodCount;
+          const recentMoods = projectMoods
+            .sort((a, b) => b.date - a.date)
+            .slice(0, 3);
+          
+          // Determine emotional progress
+          let progressType = 'neutral';
+          let progressMessage = 'This project is progressing steadily';
+          let progressIcon = 'trending-flat';
+          let progressColor = '#9E9E9E';
+          
+          if (averageScore > 0.3) {
+            progressType = 'positive';
+            progressMessage = 'This project is going great for you!';
+            progressIcon = 'trending-up';
+            progressColor = '#4CAF50';
+          } else if (averageScore < -0.3) {
+            progressType = 'negative';
+            progressMessage = 'This project seems challenging for you';
+            progressIcon = 'trending-down';
+            progressColor = '#F44336';
+          } else if (recentMoods.length >= 2) {
+            // Check recent trend
+            const recentScore = recentMoods.slice(0, 2).reduce((sum, mood) => {
+              const score = mood.moodInfo.category === 'positive' ? 1 : 
+                           mood.moodInfo.category === 'negative' ? -1 : 0;
+              return sum + score;
+            }, 0);
+            
+            if (recentScore > 0) {
+              progressType = 'improving';
+              progressMessage = 'This project is getting better for you';
+              progressIcon = 'trending-up';
+              progressColor = '#FF9800';
+            } else if (recentScore < 0) {
+              progressType = 'declining';
+              progressMessage = 'This project is becoming more challenging';
+              progressIcon = 'trending-down';
+              progressColor = '#FF5722';
+            }
+          }
+          
+          projectProgress.push({
+            projectId: task.id,
+            projectTitle: task.title,
+            progressType,
+            progressMessage,
+            progressIcon,
+            progressColor,
+            averageScore,
+            moodCount,
+            recentMoods: recentMoods.map(m => m.moodInfo)
+          });
+        }
+      }
+    });
+    
+    return projectProgress.sort((a, b) => b.moodCount - a.moodCount);
+  }, [activeTasks, getMoodInfo]);
+
   const getTrendColor = useCallback(() => {
     switch (moodTrend) {
       case 'improving': return '#34C759';
@@ -414,9 +507,9 @@ const EmotionalJournalScreen = ({ navigation }) => {
             </View>
           )}
 
-          {/* Top Moods */}
+          {/* Project Emotional Progress */}
           <View style={styles.topMoodsContainer}>
-            <Text style={styles.sectionTitle}>Most Frequent Moods</Text>
+            <Text style={styles.sectionTitle}>Project Emotional Progress</Text>
             <View style={[
               styles.moodsList,
               { 
@@ -426,23 +519,20 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 borderColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY
               }
             ]}>
-              {moodStats.topMoods.map(([moodKey, count], index) => {
-                const moodInfo = getMoodInfo(moodKey);
-                return (
-                  <View key={moodKey} style={styles.moodItem}>
-                    <View style={styles.moodRank}>
-                      <Text style={styles.moodRankText}>#{index + 1}</Text>
-                    </View>
-                     <View style={[styles.moodIcon, { backgroundColor: getSolidMoodColor(moodInfo.color) }]}>
-                       <MaterialIcons name={moodInfo.icon} size={22} color="#FFFFFF" />
-                     </View>
-                    <View style={styles.moodInfo}>
-                      <Text style={styles.moodName}>{moodInfo.label}</Text>
-                      <Text style={styles.moodCount}>{count} times</Text>
-                    </View>
+              {getProjectEmotionalProgress().map((project, index) => (
+                <View key={project.projectId} style={styles.moodItem}>
+                  <View style={styles.moodRank}>
+                    <Text style={styles.moodRankText}>#{index + 1}</Text>
                   </View>
-                );
-              })}
+                  <View style={[styles.moodIcon, { backgroundColor: project.progressColor }]}>
+                    <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.moodInfo}>
+                    <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
+                    <Text style={styles.moodCount}>{project.progressMessage}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
 
