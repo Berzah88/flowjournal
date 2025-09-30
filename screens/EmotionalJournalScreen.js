@@ -457,6 +457,300 @@ const EmotionalJournalScreen = ({ navigation }) => {
     return projectsWithoutMoods;
   }, [activeTasks]);
 
+  // AI-powered insights and recommendations system
+  const getInsightsAndRecommendations = useCallback(() => {
+    const insights = [];
+    const recommendations = [];
+    
+    // Analyze mood patterns
+    const last7Days = allMoodData.filter(entry => {
+      const entryDate = new Date(entry.createdAt);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return entryDate >= weekAgo;
+    });
+    
+    const last30Days = allMoodData.filter(entry => {
+      const entryDate = new Date(entry.createdAt);
+      const monthAgo = new Date();
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      return entryDate >= monthAgo;
+    });
+    
+    // Mood frequency analysis
+    const moodCounts = {};
+    last30Days.forEach(entry => {
+      if (entry.mood) {
+        moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+      }
+    });
+    
+    const sortedMoods = Object.entries(moodCounts)
+      .sort(([,a], [,b]) => b - a);
+    
+    // Generate insights based on patterns
+    if (sortedMoods.length > 0) {
+      const dominantMood = sortedMoods[0][0];
+      const dominantMoodInfo = getMoodInfo(dominantMood);
+      const dominantCount = sortedMoods[0][1];
+      const totalEntries = last30Days.length;
+      const percentage = Math.round((dominantCount / totalEntries) * 100);
+      
+      // Insight 1: Dominant mood pattern
+      insights.push({
+        type: 'pattern',
+        title: 'Your Emotional Pattern',
+        message: `Over the last 30 days, you've felt ${dominantMoodInfo.label.toLowerCase()} ${percentage}% of the time.`,
+        icon: dominantMoodInfo.icon,
+        color: getSolidMoodColor(dominantMoodInfo.color)
+      });
+      
+      // Insight 2: Mood trend
+      if (moodTrend) {
+        const trendMessages = {
+          improving: 'Your emotional well-being is on an upward trend!',
+          declining: 'You might want to focus on self-care and emotional support.',
+          stable: 'You maintain a consistent emotional state.'
+        };
+        
+        insights.push({
+          type: 'trend',
+          title: 'Mood Trend',
+          message: trendMessages[moodTrend],
+          icon: getTrendIcon(),
+          color: getTrendColor()
+        });
+      }
+      
+      // Insight 3: Activity correlation
+      const projectMoodCorrelation = getProjectMoodCorrelation();
+      if (projectMoodCorrelation) {
+        insights.push({
+          type: 'correlation',
+          title: 'Project Impact',
+          message: projectMoodCorrelation.message,
+          icon: projectMoodCorrelation.icon,
+          color: projectMoodCorrelation.color
+        });
+      }
+    }
+    
+    // Generate recommendations based on insights
+    if (sortedMoods.length > 0) {
+      const dominantMood = sortedMoods[0][0];
+      const dominantMoodInfo = getMoodInfo(dominantMood);
+      
+      // Recommendation based on dominant mood
+      const moodRecommendations = {
+        happy: [
+          'Keep doing what makes you happy! Consider sharing your positive energy with others.',
+          'Your happiness is contagious! Use this positive momentum to tackle new challenges.',
+          'This joy is well-deserved. Consider setting new goals to maintain this positive energy.'
+        ],
+        excited: [
+          'Channel this excitement into new projects and opportunities!',
+          'Your enthusiasm is powerful - use it to inspire others around you.',
+          'This energy is perfect for taking on bigger challenges and goals.'
+        ],
+        tired: [
+          'Your body is asking for rest. Consider taking a break or reducing your workload.',
+          'Prioritize self-care and ensure you\'re getting enough sleep and relaxation.',
+          'This tiredness might indicate you need to reassess your work-life balance.'
+        ],
+        sad: [
+          'It\'s okay to feel this way. Consider talking to someone you trust or seeking support.',
+          'This sadness might be temporary. Focus on small, positive activities each day.',
+          'Consider what might be causing this sadness and take steps to address it.'
+        ],
+        anxious: [
+          'Anxiety is manageable. Try deep breathing exercises or mindfulness practices.',
+          'Consider breaking down overwhelming tasks into smaller, manageable steps.',
+          'Your anxiety might be telling you something important - listen to it with compassion.'
+        ],
+        frustrated: [
+          'Frustration often signals growth. You\'re pushing your boundaries - that\'s positive!',
+          'Try to identify what\'s causing the frustration and address it systematically.',
+          'This feeling might indicate you need to change your approach or seek help.'
+        ],
+        calm: [
+          'Your calmness is a superpower! Use this peaceful energy to make wise decisions.',
+          'This tranquility is perfect for reflection and planning your next steps.',
+          'Your serenity is valuable - consider how to maintain this peaceful state.'
+        ],
+        motivated: [
+          'Your motivation is strong! Use this drive to tackle your most important goals.',
+          'This determination is your competitive advantage - leverage it fully.',
+          'Your motivation is inspiring - consider how to sustain this energy long-term.'
+        ]
+      };
+      
+      const moodRecs = moodRecommendations[dominantMood] || [
+        'Continue tracking your emotions to better understand your patterns.',
+        'Consider setting small, achievable goals to maintain your progress.',
+        'Your emotional awareness is growing - keep up the great work!'
+      ];
+      
+      recommendations.push({
+        type: 'mood-based',
+        title: 'Personalized Recommendation',
+        message: moodRecs[Math.floor(Math.random() * moodRecs.length)],
+        icon: 'lightbulb',
+        color: '#FF9800'
+      });
+    }
+    
+    // General recommendations
+    if (last7Days.length < 3) {
+      recommendations.push({
+        type: 'activity',
+        title: 'Journal More',
+        message: 'Try to write in your journal more frequently to get better insights into your emotional patterns.',
+        icon: 'edit',
+        color: '#2196F3'
+      });
+    }
+    
+    if (sortedMoods.length < 3) {
+      recommendations.push({
+        type: 'diversity',
+        title: 'Emotional Diversity',
+        message: 'Consider exploring different activities to experience a wider range of emotions.',
+        icon: 'explore',
+        color: '#4CAF50'
+      });
+    }
+    
+    return { insights, recommendations };
+  }, [allMoodData, moodTrend, getMoodInfo, getSolidMoodColor, getTrendIcon, getTrendColor]);
+
+  // Project mood correlation analysis
+  const getProjectMoodCorrelation = useCallback(() => {
+    const projectMoods = {};
+    
+    // Analyze mood patterns by project
+    activeTasks.forEach(task => {
+      if (task.milestones) {
+        task.milestones.forEach(milestone => {
+          if (milestone.journalEntries) {
+            milestone.journalEntries.forEach(entry => {
+              if (entry.mood) {
+                if (!projectMoods[task.title]) {
+                  projectMoods[task.title] = [];
+                }
+                projectMoods[task.title].push(entry.mood);
+              }
+            });
+          }
+        });
+      }
+    });
+    
+    // Find project with strongest mood correlation
+    let strongestProject = null;
+    let strongestMood = null;
+    let maxCount = 0;
+    
+    Object.entries(projectMoods).forEach(([projectName, moods]) => {
+      const moodCounts = {};
+      moods.forEach(mood => {
+        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+      });
+      
+      const sortedMoods = Object.entries(moodCounts)
+        .sort(([,a], [,b]) => b - a);
+      
+      if (sortedMoods.length > 0 && sortedMoods[0][1] > maxCount) {
+        maxCount = sortedMoods[0][1];
+        strongestProject = projectName;
+        strongestMood = sortedMoods[0][0];
+      }
+    });
+    
+    if (strongestProject && strongestMood) {
+      const moodInfo = getMoodInfo(strongestMood);
+      return {
+        message: `Your "${strongestProject}" project has the strongest emotional impact on you.`,
+        icon: 'trending-up',
+        color: getSolidMoodColor(moodInfo.color)
+      };
+    }
+    
+    return null;
+  }, [activeTasks, getMoodInfo, getSolidMoodColor]);
+
+  // Mood-based goal tracking system
+  const getMoodGoals = useCallback(() => {
+    const goals = [];
+    
+    // Analyze current mood patterns for goal suggestions
+    const last30Days = allMoodData.filter(entry => {
+      const entryDate = new Date(entry.createdAt);
+      const monthAgo = new Date();
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      return entryDate >= monthAgo;
+    });
+    
+    const moodCounts = {};
+    last30Days.forEach(entry => {
+      if (entry.mood) {
+        moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+      }
+    });
+    
+    const sortedMoods = Object.entries(moodCounts)
+      .sort(([,a], [,b]) => b - a);
+    
+    if (sortedMoods.length > 0) {
+      const dominantMood = sortedMoods[0][0];
+      const dominantMoodInfo = getMoodInfo(dominantMood);
+      
+      // Generate goals based on mood patterns
+      const moodGoals = {
+        happy: [
+          { title: 'Maintain Happiness', description: 'Keep doing activities that bring you joy', target: 'Continue feeling happy 70% of the time', icon: 'sentiment-satisfied', color: '#4CAF50' },
+          { title: 'Spread Joy', description: 'Share your positive energy with others', target: 'Help 3 people feel happier this month', icon: 'favorite', color: '#FF9800' }
+        ],
+        excited: [
+          { title: 'Channel Energy', description: 'Use your excitement for new challenges', target: 'Start 2 new exciting projects', icon: 'trending-up', color: '#FF5722' },
+          { title: 'Maintain Enthusiasm', description: 'Keep your energy levels high', target: 'Stay excited about your goals', icon: 'celebration', color: '#E91E63' }
+        ],
+        tired: [
+          { title: 'Improve Energy', description: 'Focus on better sleep and rest', target: 'Get 8 hours of sleep for 5 days this week', icon: 'bedtime', color: '#9C27B0' },
+          { title: 'Reduce Stress', description: 'Find ways to manage your workload', target: 'Take breaks every 2 hours of work', icon: 'spa', color: '#607D8B' }
+        ],
+        sad: [
+          { title: 'Boost Mood', description: 'Engage in activities that make you happy', target: 'Do 1 enjoyable activity daily', icon: 'wb-sunny', color: '#FFC107' },
+          { title: 'Seek Support', description: 'Connect with friends and family', target: 'Talk to someone you trust 3 times this week', icon: 'people', color: '#2196F3' }
+        ],
+        anxious: [
+          { title: 'Manage Anxiety', description: 'Practice relaxation techniques', target: 'Do 10 minutes of deep breathing daily', icon: 'spa', color: '#795548' },
+          { title: 'Build Confidence', description: 'Focus on your strengths and achievements', target: 'Write down 3 things you did well each day', icon: 'self-improvement', color: '#3F51B5' }
+        ],
+        frustrated: [
+          { title: 'Find Solutions', description: 'Break down problems into smaller steps', target: 'Solve 1 frustrating problem this week', icon: 'build', color: '#FF5722' },
+          { title: 'Change Approach', description: 'Try different methods for challenging tasks', target: 'Experiment with 2 new approaches', icon: 'refresh', color: '#607D8B' }
+        ],
+        calm: [
+          { title: 'Maintain Peace', description: 'Keep your calm energy flowing', target: 'Stay calm during 3 stressful situations', icon: 'spa', color: '#4CAF50' },
+          { title: 'Share Serenity', description: 'Help others find their calm', target: 'Help 2 people feel more peaceful', icon: 'favorite', color: '#2196F3' }
+        ],
+        motivated: [
+          { title: 'Achieve Goals', description: 'Use your motivation to reach targets', target: 'Complete 3 important tasks this week', icon: 'check-circle', color: '#4CAF50' },
+          { title: 'Inspire Others', description: 'Share your drive with your team', target: 'Motivate 2 people to reach their goals', icon: 'trending-up', color: '#FF9800' }
+        ]
+      };
+      
+      const goalsForMood = moodGoals[dominantMood] || [
+        { title: 'Track Emotions', description: 'Continue monitoring your emotional patterns', target: 'Write in your journal daily', icon: 'edit', color: '#9E9E9E' },
+        { title: 'Self-Reflection', description: 'Take time to understand your feelings', target: 'Reflect on your emotions weekly', icon: 'psychology', color: '#607D8B' }
+      ];
+      
+      goals.push(...goalsForMood.slice(0, 2)); // Show top 2 goals
+    }
+    
+    return goals;
+  }, [allMoodData, getMoodInfo]);
+
   // Get completed projects emotional progress analysis
   const getCompletedProjectEmotionalProgress = useCallback(() => {
     const projectProgress = [];
@@ -1145,36 +1439,84 @@ const EmotionalJournalScreen = ({ navigation }) => {
              </View>
            )}
 
-          {/* Recent Entries */}
-          <View style={styles.recentContainer}>
-            <Text style={styles.sectionTitle}>Recent Entries</Text>
-            <View style={[
-              styles.entriesList,
-              { borderLeftColor: COLORS.INFO }
-            ]}>
-               {allMoodData.slice(0, 10).map((entry, index) => {
-                 const moodInfo = getMoodInfo(entry.mood);
-                 return (
-                   <View key={entry.id || index} style={styles.entryItem}>
-                     <View style={[styles.entryMoodIcon, { backgroundColor: getSolidMoodColor(moodInfo.color) }]}>
-                       <MaterialIcons name={moodInfo.icon} size={18} color="#FFFFFF" />
-                     </View>
-                     <View style={styles.entryContent}>
-                       <Text style={styles.entryText} numberOfLines={2}>
-                         {entry.text || 'No text'}
-                       </Text>
-                       <View style={styles.entryMeta}>
-                         <Text style={styles.entryProject}>{entry.projectTitle}</Text>
-                         <Text style={styles.entryDate}>
-                           {new Date(entry.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
-                         </Text>
-                       </View>
-                     </View>
-                   </View>
-                 );
-               })}
-            </View>
-          </View>
+          {/* Insights & Recommendations */}
+          {(() => {
+            const { insights, recommendations } = getInsightsAndRecommendations();
+            return (
+              <>
+                {insights.length > 0 && (
+                  <View style={styles.insightsContainer}>
+                    <Text style={styles.sectionTitle}>Personal Insights</Text>
+                    <View style={[
+                      styles.insightsList,
+                      { borderLeftColor: '#2196F3' }
+                    ]}>
+                      {insights.map((insight, index) => (
+                        <View key={index} style={styles.insightItem}>
+                          <View style={[styles.insightIcon, { backgroundColor: insight.color }]}>
+                            <MaterialIcons name={insight.icon} size={20} color="#FFFFFF" />
+                          </View>
+                          <View style={styles.insightContent}>
+                            <Text style={styles.insightTitle}>{insight.title}</Text>
+                            <Text style={styles.insightMessage}>{insight.message}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {recommendations.length > 0 && (
+                  <View style={styles.recommendationsContainer}>
+                    <Text style={styles.sectionTitle}>Recommendations</Text>
+                    <View style={[
+                      styles.recommendationsList,
+                      { borderLeftColor: '#FF9800' }
+                    ]}>
+                      {recommendations.map((rec, index) => (
+                        <View key={index} style={styles.recommendationItem}>
+                          <View style={[styles.recommendationIcon, { backgroundColor: rec.color }]}>
+                            <MaterialIcons name={rec.icon} size={20} color="#FFFFFF" />
+                          </View>
+                          <View style={styles.recommendationContent}>
+                            <Text style={styles.recommendationTitle}>{rec.title}</Text>
+                            <Text style={styles.recommendationMessage}>{rec.message}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            );
+          })()}
+
+          {/* Mood-Based Goals */}
+          {(() => {
+            const goals = getMoodGoals();
+            return goals.length > 0 && (
+              <View style={styles.goalsContainer}>
+                <Text style={styles.sectionTitle}>Your Goals</Text>
+                <View style={[
+                  styles.goalsList,
+                  { borderLeftColor: '#4CAF50' }
+                ]}>
+                  {goals.map((goal, index) => (
+                    <View key={index} style={styles.goalItem}>
+                      <View style={[styles.goalIcon, { backgroundColor: goal.color }]}>
+                        <MaterialIcons name={goal.icon} size={20} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.goalContent}>
+                        <Text style={styles.goalTitle}>{goal.title}</Text>
+                        <Text style={styles.goalDescription}>{goal.description}</Text>
+                        <Text style={styles.goalTarget}>{goal.target}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
+          })()}
         </ScrollView>
       </LinearGradient>
     </View>
@@ -1396,6 +1738,155 @@ const styles = StyleSheet.create({
      fontStyle: 'italic',
      marginTop: 4,
      lineHeight: 16,
+   },
+   insightsContainer: {
+     marginTop: 24,
+     marginBottom: 24,
+   },
+   insightsList: {
+     backgroundColor: '#FFFFFF',
+     borderRadius: 16,
+     padding: 16,
+     marginHorizontal: SPACING.LG,
+     borderLeftWidth: 4,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.1,
+     shadowRadius: 8,
+     elevation: 3,
+   },
+   insightItem: {
+     flexDirection: 'row',
+     alignItems: 'flex-start',
+     paddingVertical: 12,
+     borderBottomWidth: 1,
+     borderBottomColor: '#F8F9FA',
+   },
+   insightIcon: {
+     width: 32,
+     height: 32,
+     borderRadius: 16,
+     justifyContent: 'center',
+     alignItems: 'center',
+     marginRight: 12,
+   },
+   insightContent: {
+     flex: 1,
+   },
+   insightTitle: {
+     fontSize: 14,
+     fontFamily: 'Poppins_600SemiBold',
+     color: '#333',
+     marginBottom: 4,
+   },
+   insightMessage: {
+     fontSize: 13,
+     fontFamily: 'Poppins_400Regular',
+     color: '#666',
+     lineHeight: 18,
+   },
+   recommendationsContainer: {
+     marginTop: 24,
+     marginBottom: 24,
+   },
+   recommendationsList: {
+     backgroundColor: '#FFFFFF',
+     borderRadius: 16,
+     padding: 16,
+     marginHorizontal: SPACING.LG,
+     borderLeftWidth: 4,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.1,
+     shadowRadius: 8,
+     elevation: 3,
+   },
+   recommendationItem: {
+     flexDirection: 'row',
+     alignItems: 'flex-start',
+     paddingVertical: 12,
+     borderBottomWidth: 1,
+     borderBottomColor: '#F8F9FA',
+   },
+   recommendationIcon: {
+     width: 32,
+     height: 32,
+     borderRadius: 16,
+     justifyContent: 'center',
+     alignItems: 'center',
+     marginRight: 12,
+   },
+   recommendationContent: {
+     flex: 1,
+   },
+   recommendationTitle: {
+     fontSize: 14,
+     fontFamily: 'Poppins_600SemiBold',
+     color: '#333',
+     marginBottom: 4,
+   },
+   recommendationMessage: {
+     fontSize: 13,
+     fontFamily: 'Poppins_400Regular',
+     color: '#666',
+     lineHeight: 18,
+   },
+   goalsContainer: {
+     marginTop: 24,
+     marginBottom: 40,
+   },
+   goalsList: {
+     backgroundColor: '#FFFFFF',
+     borderRadius: 16,
+     padding: 16,
+     marginHorizontal: SPACING.LG,
+     borderLeftWidth: 4,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.1,
+     shadowRadius: 8,
+     elevation: 3,
+   },
+   goalItem: {
+     flexDirection: 'row',
+     alignItems: 'flex-start',
+     paddingVertical: 12,
+     borderBottomWidth: 1,
+     borderBottomColor: '#F8F9FA',
+   },
+   goalIcon: {
+     width: 32,
+     height: 32,
+     borderRadius: 16,
+     justifyContent: 'center',
+     alignItems: 'center',
+     marginRight: 12,
+   },
+   goalContent: {
+     flex: 1,
+   },
+   goalTitle: {
+     fontSize: 14,
+     fontFamily: 'Poppins_600SemiBold',
+     color: '#333',
+     marginBottom: 4,
+   },
+   goalDescription: {
+     fontSize: 13,
+     fontFamily: 'Poppins_400Regular',
+     color: '#666',
+     lineHeight: 18,
+     marginBottom: 4,
+   },
+   goalTarget: {
+     fontSize: 12,
+     fontFamily: 'Poppins_500Medium',
+     color: '#4CAF50',
+     backgroundColor: '#E8F5E8',
+     paddingHorizontal: 8,
+     paddingVertical: 4,
+     borderRadius: 8,
+     alignSelf: 'flex-start',
    },
   recentContainer: {
     marginTop: 24,
