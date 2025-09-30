@@ -284,7 +284,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
           }
         });
         
-        if (moodCount > 0) {
+        if (moodCount > 0 && projectMoods.length > 0) {
           const averageScore = totalMoodScore / moodCount;
           const recentMoods = projectMoods
             .sort((a, b) => b.date - a.date)
@@ -459,6 +459,195 @@ const EmotionalJournalScreen = ({ navigation }) => {
     
     return projectProgress.sort((a, b) => b.moodCount - a.moodCount);
   }, [activeTasks, getMoodInfo]);
+
+  // Completed projects emotional progress analysis
+  const getCompletedProjectEmotionalProgress = useCallback(() => {
+    const projectProgress = [];
+    
+    completedTasks.forEach(task => {
+      if (task.milestones && task.milestones.length > 0) {
+        const projectMoods = [];
+        let totalMoodScore = 0;
+        let moodCount = 0;
+        
+        // Collect all moods from this completed project
+        task.milestones.forEach(milestone => {
+          if (milestone.journalEntries) {
+            milestone.journalEntries.forEach(entry => {
+              if (entry.mood) {
+                const moodInfo = getMoodInfo(entry.mood);
+                projectMoods.push({
+                  mood: entry.mood,
+                  moodInfo,
+                  date: new Date(entry.createdAt)
+                });
+                
+                // Calculate mood score (positive = 1, neutral = 0, negative = -1)
+                const score = moodInfo.category === 'positive' ? 1 : 
+                             moodInfo.category === 'negative' ? -1 : 0;
+                totalMoodScore += score;
+                moodCount++;
+              }
+            });
+          }
+        });
+        
+        if (moodCount > 0 && projectMoods.length > 0) {
+          const averageScore = totalMoodScore / moodCount;
+          const recentMoods = projectMoods
+            .sort((a, b) => b.date - a.date)
+            .slice(0, 3);
+          
+          // Determine emotional progress based on dominant mood
+          const dominantMood = recentMoods[0]?.moodInfo;
+          let progressType = 'neutral';
+          let progressMessage = 'This project was completed steadily';
+          let progressIcon = 'trending-flat';
+          let progressColor = '#9E9E9E';
+          
+          // Mood-specific messages and icons for completed projects
+          if (averageScore > 0.3) {
+            progressType = 'positive';
+            progressColor = '#4CAF50';
+            
+            // Positive mood-specific messages for completed projects
+            switch (dominantMood?.key) {
+              case 'happy':
+                progressMessage = 'This project brought you joy and satisfaction!';
+                progressIcon = 'sentiment-satisfied';
+                break;
+              case 'excited':
+                progressMessage = 'You were enthusiastic and energized about this project!';
+                progressIcon = 'celebration';
+                break;
+              case 'grateful':
+                progressMessage = 'You felt grateful and appreciative of this project!';
+                progressIcon = 'favorite';
+                break;
+              case 'hopeful':
+                progressMessage = 'This project filled you with hope and optimism!';
+                progressIcon = 'wb-sunny';
+                break;
+              case 'proud':
+                progressMessage = 'You were proud of your progress on this project!';
+                progressIcon = 'emoji-events';
+                break;
+              case 'relieved':
+                progressMessage = 'This project gave you a sense of relief and peace!';
+                progressIcon = 'spa';
+                break;
+              case 'motivated':
+                progressMessage = 'You felt highly motivated throughout this project!';
+                progressIcon = 'trending-up';
+                break;
+              case 'peaceful':
+                progressMessage = 'This project brought you inner peace and calm!';
+                progressIcon = 'spa';
+                break;
+              case 'content':
+                progressMessage = 'You felt content and satisfied with this project!';
+                progressIcon = 'sentiment-satisfied';
+                break;
+              default:
+                progressMessage = 'This project was completed successfully!';
+                progressIcon = 'trending-up';
+            }
+          } else if (averageScore < -0.3) {
+            progressType = 'negative';
+            progressColor = '#F44336';
+            
+            // Negative mood-specific messages for completed projects
+            switch (dominantMood?.key) {
+              case 'sad':
+                progressMessage = 'This project made you feel down and discouraged';
+                progressIcon = 'sentiment-dissatisfied';
+                break;
+              case 'angry':
+                progressMessage = 'This project was frustrating and angering';
+                progressIcon = 'mood-bad';
+                break;
+              case 'tired':
+                progressMessage = 'This project was exhausting and draining';
+                progressIcon = 'bedtime';
+                break;
+              case 'frustrated':
+                progressMessage = 'You felt frustrated and stuck with this project';
+                progressIcon = 'psychology';
+                break;
+              case 'anxious':
+                progressMessage = 'This project caused you anxiety and worry';
+                progressIcon = 'warning';
+                break;
+              case 'overwhelmed':
+                progressMessage = 'This project felt overwhelming and too much to handle';
+                progressIcon = 'psychology';
+                break;
+              case 'lonely':
+                progressMessage = 'This project made you feel isolated and alone';
+                progressIcon = 'person-off';
+                break;
+              case 'confused':
+                progressMessage = 'This project was confusing and unclear';
+                progressIcon = 'help';
+                break;
+              case 'disappointed':
+                progressMessage = 'This project was disappointing and didn\'t meet expectations';
+                progressIcon = 'sentiment-dissatisfied';
+                break;
+              case 'worried':
+                progressMessage = 'This project caused you worry and concern';
+                progressIcon = 'psychology';
+                break;
+              case 'bored':
+                progressMessage = 'This project felt boring and unengaging';
+                progressIcon = 'sentiment-neutral';
+                break;
+              default:
+                progressMessage = 'This project was challenging to complete';
+                progressIcon = 'trending-down';
+            }
+          } else {
+            // Neutral mood-specific messages for completed projects
+            switch (dominantMood?.key) {
+              case 'calm':
+                progressMessage = 'This project kept you calm and composed';
+                progressIcon = 'spa';
+                break;
+              case 'curious':
+                progressMessage = 'This project sparked your curiosity and interest';
+                progressIcon = 'explore';
+                break;
+              case 'nostalgic':
+                progressMessage = 'This project brought back fond memories';
+                progressIcon = 'history';
+                break;
+              case 'surprised':
+                progressMessage = 'This project continued to surprise you';
+                progressIcon = 'surprise';
+                break;
+              default:
+                progressMessage = 'This project was completed steadily';
+                progressIcon = 'trending-flat';
+            }
+          }
+          
+          projectProgress.push({
+            projectId: task.id,
+            projectTitle: task.title,
+            progressType,
+            progressMessage,
+            progressIcon,
+            progressColor,
+            averageScore,
+            moodCount,
+            recentMoods: recentMoods.map(m => m.moodInfo)
+          });
+        }
+      }
+    });
+    
+    return projectProgress.sort((a, b) => b.moodCount - a.moodCount);
+  }, [completedTasks, getMoodInfo]);
 
   const getTrendColor = useCallback(() => {
     switch (moodTrend) {
@@ -647,6 +836,34 @@ const EmotionalJournalScreen = ({ navigation }) => {
               ))}
             </View>
           </View>
+
+          {/* Completed Projects Emotional Progress */}
+          {getCompletedProjectEmotionalProgress().length > 0 && (
+            <View style={styles.topMoodsContainer}>
+              <Text style={styles.sectionTitle}>Completed Projects Emotional Journey</Text>
+              <View style={[
+                styles.moodsList,
+                { 
+                  borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY,
+                  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                  borderWidth: 1,
+                  borderColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY
+                }
+              ]}>
+                {getCompletedProjectEmotionalProgress().map((project) => (
+                  <View key={project.projectId} style={styles.moodItem}>
+                    <View style={[styles.moodIcon, { backgroundColor: project.progressColor }]}>
+                      <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
+                    </View>
+                    <View style={styles.moodInfo}>
+                      <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
+                      <Text style={styles.moodCount}>{project.progressMessage}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Recent Entries */}
           <View style={styles.recentContainer}>
