@@ -30,50 +30,23 @@ import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTaskActions } from "../hooks/useTaskContext";
 import { 
-  MOODS, 
+  CORE_MOODS,
+  EXTENDED_MOODS,
   analyzeSentiment, 
   analyzeSentimentBySentences,
   getSmartMoodSuggestion, 
   getSentimentColor,
   getSentimentEmoji,
-  getValidIconName,
-  analyzeMoodPatterns,
-  predictMood
+  getMoodColor,
+  getMoodIcon,
+  getMoodObject,
+  isCoreMood,
+  isExtendedMood,
+  learnFromUser
 } from '../utils/AIMoodPredictor';
 
-// Temel mood picker için sadece 5 mood
-const BASIC_MOODS = [
-  {
-    key: "happy",
-    label: "Happy",
-    icon: "sentiment-satisfied",
-    color: "#C8E6C9", // pastel green
-  },
-  {
-    key: "excited",
-    label: "Excited",
-    icon: "celebration",
-    color: "#FFE0B2", // pastel orange
-  },
-  {
-    key: "tired",
-    label: "Tired",
-    icon: "bedtime",
-    color: "#F3E5F5", // pastel purple
-  },
-  {
-    key: "sad",
-    label: "Sad",
-    icon: "sentiment-dissatisfied",
-    color: "#FFCDD2", // pastel red
-  },
-  {
-    key: "angry",
-    label: "Angry",
-    icon: "mood-bad",
-    color: "#FFEBEE", // light red
-  },
-];
+// Use CORE_MOODS for manual selection (5 basic moods)
+const BASIC_MOODS = CORE_MOODS;
 
 const { width, height } = Dimensions.get("window");
 
@@ -543,13 +516,8 @@ export default function Journal({
       
       // Eğer kullanıcı mood seçmemişse otomatik öneriyi kullan
       if (!selectedMood && moodSuggestions.length > 0) {
-        // Önerilen mood'u MOODS veya EXTENDED_MOODS'dan bul
-        let suggestedMood = MOODS.find(m => m.key === moodSuggestions[0].mood);
-        if (!suggestedMood) {
-          // EXTENDED_MOODS'dan bul
-          const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
-          suggestedMood = EXTENDED_MOODS.find(m => m.key === moodSuggestions[0].mood);
-        }
+        // Önerilen mood'u EXTENDED_MOODS'dan bul (AI önerisi)
+        const suggestedMood = EXTENDED_MOODS.find(m => m.key === moodSuggestions[0].mood);
         if (suggestedMood) {
           finalMood = suggestedMood;
         }
@@ -760,13 +728,8 @@ export default function Journal({
             <View style={styles.moodSuggestionsContainer}>
               {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
                 moodSuggestions.map((suggestion, index) => {
-                  // First try to find in basic MOODS, then in EXTENDED_MOODS
-                  let suggestedMood = MOODS.find(m => m.key === suggestion.mood);
-                  if (!suggestedMood) {
-                    // Import EXTENDED_MOODS if not already imported
-                    const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
-                    suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);
-                  }
+                  // AI önerisi - EXTENDED_MOODS'dan bul
+                  const suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);
                   
                   return (
                     <TouchableOpacity
@@ -776,17 +739,27 @@ export default function Journal({
                         { backgroundColor: suggestedMood?.color || '#4A90E2' }
                       ]}
                       activeOpacity={0.7}
-                      onPress={() => {
+                      onPress={async () => {
                         if (suggestedMood) {
                           setSelectedMood(suggestedMood);
                           setShowSuggestions(false);
                           setAutoMoodApplied(true);
+                          
+                          // Kullanıcıdan öğren - AI önerisi kabul edildi
+                          if (textValue.trim().length > 0) {
+                            try {
+                              await learnFromUser(suggestedMood.key, textValue, 'ai_suggestion_accepted');
+                              console.log('Learned from AI suggestion accepted:', suggestedMood.key, textValue);
+                            } catch (error) {
+                              console.warn('Failed to learn from user:', error);
+                            }
+                          }
                         }
                       }}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <MaterialIcons 
-                        name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
+                        name={getMoodIcon(suggestedMood?.key || 'sentiment-satisfied')} 
                         size={18} 
                         color="#000" 
                       />
@@ -854,11 +827,21 @@ export default function Journal({
                       selectedMood?.key === m.key ? { borderColor: "#999", borderWidth: 1 } : null,
                     ]}
                     activeOpacity={0.8}
-                    onPress={() => {
-                      // toggle selection (if selecting different mood, replace; if same, keep/replace)
-                      setSelectedMood((prev) => (prev?.key === m.key ? m : m));
+                    onPress={async () => {
+                      // Manuel seçim - CORE_MOODS'dan seçim
+                      setSelectedMood(m);
                       setAutoMoodApplied(true); // Manuel seçim yapıldı
                       setShowMoodPicker(false);
+                      
+                      // Kullanıcıdan öğren - manuel seçim
+                      if (textValue.trim().length > 0) {
+                        try {
+                          await learnFromUser(m.key, textValue, 'manual_selection');
+                          console.log('Learned from manual selection:', m.key, textValue);
+                        } catch (error) {
+                          console.warn('Failed to learn from user:', error);
+                        }
+                      }
                     }}
                   >
                     <View style={[styles.moodIconWrap, { backgroundColor: m.color }]}>

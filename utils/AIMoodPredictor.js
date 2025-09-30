@@ -4,8 +4,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Core mood definitions
-export const MOODS = [
+// 5 Core moods for manual selection only
+export const CORE_MOODS = [
   {
     key: "happy",
     label: "Happy",
@@ -19,13 +19,6 @@ export const MOODS = [
     icon: "celebration",
     color: "#FFE0B2",
     category: "positive"
-  },
-  {
-    key: "calm",
-    label: "Calm",
-    icon: "spa",
-    color: "#E1F5FE",
-    category: "neutral"
   },
   {
     key: "tired",
@@ -49,6 +42,9 @@ export const MOODS = [
     category: "negative"
   }
 ];
+
+// Backward compatibility - same as CORE_MOODS
+export const MOODS = CORE_MOODS;
 
 // Extended moods for suggestions
 export const EXTENDED_MOODS = [
@@ -663,7 +659,7 @@ class ConfidenceScorer {
     return 'very_low';
   }
 
-  // Get fallback suggestions
+  // Get fallback suggestions from extended moods
   getFallbackSuggestions(confidence) {
     if (confidence.level === 'very_low') {
       return [
@@ -823,40 +819,62 @@ class SmartMoodDetector {
     }
   }
 
-  // Get mood suggestions
+  // Get mood suggestions - Extended moods for AI suggestions
   async getMoodSuggestions(text, currentMood = null) {
     try {
       const detection = await this.detectMood(text);
       const suggestions = [];
       
-      // Primary suggestion
+      // Primary suggestion from extended moods
       if (detection.confidence.score > 0.5) {
-        suggestions.push({
-          mood: detection.mood,
-          confidence: detection.confidence.score,
-          reason: detection.reason,
-          type: 'primary'
-        });
+        const suggestedMood = EXTENDED_MOODS.find(m => m.key === detection.mood);
+        if (suggestedMood) {
+          suggestions.push({
+            mood: detection.mood,
+            label: suggestedMood.label,
+            icon: suggestedMood.icon,
+            color: suggestedMood.color,
+            confidence: detection.confidence.score,
+            reason: detection.reason,
+            type: 'primary'
+          });
+        }
       }
       
-      // Alternative suggestions
+      // Alternative suggestions from extended moods
       if (detection.matches.length > 1) {
         detection.matches.slice(1, 3).forEach(match => {
           if (Math.abs(match.score) > 0.3) {
-            suggestions.push({
-              mood: match.mood,
-              confidence: Math.abs(match.score) * 0.1,
-              reason: `Alternative: ${match.matchedPatterns.join(', ')}`,
-              type: 'alternative'
-            });
+            const suggestedMood = EXTENDED_MOODS.find(m => m.key === match.mood);
+            if (suggestedMood) {
+              suggestions.push({
+                mood: match.mood,
+                label: suggestedMood.label,
+                icon: suggestedMood.icon,
+                color: suggestedMood.color,
+                confidence: Math.abs(match.score) * 0.1,
+                reason: `Alternative: ${match.matchedPatterns.join(', ')}`,
+                type: 'alternative'
+              });
+            }
           }
         });
       }
       
-      // Fallback suggestions
+      // Fallback suggestions from extended moods
       if (suggestions.length === 0) {
         const fallbacks = this.confidenceScorer.getFallbackSuggestions(detection.confidence);
-        suggestions.push(...fallbacks);
+        fallbacks.forEach(fallback => {
+          const suggestedMood = EXTENDED_MOODS.find(m => m.key === fallback.mood);
+          if (suggestedMood) {
+            suggestions.push({
+              ...fallback,
+              label: suggestedMood.label,
+              icon: suggestedMood.icon,
+              color: suggestedMood.color
+            });
+          }
+        });
       }
       
       return suggestions;
@@ -864,7 +882,15 @@ class SmartMoodDetector {
     } catch (error) {
       console.error('Mood suggestions error:', error);
       return [
-        { mood: 'neutral', confidence: 0.3, reason: 'Error in suggestions', type: 'fallback' }
+        { 
+          mood: 'neutral', 
+          label: 'Neutral',
+          icon: 'sentiment-neutral',
+          color: '#F5F5F5',
+          confidence: 0.3, 
+          reason: 'Error in suggestions', 
+          type: 'fallback' 
+        }
       ];
     }
   }
@@ -1007,13 +1033,28 @@ export const getSentimentEmoji = (sentiment) => {
 };
 
 export const getMoodColor = (mood) => {
-  const moodObj = MOODS.find(m => m.key === mood) || EXTENDED_MOODS.find(m => m.key === mood);
+  const moodObj = CORE_MOODS.find(m => m.key === mood) || EXTENDED_MOODS.find(m => m.key === mood);
   return moodObj ? moodObj.color : '#E0E0E0';
 };
 
 export const getMoodIcon = (mood) => {
-  const moodObj = MOODS.find(m => m.key === mood) || EXTENDED_MOODS.find(m => m.key === mood);
+  const moodObj = CORE_MOODS.find(m => m.key === mood) || EXTENDED_MOODS.find(m => m.key === mood);
   return moodObj ? moodObj.icon : 'sentiment-neutral';
+};
+
+// Get mood object by key
+export const getMoodObject = (mood) => {
+  return CORE_MOODS.find(m => m.key === mood) || EXTENDED_MOODS.find(m => m.key === mood);
+};
+
+// Check if mood is in core moods (for manual selection)
+export const isCoreMood = (mood) => {
+  return CORE_MOODS.some(m => m.key === mood);
+};
+
+// Check if mood is in extended moods (for suggestions)
+export const isExtendedMood = (mood) => {
+  return EXTENDED_MOODS.some(m => m.key === mood);
 };
 
 export const getValidIconName = (name) => {
