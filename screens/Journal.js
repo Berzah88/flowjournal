@@ -233,6 +233,8 @@ export default function Journal({
       // Get mood suggestions with enhanced context
       const moodSugs = await getSmartMoodSuggestion(analysis, selectedMood?.key, userHistory, allText);
       console.log('Mood suggestions:', moodSugs);
+      console.log('Analysis:', analysis);
+      console.log('Text length:', allText.length);
       setMoodSuggestions(moodSugs);
     } catch (error) {
       console.error('Mood analysis error:', error);
@@ -696,7 +698,7 @@ export default function Journal({
               <View style={styles.coolSentimentContainer}>
                 <View style={styles.coolSentimentBar}>
                   <View style={[styles.coolSentimentFill, { 
-                    width: `${Math.abs(sentiment.score)}%`,
+                    width: `${Math.min(100, Math.max(0, Math.abs(sentiment.score || 0)))}%`,
                     backgroundColor: getSentimentColor(sentiment)
                   }]} />
                 </View>
@@ -726,7 +728,7 @@ export default function Journal({
           <View style={styles.moodMediaRow}>
             {/* Mood Suggestions - Left Side */}
             <View style={styles.moodSuggestionsContainer}>
-              {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
+              {textValue.trim().length >= 5 && moodSuggestions.length > 0 && (
                 moodSuggestions.map((suggestion, index) => {
                   // AI önerisi - EXTENDED_MOODS'dan bul
                   const suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);

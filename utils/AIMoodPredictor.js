@@ -996,7 +996,28 @@ export const analyzeSentimentBySentences = async (text, userHistory = []) => {
 };
 
 export const getSmartMoodSuggestion = async (sentiment, currentMood, userHistory = [], text = '') => {
+  // Use text for mood detection, sentiment for additional context
   const suggestions = await smartMoodDetector.getMoodSuggestions(text, currentMood);
+  
+  // If no suggestions from text analysis, try sentiment-based fallback
+  if (suggestions.length === 0 && sentiment) {
+    const sentimentMood = sentiment.label === 'positive' ? 'happy' : 
+                         sentiment.label === 'negative' ? 'sad' : 'neutral';
+    
+    const fallbackMood = EXTENDED_MOODS.find(m => m.key === sentimentMood);
+    if (fallbackMood) {
+      suggestions.push({
+        mood: sentimentMood,
+        label: fallbackMood.label,
+        icon: fallbackMood.icon,
+        color: fallbackMood.color,
+        confidence: sentiment.confidence || 0.3,
+        reason: 'Sentiment-based fallback',
+        type: 'fallback'
+      });
+    }
+  }
+  
   return suggestions.map(suggestion => ({
     ...suggestion,
     sentimentScore: sentiment?.score || 0
