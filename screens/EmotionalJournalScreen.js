@@ -450,6 +450,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
           }
         });
         
+        // Only show projects that have actual mood entries
         if (projectMoods.length > 0) {
           // Find the most frequent mood in the entire project
           const sortedMoods = Object.entries(moodCounts)
