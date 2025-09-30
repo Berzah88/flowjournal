@@ -63,7 +63,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
     Object.entries(moodCounts).forEach(([mood, count]) => {
       if (count > maxCount) {
         maxCount = count;
-        dominantMood = MOODS.find(m => m.key === mood) || {
+        dominantMood = MOODS.find(m => m.key === mood) || 
+                       EXTENDED_MOODS.find(m => m.key === mood) || {
           key: mood,
           label: mood,
           icon: 'sentiment-satisfied',
@@ -273,7 +274,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
       return ['#FAFAFA', '#F5F3FF', '#EDE9FE'];
     }
     
-    const baseColor = todayDominantMood.color;
+    const baseColor = getSolidMoodColor(todayDominantMood.color);
     // Hex rengi RGB'ye çevir
     const hex = baseColor.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
@@ -341,7 +342,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
           <View style={[
             styles.overviewCard, 
             { 
-              borderLeftColor: todayDominantMood?.color || COLORS.PRIMARY,
+              borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.PRIMARY,
               backgroundColor: todayDominantMood ? 
                 'rgba(255, 255, 255, 0.95)' : 
                 'rgba(0, 122, 255, 0.1)'
@@ -419,10 +420,10 @@ const EmotionalJournalScreen = ({ navigation }) => {
             <View style={[
               styles.moodsList,
               { 
-                borderLeftColor: todayDominantMood?.color || COLORS.SECONDARY,
+                borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY,
                 backgroundColor: 'rgba(255, 255, 255, 0.7)',
                 borderWidth: 1,
-                borderColor: todayDominantMood?.color || COLORS.SECONDARY
+                borderColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.SECONDARY
               }
             ]}>
               {moodStats.topMoods.map(([moodKey, count], index) => {
@@ -456,7 +457,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                  const moodInfo = getMoodInfo(entry.mood);
                  return (
                    <View key={entry.id || index} style={styles.entryItem}>
-                     <View style={[styles.entryMoodIcon, { backgroundColor: moodInfo.color }]}>
+                     <View style={[styles.entryMoodIcon, { backgroundColor: getSolidMoodColor(moodInfo.color) }]}>
                        <MaterialIcons name={moodInfo.icon} size={18} color="#FFFFFF" />
                      </View>
                      <View style={styles.entryContent}>
