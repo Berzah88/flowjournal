@@ -259,108 +259,177 @@ const EmotionalJournalScreen = ({ navigation }) => {
     }
   }, [moodTrend]);
 
-  // AI-powered motivation sentence generator
+  // AI-powered motivation sentence generator - Mood-based
   const generateMotivationSentence = useCallback((project, progressType, dominantMood) => {
     const motivationSentences = {
-      positive: {
-        happy: [
-          "Keep riding this wave of happiness! Your positive energy is contagious.",
-          "Your joy is your superpower - let it fuel your continued success!",
-          "This happiness is well-deserved. You've earned every smile!"
-        ],
-        excited: [
-          "Your excitement is the spark that ignites great achievements!",
-          "Channel this energy into making amazing things happen!",
-          "This enthusiasm is your secret weapon - use it wisely!"
-        ],
-        grateful: [
-          "Gratitude attracts more good things. Keep this beautiful energy flowing!",
-          "Your appreciation mindset is creating a positive ripple effect!",
-          "This grateful heart is opening doors to even more opportunities!"
-        ],
-        proud: [
-          "You have every right to be proud. This is just the beginning!",
-          "Your pride is well-earned. Let it motivate you to reach even higher!",
-          "This sense of accomplishment is the fuel for your next victory!"
-        ],
-        motivated: [
-          "Your motivation is unstoppable! Keep this momentum going!",
-          "This drive is your competitive advantage - leverage it fully!",
-          "Your determination is inspiring. Let it guide you to greatness!"
-        ],
-        default: [
-          "You're in the zone! Keep this positive momentum flowing!",
-          "Your positive energy is creating magic. Don't stop now!",
-          "This is your time to shine - embrace every moment!"
-        ]
-      },
-      negative: {
-        tired: [
-          "Rest is not giving up, it's preparing for the next victory!",
-          "Your body is asking for care. Listen to it and recharge!",
-          "Even the strongest warriors need to rest. You're still winning!"
-        ],
-        frustrated: [
-          "Frustration is just success in disguise. You're closer than you think!",
-          "This challenge is making you stronger. Keep pushing forward!",
-          "Every expert was once a beginner. You're exactly where you need to be!"
-        ],
-        anxious: [
-          "Breathe deeply. You've overcome challenges before, and you will again!",
-          "Your anxiety is just your mind preparing for success. Trust the process!",
-          "This feeling is temporary, but your strength is permanent!"
-        ],
-        overwhelmed: [
-          "Break it down into smaller steps. You've got this, one piece at a time!",
-          "Overwhelm is just excitement in disguise. You're capable of amazing things!",
-          "Remember: you don't have to do everything at once. Progress, not perfection!"
-        ],
-        sad: [
-          "It's okay to feel this way. Your feelings are valid and temporary.",
-          "This sadness is just making room for even greater joy ahead!",
-          "You're stronger than you know. This too shall pass, and you'll emerge wiser!"
-        ],
-        default: [
-          "This challenge is temporary, but your growth is permanent!",
-          "You're building resilience with every step. Keep going!",
-          "Difficult roads often lead to beautiful destinations. Trust the journey!"
-        ]
-      },
-      neutral: {
-        calm: [
-          "Your calmness is a superpower in a chaotic world. Use it wisely!",
-          "This peaceful energy is creating space for clarity and focus!",
-          "Your serenity is your strength. Let it guide your decisions!"
-        ],
-        curious: [
-          "Your curiosity is the key to unlocking new possibilities!",
-          "This sense of wonder is what drives innovation. Keep exploring!",
-          "Your questions are leading you to amazing discoveries!"
-        ],
-        default: [
-          "Steady progress is still progress. You're exactly where you need to be!",
-          "Consistency is the mother of mastery. Keep going!",
-          "Your steady approach is building something beautiful!"
-        ]
-      }
+      // Positive mood-specific motivations
+      happy: [
+        "Your happiness is your greatest asset - let it guide you to even more success!",
+        "This joy you're feeling is well-deserved. You've earned every smile!",
+        "Keep riding this wave of happiness! Your positive energy is contagious and powerful!"
+      ],
+      excited: [
+        "Your excitement is the spark that ignites great achievements! Channel this energy!",
+        "This enthusiasm is your secret weapon - use it to make amazing things happen!",
+        "Your excitement is magnetic! Let it attract more opportunities and success!"
+      ],
+      grateful: [
+        "Gratitude attracts more good things. Keep this beautiful energy flowing!",
+        "Your appreciation mindset is creating a positive ripple effect in your life!",
+        "This grateful heart is opening doors to even more opportunities and blessings!"
+      ],
+      hopeful: [
+        "Your hope is the light that guides you through any darkness. Keep it burning bright!",
+        "This optimism is your superpower - it's turning possibilities into realities!",
+        "Hope is the foundation of all great achievements. You're building something amazing!"
+      ],
+      proud: [
+        "You have every right to be proud. This is just the beginning of your greatness!",
+        "Your pride is well-earned. Let it motivate you to reach even higher heights!",
+        "This sense of accomplishment is the fuel for your next victory. Keep going!"
+      ],
+      motivated: [
+        "Your motivation is unstoppable! Keep this momentum going and achieve greatness!",
+        "This drive is your competitive advantage - leverage it fully and succeed!",
+        "Your determination is inspiring. Let it guide you to the success you deserve!"
+      ],
+      peaceful: [
+        "Your peace is a superpower in a chaotic world. Use it to make wise decisions!",
+        "This tranquility is creating space for clarity and focus. Embrace it fully!",
+        "Your serenity is your strength. Let it guide you through any challenge!"
+      ],
+      content: [
+        "Contentment is the highest form of success. You're exactly where you need to be!",
+        "This satisfaction is the foundation for even greater achievements ahead!",
+        "Your contentment is a sign of wisdom. You've found the perfect balance!"
+      ],
+      confident: [
+        "Your confidence is magnetic! It's attracting success and opportunities to you!",
+        "This self-belief is your greatest asset. Trust it and watch miracles happen!",
+        "Confidence is the key to unlocking your full potential. You've got this!"
+      ],
+      
+      // Negative mood-specific motivations
+      sad: [
+        "It's okay to feel this way. Your feelings are valid and this too shall pass!",
+        "This sadness is just making room for even greater joy ahead. You're stronger than you know!",
+        "Every cloud has a silver lining. Your breakthrough is coming - stay strong!"
+      ],
+      angry: [
+        "Your anger shows you care deeply. Channel this passion into positive action!",
+        "This frustration is temporary, but your strength is permanent. Keep pushing forward!",
+        "Anger can be a powerful motivator. Use it to fuel your determination to succeed!"
+      ],
+      tired: [
+        "Rest is not giving up, it's preparing for the next victory! Listen to your body!",
+        "Even the strongest warriors need to rest. You're still winning - just recharge!",
+        "Your body is asking for care. Take a break and come back even stronger!"
+      ],
+      frustrated: [
+        "Frustration is just success in disguise. You're closer than you think!",
+        "This challenge is making you stronger. Every expert was once a beginner!",
+        "Your frustration shows you're pushing your limits. That's where growth happens!"
+      ],
+      anxious: [
+        "Breathe deeply. You've overcome challenges before, and you will again!",
+        "Your anxiety is just your mind preparing for success. Trust the process!",
+        "This feeling is temporary, but your strength is permanent. You've got this!"
+      ],
+      overwhelmed: [
+        "Break it down into smaller steps. You've got this, one piece at a time!",
+        "Overwhelm is just excitement in disguise. You're capable of amazing things!",
+        "Remember: you don't have to do everything at once. Progress, not perfection!"
+      ],
+      lonely: [
+        "Your solitude is a gift. Use this time to connect with your inner strength!",
+        "This loneliness is temporary. You're building resilience and self-reliance!",
+        "Sometimes we need to be alone to discover how strong we really are!"
+      ],
+      confused: [
+        "Confusion is the beginning of wisdom. You're about to discover something amazing!",
+        "This uncertainty is just the universe preparing you for clarity. Trust the process!",
+        "Every breakthrough starts with confusion. You're exactly where you need to be!"
+      ],
+      disappointed: [
+        "Disappointment is just a detour, not a dead end. Your success story continues!",
+        "This setback is setting you up for an even greater comeback. Stay strong!",
+        "Your disappointment shows you have high standards. That's a sign of greatness!"
+      ],
+      worried: [
+        "Worry is just your mind trying to protect you. You're stronger than your fears!",
+        "This concern shows you care deeply. Channel that care into positive action!",
+        "Your worries are temporary, but your ability to overcome them is permanent!"
+      ],
+      bored: [
+        "Boredom is the birthplace of creativity. Use this time to explore new possibilities!",
+        "This restlessness is a sign that you're ready for your next big adventure!",
+        "When you're bored, you're actually ready to discover something amazing!"
+      ],
+      stressed: [
+        "Stress is just your body preparing for success. You're stronger than you think!",
+        "This pressure is creating diamonds. You're being forged into something incredible!",
+        "Your stress shows you're pushing boundaries. That's where breakthroughs happen!"
+      ],
+      exhausted: [
+        "Exhaustion is a sign of hard work. You're building something meaningful!",
+        "This tiredness shows you've been giving your all. Rest and come back stronger!",
+        "Even the strongest need to recharge. You're still winning - just take a break!"
+      ],
+      
+      // Neutral mood-specific motivations
+      calm: [
+        "Your calmness is a superpower in a chaotic world. Use it wisely and succeed!",
+        "This peaceful energy is creating space for clarity and focus. Embrace it!",
+        "Your serenity is your strength. Let it guide you to make wise decisions!"
+      ],
+      curious: [
+        "Your curiosity is the key to unlocking new possibilities! Keep exploring!",
+        "This sense of wonder is what drives innovation. You're on the right path!",
+        "Your questions are leading you to amazing discoveries. Stay curious!"
+      ],
+      nostalgic: [
+        "Your nostalgia shows you have beautiful memories. Create even more amazing ones!",
+        "This fondness for the past is fueling your appreciation for the present!",
+        "Your memories are treasures. Use them to build an even brighter future!"
+      ],
+      surprised: [
+        "Your surprise shows you're open to new experiences. That's where magic happens!",
+        "This sense of wonder is keeping you young at heart. Embrace every surprise!",
+        "Your openness to surprises is your greatest asset. Keep expecting the unexpected!"
+      ],
+      focused: [
+        "Your focus is laser-sharp! This concentration is your path to success!",
+        "This deep focus is creating something amazing. Keep your eyes on the prize!",
+        "Your concentration is a superpower. Use it to achieve your biggest dreams!"
+      ],
+      neutral: [
+        "Steady progress is still progress. You're exactly where you need to be!",
+        "Consistency is the mother of mastery. Keep going and watch the magic happen!",
+        "Your steady approach is building something beautiful. Trust the process!"
+      ],
+      
+      // Default fallback
+      default: [
+        "You're exactly where you need to be right now. Trust the journey!",
+        "Every step you take is bringing you closer to your goals. Keep going!",
+        "Your progress is real and meaningful. You're building something amazing!"
+      ]
     };
 
-    const categorySentences = motivationSentences[progressType] || motivationSentences.neutral;
-    const moodSentences = categorySentences[dominantMood?.key] || categorySentences.default;
+    const moodSentences = motivationSentences[dominantMood?.key] || motivationSentences.default;
     
-    // Return a random sentence from the appropriate category
+    // Return a random sentence from the appropriate mood category
     return moodSentences[Math.floor(Math.random() * moodSentences.length)];
   }, []);
 
-  // Project emotional progress analysis
+  // Project emotional progress analysis - Mood-based evaluation
   const getProjectEmotionalProgress = useCallback(() => {
     const projectProgress = [];
     
     activeTasks.forEach(task => {
       if (task.milestones && task.milestones.length > 0) {
         const projectMoods = [];
-        let totalMoodScore = 0;
-        let moodCount = 0;
+        const moodCounts = {};
         
         // Collect all moods from this project
         task.milestones.forEach(milestone => {
@@ -374,165 +443,175 @@ const EmotionalJournalScreen = ({ navigation }) => {
                   date: new Date(entry.createdAt)
                 });
                 
-                // Calculate mood score (positive = 1, neutral = 0, negative = -1)
-                const score = moodInfo.category === 'positive' ? 1 : 
-                             moodInfo.category === 'negative' ? -1 : 0;
-                totalMoodScore += score;
-                moodCount++;
+                // Count each mood
+                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
               }
             });
           }
         });
         
-        if (moodCount > 0) {
-          const averageScore = totalMoodScore / moodCount;
-          const recentMoods = projectMoods
-            .sort((a, b) => b.date - a.date)
-            .slice(0, 5); // Get last 5 moods for better analysis
+        if (projectMoods.length > 0) {
+          // Find the most frequent mood in the entire project
+          const sortedMoods = Object.entries(moodCounts)
+            .sort(([,a], [,b]) => b - a);
           
-          // Find the most frequent mood in recent entries
-          const recentMoodCounts = {};
-          recentMoods.forEach(mood => {
-            recentMoodCounts[mood.mood] = (recentMoodCounts[mood.mood] || 0) + 1;
+          const dominantMoodKey = sortedMoods[0][0];
+          const dominantMoodCount = sortedMoods[0][1];
+          const dominantMoodInfo = getMoodInfo(dominantMoodKey);
+          
+          // Calculate total mood score for progress type
+          let totalMoodScore = 0;
+          projectMoods.forEach(mood => {
+            const score = mood.moodInfo.category === 'positive' ? 1 : 
+                         mood.moodInfo.category === 'negative' ? -1 : 0;
+            totalMoodScore += score;
           });
           
-          const dominantMood = Object.entries(recentMoodCounts)
-            .sort(([,a], [,b]) => b - a)[0];
-          
-          const dominantMoodInfo = dominantMood ? getMoodInfo(dominantMood[0]) : null;
-          
+          const averageScore = totalMoodScore / projectMoods.length;
           let progressType = 'neutral';
-          let progressMessage = 'This project is progressing steadily';
-          let progressIcon = 'trending-flat';
           let progressColor = '#9E9E9E';
           
-          // More accurate progress determination
           if (averageScore > 0.2) {
             progressType = 'positive';
             progressColor = '#4CAF50';
-            
-            // Positive mood-specific messages and icons
-            switch (dominantMoodInfo?.key) {
-              case 'happy':
-                progressMessage = 'This project brings you joy and satisfaction!';
-                progressIcon = 'sentiment-satisfied';
-                break;
-              case 'excited':
-                progressMessage = 'You\'re enthusiastic and energized about this project!';
-                progressIcon = 'celebration';
-                break;
-              case 'grateful':
-                progressMessage = 'You feel grateful and appreciative of this project!';
-                progressIcon = 'favorite';
-                break;
-              case 'hopeful':
-                progressMessage = 'This project fills you with hope and optimism!';
-                progressIcon = 'wb-sunny';
-                break;
-              case 'proud':
-                progressMessage = 'You\'re proud of your progress on this project!';
-                progressIcon = 'emoji-events';
-                break;
-              case 'relieved':
-                progressMessage = 'This project gives you a sense of relief and peace!';
-                progressIcon = 'spa';
-                break;
-              case 'motivated':
-                progressMessage = 'You feel highly motivated to continue this project!';
-                progressIcon = 'trending-up';
-                break;
-              case 'peaceful':
-                progressMessage = 'This project brings you inner peace and calm!';
-                progressIcon = 'spa';
-                break;
-              case 'content':
-                progressMessage = 'You feel content and satisfied with this project!';
-                progressIcon = 'sentiment-satisfied';
-                break;
-              default:
-                progressMessage = 'This project is going great for you!';
-                progressIcon = 'trending-up';
-            }
           } else if (averageScore < -0.2) {
             progressType = 'negative';
             progressColor = '#F44336';
-            
-            // Negative mood-specific messages and icons
-            switch (dominantMoodInfo?.key) {
-              case 'sad':
-                progressMessage = 'This project is making you feel down and discouraged';
-                progressIcon = 'sentiment-dissatisfied';
-                break;
-              case 'angry':
-                progressMessage = 'This project is frustrating and angering you';
-                progressIcon = 'mood-bad';
-                break;
-              case 'tired':
-                progressMessage = 'This project is exhausting and draining your energy';
-                progressIcon = 'bedtime';
-                break;
-              case 'frustrated':
-                progressMessage = 'You\'re feeling frustrated and stuck with this project';
-                progressIcon = 'psychology';
-                break;
-              case 'anxious':
-                progressMessage = 'This project is causing you anxiety and worry';
-                progressIcon = 'warning';
-                break;
-              case 'overwhelmed':
-                progressMessage = 'This project feels overwhelming and too much to handle';
-                progressIcon = 'psychology';
-                break;
-              case 'lonely':
-                progressMessage = 'This project makes you feel isolated and alone';
-                progressIcon = 'person-off';
-                break;
-              case 'confused':
-                progressMessage = 'This project is confusing and unclear to you';
-                progressIcon = 'help';
-                break;
-              case 'disappointed':
-                progressMessage = 'This project is disappointing and not meeting expectations';
-                progressIcon = 'sentiment-dissatisfied';
-                break;
-              case 'worried':
-                progressMessage = 'This project is causing you worry and concern';
-                progressIcon = 'psychology';
-                break;
-              case 'bored':
-                progressMessage = 'This project feels boring and unengaging';
-                progressIcon = 'sentiment-neutral';
-                break;
-              default:
-                progressMessage = 'This project seems challenging for you';
-                progressIcon = 'trending-down';
-            }
-          } else {
-            // Neutral mood-specific messages and icons
-            switch (dominantMoodInfo?.key) {
-              case 'calm':
-                progressMessage = 'This project keeps you calm and composed';
-                progressIcon = 'spa';
-                break;
-              case 'curious':
-                progressMessage = 'This project sparks your curiosity and interest';
-                progressIcon = 'explore';
-                break;
-              case 'nostalgic':
-                progressMessage = 'This project brings back fond memories';
-                progressIcon = 'history';
-                break;
-              case 'surprised':
-                progressMessage = 'This project continues to surprise you';
-                progressIcon = 'surprise';
-                break;
-              default:
-                progressMessage = 'This project is progressing steadily';
-                progressIcon = 'trending-flat';
-            }
           }
           
-          // Generate AI motivation sentence
+          // Mood-specific project evaluation messages
+          let progressMessage = '';
+          let progressIcon = '';
+          
+          switch (dominantMoodInfo?.key) {
+            // Positive moods
+            case 'happy':
+              progressMessage = 'This project is a joyful experience for you!';
+              progressIcon = 'sentiment-satisfied';
+              break;
+            case 'excited':
+              progressMessage = 'This project fills you with excitement and energy!';
+              progressIcon = 'celebration';
+              break;
+            case 'grateful':
+              progressMessage = 'This project makes you feel grateful and appreciative!';
+              progressIcon = 'favorite';
+              break;
+            case 'hopeful':
+              progressMessage = 'This project fills you with hope and optimism!';
+              progressIcon = 'wb-sunny';
+              break;
+            case 'proud':
+              progressMessage = 'This project makes you feel proud of your achievements!';
+              progressIcon = 'emoji-events';
+              break;
+            case 'relieved':
+              progressMessage = 'This project brings you relief and peace of mind!';
+              progressIcon = 'spa';
+              break;
+            case 'motivated':
+              progressMessage = 'This project keeps you highly motivated and driven!';
+              progressIcon = 'trending-up';
+              break;
+            case 'peaceful':
+              progressMessage = 'This project brings you inner peace and tranquility!';
+              progressIcon = 'spa';
+              break;
+            case 'content':
+              progressMessage = 'This project makes you feel content and satisfied!';
+              progressIcon = 'sentiment-satisfied';
+              break;
+            case 'confident':
+              progressMessage = 'This project boosts your confidence and self-belief!';
+              progressIcon = 'self-improvement';
+              break;
+            
+            // Negative moods
+            case 'sad':
+              progressMessage = 'This project is making you feel sad and downhearted';
+              progressIcon = 'sentiment-dissatisfied';
+              break;
+            case 'angry':
+              progressMessage = 'This project is frustrating and angering you';
+              progressIcon = 'mood-bad';
+              break;
+            case 'tired':
+              progressMessage = 'This project is exhausting and draining your energy';
+              progressIcon = 'bedtime';
+              break;
+            case 'frustrated':
+              progressMessage = 'This project is proving to be frustrating for you';
+              progressIcon = 'psychology';
+              break;
+            case 'anxious':
+              progressMessage = 'This project is causing you anxiety and worry';
+              progressIcon = 'warning';
+              break;
+            case 'overwhelmed':
+              progressMessage = 'This project feels overwhelming and too much to handle';
+              progressIcon = 'psychology';
+              break;
+            case 'lonely':
+              progressMessage = 'This project makes you feel isolated and alone';
+              progressIcon = 'person-off';
+              break;
+            case 'confused':
+              progressMessage = 'This project is confusing and unclear to you';
+              progressIcon = 'help';
+              break;
+            case 'disappointed':
+              progressMessage = 'This project is disappointing and not meeting your expectations';
+              progressIcon = 'sentiment-dissatisfied';
+              break;
+            case 'worried':
+              progressMessage = 'This project is causing you worry and concern';
+              progressIcon = 'psychology';
+              break;
+            case 'bored':
+              progressMessage = 'This project feels boring and unengaging to you';
+              progressIcon = 'sentiment-neutral';
+              break;
+            case 'stressed':
+              progressMessage = 'This project is stressing you out and causing tension';
+              progressIcon = 'psychology';
+              break;
+            case 'exhausted':
+              progressMessage = 'This project is leaving you feeling completely exhausted';
+              progressIcon = 'bedtime';
+              break;
+            
+            // Neutral moods
+            case 'calm':
+              progressMessage = 'This project is a calm and peaceful experience for you';
+              progressIcon = 'spa';
+              break;
+            case 'curious':
+              progressMessage = 'This project sparks your curiosity and keeps you interested';
+              progressIcon = 'explore';
+              break;
+            case 'nostalgic':
+              progressMessage = 'This project brings back fond memories and nostalgia';
+              progressIcon = 'history';
+              break;
+            case 'surprised':
+              progressMessage = 'This project continues to surprise and intrigue you';
+              progressIcon = 'surprise';
+              break;
+            case 'focused':
+              progressMessage = 'This project keeps you focused and concentrated';
+              progressIcon = 'center-focus-strong';
+              break;
+            case 'neutral':
+              progressMessage = 'This project is progressing at a steady, neutral pace';
+              progressIcon = 'trending-flat';
+              break;
+            
+            default:
+              progressMessage = 'This project is progressing steadily';
+              progressIcon = 'trending-flat';
+          }
+          
+          // Generate AI motivation sentence based on dominant mood
           const motivationSentence = generateMotivationSentence(task, progressType, dominantMoodInfo);
           
           projectProgress.push({
@@ -543,8 +622,10 @@ const EmotionalJournalScreen = ({ navigation }) => {
             progressIcon,
             progressColor,
             averageScore,
-            moodCount,
-            recentMoods: recentMoods.map(m => m.moodInfo),
+            moodCount: projectMoods.length,
+            dominantMood: dominantMoodKey,
+            dominantMoodCount,
+            dominantMoodInfo,
             motivationSentence
           });
         }
