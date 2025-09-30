@@ -457,6 +457,221 @@ const EmotionalJournalScreen = ({ navigation }) => {
     return projectsWithoutMoods;
   }, [activeTasks]);
 
+  // Get completed projects emotional progress analysis
+  const getCompletedProjectEmotionalProgress = useCallback(() => {
+    const projectProgress = [];
+    
+    completedTasks.forEach(task => {
+      if (task.milestones && task.milestones.length > 0) {
+        const projectMoods = [];
+        const moodCounts = {};
+        
+        // Collect all moods from this completed project
+        task.milestones.forEach(milestone => {
+          if (milestone.journalEntries) {
+            milestone.journalEntries.forEach(entry => {
+              if (entry.mood) {
+                const moodInfo = getMoodInfo(entry.mood);
+                projectMoods.push({
+                  mood: entry.mood,
+                  moodInfo,
+                  date: new Date(entry.createdAt)
+                });
+                
+                // Count each mood
+                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+              }
+            });
+          }
+        });
+        
+        // Only show completed projects that have actual mood entries
+        if (projectMoods.length > 0) {
+          // Find the most frequent mood in the entire project
+          const sortedMoods = Object.entries(moodCounts)
+            .sort(([,a], [,b]) => b - a);
+          
+          const dominantMoodKey = sortedMoods[0][0];
+          const dominantMoodCount = sortedMoods[0][1];
+          const dominantMoodInfo = getMoodInfo(dominantMoodKey);
+          
+          // Calculate total mood score for progress type
+          let totalMoodScore = 0;
+          projectMoods.forEach(mood => {
+            const score = mood.moodInfo.category === 'positive' ? 1 : 
+                         mood.moodInfo.category === 'negative' ? -1 : 0;
+            totalMoodScore += score;
+          });
+          
+          const averageScore = totalMoodScore / projectMoods.length;
+          let progressType = 'neutral';
+          let progressColor = '#9E9E9E';
+          
+          if (averageScore > 0.2) {
+            progressType = 'positive';
+            progressColor = '#4CAF50';
+          } else if (averageScore < -0.2) {
+            progressType = 'negative';
+            progressColor = '#F44336';
+          }
+          
+          // Mood-specific completed project evaluation messages
+          let progressMessage = '';
+          let progressIcon = '';
+          
+          switch (dominantMoodInfo?.key) {
+            // Positive moods - past tense
+            case 'happy':
+              progressMessage = 'This project was a joyful and fulfilling experience for you!';
+              progressIcon = 'sentiment-satisfied';
+              break;
+            case 'excited':
+              progressMessage = 'This project filled you with excitement and energy throughout!';
+              progressIcon = 'celebration';
+              break;
+            case 'grateful':
+              progressMessage = 'This project made you feel grateful and appreciative!';
+              progressIcon = 'favorite';
+              break;
+            case 'hopeful':
+              progressMessage = 'This project filled you with hope and optimism!';
+              progressIcon = 'wb-sunny';
+              break;
+            case 'proud':
+              progressMessage = 'This project made you feel proud of your achievements!';
+              progressIcon = 'emoji-events';
+              break;
+            case 'relieved':
+              progressMessage = 'This project brought you relief and peace of mind!';
+              progressIcon = 'spa';
+              break;
+            case 'motivated':
+              progressMessage = 'This project kept you highly motivated and driven!';
+              progressIcon = 'trending-up';
+              break;
+            case 'peaceful':
+              progressMessage = 'This project brought you inner peace and tranquility!';
+              progressIcon = 'spa';
+              break;
+            case 'content':
+              progressMessage = 'This project made you feel content and satisfied!';
+              progressIcon = 'sentiment-satisfied';
+              break;
+            case 'confident':
+              progressMessage = 'This project boosted your confidence and self-belief!';
+              progressIcon = 'self-improvement';
+              break;
+            
+            // Negative moods - past tense
+            case 'sad':
+              progressMessage = 'This project was challenging and made you feel downhearted';
+              progressIcon = 'sentiment-dissatisfied';
+              break;
+            case 'angry':
+              progressMessage = 'This project was frustrating and angering for you';
+              progressIcon = 'mood-bad';
+              break;
+            case 'tired':
+              progressMessage = 'This project was exhausting and drained your energy';
+              progressIcon = 'bedtime';
+              break;
+            case 'frustrated':
+              progressMessage = 'This project proved to be frustrating for you';
+              progressIcon = 'psychology';
+              break;
+            case 'anxious':
+              progressMessage = 'This project caused you anxiety and worry';
+              progressIcon = 'warning';
+              break;
+            case 'overwhelmed':
+              progressMessage = 'This project felt overwhelming and too much to handle';
+              progressIcon = 'psychology';
+              break;
+            case 'lonely':
+              progressMessage = 'This project made you feel isolated and alone';
+              progressIcon = 'person-off';
+              break;
+            case 'confused':
+              progressMessage = 'This project was confusing and unclear to you';
+              progressIcon = 'help';
+              break;
+            case 'disappointed':
+              progressMessage = 'This project was disappointing and didn\'t meet your expectations';
+              progressIcon = 'sentiment-dissatisfied';
+              break;
+            case 'worried':
+              progressMessage = 'This project caused you worry and concern';
+              progressIcon = 'psychology';
+              break;
+            case 'bored':
+              progressMessage = 'This project felt boring and unengaging to you';
+              progressIcon = 'sentiment-neutral';
+              break;
+            case 'stressed':
+              progressMessage = 'This project stressed you out and caused tension';
+              progressIcon = 'psychology';
+              break;
+            case 'exhausted':
+              progressMessage = 'This project left you feeling completely exhausted';
+              progressIcon = 'bedtime';
+              break;
+            
+            // Neutral moods - past tense
+            case 'calm':
+              progressMessage = 'This project was a calm and peaceful experience for you';
+              progressIcon = 'spa';
+              break;
+            case 'curious':
+              progressMessage = 'This project sparked your curiosity and kept you interested';
+              progressIcon = 'explore';
+              break;
+            case 'nostalgic':
+              progressMessage = 'This project brought back fond memories and nostalgia';
+              progressIcon = 'history';
+              break;
+            case 'surprised':
+              progressMessage = 'This project continued to surprise and intrigue you';
+              progressIcon = 'surprise';
+              break;
+            case 'focused':
+              progressMessage = 'This project kept you focused and concentrated';
+              progressIcon = 'center-focus-strong';
+              break;
+            case 'neutral':
+              progressMessage = 'This project progressed at a steady, neutral pace';
+              progressIcon = 'trending-flat';
+              break;
+            
+            default:
+              progressMessage = 'This project was completed successfully';
+              progressIcon = 'check-circle';
+          }
+          
+          // Generate AI motivation sentence based on dominant mood for completed projects
+          const motivationSentence = generateMotivationSentence(task, progressType, dominantMoodInfo);
+          
+          projectProgress.push({
+            projectId: task.id,
+            projectTitle: task.title,
+            progressType,
+            progressMessage,
+            progressIcon,
+            progressColor,
+            averageScore,
+            moodCount: projectMoods.length,
+            dominantMood: dominantMoodKey,
+            dominantMoodCount,
+            dominantMoodInfo,
+            motivationSentence,
+            isCompleted: true
+          });
+        }
+      }
+    });
+    
+    return projectProgress.sort((a, b) => b.moodCount - a.moodCount);
+  }, [completedTasks, getMoodInfo, generateMotivationSentence]);
+
   // Project emotional progress analysis - Mood-based evaluation
   const getProjectEmotionalProgress = useCallback(() => {
     const projectProgress = [];
@@ -894,6 +1109,35 @@ const EmotionalJournalScreen = ({ navigation }) => {
                            : "Every journey begins with a single step. Start documenting your progress and feelings today!"
                          }
                        </Text>
+                     </View>
+                   </View>
+                 ))}
+               </View>
+             </View>
+           )}
+
+           {/* Completed Projects Emotional Journey */}
+           {getCompletedProjectEmotionalProgress().length > 0 && (
+             <View style={styles.topMoodsContainer}>
+               <Text style={styles.sectionTitle}>Completed Projects Emotional Journey</Text>
+               <View style={[
+                 styles.moodsList,
+                 { 
+                   borderLeftColor: '#9C27B0',
+                   backgroundColor: 'rgba(156, 39, 176, 0.1)',
+                   borderWidth: 1,
+                   borderColor: '#9C27B0'
+                 }
+               ]}>
+                 {getCompletedProjectEmotionalProgress().map((project) => (
+                   <View key={project.projectId} style={styles.moodItem}>
+                     <View style={[styles.moodIcon, { backgroundColor: project.progressColor }]}>
+                       <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
+                     </View>
+                     <View style={styles.moodInfo}>
+                       <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
+                       <Text style={styles.moodCount}>{project.progressMessage}</Text>
+                       <Text style={styles.motivationText}>{project.motivationSentence}</Text>
                      </View>
                    </View>
                  ))}
