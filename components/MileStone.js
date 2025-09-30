@@ -331,104 +331,72 @@ function MileStone({
             </View>
           )}
 
-        {/* Action Options Overlay */}
+        {/* Animated Action Buttons - Theme Consistent */}
         {showDeleteOption && (
-          <View style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            borderRadius: 20,
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}>
-            {/* Close Button - Top Right Corner */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.closeButton,
-                {
-                  transform: [{ scale: pressed ? 0.9 : 1 }],
-                  opacity: pressed ? 0.7 : 1,
-                }
-              ]}
+          <Animated.View 
+            style={[
+              styles.actionButtonsContainer,
+              {
+                opacity: deleteAnimation,
+                transform: [
+                  {
+                    scale: deleteAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* Complete Button - LEFT */}
+            {!isCompleted ? (
+              <TouchableOpacity
+                style={[styles.themeButton, styles.completeButtonTheme]}
+                onPress={() => {
+                  hideDeleteOptionWithAnimation();
+                  onComplete?.();
+                }}
+              >
+                <View style={styles.buttonIconContainer}>
+                  <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                </View>
+                <Text style={styles.themeButtonText}>Complete</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.themeButton, styles.activeButtonTheme]}
+                onPress={() => {
+                  hideDeleteOptionWithAnimation();
+                  onSetActive?.();
+                }}
+              >
+                <View style={styles.buttonIconContainer}>
+                  <Ionicons name="play-circle" size={20} color="#2196F3" />
+                </View>
+                <Text style={styles.themeButtonText}>Set Active</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Delete Button - RIGHT */}
+            <TouchableOpacity
+              style={[styles.themeButton, styles.deleteButtonTheme]}
+              onPress={handleDelete}
+            >
+              <View style={styles.buttonIconContainer}>
+                <Ionicons name="trash" size={20} color="#FF3B30" />
+              </View>
+              <Text style={styles.themeButtonText}>Delete</Text>
+            </TouchableOpacity>
+
+            {/* Close Button - Elegant */}
+            <TouchableOpacity
+              style={styles.elegantCloseButton}
               onPress={hideDeleteOptionWithAnimation}
             >
-              <Ionicons name="close" size={18} color="#666" />
-            </Pressable>
-
-            {/* Action Buttons */}
-            <View style={{
-              flexDirection: "row",
-              width: "100%",
-              height: "100%",
-              borderRadius: 20,
-              overflow: "hidden",
-            }}>
-              {/* Left Half - Delete Button */}
-              <Pressable
-                style={({ pressed }) => [
-                  {
-                    flex: 1,
-                    backgroundColor: "#ff4444",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                    opacity: pressed ? 0.8 : 1,
-                  }
-                ]}
-                onPress={handleDelete}
-              >
-                <Ionicons name="trash" size={24} color="#fff" />
-                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", marginTop: 4 }}>Delete</Text>
-              </Pressable>
-
-              {/* Right Half - Complete/Set Active Button */}
-              {!isCompleted ? (
-                <Pressable
-                  style={({ pressed }) => [
-                    {
-                      flex: 1,
-                      backgroundColor: "#4CAF50",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transform: [{ scale: pressed ? 0.95 : 1 }],
-                      opacity: pressed ? 0.8 : 1,
-                    }
-                  ]}
-                  onPress={() => {
-                    hideDeleteOptionWithAnimation();
-                    onComplete?.();
-                  }}
-                >
-                  <Ionicons name="checkmark" size={24} color="#fff" />
-                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", marginTop: 4 }}>Complete</Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  style={({ pressed }) => [
-                    {
-                      flex: 1,
-                      backgroundColor: "#2196F3",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transform: [{ scale: pressed ? 0.95 : 1 }],
-                      opacity: pressed ? 0.8 : 1,
-                    }
-                  ]}
-                  onPress={() => {
-                    hideDeleteOptionWithAnimation();
-                    onSetActive?.();
-                  }}
-                >
-                  <Ionicons name="refresh" size={24} color="#fff" />
-                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", marginTop: 4 }}>Set Active</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
+              <Ionicons name="close" size={18} color="#8E8E93" />
+            </TouchableOpacity>
+          </Animated.View>
         )}
         </View>
       </Pressable>
@@ -625,6 +593,69 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     letterSpacing: 0.3,
   },
+  // Theme Consistent Action Buttons
+  actionButtonsContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60, // Sadece milestone header yüksekliği
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(248, 249, 250, 0.95)",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    zIndex: 1000,
+  },
+  themeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginHorizontal: 8,
+    minWidth: 100,
+  },
+  completeButtonTheme: {
+    backgroundColor: "#E8F5E8",
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+  },
+  activeButtonTheme: {
+    backgroundColor: "#E3F2FD",
+    borderWidth: 1,
+    borderColor: "#2196F3",
+  },
+  deleteButtonTheme: {
+    backgroundColor: "#FFEBEE",
+    borderWidth: 1,
+    borderColor: "#FF3B30",
+  },
+  buttonIconContainer: {
+    marginRight: 8,
+  },
+  themeButtonText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#1D1D1F",
+    letterSpacing: -0.1,
+  },
+  elegantCloseButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(142, 142, 147, 0.2)",
+  },
 });
 
 MileStone.propTypes = {
@@ -660,3 +691,4 @@ MileStone.defaultProps = {
   onOpenJournal: null,
   navigation: null,
 };
+
