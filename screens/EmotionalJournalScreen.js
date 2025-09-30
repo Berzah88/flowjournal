@@ -1465,7 +1465,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
             );
           })()}
 
-          {/* Modern Goals Section */}
+          {/* Beautiful Goals Section */}
           {(() => {
             const goals = getMoodGoals();
             return goals.length > 0 && (
@@ -1474,34 +1474,30 @@ const EmotionalJournalScreen = ({ navigation }) => {
                   <Text style={styles.goalsTitle}>Your Goals</Text>
                   <Text style={styles.goalsSubtitle}>Personalized based on your mood patterns</Text>
                 </View>
-                <View style={styles.goalsGrid}>
+                <View style={styles.goalsList}>
                   {goals.map((goal, index) => (
-                    <View key={index} style={[styles.goalCard, { backgroundColor: goal.color + '15' }]}>
-                      <View style={styles.goalCardHeader}>
-                        <View style={[styles.goalCardIcon, { backgroundColor: goal.color }]}>
-                          <MaterialIcons name={goal.icon} size={24} color="#FFFFFF" />
+                    <View key={index} style={styles.goalItem}>
+                      <View style={styles.goalItemLeft}>
+                        <View style={[styles.goalIcon, { backgroundColor: goal.color }]}>
+                          <MaterialIcons name={goal.icon} size={20} color="#FFFFFF" />
                         </View>
-                        <View style={styles.goalCardTitleContainer}>
-                          <Text style={styles.goalCardTitle}>{goal.title}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.goalCardDescription}>{goal.description}</Text>
-                      <View style={styles.goalCardTargetContainer}>
-                        <View style={[styles.goalCardTarget, { backgroundColor: goal.color + '20' }]}>
-                          <MaterialIcons name="flag" size={16} color={goal.color} />
-                          <Text style={[styles.goalCardTargetText, { color: goal.color }]}>{goal.target}</Text>
+                        <View style={styles.goalContent}>
+                          <Text style={styles.goalTitle}>{goal.title}</Text>
+                          <Text style={styles.goalDescription}>{goal.description}</Text>
                         </View>
                       </View>
-                      <View style={styles.goalCardProgress}>
-                        <View style={[styles.goalCardProgressBar, { backgroundColor: goal.color + '30' }]}>
-                          <View style={[styles.goalCardProgressFill, { 
-                            backgroundColor: goal.color,
-                            width: `${Math.random() * 40 + 20}%` // Random progress for demo
-                          }]} />
+                      <View style={styles.goalItemRight}>
+                        <View style={styles.goalProgressContainer}>
+                          <View style={styles.goalProgressBar}>
+                            <View style={[styles.goalProgressFill, { 
+                              backgroundColor: goal.color,
+                              width: `${Math.random() * 40 + 20}%`
+                            }]} />
+                          </View>
+                          <Text style={styles.goalProgressText}>
+                            {Math.floor(Math.random() * 40 + 20)}%
+                          </Text>
                         </View>
-                        <Text style={styles.goalCardProgressText}>
-                          {Math.floor(Math.random() * 40 + 20)}% Complete
-                        </Text>
                       </View>
                     </View>
                   ))}
@@ -1826,103 +1822,92 @@ const styles = StyleSheet.create({
    goalsContainer: {
      marginTop: 24,
      marginBottom: 40,
-     paddingHorizontal: SPACING.LG,
    },
    goalsHeader: {
      marginBottom: 20,
      alignItems: 'center',
+     paddingHorizontal: SPACING.LG,
    },
    goalsTitle: {
-     fontSize: 20,
-     fontFamily: 'Poppins_700Bold',
+     fontSize: 18,
+     fontFamily: 'Poppins_600SemiBold',
      color: '#333',
      marginBottom: 4,
    },
    goalsSubtitle: {
-     fontSize: 14,
+     fontSize: 13,
      fontFamily: 'Poppins_400Regular',
      color: '#666',
      textAlign: 'center',
    },
-   goalsGrid: {
-     flexDirection: 'row',
-     flexWrap: 'wrap',
-     justifyContent: 'space-between',
-   },
-   goalCard: {
-     width: '48%',
-     borderRadius: 20,
-     padding: 16,
-     marginBottom: 16,
+   goalsList: {
+     backgroundColor: '#FFFFFF',
+     borderRadius: 16,
+     marginHorizontal: SPACING.LG,
      shadowColor: '#000',
-     shadowOffset: { width: 0, height: 4 },
+     shadowOffset: { width: 0, height: 2 },
      shadowOpacity: 0.1,
-     shadowRadius: 12,
-     elevation: 5,
+     shadowRadius: 8,
+     elevation: 3,
    },
-   goalCardHeader: {
+   goalItem: {
      flexDirection: 'row',
      alignItems: 'center',
-     marginBottom: 12,
+     padding: 16,
+     borderBottomWidth: 1,
+     borderBottomColor: '#F8F9FA',
    },
-   goalCardIcon: {
-     width: 40,
-     height: 40,
-     borderRadius: 20,
+   goalItemLeft: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     flex: 1,
+   },
+   goalIcon: {
+     width: 36,
+     height: 36,
+     borderRadius: 18,
      justifyContent: 'center',
      alignItems: 'center',
      marginRight: 12,
    },
-   goalCardTitleContainer: {
+   goalContent: {
      flex: 1,
    },
-   goalCardTitle: {
-     fontSize: 16,
+   goalTitle: {
+     fontSize: 15,
      fontFamily: 'Poppins_600SemiBold',
      color: '#333',
-     lineHeight: 20,
+     marginBottom: 2,
    },
-   goalCardDescription: {
+   goalDescription: {
      fontSize: 13,
      fontFamily: 'Poppins_400Regular',
      color: '#666',
-     lineHeight: 18,
-     marginBottom: 12,
+     lineHeight: 16,
    },
-   goalCardTargetContainer: {
-     marginBottom: 12,
+   goalItemRight: {
+     alignItems: 'flex-end',
    },
-   goalCardTarget: {
-     flexDirection: 'row',
+   goalProgressContainer: {
      alignItems: 'center',
-     paddingHorizontal: 12,
-     paddingVertical: 8,
-     borderRadius: 12,
+     minWidth: 60,
    },
-   goalCardTargetText: {
-     fontSize: 12,
-     fontFamily: 'Poppins_500Medium',
-     marginLeft: 6,
-     flex: 1,
-   },
-   goalCardProgress: {
-     marginTop: 8,
-   },
-   goalCardProgressBar: {
-     height: 6,
-     borderRadius: 3,
-     marginBottom: 6,
+   goalProgressBar: {
+     width: 50,
+     height: 4,
+     backgroundColor: '#E0E0E0',
+     borderRadius: 2,
+     marginBottom: 4,
      overflow: 'hidden',
    },
-   goalCardProgressFill: {
+   goalProgressFill: {
      height: '100%',
-     borderRadius: 3,
+     borderRadius: 2,
    },
-   goalCardProgressText: {
+   goalProgressText: {
      fontSize: 11,
      fontFamily: 'Poppins_500Medium',
      color: '#666',
-     textAlign: 'center',
    },
   recentContainer: {
     marginTop: 24,
