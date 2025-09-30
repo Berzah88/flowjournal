@@ -10,35 +10,35 @@ export const CORE_MOODS = [
     key: "happy",
     label: "Happy",
     icon: "sentiment-satisfied",
-    color: "#C8E6C9",
+    color: "#C8E6C9", // Light green
     category: "positive"
   },
   {
     key: "excited",
-    label: "Excited",
+    label: "Excited", 
     icon: "celebration",
-    color: "#FFE0B2",
+    color: "#FFE0B2", // Light orange
     category: "positive"
   },
   {
     key: "tired",
     label: "Tired",
     icon: "bedtime",
-    color: "#F3E5F5",
+    color: "#E1BEE7", // Light purple
     category: "negative"
   },
   {
     key: "sad",
     label: "Sad",
     icon: "sentiment-dissatisfied",
-    color: "#FFCDD2",
+    color: "#FFCDD2", // Light red
     category: "negative"
   },
   {
     key: "angry",
     label: "Angry",
     icon: "mood-bad",
-    color: "#FFEBEE",
+    color: "#FFAB91", // Light deep orange
     category: "negative"
   }
 ];
@@ -53,126 +53,126 @@ export const EXTENDED_MOODS = [
     key: "frustrated",
     label: "Frustrated",
     icon: "psychology",
-    color: "#FFE0B2",
+    color: "#FFCCBC", // Light brown
     category: "negative"
   },
   {
     key: "anxious",
-    label: "Anxious",
+    label: "Anxious", 
     icon: "warning",
-    color: "#FFCDD2",
+    color: "#FFF3E0", // Light amber
     category: "negative"
   },
   {
     key: "grateful",
     label: "Grateful",
     icon: "favorite",
-    color: "#C8E6C9",
+    color: "#E8F5E8", // Light mint green
     category: "positive"
   },
   {
     key: "hopeful",
     label: "Hopeful",
     icon: "wb-sunny",
-    color: "#E1F5FE",
+    color: "#E1F5FE", // Light blue
     category: "positive"
   },
   {
     key: "proud",
     label: "Proud",
     icon: "emoji-events",
-    color: "#FFE0B2",
+    color: "#FFF8E1", // Light yellow
     category: "positive"
   },
   {
     key: "relieved",
     label: "Relieved",
     icon: "spa",
-    color: "#E8F5E8",
+    color: "#F3E5F5", // Light lavender
     category: "positive"
   },
   {
     key: "overwhelmed",
     label: "Overwhelmed",
     icon: "psychology",
-    color: "#FFCDD2",
+    color: "#FFEBEE", // Light pink
     category: "negative"
   },
   {
     key: "lonely",
     label: "Lonely",
     icon: "person-off",
-    color: "#F3E5F5",
+    color: "#E0E0E0", // Light gray
     category: "negative"
   },
   {
     key: "motivated",
     label: "Motivated",
     icon: "trending-up",
-    color: "#C8E6C9",
+    color: "#DCEDC8", // Light lime green
     category: "positive"
   },
   {
     key: "confused",
     label: "Confused",
     icon: "help",
-    color: "#FFF3E0",
+    color: "#F5F5F5", // Very light gray
     category: "negative"
   },
   {
     key: "disappointed",
     label: "Disappointed",
     icon: "sentiment-dissatisfied",
-    color: "#FFCDD2",
+    color: "#FFE0E6", // Light rose
     category: "negative"
   },
   {
     key: "nostalgic",
     label: "Nostalgic",
     icon: "history",
-    color: "#E1F5FE",
+    color: "#E8EAF6", // Light indigo
     category: "neutral"
   },
   {
     key: "peaceful",
     label: "Peaceful",
     icon: "spa",
-    color: "#E1F5FE",
+    color: "#E0F2F1", // Light teal
     category: "positive"
   },
   {
     key: "curious",
     label: "Curious",
     icon: "explore",
-    color: "#FFF8E1",
+    color: "#FFFDE7", // Light cream
     category: "neutral"
   },
   {
     key: "bored",
     label: "Bored",
     icon: "sentiment-neutral",
-    color: "#F5F5F5",
+    color: "#FAFAFA", // Very light gray
     category: "negative"
   },
   {
     key: "surprised",
     label: "Surprised",
     icon: "surprise",
-    color: "#FFF3E0",
+    color: "#FFF9C4", // Light yellow
     category: "neutral"
   },
   {
     key: "content",
     label: "Content",
     icon: "sentiment-satisfied",
-    color: "#E8F5E8",
+    color: "#E8F5E8", // Light mint green (same as grateful, but that's ok)
     category: "positive"
   },
   {
     key: "worried",
     label: "Worried",
     icon: "psychology",
-    color: "#FFEBEE",
+    color: "#FCE4EC", // Light magenta
     category: "negative"
   }
 ];
@@ -202,7 +202,7 @@ class SmartPatternMatcher {
 
   initializePatterns() {
     return {
-      // Physical states
+  // Physical states
       physical: {
         tired: {
           patterns: ['yorgun', 'bitkin', 'tükenmiş', 'halsiz', 'güçsüz', 'dermansız', 'takatsiz', 'kudretsiz'],
@@ -214,14 +214,14 @@ class SmartPatternMatcher {
           ngrams: ['çok enerjik', 'aşırı aktif', 'dinç hissediyorum', 'güçlü hissediyorum'],
           context: ['fiziksel', 'beden', 'vücut', 'enerji', 'güç']
         }
-      },
-      
-      // Emotional states
+  },
+  
+  // Emotional states
       emotional: {
         happy: {
-          patterns: ['mutlu', 'sevinçli', 'neşeli', 'gururlu', 'memnun', 'hoşnut', 'tatmin'],
-          ngrams: ['çok mutlu', 'aşırı sevinçli', 'müthiş mutlu', 'harika hissediyorum'],
-          context: ['başarı', 'kazandım', 'tamamladım', 'başardım', 'güzel', 'iyi']
+          patterns: ['mutlu', 'sevinçli', 'neşeli', 'gururlu', 'memnun', 'hoşnut', 'tatmin', 'umutlu', 'umudum', 'umut'],
+          ngrams: ['çok mutlu', 'aşırı sevinçli', 'müthiş mutlu', 'harika hissediyorum', 'umudum var', 'umut var'],
+          context: ['başarı', 'kazandım', 'tamamladım', 'başardım', 'güzel', 'iyi', 'umut', 'gelecek']
         },
         sad: {
           patterns: ['üzgün', 'hüzünlü', 'kederli', 'acılı', 'üzüntülü', 'kırgın', 'mutsuz'],
@@ -238,17 +238,17 @@ class SmartPatternMatcher {
           ngrams: ['çok endişeli', 'aşırı kaygılı', 'müthiş stresli', 'panik hissediyorum'],
           context: ['gelecek', 'yarın', 'sınav', 'iş', 'para', 'sağlık']
         }
-      },
-      
-      // Mental states
+  },
+  
+  // Mental states
       mental: {
         frustrated: {
-          patterns: ['bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'bezgin'],
-          ngrams: ['bıktım artık', 'usandım artık', 'sıkıldım artık', 'yeter artık'],
-          context: ['tekrar', 'aynı', 'sürekli', 'hep', 'her zaman']
+          patterns: ['bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'bezgin', 'can sıkıcı', 'sıkıcı', 'yorucu', 'bunaltıcı'],
+          ngrams: ['bıktım artık', 'usandım artık', 'sıkıldım artık', 'yeter artık', 'can sıkıcı', 'ne kadar sıkıcı', 'çok sıkıcı'],
+          context: ['tekrar', 'aynı', 'sürekli', 'hep', 'her zaman', 'sistem', 'bu sistem']
         },
         overwhelmed: {
-          patterns: ['bunalmış', 'aşırı yüklenmiş', 'çok fazla', 'bitkin', 'tükenmiş'],
+    patterns: ['bunalmış', 'aşırı yüklenmiş', 'çok fazla', 'bitkin', 'tükenmiş'],
           ngrams: ['çok fazla iş', 'aşırı yüklenmiş', 'bunalmış hissediyorum'],
           context: ['çok', 'fazla', 'aşırı', 'yük', 'iş', 'sorumluluk']
         },
@@ -257,9 +257,9 @@ class SmartPatternMatcher {
           ngrams: ['çok motiveli', 'aşırı hevesli', 'müthiş istekli', 'azimli hissediyorum'],
           context: ['hedef', 'amaç', 'plan', 'gelecek', 'başarı', 'ilerleme']
         }
-      },
-      
-      // Social states
+  },
+  
+  // Social states
       social: {
         lonely: {
           patterns: ['yalnız', 'tek başına', 'kimsesiz', 'izole', 'soyutlanmış'],
@@ -755,7 +755,7 @@ class SmartMoodDetector {
   async detectMood(text, userHistory = []) {
     try {
       if (!text || text.trim().length === 0) {
-        return {
+      return {
           mood: 'neutral',
           confidence: { score: 0.1, level: 'very_low', factors: ['No text provided'] },
           reason: 'No text provided'
@@ -822,11 +822,13 @@ class SmartMoodDetector {
   // Get mood suggestions - Extended moods for AI suggestions
   async getMoodSuggestions(text, currentMood = null) {
     try {
+      console.log('getMoodSuggestions called with text:', text);
       const detection = await this.detectMood(text);
+      console.log('Detection result:', detection);
       const suggestions = [];
       
-      // Primary suggestion from extended moods
-      if (detection.confidence.score > 0.5) {
+      // Primary suggestion from extended moods - Always provide suggestion
+      if (detection.confidence.score > 0.01) { // Very low threshold
         const suggestedMood = EXTENDED_MOODS.find(m => m.key === detection.mood);
         if (suggestedMood) {
           suggestions.push({
@@ -841,10 +843,44 @@ class SmartMoodDetector {
         }
       }
       
+      // If no primary suggestion, try text-based fallback
+      if (suggestions.length === 0) {
+        const lowerText = text.toLowerCase();
+        
+        // Check for specific Turkish phrases
+        if (lowerText.includes('can sıkıcı') || lowerText.includes('sıkıcı') || lowerText.includes('bıktım')) {
+          const frustratedMood = EXTENDED_MOODS.find(m => m.key === 'frustrated');
+          if (frustratedMood) {
+            suggestions.push({
+              mood: 'frustrated',
+              label: frustratedMood.label,
+              icon: frustratedMood.icon,
+              color: frustratedMood.color,
+              confidence: 0.6,
+              reason: 'Text contains frustration indicators',
+              type: 'text_fallback'
+            });
+          }
+        } else if (lowerText.includes('umudum') || lowerText.includes('umut')) {
+          const hopefulMood = EXTENDED_MOODS.find(m => m.key === 'hopeful');
+          if (hopefulMood) {
+            suggestions.push({
+              mood: 'hopeful',
+              label: hopefulMood.label,
+              icon: hopefulMood.icon,
+              color: hopefulMood.color,
+              confidence: 0.6,
+              reason: 'Text contains hope indicators',
+              type: 'text_fallback'
+            });
+          }
+        }
+      }
+      
       // Alternative suggestions from extended moods
       if (detection.matches.length > 1) {
         detection.matches.slice(1, 3).forEach(match => {
-          if (Math.abs(match.score) > 0.3) {
+          if (Math.abs(match.score) > 0.1) {
             const suggestedMood = EXTENDED_MOODS.find(m => m.key === match.mood);
             if (suggestedMood) {
               suggestions.push({
@@ -861,7 +897,7 @@ class SmartMoodDetector {
         });
       }
       
-      // Fallback suggestions from extended moods
+      // Fallback suggestions from extended moods - Always provide at least one suggestion
       if (suggestions.length === 0) {
         const fallbacks = this.confidenceScorer.getFallbackSuggestions(detection.confidence);
         fallbacks.forEach(fallback => {
@@ -875,6 +911,22 @@ class SmartMoodDetector {
             });
           }
         });
+        
+        // If still no suggestions, provide neutral as default
+        if (suggestions.length === 0) {
+          const neutralMood = EXTENDED_MOODS.find(m => m.key === 'neutral');
+          if (neutralMood) {
+            suggestions.push({
+              mood: 'neutral',
+              label: neutralMood.label,
+              icon: neutralMood.icon,
+              color: neutralMood.color,
+              confidence: 0.3,
+              reason: 'Default neutral suggestion',
+              type: 'fallback'
+            });
+          }
+        }
       }
       
       return suggestions;

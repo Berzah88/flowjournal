@@ -47,31 +47,31 @@ const BASIC_MOODS = [
     key: "happy",
     label: "Happy",
     icon: "sentiment-satisfied",
-    color: "#C8E6C9", // pastel green
+    color: "#C8E6C9", // Light green
   },
   {
     key: "excited",
     label: "Excited",
     icon: "celebration",
-    color: "#FFE0B2", // pastel orange
+    color: "#FFE0B2", // Light orange
   },
   {
     key: "tired",
     label: "Tired",
     icon: "bedtime",
-    color: "#F3E5F5", // pastel purple
+    color: "#E1BEE7", // Light purple
   },
   {
     key: "sad",
     label: "Sad",
     icon: "sentiment-dissatisfied",
-    color: "#FFCDD2", // pastel red
+    color: "#FFCDD2", // Light red
   },
   {
     key: "angry",
     label: "Angry",
     icon: "mood-bad",
-    color: "#FFEBEE", // light red
+    color: "#FFAB91", // Light deep orange
   },
 ];
 
