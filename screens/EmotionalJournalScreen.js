@@ -1334,11 +1334,6 @@ const EmotionalJournalScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Başlık çizgisi - Overview altında */}
-        <View style={[
-          styles.headerDivider,
-          { backgroundColor: theme.name === 'dark' ? '#636366' : COLORS.GRAY[200] }
-        ]} />
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 

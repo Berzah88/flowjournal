@@ -90,7 +90,7 @@ export default function DataRecoveryMenu({
             style={[
               styles.item,
               {
-                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                backgroundColor: 'transparent',
               }
             ]}
             onPress={handleViewCompleted}
@@ -116,7 +116,7 @@ export default function DataRecoveryMenu({
             style={[
               styles.item,
               {
-                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                backgroundColor: 'transparent',
               }
             ]}
             onPress={handleCreateBackup}
@@ -142,7 +142,7 @@ export default function DataRecoveryMenu({
             style={[
               styles.item,
               {
-                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                backgroundColor: 'transparent',
               }
             ]}
             onPress={handleRecoverData}
