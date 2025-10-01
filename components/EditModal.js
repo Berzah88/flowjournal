@@ -76,18 +76,21 @@ export default function EditModal({ visible, onClose, project, onSave }) {
       // Reset values first
       translateY.value = height;
       opacity.value = 0;
-      scale.value = 1;
+      scale.value = 0.95;
       dragY.value = 0;
       
-      // Then animate in
-      translateY.value = withTiming(0, { duration: 320 });
-      scale.value = withTiming(1, { duration: 320 });
-      opacity.value = withTiming(1, { duration: 320 });
+      // Small delay to ensure reset is applied
+      setTimeout(() => {
+        // Then animate in
+        translateY.value = withTiming(0, { duration: 320 });
+        scale.value = withTiming(1, { duration: 320 });
+        opacity.value = withTiming(1, { duration: 320 });
+      }, 50);
       
       // Focus input after animation
       const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 450);
+      }, 500);
       return () => clearTimeout(timer);
     } else {
       // Reset when not visible
