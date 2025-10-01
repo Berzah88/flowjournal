@@ -201,15 +201,11 @@ export const ThemeProvider = ({ children }) => {
 
   const toggleTheme = async () => {
     try {
-      if (currentPreference === 'system') {
-        // Sistem temasından light'a geç
-        setThemePreference('light');
-      } else if (currentPreference === 'light') {
-        // Light'tan dark'a geç
+      // Mevcut tema durumuna göre direkt geçiş yap
+      if (theme.name === 'light') {
         setThemePreference('dark');
       } else {
-        // Dark'tan sistem temasına geç
-        setThemePreference('system');
+        setThemePreference('light');
       }
     } catch (error) {
       console.error('Error toggling theme:', error);
