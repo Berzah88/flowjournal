@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../context/ThemeContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,6 +17,7 @@ export default function DataRecoveryMenu({
   onCreateBackup,
   onViewCompleted 
 }) {
+  const { theme } = useTheme();
   // Smooth animasyon değerleri
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -71,46 +73,93 @@ export default function DataRecoveryMenu({
   return (
     <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.overlay}>
-        <Animated.View style={[styles.container, animatedContainerStyle]}>
+        <Animated.View style={[
+          styles.container,
+          {
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
+            borderColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.2)',
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.15,
+            shadowRadius: theme.name === 'dark' ? 20 : 16,
+            elevation: theme.name === 'dark' ? 12 : 12,
+          },
+          animatedContainerStyle
+        ]}>
           {/* View Completed Projects */}
           <TouchableOpacity
-            style={styles.item}
+            style={[
+              styles.item,
+              {
+                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+              }
+            ]}
             onPress={handleViewCompleted}
             accessible={true}
             accessibilityLabel="View completed projects"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="checkmark-circle-outline" size={20} color="#FFA726" />
-              <Text style={styles.itemText}>Completed Projects</Text>
+              <Ionicons 
+                name="checkmark-circle-outline" 
+                size={20} 
+                color={theme.name === 'dark' ? '#FF6B6B' : '#FFA726'} 
+              />
+              <Text style={[
+                styles.itemText,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#2c3e50' }
+              ]}>Completed Projects</Text>
             </View>
           </TouchableOpacity>
 
           {/* Create Backup */}
           <TouchableOpacity
-            style={styles.item}
+            style={[
+              styles.item,
+              {
+                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+              }
+            ]}
             onPress={handleCreateBackup}
             accessible={true}
             accessibilityLabel="Create manual backup"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="save-outline" size={20} color="#4ECDC4" />
-              <Text style={[styles.itemText, styles.backupText]}>Create Backup</Text>
+              <Ionicons 
+                name="save-outline" 
+                size={20} 
+                color={theme.name === 'dark' ? '#34C759' : '#4ECDC4'} 
+              />
+              <Text style={[
+                styles.itemText,
+                { color: theme.name === 'dark' ? '#34C759' : '#4ECDC4' }
+              ]}>Create Backup</Text>
             </View>
           </TouchableOpacity>
 
           {/* Recover Data */}
           <TouchableOpacity
-            style={styles.item}
+            style={[
+              styles.item,
+              {
+                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+              }
+            ]}
             onPress={handleRecoverData}
             accessible={true}
             accessibilityLabel="Recover lost data"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="refresh-outline" size={20} color="#FF6B6B" />
-              <Text style={[styles.itemText, styles.recoveryText]}>Recover Data</Text>
+              <Ionicons 
+                name="refresh-outline" 
+                size={20} 
+                color={theme.name === 'dark' ? '#FF6B6B' : '#FF6B6B'} 
+              />
+              <Text style={[
+                styles.itemText,
+                { color: theme.name === 'dark' ? '#FF6B6B' : '#FF6B6B' }
+              ]}>Recover Data</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -129,19 +178,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 40,
     right: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 12,
     minWidth: 200,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
     backdropFilter: "blur(20px)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   item: {
     paddingVertical: 8,
@@ -154,14 +197,7 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 16,
-    color: "#2c3e50",
     fontFamily: "Poppins_600SemiBold",
     marginLeft: 12,
-  },
-  recoveryText: { 
-    color: "#FF6B6B" 
-  },
-  backupText: { 
-    color: "#4ECDC4" 
   },
 });

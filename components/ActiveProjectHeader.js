@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useTheme } from '../context/ThemeContext';
 
 // Format date range as "23 Mar 2025 - 24 Mar 2025"
 const formatDateRange = (startDate, endDate) => {
@@ -28,6 +29,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   progressStyle,
   panGesture
 }) {
+  const { theme } = useTheme();
   const start = currentTask?.startDate ? new Date(currentTask.startDate) : null;
   const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
 
@@ -38,39 +40,84 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
 
   return (
     <GestureDetector gesture={panGesture}>
-      <View style={styles.modernHeader}>
+      <View style={[
+        styles.modernHeader,
+        {
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+          borderBottomColor: theme.name === 'dark' ? '#636366' : 'rgba(0, 0, 0, 0.05)',
+        }
+      ]}>
         {/* Modern Header Content */}
         <View style={styles.headerContent}>
           {/* Project Title Section */}
           <View style={styles.titleSection}>
-            <Text style={[styles.modernTitle, isCompleted && styles.completedText]}>
+            <Text style={[
+              styles.modernTitle, 
+              { color: theme.name === 'dark' ? '#FF6B6B' : '#1D1D1F' },
+              isCompleted && styles.completedText
+            ]}>
               {currentTask?.title || "Untitled"}
             </Text>
             {start && end && (
-              <Text style={[styles.dateRange, isCompleted && styles.completedDateText]}>
+              <Text style={[
+                styles.dateRange, 
+                { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' },
+                isCompleted && styles.completedDateText
+              ]}>
                 {formatDateRange(start, end)}
               </Text>
             )}
           </View>
           
           {/* Tab Switcher */}
-          <View style={styles.tabSwitcher}>
+          <View style={[
+            styles.tabSwitcher,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            }
+          ]}>
             <TouchableOpacity 
-              style={[styles.tabButton, activeTab === 0 && styles.activeTabButton]} 
+              style={[
+                styles.tabButton, 
+                activeTab === 0 && [
+                  styles.activeTabButton,
+                  { backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF' }
+                ]
+              ]} 
               onPress={() => handleTabSwitch(0)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.tabButtonText, activeTab === 0 && styles.activeTabButtonText]}>
+              <Text style={[
+                styles.tabButtonText, 
+                { color: theme.name === 'dark' ? '#4B5563' : '#8E8E93' },
+                activeTab === 0 && {
+                  color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
+                  fontFamily: 'Poppins_600SemiBold',
+                }
+              ]}>
                 Milestones
               </Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.tabButton, activeTab === 1 && styles.activeTabButton]} 
+              style={[
+                styles.tabButton, 
+                activeTab === 1 && [
+                  styles.activeTabButton,
+                  { backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF' }
+                ]
+              ]} 
               onPress={() => handleTabSwitch(1)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.tabButtonText, activeTab === 1 && styles.activeTabButtonText]}>
+              <Text style={[
+                styles.tabButtonText, 
+                { color: theme.name === 'dark' ? '#4B5563' : '#8E8E93' },
+                activeTab === 1 && {
+                  color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
+                  fontFamily: 'Poppins_600SemiBold',
+                }
+              ]}>
                 Calendar
               </Text>
             </TouchableOpacity>
@@ -80,15 +127,35 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
         {/* Modern Progress Section - Her iki tab'da da görünür */}
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
-            <Text style={[styles.progressLabel, isCompleted && styles.completedProgressText]}>
+            <Text style={[
+              styles.progressLabel, 
+              { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' },
+              isCompleted && styles.completedProgressText
+            ]}>
               Progress
             </Text>
-            <Text style={[styles.progressPercentage, isCompleted && styles.completedProgressText]}>
+            <Text style={[
+              styles.progressPercentage, 
+              { color: theme.name === 'dark' ? '#FF6B6B' : '#007AFF' },
+              isCompleted && styles.completedProgressText
+            ]}>
               {Math.round(progress * 100)}%
             </Text>
           </View>
-          <View style={[styles.progressBarContainer, isCompleted && styles.completedProgressBarContainer]}>
-            <Animated.View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+          <View style={[
+            styles.progressBarContainer, 
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            },
+            isCompleted && styles.completedProgressBarContainer
+          ]}>
+            <Animated.View style={[
+              styles.progressBar, 
+              { 
+                width: `${progress * 100}%`,
+                backgroundColor: theme.name === 'dark' ? '#FF6B6B' : '#007AFF'
+              }
+            ]} />
           </View>
         </View>
       </View>
@@ -101,12 +168,10 @@ export default ActiveProjectHeader;
 const styles = StyleSheet.create({
   // Modern Header Styles
   modernHeader: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   headerContent: {
     flexDirection: 'column',
@@ -119,19 +184,16 @@ const styles = StyleSheet.create({
   modernTitle: {
     fontSize: 24,
     fontFamily: "Poppins_700Bold",
-    color: "#1D1D1F",
     letterSpacing: -0.5,
     lineHeight: 28,
   },
   dateRange: {
     fontSize: 14,
     fontFamily: "Poppins_500Medium",
-    color: "#8E8E93",
     letterSpacing: -0.2,
   },
   tabSwitcher: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 12,
     padding: 4,
   },
@@ -144,7 +206,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activeTabButton: {
-    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -154,11 +215,8 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 14,
     fontFamily: "Poppins_500Medium",
-    color: "#8E8E93",
   },
   activeTabButtonText: {
-    color: "#1D1D1F",
-    fontFamily: "Poppins_600SemiBold",
   },
   completedText: { 
     color: "#FFFFFF" 
@@ -181,23 +239,19 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 14,
     fontFamily: "Poppins_500Medium",
-    color: "#8E8E93",
     letterSpacing: -0.2,
   },
   progressPercentage: {
     fontSize: 14,
     fontFamily: "Poppins_600SemiBold",
-    color: "#007AFF",
   },
   progressBarContainer: {
     height: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#007AFF',
     borderRadius: 3,
   },
   completedProgressText: {

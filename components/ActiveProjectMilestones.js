@@ -1,6 +1,7 @@
 // components/ActiveProjectMilestones.js
 import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 import MileStone from './MileStone';
 
 function ActiveProjectMilestones({
@@ -20,6 +21,7 @@ function ActiveProjectMilestones({
   navigation,
   refreshKey
 }) {
+  const { theme } = useTheme();
   // isLatest değerlerini hesapla - NO MEMOIZATION
   const activeMilestonesWithLatest = activeMilestones.map((milestone, index) => ({
     ...milestone,
@@ -34,17 +36,34 @@ function ActiveProjectMilestones({
   }));
 
   return (
-    <View style={styles.modernMilestonesContainer}>
+    <View style={[
+      styles.modernMilestonesContainer,
+        {
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+        }
+    ]}>
       {/* Modern Milestones Header */}
-      <View style={styles.modernMilestoneHeader}>
+      <View style={[
+        styles.modernMilestoneHeader,
+        {
+          backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(248, 251, 255, 0.5)',
+          borderBottomColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+        }
+      ]}>
         <View style={styles.milestoneHeaderContent}>
-          <Text style={styles.modernMilestoneTitle}>Milestones</Text>
+          <Text style={[
+            styles.modernMilestoneTitle,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+          ]}>Milestones</Text>
           <TouchableOpacity 
             style={styles.minimalAddButton}
             onPress={onAddMilestone}
             activeOpacity={0.6}
           >
-            <Text style={styles.minimalAddText}>+</Text>
+            <Text style={[
+              styles.minimalAddText,
+              { color: theme.name === 'dark' ? '#FFFFFF' : '#007AFF' }
+            ]}>+</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -52,7 +71,10 @@ function ActiveProjectMilestones({
       {/* Milestones List */}
       {allMilestones.length === 0 && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyHint}>No milestones yet — add one with +</Text>
+          <Text style={[
+            styles.emptyHint,
+            { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+          ]}>No milestones yet — add one with +</Text>
         </View>
       )}
       
@@ -127,12 +149,9 @@ const styles = StyleSheet.create({
   // Modern Milestones Container
   modernMilestonesContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   modernMilestoneHeader: {
-    backgroundColor: 'rgba(248, 251, 255, 0.5)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   milestoneHeaderContent: {
     flexDirection: 'row',
@@ -144,7 +163,6 @@ const styles = StyleSheet.create({
   modernMilestoneTitle: {
     fontFamily: "Poppins_600SemiBold",
     fontSize: 18,
-    color: "#1D1D1F",
     letterSpacing: -0.5,
   },
   // Minimalist Add Button
@@ -161,7 +179,6 @@ const styles = StyleSheet.create({
   minimalAddText: {
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
-    color: "#007AFF",
     lineHeight: 18,
     marginTop: -1, // Fine-tune vertical alignment
   },
@@ -192,7 +209,6 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyHint: {
-    color: "#8E8E93",
     fontStyle: "italic",
     fontSize: 16,
     fontFamily: "Poppins_400Regular",

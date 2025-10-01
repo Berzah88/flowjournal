@@ -1,9 +1,11 @@
 // components/StatusTabs.js
 import React, { useEffect, useRef } from "react";
 import { View, Animated, TouchableOpacity, StyleSheet, Text, Dimensions } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 const { width } = Dimensions.get("window");
 
 export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
+  const { theme } = useTheme();
   // progress: 0 => Active selected, 1 => Completed selected
   const progress = useRef(new Animated.Value(activeIndex === 0 ? 0 : 1)).current;
 
@@ -19,11 +21,15 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
   // interpolate colors (safe) — outputRange are hex strings
   const activeColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#1D1D1F", "#8E8E93"],
+    outputRange: theme.name === 'dark' 
+      ? ["#FFFFFF", "#8E8E93"] 
+      : ["#1D1D1F", "#8E8E93"],
   });
   const completedColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#8E8E93", "#1D1D1F"],
+    outputRange: theme.name === 'dark'
+      ? ["#8E8E93", "#FFFFFF"]
+      : ["#8E8E93", "#1D1D1F"],
   });
 
   // optional: small background slide indicator
@@ -34,12 +40,21 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.container}>
+      <View style={[
+        styles.container,
+        {
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 0, 0, 0.06)',
+          borderColor: theme.name === 'dark' ? '#636366' : 'rgba(0, 0, 0, 0.04)',
+        }
+      ]}>
         {/* indicator (subtle) */}
         <Animated.View
           style={[
             styles.indicator,
             {
+              backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
+              shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+              shadowOpacity: theme.name === 'dark' ? 0.2 : 0.1,
               transform: [{ translateX: indicatorTranslate }],
             },
           ]}
@@ -64,7 +79,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   container: {
-    backgroundColor: "rgba(0, 0, 0, 0.06)",
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
@@ -74,7 +88,6 @@ const styles = StyleSheet.create({
     elevation: 0,
     overflow: "hidden",
     borderWidth: 0.5,
-    borderColor: "rgba(0, 0, 0, 0.04)",
   },
   tab: {
     flex: 1,
@@ -94,11 +107,8 @@ const styles = StyleSheet.create({
     top: 6,
     bottom: 6,
     width: (width - 40) / 2 - 12, // half minus paddings
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },

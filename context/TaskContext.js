@@ -5,6 +5,7 @@ import { assignUniqueColor } from "../utils/milestoneColors";
 import { STORAGE_KEYS } from "../constants";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
+import notificationService from "../services/NotificationService";
 
 // Re-render optimization by splitting context
 export const TaskContext = createContext();
@@ -220,15 +221,19 @@ export const TaskProvider = ({ children }) => {
 
   // -------- TASK CRUD --------
   const addTask = useCallback((newTask) => {
-    setTasks((prev) => [
-      ...prev,
-      { ...newTask, id: Date.now(), done: false, milestones: [] },
-    ]);
-  }, []);
+    const taskWithId = { ...newTask, id: Date.now(), done: false, milestones: [] };
+    setTasks((prev) => [...prev, taskWithId]);
+    
+    // Proje eklendiğinde bildirim planla
+    scheduleProjectNotifications(taskWithId);
+  }, [scheduleProjectNotifications]);
 
   const deleteTask = useCallback((id) => {
     setTasks((prev) => prev.filter((task) => task.id !== id));
-  }, []);
+    
+    // Proje silindiğinde bildirimleri iptal et
+    cancelProjectNotifications(id);
+  }, [cancelProjectNotifications]);
 
   const completeTask = useCallback((id) => {
     setTasks((prev) =>
@@ -278,6 +283,9 @@ export const TaskProvider = ({ children }) => {
         // Check if project end date should be updated
         const newEndDate = shouldUpdateProjectEndDate(updatedMilestones, task.endDate);
         
+        // Milestone eklendiğinde bildirim planla
+        scheduleMilestoneNotifications(newMilestone, task.title);
+        
         return {
           ...task,
           milestones: updatedMilestones,
@@ -285,7 +293,7 @@ export const TaskProvider = ({ children }) => {
         };
       })
     );
-  }, [shouldUpdateProjectEndDate]);
+  }, [shouldUpdateProjectEndDate, scheduleMilestoneNotifications]);
 
   const updateMilestone = useCallback((taskId, msId, updates) => {
     console.log('TaskContext: updateMilestone called', { taskId, msId, updates });
@@ -378,6 +386,9 @@ export const TaskProvider = ({ children }) => {
       return;
     }
 
+    // Milestone silindiğinde bildirimleri iptal et
+    cancelMilestoneNotifications(msId);
+
     setTasks((prev) => {
       try {
         return prev.map((task) => {
@@ -395,7 +406,7 @@ export const TaskProvider = ({ children }) => {
         return prev;
       }
     });
-  }, []);
+  }, [cancelMilestoneNotifications]);
 
   const completeMilestone = useCallback((taskId, msId) => {
     setTasks((prev) =>
@@ -739,6 +750,104 @@ export const TaskProvider = ({ children }) => {
     }
   }, [handleAsyncStorageError]);
 
+  // ==================== NOTIFICATION FUNCTIONS ====================
+
+  // Tüm bildirimleri planla
+  const scheduleAllNotifications = useCallback(async () => {
+    try {
+      // Journal reminder planla
+      await notificationService.scheduleJournalReminder('20:00');
+      
+      // Tüm projeler için deadline uyarıları
+      await notificationService.scheduleAllProjectDeadlines(tasks);
+      
+      // Tüm milestone'lar için hatırlatıcılar
+      await notificationService.scheduleAllMilestoneReminders(tasks);
+      
+      console.log('Tüm bildirimler planlandı');
+    } catch (error) {
+      console.error('Bildirim planlama hatası:', error);
+    }
+  }, [tasks]);
+
+  // Proje eklendiğinde bildirim planla
+  const scheduleProjectNotifications = useCallback(async (project) => {
+    try {
+      if (!project.done && project.endDate) {
+        // 3 gün önce uyarı
+        await notificationService.scheduleProjectDeadlineWarning(
+          project.id,
+          project.title,
+          project.endDate,
+          3
+        );
+        
+        // 1 gün önce uyarı
+        await notificationService.scheduleProjectDeadlineWarning(
+          project.id,
+          project.title,
+          project.endDate,
+          1
+        );
+      }
+    } catch (error) {
+      console.error('Proje bildirim planlama hatası:', error);
+    }
+  }, []);
+
+  // Milestone eklendiğinde bildirim planla
+  const scheduleMilestoneNotifications = useCallback(async (milestone, projectTitle) => {
+    try {
+      if (!milestone.completed && milestone.deadline) {
+        await notificationService.scheduleMilestoneReminder(
+          milestone.id,
+          milestone.title,
+          projectTitle,
+          milestone.deadline,
+          1
+        );
+      }
+    } catch (error) {
+      console.error('Milestone bildirim planlama hatası:', error);
+    }
+  }, []);
+
+  // Proje silindiğinde bildirimleri iptal et
+  const cancelProjectNotifications = useCallback(async (projectId) => {
+    try {
+      await notificationService.cancelProjectDeadlineWarning(projectId);
+    } catch (error) {
+      console.error('Proje bildirim iptal hatası:', error);
+    }
+  }, []);
+
+  // Milestone silindiğinde bildirimleri iptal et
+  const cancelMilestoneNotifications = useCallback(async (milestoneId) => {
+    try {
+      await notificationService.cancelMilestoneReminder(milestoneId);
+    } catch (error) {
+      console.error('Milestone bildirim iptal hatası:', error);
+    }
+  }, []);
+
+  // Progress feedback bildirimlerini planla
+  const scheduleProgressFeedbackNotifications = useCallback(async () => {
+    try {
+      await notificationService.scheduleAllProgressFeedbacks(tasks);
+    } catch (error) {
+      console.error('Progress feedback planlama hatası:', error);
+    }
+  }, [tasks]);
+
+  // Progress feedback bildirimini iptal et
+  const cancelProgressFeedbackNotifications = useCallback(async (projectId) => {
+    try {
+      await notificationService.cancelProgressFeedbackNotification(projectId);
+    } catch (error) {
+      console.error('Progress feedback iptal hatası:', error);
+    }
+  }, []);
+
   // ---------- MEMOIZED CONTEXTS ----------
   // State context - sadece state değiştiğinde re-render
   const stateContextValue = useMemo(() => ({
@@ -771,6 +880,14 @@ export const TaskProvider = ({ children }) => {
     restoreFromBackupManually,
     checkDataStatus,
     clearStorage,
+    // Notification functions
+    scheduleAllNotifications,
+    scheduleProjectNotifications,
+    scheduleMilestoneNotifications,
+    cancelProjectNotifications,
+    cancelMilestoneNotifications,
+    scheduleProgressFeedbackNotifications,
+    cancelProgressFeedbackNotifications,
   }), [
     addTask,
     deleteTask,
@@ -795,6 +912,14 @@ export const TaskProvider = ({ children }) => {
     checkDataStatus,
     clearStorage,
     shouldUpdateProjectEndDate, // Dependency eklendi
+    // Notification dependencies
+    scheduleAllNotifications,
+    scheduleProjectNotifications,
+    scheduleMilestoneNotifications,
+    cancelProjectNotifications,
+    cancelMilestoneNotifications,
+    scheduleProgressFeedbackNotifications,
+    cancelProgressFeedbackNotifications,
   ]);
 
   // Final render with split contexts

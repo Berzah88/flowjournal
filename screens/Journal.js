@@ -29,6 +29,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTaskActions } from "../hooks/useTaskContext";
+import { useTheme } from "../context/ThemeContext";
 import { 
   MOODS, 
   analyzeSentiment, 
@@ -93,6 +94,7 @@ export default function Journal({
   fromActiveProject = false,
 }) {
 
+  const { theme } = useTheme();
   const { addJournalEntry, updateJournalEntry } = useTaskActions();
 
   // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler
@@ -702,7 +704,9 @@ export default function Journal({
 
       <Animated.View style={[dynamicStyles.modalContainer, modalStyle]}>
         <LinearGradient
-          colors={['#f8f9fa', '#ffffff', '#f1f3f4']}
+          colors={theme.name === 'dark' 
+            ? ['#1C1C1E', '#1A1A1A', '#000000'] 
+            : ['#f8f9fa', '#ffffff', '#f1f3f4']}
           style={styles.gradientBackground}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -720,16 +724,22 @@ export default function Journal({
           <View style={styles.dateRow}>
             <View style={styles.dateContainer}>
               <View style={styles.dateAndMoodContainer}>
-                <Text style={styles.dateText}>{todayText}</Text>
+                <Text style={[
+                  styles.dateText,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1d1d1f' }
+                ]}>{todayText}</Text>
                 {/* Mood tarihin yanında */}
                 {selectedMood && (
                   <View style={[styles.moodTag, { backgroundColor: selectedMood.color || "transparent" }]}>
                     <MaterialIcons
                       name={getValidIconName(selectedMood.icon)}
                       size={18}
-                      color="#333"
+                      color={theme.name === 'dark' ? '#FFFFFF' : '#333'}
                     />
-                    <Text style={styles.moodLabel}>{selectedMood.label}</Text>
+                    <Text style={[
+                      styles.moodLabel,
+                      { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                    ]}>{selectedMood.label}</Text>
                   </View>
                 )}
               </View>
@@ -798,9 +808,12 @@ export default function Journal({
                       <MaterialIcons 
                         name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
                         size={18} 
-                        color="#000" 
+                        color={theme.name === 'dark' ? '#FFFFFF' : '#000'} 
                       />
-                      <Text style={styles.moodTagText}>{suggestedMood?.label}</Text>
+                      <Text style={[
+                        styles.moodTagText,
+                        { color: theme.name === 'dark' ? '#FFFFFF' : '#000' }
+                      ]}>{suggestedMood?.label}</Text>
                     </TouchableOpacity>
                   );
                 })
@@ -831,12 +844,14 @@ export default function Journal({
                    // Dynamic height using same logic as buttons + 50% margin bottom
                    height: Math.max(150, (modalHeight - (keyboardHeight || 0)) * 0.5), // 50% of available space (50% margin bottom)
                   minHeight: 150,
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.9)',
+                  color: theme.name === 'dark' ? '#FFFFFF' : '#1d1d1f',
                 }
               ]}
               placeholder={(milestone?.title ? milestone.title + ": " : "") + "Write about it..."}
               multiline
               underlineColorAndroid="transparent"
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
               textAlignVertical="top"
               editable={true}
                scrollEnabled={true}
@@ -853,7 +868,18 @@ export default function Journal({
               onPress={() => setShowMoodPicker(false)}
             >
               <Animated.View 
-                style={[styles.moodPicker, { bottom: keyboardHeight ? keyboardHeight + 90 : 106 }, moodPickerAnimatedStyle]}
+                style={[
+                  styles.moodPicker, 
+                  { 
+                    bottom: keyboardHeight ? keyboardHeight + 90 : 106,
+                    backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#ffffff',
+                    borderColor: theme.name === 'dark' ? '#000000' : '#e0e0e0',
+                    shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                    shadowOpacity: theme.name === 'dark' ? 0.3 : 0.12,
+                    shadowRadius: theme.name === 'dark' ? 12 : 12,
+                    elevation: theme.name === 'dark' ? 10 : 10,
+                  }
+                ]}
                 onStartShouldSetResponder={() => true}
               >
                 {/* AI Suggestions Section */}
@@ -880,8 +906,15 @@ export default function Journal({
                               setShowMoodPicker(false);
                             }}
                           >
-                            <MaterialIcons name={getValidIconName(suggestedMood.icon)} size={16} color="#333" />
-                            <Text style={styles.suggestionMoodLabel}>{suggestedMood.label}</Text>
+                            <MaterialIcons 
+                              name={getValidIconName(suggestedMood.icon)} 
+                              size={16} 
+                              color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+                            />
+                            <Text style={[
+                              styles.suggestionMoodLabel,
+                              { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                            ]}>{suggestedMood.label}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -917,9 +950,16 @@ export default function Journal({
                       }}
                     >
                       <View style={[styles.moodIconWrap, { backgroundColor: m.color }]}>
-                        <MaterialIcons name={getValidIconName(m.icon)} size={14} color="#333" />
+                        <MaterialIcons 
+                          name={getValidIconName(m.icon)} 
+                          size={14} 
+                          color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+                        />
                       </View>
-                      <Text style={styles.moodOptionLabel}>{m.label}</Text>
+                      <Text style={[
+                        styles.moodOptionLabel,
+                        { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                      ]}>{m.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -927,19 +967,41 @@ export default function Journal({
             </TouchableOpacity>
           )}
 
-          <View style={[styles.buttonRow, { 
-            bottom: fromActiveProject ? (keyboardHeight || 0) + 20 : (keyboardHeight || 0), 
-            marginBottom: 15 
-          }]}>
+          <View style={[
+            styles.buttonRow, 
+            { 
+              bottom: fromActiveProject ? (keyboardHeight || 0) + 20 : (keyboardHeight || 0), 
+              marginBottom: 15,
+              backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : 'rgba(248, 249, 250, 0.95)',
+              borderTopColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0,0,0,0.1)',
+            }
+          ]}>
             {buttons.map((btn, i) => (
               <TouchableOpacity
                 key={i}
-                style={styles.button}
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#ffffff',
+                    borderColor: theme.name === 'dark' ? '#000000' : '#e0e0e0',
+                    shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                    shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+                    shadowRadius: theme.name === 'dark' ? 12 : 6,
+                    elevation: theme.name === 'dark' ? 8 : 4,
+                  }
+                ]}
                 activeOpacity={0.85}
                 onPress={() => handleButtonPress(btn.label)}
               >
-                <Ionicons name={btn.icon} size={18} color="#545454" />
-                <Text style={styles.buttonText}>{btn.label === "Save" ? "Save" : btn.label}</Text>
+                <Ionicons 
+                  name={btn.icon} 
+                  size={18} 
+                  color={theme.name === 'dark' ? '#FF6B6B' : '#545454'} 
+                />
+                <Text style={[
+                  styles.buttonText,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1d1d1f' }
+                ]}>{btn.label === "Save" ? "Save" : btn.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1025,7 +1087,6 @@ const styles = StyleSheet.create({
   dateText: { 
     paddingHorizontal: 0, 
     fontSize: 18, // 20'den 18'e düşürdüm - 2 punto küçük
-    color: "#1d1d1f", 
     fontFamily: "Poppins_600SemiBold",
     letterSpacing: -0.2,
     marginRight: 12,
@@ -1041,7 +1102,6 @@ const styles = StyleSheet.create({
   moodLabel: {
     marginLeft: 6,
     fontSize: 12,
-    color: "#333",
     fontFamily: "Poppins_400Regular",
   },
   locationSticker: {
@@ -1141,12 +1201,10 @@ const styles = StyleSheet.create({
     padding: 20, 
     paddingTop: 30,
     fontSize: 18, 
-    color: "#1d1d1f", 
     textAlignVertical: "top", 
     fontFamily: "Poppins_400Regular", 
     letterSpacing: -0.3,
     lineHeight: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 12,
     // Ensure cursor starts at top
     includeFontPadding: false,
@@ -1160,28 +1218,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-around", 
     paddingHorizontal: 16, 
     paddingVertical: 12, 
-    backgroundColor: "rgba(248, 249, 250, 0.95)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)"
   },
   button: { 
     width: 72, 
     height: 52, 
-    backgroundColor: "#ffffff", 
     borderRadius: 16, 
     justifyContent: "center", 
     alignItems: "center", 
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
   },
   buttonText: { 
     fontSize: 11, 
-    color: "#1d1d1f", 
     textAlign: "center", 
     marginTop: 4, 
     fontFamily: "Poppins_500Medium",
@@ -1202,18 +1250,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 40,
     right: 0,
-    backgroundColor: "#ffffff",
     padding: 12,
     borderRadius: 20,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
     zIndex: 500,
-    elevation: 10,
   },
   suggestionsSection: {
     marginBottom: 8,
@@ -1235,7 +1275,6 @@ const styles = StyleSheet.create({
   suggestionMoodLabel: {
     fontSize: 11,
     fontFamily: 'Poppins_500Medium',
-    color: '#333',
     marginLeft: 4,
   },
   manualMoodContainer: {
@@ -1258,7 +1297,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 6,
   },
-  moodOptionLabel: { fontSize: 12, color: "#333", fontFamily: "Poppins_400Regular" },
+  moodOptionLabel: { fontSize: 12, fontFamily: "Poppins_400Regular" },
 
   // Image/Map Modal Styles
   imageModal: {
@@ -1389,7 +1428,6 @@ const styles = StyleSheet.create({
   moodTagText: {
     fontSize: 12,
     fontFamily: "Poppins_500Medium",
-    color: "#000",
     marginLeft: 4,
     letterSpacing: -0.1,
   },

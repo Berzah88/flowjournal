@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } 
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
+import { useTheme } from "../context/ThemeContext";
 import EditModal from "../components/EditModal";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
@@ -23,6 +24,7 @@ const { width, height } = Dimensions.get("window");
 
 export default function ActiveProject({ selectedCard, onClose, setMainActiveTab, navigation }) {
   const tasks = useTasks();
+  const { theme } = useTheme();
   const {
     deleteTask,
     completeTask,
@@ -382,8 +384,15 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   return (
     <AnimatedReanimated.View style={[
       styles.modernContainer, 
-      isCompleted && styles.completedContainer, 
-      activeTab === 1 && styles.calendarContainer,
+      {
+        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+      },
+      isCompleted && {
+        backgroundColor: theme.name === 'dark' ? '#1A1A1A' : '#1A1A1A',
+      }, 
+      activeTab === 1 && {
+        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+      },
       animatedStyle
     ]}>
       <View style={styles.contentWrapper}>
@@ -402,8 +411,22 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
 
         {/* Menu Button - Visible in both tabs */}
           {!isModalOpen && (
-            <TouchableOpacity onPress={() => setMenuVisible((s) => !s)} style={styles.menuButton}>
-              <Ionicons name="ellipsis-vertical" size={22} color={isCompleted ? "#fff" : "#333"} />
+            <TouchableOpacity 
+              onPress={() => setMenuVisible((s) => !s)} 
+              style={[
+                styles.menuButton,
+                {
+                  backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'transparent',
+                  borderRadius: theme.name === 'dark' ? 20 : 0,
+                  padding: theme.name === 'dark' ? 8 : 8,
+                }
+              ]}
+            >
+              <Ionicons 
+                name="ellipsis-vertical" 
+                size={22} 
+                color={isCompleted ? "#fff" : (theme.name === 'dark' ? "#FF6B6B" : "#333")} 
+              />
             </TouchableOpacity>
           )}
 
@@ -497,7 +520,6 @@ const styles = StyleSheet.create({
     top: 40, // Less spacing
     width: width, 
     height: height - 40, // Increase height
-    backgroundColor: "#FFFFFF", 
     zIndex: 100, 
     elevation: 10, 
     overflow: "hidden",
@@ -505,10 +527,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   completedContainer: { 
-    backgroundColor: "#1A1A1A" 
   },
   calendarContainer: { 
-    backgroundColor: "#FFFFFF" 
   },
   contentWrapper: {
     flex: 1,

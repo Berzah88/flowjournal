@@ -6,6 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import PropTypes from "prop-types";
 import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { useTheme } from '../context/ThemeContext';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -21,7 +22,7 @@ const hexToRgb = (hex) => {
 };
 
 // Mood tag'lerini render eden fonksiyon - basit ve temiz
-const MoodTags = memo(({ milestone }) => {
+const MoodTags = memo(({ milestone, theme }) => {
   const recentMoods = useMemo(() => {
     if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
       return [];
@@ -46,7 +47,7 @@ const MoodTags = memo(({ milestone }) => {
         if (!entry.mood && !entry.moodIcon && !entry.moodColor) return null;
         
         const iconName = entry.moodIcon || entry.mood || 'sentiment-satisfied';
-        const backgroundColor = entry.moodColor || '#8E7DBE';
+        const backgroundColor = entry.moodColor || theme.colors.primary;
         
         return (
           <View 
@@ -62,7 +63,7 @@ const MoodTags = memo(({ milestone }) => {
             <MaterialIcons
               name={iconName}
               size={12}
-              color="#333"
+              color={theme.name === 'dark' ? '#FFFFFF' : '#333'}
             />
           </View>
         );
@@ -74,6 +75,9 @@ const MoodTags = memo(({ milestone }) => {
 const Card = memo(function Card({ title, startDate, endDate, completed = false, activeMilestones = [], onMilestonePress, onPress }) {
   // Performance monitoring (sadece development'ta)
   usePerformanceMonitor('Card');
+  
+  // Theme context
+  const { theme } = useTheme();
   
   // Memoize expensive calculations
   const { totalDays, remainingDays, progress } = useMemo(() => {
@@ -144,6 +148,15 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
     <Pressable
       style={({ pressed }) => [
         styles.modernCard,
+        { 
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+          borderColor: theme.name === 'dark' ? '#000000' : 'rgba(0, 0, 0, 0.03)',
+          borderWidth: theme.name === 'dark' ? 1.5 : 0.5,
+          shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
+          shadowRadius: theme.name === 'dark' ? 12 : 8,
+          elevation: theme.name === 'dark' ? 8 : 1,
+        },
         completed && styles.modernCompletedCard,
         {
           transform: [{ scale: pressed ? 0.98 : 1 }],
@@ -154,11 +167,27 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
       {/* Modern Header */}
       <View style={styles.modernHeader}>
         <View style={styles.modernTitleSection}>
-          <Text style={[styles.modernTitle, completed && styles.modernCompletedTitle]}>
+          <Text style={[
+            styles.modernTitle, 
+            { color: theme.name === 'dark' ? '#FF6B6B' : theme.colors.text },
+            completed && styles.modernCompletedTitle
+          ]}>
             {title}
           </Text>
-          <View style={[styles.modernDateFrame, completed && styles.modernCompletedDateFrame]}>
-            <Text style={[styles.modernDateRange, completed && styles.modernCompletedDateText]}>
+          <View style={[
+            styles.modernDateFrame, 
+            {
+              backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7',
+              borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
+              borderWidth: theme.name === 'dark' ? 0.5 : 0,
+            },
+            completed && styles.modernCompletedDateFrame
+          ]}>
+            <Text style={[
+              styles.modernDateRange, 
+              { color: theme.name === 'dark' ? '#8E8E93' : theme.colors.textSecondary },
+              completed && styles.modernCompletedDateText
+            ]}>
               {new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
             </Text>
           </View>
@@ -168,8 +197,16 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
       {/* Modern Bottom Section */}
       <View style={[styles.modernBottomSection, completed && styles.modernCompletedBottomSection]}>
         <View style={styles.modernDaysLeft}>
-          <MaterialIcons name="schedule" size={16} color={completed ? "#636366" : "#007AFF"} />
-          <Text style={[styles.modernDaysLeftText, completed && styles.modernCompletedDaysText]}>
+          <MaterialIcons 
+            name="schedule" 
+            size={16} 
+            color={completed ? theme.colors.textTertiary : theme.colors.primary} 
+          />
+          <Text style={[
+            styles.modernDaysLeftText, 
+            { color: theme.colors.textSecondary },
+            completed && styles.modernCompletedDaysText
+          ]}>
             {completed ? `${Math.ceil(totalDays)} days completed` : `${Math.ceil(remainingDays)} gün kaldı`}
           </Text>
         </View>
@@ -182,14 +219,14 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
         <View style={styles.completedStatsSection}>
           <View style={styles.statRow}>
             <View style={styles.statItem}>
-              <Ionicons name="list" size={16} color="#636366" />
-              <Text style={styles.statText}>
+              <Ionicons name="list" size={16} color={theme.colors.textTertiary} />
+              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
                 {activeMilestones.length} milestone
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="location" size={16} color="#636366" />
-              <Text style={styles.statText}>
+              <Ionicons name="location" size={16} color={theme.colors.textTertiary} />
+              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
                 {activeMilestones.reduce((total, ms) => 
                   total + (ms.journalEntries?.filter(entry => entry.location).length || 0), 0
                 )} konum
@@ -198,14 +235,14 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
           </View>
           <View style={styles.statRow}>
             <View style={styles.statItem}>
-              <Ionicons name="journal" size={16} color="#636366" />
-              <Text style={styles.statText}>
+              <Ionicons name="journal" size={16} color={theme.colors.textTertiary} />
+              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
                 {activeMilestones.reduce((total, ms) => total + (ms.journalEntries?.length || 0), 0)} günlük
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="image" size={16} color="#636366" />
-              <Text style={styles.statText}>
+              <Ionicons name="image" size={16} color={theme.colors.textTertiary} />
+              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
                 {activeMilestones.reduce((total, ms) => 
                   total + (ms.journalEntries?.reduce((entryTotal, entry) => 
                     entryTotal + (entry.images?.length || 0), 0) || 0), 0
@@ -225,6 +262,11 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
                 <View 
                   style={[
                     styles.milestoneItemClickable,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 122, 255, 0.04)',
+                      borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
+                      borderWidth: theme.name === 'dark' ? 0.5 : 0,
+                    },
                     completed && styles.completedMilestoneItem,
                   ]}
                 >
@@ -238,12 +280,13 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
                   <View style={styles.milestoneContent}>
                     <Text style={[
                       styles.milestoneText, 
+                      { color: theme.name === 'dark' ? '#FFFFFF' : theme.colors.text },
                       completed ? styles.completedMilestoneText : {},
                       ms.completed ? { opacity: 0.9 } : {}
                     ]}>
                       {ms.title || "Untitled"}
                     </Text>
-                    <MoodTags milestone={ms} />
+                    <MoodTags milestone={ms} theme={theme} />
                   </View>
                 </View>
               </View>
@@ -319,18 +362,11 @@ export default Card;
 const styles = StyleSheet.create({
   // Modern Card Styles
   modernCard: {
-    backgroundColor: "#FFFFFF",
     padding: 20,
     marginBottom: 16,
     borderRadius: 16,
     width: "100%",
-    elevation: 1,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    borderWidth: 0.5,
-    borderColor: "rgba(0, 0, 0, 0.03)",
   },
   modernCompletedCard: {
     backgroundColor: "#F2F2F7", // Hafif koyu gri arka plan
@@ -363,7 +399,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   modernDateFrame: {
-    backgroundColor: '#F2F2F7',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -515,7 +550,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     minHeight: 48,
     justifyContent: 'flex-start',
-    backgroundColor: "rgba(0, 122, 255, 0.04)", // Çok hafif mavi arka plan
   },
   completedMilestoneItem: {
     backgroundColor: "rgba(199, 199, 204, 0.1)", // Şeffaf gri arka plan
@@ -540,6 +574,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 4,
     flexWrap: "wrap",
+    backgroundColor: 'transparent',
   },
   moodTag: {
     flexDirection: "row",

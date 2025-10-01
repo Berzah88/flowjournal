@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import PropTypes from "prop-types";
 import * as Location from "expo-location";
 import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/MoodPredictor";
+import { useTheme } from "../context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 const PREVIEW_HEIGHT = 120; // Medya alanı için 120px yükseklik
@@ -16,6 +17,7 @@ const MOODS = MOODS_FROM_PREDICTOR;
 
 // Location tag component
 const LocationTag = memo(({ locationData, getLocationText }) => {
+  const { theme } = useTheme();
   const [locationText, setLocationText] = useState("Location");
 
   React.useEffect(() => {
@@ -27,14 +29,28 @@ const LocationTag = memo(({ locationData, getLocationText }) => {
   }, [locationData, getLocationText]);
 
   return (
-    <View style={styles.locationTag}>
-      <Ionicons name="location" size={12} color="#007AFF" />
-      <Text style={styles.locationTagText}>{locationText}</Text>
+    <View style={[
+      styles.locationTag,
+      {
+        backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.1)' : '#F0F8FF',
+        borderColor: theme.name === 'dark' ? '#007AFF' : '#007AFF',
+      }
+    ]}>
+      <Ionicons 
+        name="location" 
+        size={12} 
+        color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} 
+      />
+      <Text style={[
+        styles.locationTagText,
+        { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
+      ]}>{locationText}</Text>
     </View>
   );
 });
 
 const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, taskId, milestoneId, isCompleted }) {
+  const { theme } = useTheme();
   const [locationTexts, setLocationTexts] = useState({});
 
   // Location koordinatlarını şehir/ilçe formatına çevir
@@ -224,7 +240,17 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
 
   return (
     <TouchableOpacity 
-      style={styles.dayCard}
+      style={[
+        styles.dayCard,
+        {
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+          borderColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F0F0',
+          shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
+          shadowRadius: theme.name === 'dark' ? 8 : 3,
+          elevation: theme.name === 'dark' ? 4 : 1,
+        }
+      ]}
       onPress={() => {
         openJournalDetail({
           images: allMedia.filter(m => m.type === "image").map(m => m.content),
@@ -247,13 +273,35 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       )}
       
       {/* Tarih başlığı ve mood */}
-      <View style={styles.dayHeader}>
+      <View style={[
+        styles.dayHeader,
+        {
+          borderBottomColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F0F0',
+        }
+      ]}>
         <View style={styles.dayHeaderContent}>
-          <Text style={styles.dayHeaderText}>{dayGroup.date}</Text>
+          <Text style={[
+            styles.dayHeaderText,
+            { color: theme.name === 'dark' ? '#8E8E93' : '#666' }
+          ]}>{dayGroup.date}</Text>
           {dayMoodObj && (
-            <View style={[styles.dayMoodTag, { backgroundColor: dayMoodObj.color || "#fff", marginLeft: 4 }]}>
-              <MaterialIcons name={getValidIconName(dayMoodObj.icon)} size={16} color="#333" />
-              <Text style={styles.dayMoodLabel}>{dayMoodObj.label}</Text>
+            <View style={[
+              styles.dayMoodTag, 
+              { 
+                backgroundColor: dayMoodObj.color || (theme.name === 'dark' ? '#2C2C2E' : '#fff'), 
+                marginLeft: 4,
+                borderColor: theme.name === 'dark' ? '#3A3A3C' : 'rgba(0,0,0,0.1)',
+              }
+            ]}>
+              <MaterialIcons 
+                name={getValidIconName(dayMoodObj.icon)} 
+                size={16} 
+                color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+              />
+              <Text style={[
+                styles.dayMoodLabel,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#555' }
+              ]}>{dayMoodObj.label}</Text>
             </View>
           )}
         </View>
@@ -269,13 +317,22 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       {/* İlk metin girişi - saat ile birlikte */}
       {firstTextEntry && (
         <View style={styles.firstTextSection}>
-          <Text style={styles.firstTextTime}>
+          <Text style={[
+            styles.firstTextTime,
+            { color: theme.name === 'dark' ? '#8E8E93' : '#888' }
+          ]}>
             {new Date(firstTextEntry.createdAt).toLocaleTimeString('tr-TR', {
               hour: '2-digit',
               minute: '2-digit'
             })}
           </Text>
-          <Text style={styles.firstTextContent}>{truncateText(firstTextEntry.text, 120)}</Text>
+          <Text style={[
+            styles.firstTextContent,
+            {
+              color: theme.name === 'dark' ? '#FFFFFF' : '#333',
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#F8F9FA',
+            }
+          ]}>{truncateText(firstTextEntry.text, 120)}</Text>
         </View>
       )}
       
@@ -283,8 +340,17 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       {otherTextEntries.length > 0 && (
         <View style={styles.additionalTextTags}>
           {otherTextEntries.map((entry, index) => (
-            <View key={index} style={styles.textTag}>
-              <Text style={styles.textTagTime}>
+            <View key={index} style={[
+              styles.textTag,
+              {
+                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E9ECEF',
+                borderColor: theme.name === 'dark' ? '#3A3A3C' : '#DEE2E6',
+              }
+            ]}>
+              <Text style={[
+                styles.textTagTime,
+                { color: theme.name === 'dark' ? '#8E8E93' : '#6C757D' }
+              ]}>
                 {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
                   hour: '2-digit',
                   minute: '2-digit'
@@ -317,26 +383,19 @@ export default JournalCard;
 
 const styles = StyleSheet.create({
   dayCard: {
-    backgroundColor: "#FFFFFF", 
     borderRadius: 8, 
     padding: 6, 
     marginBottom: 4,
     marginLeft: 4,
     marginRight: 20,
-    elevation: 1,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    shadowOpacity: 0.05,
     borderWidth: 0.5,
-    borderColor: "#F0F0F0",
     minHeight: 80,
   },
   dayHeader: {
     marginBottom: 6,
     paddingBottom: 4,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
   dayHeaderContent: {
     flexDirection: "row",
@@ -345,7 +404,6 @@ const styles = StyleSheet.create({
   dayHeaderText: {
     fontSize: 12,
     fontFamily: "Poppins_500Medium",
-    color: "#666",
     textTransform: "capitalize",
     flex: 1,
     letterSpacing: 0.3,
@@ -357,14 +415,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
     minWidth: 50,
     justifyContent: "center",
   },
   dayMoodLabel: {
     marginLeft: 3,
     fontSize: 9,
-    color: "#555",
     fontFamily: "Poppins_500Medium",
     letterSpacing: 0.3,
   },
@@ -377,18 +433,15 @@ const styles = StyleSheet.create({
   firstTextTime: {
     fontSize: 9,
     fontFamily: "Poppins_500Medium",
-    color: "#888",
     marginBottom: 2,
     paddingHorizontal: 2,
     letterSpacing: 0.4,
   },
   firstTextContent: {
     fontSize: 11,
-    color: "#333",
     fontFamily: "Poppins_400Regular",
     lineHeight: 15,
     letterSpacing: 0.2,
-    backgroundColor: "#F8F9FA",
     borderRadius: 6,
     padding: 6,
   },
@@ -399,17 +452,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   textTag: {
-    backgroundColor: "#E9ECEF",
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 1,
-    borderColor: "#DEE2E6",
   },
   textTagTime: {
     fontSize: 8,
     fontFamily: "Poppins_500Medium",
-    color: "#6C757D",
     letterSpacing: 0.3,
   },
   // Medya preview stilleri
@@ -480,15 +530,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    backgroundColor: "#F0F8FF",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#007AFF",
     alignSelf: "flex-start",
   },
   locationTagText: {
     fontSize: 10,
-    color: "#007AFF",
     fontFamily: "Poppins_500Medium",
     marginLeft: 4,
     letterSpacing: 0.2,

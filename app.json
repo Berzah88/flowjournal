@@ -2,7 +2,7 @@
   "expo": {
     "name": "Flow Journal",
     "slug": "WITApp",
-    "version": "1.0.0-beta.1",
+    "version": "4.9.4",
     "orientation": "portrait",
     "icon": "./assets/icon2.png",
     "userInterfaceStyle": "light",
@@ -39,7 +39,15 @@
     },
     "plugins": [
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon2.png",
+          "color": "#8E7DBE",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "extra": {
       "eas": {

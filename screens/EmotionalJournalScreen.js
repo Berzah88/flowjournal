@@ -15,10 +15,12 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useActiveTasks, useCompletedTasks } from '../hooks/useTaskContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS, ELEVATION } from '../constants';
+import { useTheme } from '../context/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
 const EmotionalJournalScreen = ({ navigation }) => {
+  const { theme } = useTheme();
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
 
@@ -1127,7 +1129,9 @@ const EmotionalJournalScreen = ({ navigation }) => {
   // Günün mood'una göre gradient renkleri hesapla
   const getMoodGradientColors = useCallback(() => {
     if (!todayDominantMood) {
-      return ['#FAFAFA', '#F5F3FF', '#EDE9FE'];
+      return theme.name === 'dark' 
+        ? ['#1C1C1E', '#1A1A1A', '#000000'] 
+        : ['#FAFAFA', '#F5F3FF', '#EDE9FE'];
     }
     
     const baseColor = getSolidMoodColor(todayDominantMood.color);
@@ -1137,36 +1141,74 @@ const EmotionalJournalScreen = ({ navigation }) => {
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     
-    // Daha solgun tonlar oluştur - alt kısım daha koyu
-    const lightColor = `rgba(${r}, ${g}, ${b}, 0.08)`;
-    const mediumColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
-    const baseColorWithAlpha = `rgba(${r}, ${g}, ${b}, 0.25)`;
-    
-    return [lightColor, mediumColor, baseColorWithAlpha];
-  }, [todayDominantMood]);
+    if (theme.name === 'dark') {
+      // Karanlık tema: mood renginden soft siyah tonlara geçiş
+      const softBlack = '#1A1A1A';
+      const darkMoodColor = `rgba(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)}, 0.15)`;
+      const moodColor = `rgba(${r}, ${g}, ${b}, 0.25)`;
+      
+      return [softBlack, darkMoodColor, moodColor];
+    } else {
+      // Açık tema: mood renginden beyaza geçiş (mevcut mantık)
+      const lightColor = `rgba(${r}, ${g}, ${b}, 0.08)`;
+      const mediumColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
+      const baseColorWithAlpha = `rgba(${r}, ${g}, ${b}, 0.25)`;
+      
+      return [lightColor, mediumColor, baseColorWithAlpha];
+    }
+  }, [todayDominantMood, theme.name]);
 
   if (allMoodData.length === 0) {
     return (
       <View style={styles.container}>
         <LinearGradient
           colors={getMoodGradientColors()}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
           style={styles.gradientBackground}
         >
           <View style={styles.header}>
             <TouchableOpacity 
               onPress={() => navigation.goBack()} 
-              style={styles.backButton}
+              style={[
+                styles.backButton,
+                {
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : COLORS.WHITE,
+                  borderColor: theme.name === 'dark' ? '#000000' : COLORS.GRAY[200],
+                  shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
+                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+                  shadowRadius: theme.name === 'dark' ? 12 : 4,
+                  elevation: theme.name === 'dark' ? 8 : ELEVATION.SM,
+                }
+              ]}
             >
-              <Ionicons name="arrow-back" size={24} color="#333" />
+              <Ionicons 
+                name="arrow-back" 
+                size={24} 
+                color={theme.name === 'dark' ? '#FF6B6B' : '#333'} 
+              />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Emotional Journal</Text>
+            <Text style={[
+              styles.headerTitle,
+              { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+            ]}>Emotional Journal</Text>
             <View style={styles.placeholder} />
           </View>
           
           <View style={styles.emptyState}>
-            <Ionicons name="heart-outline" size={64} color="#8E8E93" />
-            <Text style={styles.emptyTitle}>No Mood Data Yet</Text>
-            <Text style={styles.emptyText}>
+            <Ionicons 
+              name="heart-outline" 
+              size={64} 
+              color={theme.name === 'dark' ? '#8E8E93' : '#8E8E93'} 
+            />
+            <Text style={[
+              styles.emptyTitle,
+              { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+            ]}>No Mood Data Yet</Text>
+            <Text style={[
+              styles.emptyText,
+              { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
+            ]}>
               Start writing journal entries with mood tags to see your emotional journey here.
             </Text>
           </View>
@@ -1179,27 +1221,53 @@ const EmotionalJournalScreen = ({ navigation }) => {
     <View style={styles.container}>
       <LinearGradient
         colors={getMoodGradientColors()}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
         style={styles.gradientBackground}
       >
         <View style={styles.header}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
-            style={styles.backButton}
+            style={[
+              styles.backButton,
+              {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : COLORS.WHITE,
+                borderColor: theme.name === 'dark' ? '#000000' : COLORS.GRAY[200],
+                shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
+                shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+                shadowRadius: theme.name === 'dark' ? 12 : 4,
+                elevation: theme.name === 'dark' ? 8 : ELEVATION.SM,
+              }
+            ]}
           >
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons 
+              name="arrow-back" 
+              size={24} 
+              color={theme.name === 'dark' ? '#FF6B6B' : '#333'} 
+            />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Emotional Journal</Text>
+          <Text style={[
+            styles.headerTitle,
+            { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+          ]}>Emotional Journal</Text>
           <View style={styles.placeholder} />
         </View>
 
         {/* Overview Stats - Compact and balanced */}
         <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Overview</Text>
+          <Text style={[
+            styles.sectionTitle,
+            { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+          ]}>Overview</Text>
           <View style={[
             styles.overviewCard, 
             { 
               borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.PRIMARY,
-              backgroundColor: 'rgba(255, 255, 255, 0.95)'
+              backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
+              shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
+              shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+              shadowRadius: theme.name === 'dark' ? 12 : 8,
+              elevation: theme.name === 'dark' ? 8 : ELEVATION.MD,
             }
           ]}>
             <View style={styles.overviewGrid}>
@@ -1208,8 +1276,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <View style={[styles.overviewIcon, { backgroundColor: 'rgba(25, 118, 210, 0.1)' }]}>
                   <Ionicons name="document-text-outline" size={16} color="#1976D2" />
                 </View>
-                <Text style={styles.overviewNumber}>{moodStats.totalEntries}</Text>
-                <Text style={styles.overviewLabel}>Entries</Text>
+                <Text style={[
+                  styles.overviewNumber,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                ]}>{moodStats.totalEntries}</Text>
+                <Text style={[
+                  styles.overviewLabel,
+                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
+                ]}>Entries</Text>
               </View>
 
               {/* Last 7 Days */}
@@ -1217,8 +1291,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <View style={[styles.overviewIcon, { backgroundColor: 'rgba(142, 125, 190, 0.1)' }]}>
                   <Ionicons name="calendar-outline" size={16} color="#8E7DBE" />
                 </View>
-                <Text style={styles.overviewNumber}>{moodStats.last7Days}</Text>
-                <Text style={styles.overviewLabel}>This Week</Text>
+                <Text style={[
+                  styles.overviewNumber,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                ]}>{moodStats.last7Days}</Text>
+                <Text style={[
+                  styles.overviewLabel,
+                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
+                ]}>This Week</Text>
               </View>
 
               {/* Last 30 Days */}
@@ -1226,8 +1306,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <View style={[styles.overviewIcon, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
                   <Ionicons name="calendar" size={16} color="#4CAF50" />
                 </View>
-                <Text style={styles.overviewNumber}>{moodStats.last30Days}</Text>
-                <Text style={styles.overviewLabel}>This Month</Text>
+                <Text style={[
+                  styles.overviewNumber,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                ]}>{moodStats.last30Days}</Text>
+                <Text style={[
+                  styles.overviewLabel,
+                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
+                ]}>This Month</Text>
               </View>
 
               {/* Words Written */}
@@ -1235,25 +1321,44 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <View style={[styles.overviewIcon, { backgroundColor: 'rgba(255, 152, 0, 0.1)' }]}>
                   <Ionicons name="create-outline" size={16} color="#FF9800" />
                 </View>
-                <Text style={styles.overviewNumber}>{moodStats.totalWords > 1000 ? `${(moodStats.totalWords/1000).toFixed(1)}k` : moodStats.totalWords}</Text>
-                <Text style={styles.overviewLabel}>Words</Text>
+                <Text style={[
+                  styles.overviewNumber,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                ]}>{moodStats.totalWords > 1000 ? `${(moodStats.totalWords/1000).toFixed(1)}k` : moodStats.totalWords}</Text>
+                <Text style={[
+                  styles.overviewLabel,
+                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
+                ]}>Words</Text>
               </View>
             </View>
           </View>
         </View>
 
         {/* Başlık çizgisi - Overview altında */}
-        <View style={styles.headerDivider} />
+        <View style={[
+          styles.headerDivider,
+          { backgroundColor: theme.name === 'dark' ? '#636366' : COLORS.GRAY[200] }
+        ]} />
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
           {/* Mood Trend */}
           {moodTrend && (
             <View style={styles.trendContainer}>
-              <Text style={styles.sectionTitle}>Mood Trend</Text>
+              <Text style={[
+                styles.sectionTitle,
+                { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+              ]}>Mood Trend</Text>
               <View style={[
                 styles.trendCard,
-                { borderLeftColor: getTrendColor() }
+                { 
+                  borderLeftColor: getTrendColor(),
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                  shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+                  shadowRadius: theme.name === 'dark' ? 12 : 8,
+                  elevation: theme.name === 'dark' ? 8 : 3,
+                }
               ]}>
                 <View style={styles.trendHeader}>
                   <Ionicons name={getTrendIcon()} size={24} color={getTrendColor()} />
@@ -1261,7 +1366,10 @@ const EmotionalJournalScreen = ({ navigation }) => {
                     {getTrendText()}
                   </Text>
                 </View>
-                <Text style={styles.trendSubtext}>
+                <Text style={[
+                  styles.trendSubtext,
+                  { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+                ]}>
                   Based on your last 7 days of mood entries
                 </Text>
               </View>
@@ -1272,9 +1380,19 @@ const EmotionalJournalScreen = ({ navigation }) => {
            {getProjectEmotionalProgress().length > 0 && (
              <View style={styles.topMoodsContainer}>
                <View style={styles.sectionHeader}>
-                 <Text style={styles.sectionTitle}>Project Progress</Text>
-                 <View style={styles.progressFlowIndicator}>
-                   <MaterialIcons name="timeline" size={18} color={COLORS.PRIMARY} />
+                 <Text style={[
+                   styles.sectionTitle,
+                   { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                 ]}>Project Progress</Text>
+                 <View style={[
+                   styles.progressFlowIndicator,
+                   { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.1)' : 'rgba(142, 125, 190, 0.1)' }
+                 ]}>
+                   <MaterialIcons 
+                     name="timeline" 
+                     size={18} 
+                     color={theme.name === 'dark' ? '#FF6B6B' : COLORS.PRIMARY} 
+                   />
                  </View>
                </View>
                
@@ -1288,16 +1406,32 @@ const EmotionalJournalScreen = ({ navigation }) => {
                        )}
                        
                        {/* Main Content */}
-                       <View style={[styles.flowItem, { borderLeftColor: project.progressColor }]}>
+                       <View style={[
+                         styles.flowItem, 
+                         { 
+                           borderLeftColor: project.progressColor,
+                           backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
+                           shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
+                           shadowOpacity: theme.name === 'dark' ? 0.3 : 0.08,
+                           shadowRadius: theme.name === 'dark' ? 12 : 8,
+                           elevation: theme.name === 'dark' ? 8 : ELEVATION.SM,
+                         }
+                       ]}>
                          <View style={styles.flowHeader}>
                            <View style={styles.flowIconWrapper}>
                              <MaterialIcons name={project.progressIcon} size={20} color={project.progressColor} />
                            </View>
                            <View style={styles.flowTitleContainer}>
-                             <Text style={styles.flowTitle} numberOfLines={1}>{project.projectTitle}</Text>
+                             <Text style={[
+                               styles.flowTitle,
+                               { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                             ]} numberOfLines={1}>{project.projectTitle}</Text>
                              <View style={styles.flowStatusBadge}>
                                <View style={[styles.flowStatusDot, { backgroundColor: project.progressColor }]} />
-                               <Text style={styles.flowStatusText}>{project.moodCount} entries</Text>
+                               <Text style={[
+                                 styles.flowStatusText,
+                                 { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[600] }
+                               ]}>{project.moodCount} entries</Text>
                              </View>
                            </View>
                            <View style={[styles.flowProgressCircle, { borderColor: project.progressColor }]}>
@@ -1308,7 +1442,10 @@ const EmotionalJournalScreen = ({ navigation }) => {
                          </View>
                          
                          <View style={styles.flowMessageContainer}>
-                           <Text style={styles.flowMessage} numberOfLines={2}>{project.progressMessage}</Text>
+                           <Text style={[
+                             styles.flowMessage,
+                             { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[700] }
+                           ]} numberOfLines={2}>{project.progressMessage}</Text>
                          </View>
                          
                          <View style={[styles.flowBottomBar, { backgroundColor: project.progressColor + '20' }]} />
@@ -1323,12 +1460,15 @@ const EmotionalJournalScreen = ({ navigation }) => {
            {/* Projects Without Mood Entries - Encouragement */}
            {getProjectsWithoutMoods().length > 0 && (
              <View style={styles.topMoodsContainer}>
-               <Text style={styles.sectionTitle}>Start Your Emotional Journey</Text>
+               <Text style={[
+                 styles.sectionTitle,
+                 { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+               ]}>Start Your Emotional Journey</Text>
                <View style={[
                  styles.moodsList,
                  { 
                    borderLeftColor: '#FF9800',
-                   backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                   backgroundColor: theme.name === 'dark' ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 152, 0, 0.1)',
                    borderWidth: 1,
                    borderColor: '#FF9800'
                  }
@@ -1339,14 +1479,23 @@ const EmotionalJournalScreen = ({ navigation }) => {
                        <MaterialIcons name="edit" size={22} color="#FFFFFF" />
                      </View>
                      <View style={styles.moodInfo}>
-                       <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
-                       <Text style={styles.moodCount}>
+                       <Text style={[
+                         styles.moodName,
+                         { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                       ]} numberOfLines={1}>{project.projectTitle}</Text>
+                       <Text style={[
+                         styles.moodCount,
+                         { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+                       ]}>
                          {project.totalEntries > 0 
                            ? `You have ${project.totalEntries} journal entries - add mood tags to track your emotional journey!`
                            : `You have ${project.milestoneCount} milestones - start writing journal entries with mood tags!`
                          }
                        </Text>
-                       <Text style={styles.motivationText}>
+                       <Text style={[
+                         styles.motivationText,
+                         { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
+                       ]}>
                          {project.totalEntries > 0 
                            ? "Your thoughts are valuable! Adding mood tags will help you understand your emotional patterns and growth."
                            : "Every journey begins with a single step. Start documenting your progress and feelings today!"
@@ -1362,12 +1511,15 @@ const EmotionalJournalScreen = ({ navigation }) => {
            {/* Completed Projects Emotional Journey */}
            {getCompletedProjectEmotionalProgress().length > 0 && (
              <View style={styles.topMoodsContainer}>
-               <Text style={styles.sectionTitle}>Completed Projects Emotional Journey</Text>
+               <Text style={[
+                 styles.sectionTitle,
+                 { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+               ]}>Completed Projects Emotional Journey</Text>
                <View style={[
                  styles.moodsList,
                  { 
                    borderLeftColor: '#9C27B0',
-                   backgroundColor: 'rgba(156, 39, 176, 0.1)',
+                   backgroundColor: theme.name === 'dark' ? 'rgba(156, 39, 176, 0.2)' : 'rgba(156, 39, 176, 0.1)',
                    borderWidth: 1,
                    borderColor: '#9C27B0'
                  }
@@ -1378,9 +1530,18 @@ const EmotionalJournalScreen = ({ navigation }) => {
                        <MaterialIcons name={project.progressIcon} size={22} color="#FFFFFF" />
                      </View>
                      <View style={styles.moodInfo}>
-                       <Text style={styles.moodName} numberOfLines={1}>{project.projectTitle}</Text>
-                       <Text style={styles.moodCount}>{project.progressMessage}</Text>
-                       <Text style={styles.motivationText}>{project.motivationSentence}</Text>
+                       <Text style={[
+                         styles.moodName,
+                         { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                       ]} numberOfLines={1}>{project.projectTitle}</Text>
+                       <Text style={[
+                         styles.moodCount,
+                         { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+                       ]}>{project.progressMessage}</Text>
+                       <Text style={[
+                         styles.motivationText,
+                         { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
+                       ]}>{project.motivationSentence}</Text>
                      </View>
                    </View>
                  ))}
@@ -1395,11 +1556,23 @@ const EmotionalJournalScreen = ({ navigation }) => {
             const { recommendations } = getInsightsAndRecommendations();
             return recommendations.length > 0 && (
               <View style={styles.minimalRecommendationsContainer}>
-                <Text style={styles.minimalRecommendationsTitle}>💡 Quick Tips</Text>
+                <Text style={[
+                  styles.minimalRecommendationsTitle,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                ]}>💡 Quick Tips</Text>
                 <View style={styles.minimalRecommendationsList}>
                   {recommendations.slice(0, 2).map((rec, index) => (
-                    <View key={index} style={styles.minimalRecommendationItem}>
-                      <Text style={styles.minimalRecommendationText}>{rec.message}</Text>
+                    <View key={index} style={[
+                      styles.minimalRecommendationItem,
+                      {
+                        backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.6)',
+                        borderLeftColor: theme.name === 'dark' ? '#FF6B6B' : '#FF9800',
+                      }
+                    ]}>
+                      <Text style={[
+                        styles.minimalRecommendationText,
+                        { color: theme.name === 'dark' ? '#8E8E93' : '#555' }
+                      ]}>{rec.message}</Text>
                     </View>
                   ))}
                 </View>
@@ -1438,21 +1611,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: BORDER_RADIUS.FULL,
-    backgroundColor: COLORS.WHITE,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.GRAY[200],
-    shadowColor: COLORS.BLACK,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: ELEVATION.SM,
   },
   headerTitle: {
     fontSize: 18,
     fontFamily: FONTS.SEMI_BOLD,
-    color: COLORS.GRAY[800],
     paddingHorizontal: SPACING.MD,
   },
   placeholder: {
@@ -1471,21 +1637,18 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontFamily: FONTS.SEMI_BOLD,
-    color: COLORS.GRAY[800],
     marginTop: SPACING.MD,
     marginBottom: SPACING.SM,
   },
   emptyText: {
     fontSize: 16,
     fontFamily: FONTS.REGULAR,
-    color: COLORS.GRAY[500],
     textAlign: 'center',
     lineHeight: 24,
   },
   sectionTitle: {
     fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
-    color: COLORS.GRAY[800],
     marginBottom: SPACING.SM,
     paddingHorizontal: SPACING.XL,
   },

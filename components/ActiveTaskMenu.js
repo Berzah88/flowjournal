@@ -8,8 +8,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { useTheme } from '../context/ThemeContext';
 
 export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onDelete, onEdit, isCompleted }) {
+  const { theme } = useTheme();
   // Smooth animasyon değerleri
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -65,7 +67,18 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
   return (
     <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.overlay}>
-        <Animated.View style={[styles.container, animatedContainerStyle]}>
+        <Animated.View style={[
+          styles.container, 
+          {
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+            borderColor: theme.name === 'dark' ? '#000000' : 'rgba(0, 0, 0, 0.1)',
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+            shadowRadius: theme.name === 'dark' ? 12 : 8,
+            elevation: theme.name === 'dark' ? 8 : 4,
+          },
+          animatedContainerStyle
+        ]}>
           {/* Edit */}
           <TouchableOpacity
             style={styles.item}
@@ -75,8 +88,15 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="create-outline" size={20} color="#4A90E2" />
-              <Text style={styles.itemText}>Edit</Text>
+              <Ionicons 
+                name="create-outline" 
+                size={20} 
+                color={theme.name === 'dark' ? '#FF6B6B' : '#4A90E2'} 
+              />
+              <Text style={[
+                styles.itemText,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>Edit</Text>
             </View>
           </TouchableOpacity>
 
@@ -92,9 +112,13 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
               <Ionicons 
                 name={isCompleted ? "close-circle-outline" : "checkmark-circle-outline"} 
                 size={20} 
-                color={isCompleted ? "#FF6B6B" : "#4ECDC4"} 
+                color={isCompleted ? "#FF6B6B" : (theme.name === 'dark' ? '#34C759' : '#4ECDC4')} 
               />
-              <Text style={[styles.itemText, isCompleted && styles.uncompleteText]}>
+              <Text style={[
+                styles.itemText, 
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
+                isCompleted && styles.uncompleteText
+              ]}>
                 {isCompleted ? "Mark as Incomplete" : "Complete"}
               </Text>
             </View>
@@ -109,8 +133,16 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
-              <Ionicons name="trash-outline" size={20} color="#E74C3C" />
-              <Text style={[styles.itemText, styles.deleteText]}>Delete</Text>
+              <Ionicons 
+                name="trash-outline" 
+                size={20} 
+                color={theme.name === 'dark' ? '#FF4444' : '#E74C3C'} 
+              />
+              <Text style={[
+                styles.itemText, 
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
+                styles.deleteText
+              ]}>Delete</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -129,19 +161,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 20,
     right: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 12,
     minWidth: 200,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
     backdropFilter: "blur(20px)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   item: {
     paddingVertical: 12,
@@ -154,10 +180,9 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 16,
-    color: "#2c3e50",
     fontFamily: "Poppins_600SemiBold",
     marginLeft: 12,
   },
-  deleteText: { color: "#E74C3C" },
-  uncompleteText: { color: "#4A90E2" },
+  deleteText: { },
+  uncompleteText: { },
 });

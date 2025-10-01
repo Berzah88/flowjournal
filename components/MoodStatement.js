@@ -8,12 +8,14 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MOODS } from '../utils/AIMoodPredictor';
+import { useTheme } from '../context/ThemeContext';
 
 const MoodStatement = ({ 
   activeTasks = [], 
   selectedDate,
   onPress = null
 }) => {
+  const { theme } = useTheme();
   // Bugünkü mood'ları hesapla
   const todayMoodData = useMemo(() => {
     const today = new Date(selectedDate);
@@ -108,9 +110,9 @@ const MoodStatement = ({
         styles.moodStatus,
         { 
           borderLeftColor: todayMoodData.dominantMood?.color || '#007AFF',
-          backgroundColor: todayMoodData.dominantMood ? 
-            'rgba(255, 255, 255, 0.95)' : 
-            'rgba(0, 122, 255, 0.1)'
+          backgroundColor: theme.name === 'dark' 
+            ? (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 122, 255, 0.1)')
+            : (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 122, 255, 0.1)')
         }
       ]}>
         <View style={[
@@ -127,7 +129,10 @@ const MoodStatement = ({
         </View>
         
         <View style={styles.statusContent}>
-          <Text style={styles.statusText}>
+          <Text style={[
+            styles.statusText,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+          ]}>
             {todayMoodData.dominantMood ? 
               `Today you feel a bit ${todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}` :
               "How are you feeling today?"
@@ -136,7 +141,11 @@ const MoodStatement = ({
           
           <Text style={[
             styles.motivationText,
-            { color: todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2' }
+            { 
+              color: theme.name === 'dark' 
+                ? (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2')
+                : (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2')
+            }
           ]}>
             {todayMoodData.totalEntries > 0 ? 
               "View more details" :
@@ -187,7 +196,6 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontFamily: 'Poppins_500Medium',
-    color: '#1D1D1F',
     marginBottom: 1,
     lineHeight: 16,
   },

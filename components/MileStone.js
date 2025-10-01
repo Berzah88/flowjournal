@@ -6,6 +6,7 @@ import JournalCard from "./JournalCard";
 import PropTypes from "prop-types";
 import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { useTheme } from '../context/ThemeContext';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
 
@@ -22,6 +23,7 @@ function MileStone({
   onOpenJournal,
   navigation,
 }) {
+  const { theme } = useTheme();
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
   // usePerformanceMonitor('MileStone');
   
@@ -217,6 +219,7 @@ function MileStone({
             style={({ pressed }) => [
               styles.milestoneItemClickable,
               {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 122, 255, 0.04)',
                 transform: [{ scale: pressed && !editable ? 0.96 : 1 }],
               }
             ]}
@@ -255,7 +258,11 @@ function MileStone({
                   multiline={true}
                 />
               ) : (
-                <Text style={[styles.milestoneText, isCompleted && styles.completedText]}>{title}</Text>
+                <Text style={[
+                  styles.milestoneText, 
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
+                  isCompleted && styles.completedText
+                ]}>{title}</Text>
               )}
               
               {/* Date info - only show if not editable or if milestone has dates */}
@@ -270,9 +277,18 @@ function MileStone({
                   ]}
                   onPress={() => !isCompleted && editable && setCalendarVisible(true)}
                 >
-                  <Ionicons name="calendar-outline" size={12} color="#666" style={styles.timerIcon} />
-                  <Text style={[styles.daysText, isCompleted && styles.completedText]}>{getDaysText()}</Text>
-                  {editable && <Ionicons name="chevron-down" size={14} color="#555" />}
+                  <Ionicons 
+                    name="calendar-outline" 
+                    size={12} 
+                    color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
+                    style={styles.timerIcon} 
+                  />
+                  <Text style={[
+                    styles.daysText, 
+                    { color: theme.name === 'dark' ? '#8E8E93' : '#666' },
+                    isCompleted && styles.completedText
+                  ]}>{getDaysText()}</Text>
+                  {editable && <Ionicons name="chevron-down" size={14} color={theme.name === 'dark' ? '#8E8E93' : '#555'} />}
                 </Pressable>
               )}
             </View>
@@ -289,7 +305,10 @@ function MileStone({
                 ]}
                 onPress={handleEditToggle}
               >
-                <Text style={styles.editButtonText}>Edit</Text>
+                <Text style={[
+                  styles.editButtonText,
+                  { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
+                ]}>Edit</Text>
               </Pressable>
             )}
 
@@ -417,6 +436,7 @@ export default MileStone;
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 25,
     marginBottom: 16,
     marginHorizontal: 28,
   },
@@ -428,7 +448,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minHeight: 40,
     justifyContent: 'flex-start',
-    backgroundColor: "rgba(0, 122, 255, 0.04)", // Çok hafif mavi arka plan
   },
   iconContainer: {
     width: 30,
@@ -443,7 +462,6 @@ const styles = StyleSheet.create({
   milestoneText: {
     fontFamily: FONTS.MEDIUM,
     fontSize: 14,
-    color: "#1D1D1F", // Apple'ın koyu gri rengi
     lineHeight: 20,
     letterSpacing: -0.1,
     paddingRight: 50, // Edit tuşu için boşluk
@@ -458,7 +476,6 @@ const styles = StyleSheet.create({
   },
   timerIcon: { marginRight: 4 },
   daysText: {
-    color: "#666",
     fontSize: 11,
     fontFamily: "Poppins_400Regular",
     marginRight: 4,
@@ -569,7 +586,6 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
-    color: "#545454",
   },
   // Günlük kartları container
   journalCardsContainer: {

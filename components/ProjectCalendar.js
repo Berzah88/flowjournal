@@ -4,12 +4,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { getMilestoneColor } from '../utils/milestoneColors';
 import { useTasks } from '../hooks/useTaskContext';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get("window");
 const CELL_SIZE = (width - 40) / 7; // Equal width for 7 days
 const CELL_HEIGHT = CELL_SIZE + 10; // Reduce cell height
 
 export default function ProjectCalendar({ milestones = [], projectStartDate, projectEndDate }) {
+  const { theme } = useTheme();
   const [currentDate, setCurrentDate] = useState(new Date());
   const tasks = useTasks(); // Get all tasks
   
@@ -176,11 +178,20 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.navButton}>
-          <Text style={styles.navButtonText}>‹</Text>
+          <Text style={[
+            styles.navButtonText,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#7f8c8d' }
+          ]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.monthTitle}>{formatDate(currentDate)}</Text>
+        <Text style={[
+          styles.monthTitle,
+          { color: theme.name === 'dark' ? '#FFFFFF' : '#2c3e50' }
+        ]}>{formatDate(currentDate)}</Text>
         <TouchableOpacity onPress={() => changeMonth(1)} style={styles.navButton}>
-          <Text style={styles.navButtonText}>›</Text>
+          <Text style={[
+            styles.navButtonText,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#7f8c8d' }
+          ]}>›</Text>
         </TouchableOpacity>
       </View>
 
@@ -188,7 +199,10 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
       <View style={styles.weekDaysRow}>
         {weekDays.map(day => (
           <View key={day} style={styles.weekDayCell}>
-            <Text style={styles.weekDayText}>{day}</Text>
+            <Text style={[
+              styles.weekDayText,
+              { color: theme.name === 'dark' ? '#8E8E93' : '#7f8c8d' }
+            ]}>{day}</Text>
           </View>
         ))}
       </View>
@@ -226,6 +240,7 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
                 <>
                     <Text style={[
                       styles.dayText,
+                      { color: theme.name === 'dark' ? '#FFFFFF' : '#333' },
                       isToday && styles.todayText,
                       insideBorderColor !== "transparent" && {
                         borderColor: insideBorderColor,
@@ -356,13 +371,11 @@ const styles = StyleSheet.create({
   },
   navButtonText: {
     fontSize: 20,
-    color: "#7f8c8d",
     fontFamily: "Poppins_700Bold",
   },
   monthTitle: {
     fontSize: 16,
     fontFamily: "Poppins_700Bold",
-    color: "#2c3e50",
     letterSpacing: -0.3,
   },
   weekDaysRow: {
@@ -378,7 +391,6 @@ const styles = StyleSheet.create({
   weekDayText: {
     fontSize: 13,
     fontFamily: "Poppins_600SemiBold",
-    color: "#7f8c8d",
   },
   calendarGrid: {
     flexDirection: "row",
@@ -394,7 +406,6 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 11,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginBottom: 2,
     borderWidth: 0,
     borderColor: "#E0E0E0",

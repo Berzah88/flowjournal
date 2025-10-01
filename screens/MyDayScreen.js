@@ -18,6 +18,7 @@ import { useActiveTasks, useTaskActions } from "../hooks/useTaskContext";
 import { getMilestoneColor } from "../utils/milestoneColors";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { ANIMATION_DURATIONS } from "../constants";
+import { useTheme } from "../context/ThemeContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ActiveProject from "./ActiveProject";
 import AddMilestoneModal from "../components/AddMilestoneModal";
@@ -43,6 +44,7 @@ const MyDayScreen = memo(function MyDayScreen({
 }) {
   const activeTasks = useActiveTasks();
   const { addMilestone, updateMilestone, completeMilestone, addJournalEntry } = useTaskActions();
+  const { theme } = useTheme();
   
   // Performance monitoring (only in development) - temporarily disabled
   // usePerformanceMonitor('MyDayScreen');
@@ -241,7 +243,10 @@ const MyDayScreen = memo(function MyDayScreen({
         
         {/* Today's Summary Header */}
         <View style={styles.summaryHeaderContainer}>
-          <Text style={styles.summaryHeaderTitle}>Today's Summary</Text>
+          <Text style={[
+            styles.summaryHeaderTitle,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+          ]}>Today's Summary</Text>
         </View>
         
         {/* Mood Statement */}
@@ -286,13 +291,26 @@ const MyDayScreen = memo(function MyDayScreen({
               // Show button for today or future dates, OR when there are active projects
               if (selected >= today || selectedDateActiveTasks.length > 0) {
                 return (
-                  <TouchableOpacity 
-                    style={styles.addProjectButton}
+                  <TouchableOpacity
+                    style={[
+                      styles.addProjectButton,
+                      {
+                        backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
+                        borderColor: theme.name === 'dark' ? '#636366' : '#1976D2',
+                      }
+                    ]}
                     onPress={onAddProject}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                    <Text style={styles.addProjectButtonText}>Add Project</Text>
+                    <Ionicons 
+                      name="add-circle" 
+                      size={20} 
+                      color={theme.name === 'dark' ? '#FF6B6B' : '#1976D2'} 
+                    />
+                    <Text style={[
+                      styles.addProjectButtonText,
+                      { color: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }
+                    ]}>Add Project</Text>
                   </TouchableOpacity>
                 );
               }
@@ -304,8 +322,16 @@ const MyDayScreen = memo(function MyDayScreen({
             <TouchableOpacity 
               key={project.id} 
               style={[
-              styles.projectSummaryCard,
-              project.isLastDay && styles.lastDayProjectCard
+                styles.projectSummaryCard,
+        {
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+          borderColor: theme.name === 'dark' ? '#000000' : '#1976D2',
+                  shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.06,
+                  shadowRadius: theme.name === 'dark' ? 12 : 8,
+                  elevation: theme.name === 'dark' ? 8 : 2,
+                },
+                project.isLastDay && styles.lastDayProjectCard
               ]}
               onPress={() => setSelectedCard(project)}
               activeOpacity={0.7}
@@ -313,6 +339,9 @@ const MyDayScreen = memo(function MyDayScreen({
               <View style={styles.projectHeader}>
                 <Text style={[
                   styles.projectTitle,
+                  {
+                    color: theme.name === 'dark' ? '#FF6B6B' : '#1B2951',
+                  },
                   project.isLastDay && styles.lastDayProjectTitle
                 ]}>
                   {project.title}
@@ -320,10 +349,18 @@ const MyDayScreen = memo(function MyDayScreen({
                 <View style={styles.dateContainer}>
                   <View style={[
                     styles.projectDateRange,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#E3F2FD',
+                      borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
+                      borderWidth: theme.name === 'dark' ? 0.5 : 0,
+                    },
                     project.isLastDay && styles.lastDayDateRange
                   ]}>
                     <Text style={[
                       styles.dateText,
+                      {
+                        color: theme.name === 'dark' ? '#8E8E93' : '#1B2951',
+                      },
                       project.isLastDay && styles.lastDayDateText
                     ]}>
                       {new Date(project.startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(project.endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
@@ -338,18 +375,27 @@ const MyDayScreen = memo(function MyDayScreen({
                 </View>
               </View>
               
-              {/* Plus symbol under date */}
-              <TouchableOpacity 
-                style={styles.minimalAddMilestoneButton}
-                onPress={() => {
-                  console.log('Add milestone button pressed for project:', project.title);
-                  setSelectedProjectForMilestone(project);
-                  setAddMilestoneModalVisible(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="add" size={16} color="#007AFF" />
-              </TouchableOpacity>
+              {/* Plus symbol under date - only show when there are milestones */}
+              {project.milestones && project.milestones.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length > 0 && (
+                <TouchableOpacity 
+                  style={[
+                    styles.minimalAddMilestoneButton,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(34, 139, 34, 0.1)',
+                      borderColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(34, 139, 34, 0.3)',
+                      borderWidth: theme.name === 'dark' ? 0.5 : 0.5,
+                    }
+                  ]}
+                  onPress={() => {
+                    console.log('Add milestone button pressed for project:', project.title);
+                    setSelectedProjectForMilestone(project);
+                    setAddMilestoneModalVisible(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add" size={16} color={theme.name === 'dark' ? '#FFFFFF' : '#228B22'} />
+                </TouchableOpacity>
+              )}
               
               {project.milestones && (project.milestones.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length > 0 || project.milestones.some(m => completingMilestones.has(`${project.id}-${m.id}`))) ? (
                 <View style={styles.milestonesList}>
@@ -376,12 +422,15 @@ const MyDayScreen = memo(function MyDayScreen({
                         <Ionicons 
                           name="ellipse" 
                           size={18} 
-                          color={getMilestoneColor(milestone)} 
+                          color={getMilestoneColor(milestone, theme.name)} 
                         />
                         <View style={styles.milestoneContent}>
                           <View style={styles.milestoneTextContainer}>
                             <Text style={[
                               styles.milestoneText,
+                              {
+                                color: theme.name === 'dark' ? '#FFFFFF' : '#1976D2',
+                              },
                               milestone.completed && styles.completedMilestoneText,
                               isCompleting && styles.completingMilestoneText,
                               isOverdue && styles.overdueMilestoneText,
@@ -427,7 +476,14 @@ const MyDayScreen = memo(function MyDayScreen({
                 </View>
               ) : (
                 <TouchableOpacity 
-                  style={styles.addMilestoneButton}
+                  style={[
+                    styles.addMilestoneButton,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(34, 139, 34, 0.1)',
+                      borderColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(34, 139, 34, 0.3)',
+                      borderWidth: theme.name === 'dark' ? 0.5 : 1,
+                    }
+                  ]}
                   onPress={() => {
                     console.log('Add milestone button pressed for project:', project.title);
                     setSelectedProjectForMilestone(project);
@@ -435,8 +491,11 @@ const MyDayScreen = memo(function MyDayScreen({
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="add" size={16} color="#007AFF" />
-                  <Text style={styles.addMilestoneText}>Add Milestone</Text>
+                  <Ionicons name="add" size={16} color={theme.name === 'dark' ? '#FFFFFF' : '#228B22'} />
+                  <Text style={[
+                    styles.addMilestoneText,
+                    { color: theme.name === 'dark' ? '#FFFFFF' : '#228B22' }
+                  ]}>Add Milestone</Text>
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
@@ -446,12 +505,25 @@ const MyDayScreen = memo(function MyDayScreen({
         {/* Add Project Button - Always visible when there are active projects */}
         {selectedDateActiveTasks.length > 0 && (
           <TouchableOpacity 
-            style={styles.addProjectButton}
+            style={[
+              styles.addProjectButton,
+              {
+                backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
+                borderColor: theme.name === 'dark' ? '#FF6B6B' : '#1976D2',
+              }
+            ]}
             onPress={onAddProject}
             activeOpacity={0.7}
           >
-            <Ionicons name="add-circle" size={18} color="#1976D2" />
-            <Text style={styles.addProjectButtonText}>Add Project</Text>
+            <Ionicons 
+              name="add-circle" 
+              size={18} 
+              color={theme.name === 'dark' ? '#FF6B6B' : '#1976D2'} 
+            />
+            <Text style={[
+              styles.addProjectButtonText,
+              { color: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }
+            ]}>Add Project</Text>
           </TouchableOpacity>
         )}
 
@@ -476,7 +548,6 @@ const styles = StyleSheet.create({
   summaryHeaderTitle: {
     fontSize: 18, // 24'ten 18'e düşürdüm - eski haline getirdim
     fontFamily: 'Poppins_600SemiBold',
-    color: '#1D1D1F',
     letterSpacing: -0.5,
   },
   summaryContainer: {
@@ -509,8 +580,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F0F8FF', // Açık mavi arka plan
-    borderColor: '#1976D2', // Mavi border
     borderWidth: 1.5,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -522,21 +591,14 @@ const styles = StyleSheet.create({
   addProjectButtonText: {
     fontSize: 14,
     fontFamily: 'Poppins_500Medium',
-    color: '#1976D2', // Mavi ton
     marginLeft: 6,
   },
   projectSummaryCard: {
-    backgroundColor: '#F0F8FF', // Açık mavi arka plan
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     marginTop: 6, // 12'den 6'ya düşürdüm - daha kompakt
-    borderColor: '#1976D2', // Solid mavi border
     borderWidth: 1.5,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
     marginHorizontal: 2,
   },
   projectHeader: {
@@ -556,11 +618,9 @@ const styles = StyleSheet.create({
   projectTitle: {
     fontSize: 18,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#1976D2', // Mavi ton
     flex: 1,
   },
   projectDateRange: {
-    backgroundColor: '#E3F2FD', // Açık mavi arka plan
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -568,7 +628,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     fontFamily: 'Poppins_500Medium',
-    color: '#1976D2', // Mavi ton
   },
   milestonesList: {
     marginTop: 8,
@@ -594,7 +653,6 @@ const styles = StyleSheet.create({
   milestoneText: {
     fontSize: 14,
     fontFamily: 'Poppins_400Regular',
-    color: '#1976D2', // Mavi ton
     marginBottom: 4,
   },
   completedMilestoneText: {
@@ -661,30 +719,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 8,
-    marginTop: 8,
+    marginTop: 16,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0, 122, 255, 0.2)',
   },
   addMilestoneText: {
     fontSize: 14,
     fontFamily: 'Poppins_500Medium',
-    color: '#007AFF',
     marginLeft: 6,
   },
   minimalAddMilestoneButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 6,
     marginTop: 8,
     borderWidth: 0.5,
-    borderColor: 'rgba(0, 122, 255, 0.2)',
     alignSelf: 'flex-end',
   },
   // Son gününde olan projeler için özel style'lar

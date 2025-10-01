@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MOODS } from '../utils/MoodPredictor';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -21,6 +22,7 @@ const DailyMoodSummary = ({
   hasMedia = false,
   onPress = null
 }) => {
+  const { theme } = useTheme();
   // Bugünkü mood'ları hesapla
   const todayMoodData = useMemo(() => {
     const today = new Date(selectedDate);
@@ -232,19 +234,37 @@ const DailyMoodSummary = ({
     ]}>
       {/* Progress Status - Inline Design */}
       {progressData.total > 0 && (
-        <View style={styles.progressStatus}>
+        <View style={[
+          styles.progressStatus,
+          {
+            backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.05)',
+            borderLeftColor: theme.name === 'dark' ? '#34C759' : '#34C759'
+          }
+        ]}>
           <View style={styles.progressIconContainer}>
             <Ionicons name="trending-up" size={16} color="#34C759" />
           </View>
           
           <View style={styles.progressContent}>
             <View style={styles.progressHeader}>
-              <Text style={styles.progressText}>Progress Status</Text>
-              <Text style={styles.progressPercentage}>{progressData.percentage}%</Text>
+              <Text style={[
+                styles.progressText,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>Progress Status</Text>
+              <Text style={[
+                styles.progressPercentage,
+                { 
+                  color: theme.name === 'dark' ? '#34C759' : '#34C759',
+                  backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.1)'
+                }
+              ]}>{progressData.percentage}%</Text>
             </View>
             
             <View style={styles.progressBarContainer}>
-              <View style={styles.progressBar}>
+              <View style={[
+                styles.progressBar,
+                { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.3)' : 'rgba(52, 199, 89, 0.2)' }
+              ]}>
                 <View style={[
                   styles.progressBarFill,
                   { width: `${progressData.percentage}%` }
@@ -296,10 +316,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(52, 199, 89, 0.05)',
     borderRadius: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#34C759',
     marginTop: 4,
     marginHorizontal: 2, // Kartlarla aynı margin
   },
@@ -322,13 +340,10 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 13,
     fontFamily: 'Poppins_500Medium',
-    color: '#1D1D1F',
   },
   progressPercentage: {
     fontSize: 11,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#34C759',
-    backgroundColor: 'rgba(52, 199, 89, 0.1)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -338,7 +353,6 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 4,
-    backgroundColor: 'rgba(52, 199, 89, 0.2)',
     borderRadius: 2,
     overflow: 'hidden',
   },

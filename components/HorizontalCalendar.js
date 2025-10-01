@@ -3,9 +3,11 @@ import React, { useState, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTheme } from "../context/ThemeContext";
 
 const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, milestones = [] }) => {
   const [currentWeek, setCurrentWeek] = useState(0);
+  const { theme } = useTheme();
 
   // 7 günlük tarihleri hesapla - bugünü ortaya hizala
   const weekDates = useMemo(() => {
@@ -101,8 +103,22 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
                key={index}
                style={[
                  styles.dayContainer,
-                 isSelectedDate && styles.selectedContainer,
-                 hasTasksForDate && styles.hasTasksContainer,
+                 {
+                   backgroundColor: theme.name === 'dark' ? 'transparent' : 'transparent',
+                 },
+                 isSelectedDate && {
+                   backgroundColor: theme.name === 'dark' ? '#FF6B6B' : '#4A90E2',
+                   elevation: 4,
+                   shadowColor: theme.name === 'dark' ? '#FF6B6B' : '#4A90E2',
+                   shadowOffset: { width: 0, height: 4 },
+                   shadowOpacity: 0.3,
+                   shadowRadius: 8,
+                   borderWidth: 2,
+                   borderColor: theme.name === 'dark' ? '#FF6B6B' : '#4A90E2',
+                 },
+                 hasTasksForDate && {
+                   backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                 },
                ]}
                onPress={() => onDateSelect && onDateSelect(date)}
                accessible={true}
@@ -111,15 +127,31 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
              >
                <Text style={[
                  styles.dayNumber,
-                 isSelectedDate && styles.selectedNumber,
-                 hasTasksForDate && styles.hasTasksNumber,
+                 {
+                   color: theme.name === 'dark' ? '#D1D5DB' : '#8E8E93',
+                 },
+                 isSelectedDate && {
+                   color: '#FFFFFF',
+                   fontFamily: 'Poppins_600SemiBold',
+                 },
+                 hasTasksForDate && {
+                   color: theme.name === 'dark' ? '#F9FAFB' : '#1D1D1F',
+                 },
                ]}>
                  {dayNumber}
                </Text>
                <Text style={[
                  styles.dayAbbr,
-                 isSelectedDate && styles.selectedAbbr,
-                 hasTasksForDate && styles.hasTasksAbbr,
+                 {
+                   color: theme.name === 'dark' ? '#D1D5DB' : '#8E8E93',
+                 },
+                 isSelectedDate && {
+                   color: '#FFFFFF',
+                   fontFamily: 'Poppins_500Medium',
+                 },
+                 hasTasksForDate && {
+                   color: theme.name === 'dark' ? '#F9FAFB' : '#1D1D1F',
+                 },
                ]}>
                  {dayAbbr}
                </Text>
@@ -141,7 +173,12 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
                {hasTasksForDate && !moodInfo && (
                  <View style={[
                    styles.taskDot,
-                   isSelectedDate && styles.selectedTaskDot,
+                   {
+                     backgroundColor: theme.name === 'dark' ? '#4A90E2' : '#007AFF',
+                   },
+                   isSelectedDate && {
+                     backgroundColor: '#FFFFFF',
+                   },
                  ]} />
                )}
              </TouchableOpacity>
@@ -175,59 +212,20 @@ const styles = StyleSheet.create({
     borderRadius: 10, // 12'den 10'a düşürdüm
     minWidth: 45, // 55'ten 45'e düşürdüm - mavi seçiciyi daraltım
   },
-  selectedContainer: {
-    backgroundColor: "#4A90E2",
-    elevation: 4,
-    shadowColor: "#4A90E2",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    borderWidth: 2,
-    borderColor: "#4A90E2",
-  },
-  selectedNumber: {
-    color: "#FFFFFF",
-    fontFamily: "Poppins_600SemiBold",
-  },
-  selectedAbbr: {
-    color: "#FFFFFF",
-    fontFamily: "Poppins_500Medium",
-  },
-  selectedTaskDot: {
-    backgroundColor: "#FFFFFF",
-  },
-  hasTasksContainer: {
-    backgroundColor: "rgba(0, 0, 0, 0.04)",
-  },
   dayNumber: {
     fontSize: 16,
     fontFamily: "Poppins_600SemiBold",
-    color: "#8E8E93",
     marginBottom: 2,
-  },
-  todayNumber: {
-    color: "#FFFFFF",
-  },
-  hasTasksNumber: {
-    color: "#1D1D1F",
   },
   dayAbbr: {
     fontSize: 10,
     fontFamily: "Poppins_400Regular",
-    color: "#8E8E93",
     marginTop: -4, // -2'den -4'e düşürdüm - daha da yakınlaştırdım
-  },
-  todayAbbr: {
-    color: "#FFFFFF",
-  },
-  hasTasksAbbr: {
-    color: "#1D1D1F",
   },
   taskDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#007AFF",
     marginTop: 4,
   },
   moodTagContainer: {

@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import Journal from "./Journal";
 import { useActiveTasks } from "../hooks/useTaskContext";
+import { useTheme } from "../context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -21,6 +22,7 @@ const JournalDetailScreen = ({
   route, 
   navigation
 }) => {
+  const { theme } = useTheme();
   const { selectedMediaData: initialMediaData } = route.params;
   const activeTasks = useActiveTasks();
   const [locationText, setLocationText] = useState(null);
@@ -159,37 +161,91 @@ const JournalDetailScreen = ({
 
   if (!selectedMediaData) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[
+        styles.container,
+        { backgroundColor: theme.name === 'dark' ? '#000000' : '#FFFFFF' }
+      ]}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Veri bulunamadı</Text>
+          <Text style={[
+            styles.errorText,
+            { color: theme.name === 'dark' ? '#8E8E93' : '#999' }
+          ]}>Veri bulunamadı</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[
+      styles.container,
+      { backgroundColor: theme.name === 'dark' ? '#000000' : '#FFFFFF' }
+    ]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[
+        styles.header,
+        {
+          backgroundColor: theme.name === 'dark' ? '#000000' : '#FFFFFF',
+          borderBottomColor: theme.name === 'dark' ? '#2C2C2E' : '#E9ECEF',
+        }
+      ]}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
-          style={styles.backButton}
+          style={[
+            styles.backButton,
+            {
+              backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F9FA',
+              borderColor: theme.name === 'dark' ? '#2C2C2E' : '#E9ECEF',
+            }
+          ]}
         >
-          <MaterialIcons name="arrow-back" size={24} color="#333" />
+          <MaterialIcons 
+            name="arrow-back" 
+            size={24} 
+            color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+          />
         </TouchableOpacity>
         <View style={styles.titleSection}>
-          <Text style={styles.date}>{selectedMediaData.date}</Text>
+          <Text style={[
+            styles.date,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+          ]}>{selectedMediaData.date}</Text>
           <View style={styles.tagsContainer}>
             {selectedMediaData.mood && (
-              <View style={[styles.mood, { backgroundColor: selectedMediaData.mood.color || "#fff" }]}>
-                <MaterialIcons name={getValidIconName(selectedMediaData.mood.icon)} size={16} color="#333" />
-                <Text style={styles.moodText}>{selectedMediaData.mood.label}</Text>
+              <View style={[
+                styles.mood, 
+                { 
+                  backgroundColor: selectedMediaData.mood.color || (theme.name === 'dark' ? '#2C2C2E' : '#fff'),
+                  borderColor: theme.name === 'dark' ? '#3A3A3C' : '#E9ECEF',
+                }
+              ]}>
+                <MaterialIcons 
+                  name={getValidIconName(selectedMediaData.mood.icon)} 
+                  size={16} 
+                  color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+                />
+                <Text style={[
+                  styles.moodText,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                ]}>{selectedMediaData.mood.label}</Text>
               </View>
             )}
             {locationText && (
-              <View style={styles.locationTag}>
-                <Ionicons name="location" size={12} color="#007AFF" />
-                <Text style={styles.locationTagText}>{locationText}</Text>
+              <View style={[
+                styles.locationTag,
+                {
+                  backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.1)' : '#F0F8FF',
+                  borderColor: theme.name === 'dark' ? '#007AFF' : '#007AFF',
+                }
+              ]}>
+                <Ionicons 
+                  name="location" 
+                  size={12} 
+                  color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} 
+                />
+                <Text style={[
+                  styles.locationTagText,
+                  { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
+                ]}>{locationText}</Text>
               </View>
             )}
           </View>
@@ -205,8 +261,17 @@ const JournalDetailScreen = ({
         </View>
 
         {/* Daily Notes Section - Scrollable */}
-        <View style={styles.notesSection}>
-          <Text style={styles.sectionTitle}>Günlükler</Text>
+        <View style={[
+          styles.notesSection,
+          {
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F9FA',
+            borderColor: theme.name === 'dark' ? '#2C2C2E' : '#E9ECEF',
+          }
+        ]}>
+          <Text style={[
+            styles.sectionTitle,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+          ]}>Günlükler</Text>
           
           <ScrollView 
             style={styles.notesScrollView}
@@ -216,16 +281,31 @@ const JournalDetailScreen = ({
           >
             {selectedMediaData.textEntries && selectedMediaData.textEntries.length > 0 ? (
               selectedMediaData.textEntries.map((entry, index) => (
-                <View key={index} style={styles.noteItem}>
+                <View key={index} style={[
+                  styles.noteItem,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#000000' : '#FFFFFF',
+                    borderColor: theme.name === 'dark' ? '#2C2C2E' : '#E9ECEF',
+                  }
+                ]}>
                   <View style={styles.noteHeader}>
-                    <Text style={styles.noteTime}>
+                    <Text style={[
+                      styles.noteTime,
+                      { color: theme.name === 'dark' ? '#8E8E93' : '#666' }
+                    ]}>
                       {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
                     </Text>
                     <TouchableOpacity 
-                      style={styles.editButton}
+                      style={[
+                        styles.editButton,
+                        {
+                          backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.1)' : '#F0F8FF',
+                          borderColor: theme.name === 'dark' ? '#007AFF' : '#007AFF',
+                        }
+                      ]}
                       onPress={() => {
                         // Journal modal'ını edit modunda aç
                         console.log('Editing entry:', entry);
@@ -233,15 +313,25 @@ const JournalDetailScreen = ({
                         setJournalModalVisible(true);
                       }}
                     >
-                      <MaterialIcons name="edit" size={16} color="#007AFF" />
+                      <MaterialIcons 
+                        name="edit" 
+                        size={16} 
+                        color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} 
+                      />
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.noteContent}>{entry.text}</Text>
+                  <Text style={[
+                    styles.noteContent,
+                    { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                  ]}>{entry.text}</Text>
                 </View>
               ))
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>Bu gün için not bulunmuyor</Text>
+                <Text style={[
+                  styles.emptyText,
+                  { color: theme.name === 'dark' ? '#8E8E93' : '#999' }
+                ]}>Bu gün için not bulunmuyor</Text>
               </View>
             )}
           </ScrollView>
@@ -283,7 +373,6 @@ const getValidIconName = (name) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
 
   errorContainer: {
@@ -295,7 +384,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     fontFamily: "Poppins_500Medium",
-    color: "#999",
   },
 
   header: {
@@ -304,19 +392,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12, // 16 -> 12 (daha kompakt)
     borderBottomWidth: 1,
-    borderBottomColor: "#E9ECEF",
-    backgroundColor: "#FFFFFF",
   },
 
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E9ECEF",
   },
 
   titleSection: {
@@ -328,7 +412,6 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginBottom: 4,
   },
 
@@ -347,13 +430,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E9ECEF",
   },
 
   moodText: {
     fontSize: 10,
     fontFamily: "Poppins_500Medium",
-    color: "#333",
     marginLeft: 4,
   },
 
@@ -362,15 +443,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: "#F0F8FF",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#007AFF",
   },
 
   locationTagText: {
     fontSize: 10,
-    color: "#007AFF",
     fontFamily: "Poppins_500Medium",
     marginLeft: 4,
   },
@@ -442,17 +520,14 @@ const styles = StyleSheet.create({
 
   notesSection: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E9ECEF",
     padding: 12, // 16 -> 12 (daha kompakt)
   },
 
   sectionTitle: {
     fontSize: 16,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
     marginBottom: 12,
     textAlign: "left", // Sola hizalandı
   },
@@ -466,12 +541,10 @@ const styles = StyleSheet.create({
   },
 
   noteItem: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#E9ECEF",
   },
 
   noteHeader: {
@@ -484,24 +557,20 @@ const styles = StyleSheet.create({
   noteTime: {
     fontSize: 12,
     fontFamily: "Poppins_500Medium",
-    color: "#666",
   },
 
   editButton: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#F0F8FF",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#007AFF",
   },
 
   noteContent: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#333",
     lineHeight: 20,
   },
 
@@ -515,7 +584,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#999",
     textAlign: "center",
   },
 });

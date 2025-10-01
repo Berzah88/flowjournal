@@ -12,17 +12,38 @@ import JournalDetailScreen from './screens/JournalDetailScreen';
 import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
 import EmotionalJournalScreen from './screens/EmotionalJournalScreen';
 import { TaskProvider } from './context/TaskContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { useHasAnyTasks, useTaskLoading } from './hooks/useTaskContext';
+import { useTheme } from './context/ThemeContext';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
+import notificationService from './services/NotificationService';
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 
 const Stack = createNativeStackNavigator();
 
-// Navigation component that uses TaskContext
+// Themed App component that wraps everything with theme
+function ThemedApp() {
+  const { theme } = useTheme();
+  
+  return (
+    <>
+      <StatusBar 
+        barStyle={theme.name === 'dark' ? 'light-content' : 'dark-content'} 
+        backgroundColor={theme.colors.background} 
+      />
+      <TaskProvider>
+        <AppNavigator />
+      </TaskProvider>
+    </>
+  );
+}
+
+// Navigation component that uses TaskContext and Theme
 function AppNavigator() {
   const hasAnyTasks = useHasAnyTasks();
   const isLoading = useTaskLoading();
+  const { theme, isLoading: themeLoading } = useTheme();
   const [initialRoute, setInitialRoute] = useState(null);
 
   useEffect(() => {
@@ -32,8 +53,8 @@ function AppNavigator() {
     }
   }, [hasAnyTasks, isLoading]);
 
-  // Loading state - tasks yüklenirken
-  if (isLoading || !initialRoute) {
+  // Loading state - tasks ve theme yüklenirken
+  if (isLoading || themeLoading || !initialRoute) {
     return <LoadingSpinner message="Loading app..." />;
   }
 
@@ -74,6 +95,22 @@ export default function App() {
     Poppins_800ExtraBold,
   });
 
+  // Bildirim servisini başlat
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      try {
+        await notificationService.initialize();
+        console.log('Bildirim servisi başlatıldı');
+      } catch (error) {
+        console.error('Bildirim servisi başlatma hatası:', error);
+      }
+    };
+
+    if (fontsLoaded) {
+      initializeNotifications();
+    }
+  }, [fontsLoaded]);
+
   if (!fontsLoaded) {
     // fontlar yüklenene kadar tek bir render, App sürekli yeniden render olmuyor
     return <LoadingSpinner message="Loading fonts..." />;
@@ -82,10 +119,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <TaskProvider>
-          <AppNavigator />
-        </TaskProvider>
+        <ThemeProvider>
+          <ThemedApp />
+        </ThemeProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>
   );

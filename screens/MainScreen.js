@@ -24,6 +24,7 @@ import AnimatedReanimated, {
 import { useActiveTasks, useCompletedTasks, useTaskActions, useTaskSaving, useDataRecovery } from "../hooks/useTaskContext";
 import { useDataRecoveryOperations } from "../hooks/useDataRecoveryOperations";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
+import { useTheme } from "../context/ThemeContext";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import StatusTabs from "../components/StatusTabs";
 import StatusBarComponent from "../components/StatusBar";
@@ -35,6 +36,8 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import DataRecoveryMenu from "../components/DataRecoveryMenu";
 import MyDayScreen from "./MyDayScreen";
 import AddMilestoneModal from "../components/AddMilestoneModal";
+import ThemeToggle from "../components/ThemeToggle";
+import NotificationSettings from "../components/NotificationSettings";
 
 const { width, height } = Dimensions.get("window");
 
@@ -45,6 +48,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const { clearStorage, addMilestone } = useTaskActions();
   const { recoverData, createManualBackup, getDataStatus } = useDataRecovery();
   const { handleDataRecovery, handleCreateBackup, handleCheckDataStatus } = useDataRecoveryOperations();
+  const { theme } = useTheme();
   
   // Performance monitoring (only in development) - temporarily disabled
   // usePerformanceMonitor('MainScreen');
@@ -69,6 +73,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [myDaySelectedMilestone, setMyDaySelectedMilestone] = useState(null);
   const [myDayAddMilestoneModalVisible, setMyDayAddMilestoneModalVisible] = useState(false);
   const [myDaySelectedProjectForMilestone, setMyDaySelectedProjectForMilestone] = useState(null);
+  const [notificationSettingsVisible, setNotificationSettingsVisible] = useState(false);
 
   // horizontal pan value (translateX)
   const panX = useRef(new Animated.Value(0)).current;
@@ -273,10 +278,13 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   try {
     return (
       <LinearGradient
-        colors={['#f8f9fa', '#e9ecef', '#dee2e6']}
+        colors={theme.name === 'dark' 
+          ? ['#4B5563', '#374151', '#1F2937']
+          : ['#f8f9fa', '#e9ecef', '#dee2e6']
+        }
         style={styles.container}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
       >
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
@@ -289,18 +297,29 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 />
               </View>
               <View style={styles.headerTextContainer}>
-                <Text style={styles.header}>Flow Journal</Text>
+                <Text style={[styles.header, { color: theme.colors.text }]}>Flow Journal</Text>
               </View>
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity 
-                style={styles.menuButton} 
+                style={[
+                  styles.menuButton,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(255, 255, 255, 0.8)',
+                    borderColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(102, 126, 234, 0.15)',
+                    shadowColor: theme.name === 'dark' ? '#FF6B6B' : '#667eea',
+                  }
+                ]} 
                 onPress={() => setMainMenuVisible(true)}
                 accessible={true}
                 accessibilityLabel="Menu options"
                 accessibilityRole="button"
               >
-                <Ionicons name="menu" size={20} color="#667eea" />
+                <Ionicons 
+                  name="menu" 
+                  size={20} 
+                  color={theme.name === 'dark' ? '#FFFFFF' : theme.colors.primary} 
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -372,7 +391,18 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       {mainMenuVisible && (
         <TouchableWithoutFeedback onPress={() => setMainMenuVisible(false)}>
           <View style={styles.menuOverlay}>
-            <AnimatedReanimated.View style={[styles.menuContainer, menuAnimatedStyle]}>
+            <AnimatedReanimated.View style={[
+              styles.menuContainer, 
+              { 
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                borderColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.2)',
+                shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                shadowOpacity: theme.name === 'dark' ? 0.3 : 0.15,
+                shadowRadius: theme.name === 'dark' ? 12 : 16,
+                elevation: theme.name === 'dark' ? 8 : 12,
+              },
+              menuAnimatedStyle
+            ]}>
               {/* Add New Project */}
               <TouchableOpacity
                 style={styles.menuItem}
@@ -385,8 +415,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 accessibilityRole="button"
               >
                 <View style={styles.menuItemContent}>
-                  <Ionicons name="add-circle-outline" size={20} color="#4A90E2" />
-                  <Text style={styles.menuItemText}>Add New Project</Text>
+                  <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Add New Project</Text>
                 </View>
               </TouchableOpacity>
 
@@ -402,8 +432,30 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 accessibilityRole="button"
               >
                 <View style={styles.menuItemContent}>
-                  <Ionicons name="checkmark-circle-outline" size={20} color="#4ECDC4" />
-                  <Text style={styles.menuItemText}>Completed Projects</Text>
+                  <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Completed Projects</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
+              {/* Notification Settings */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMainMenuVisible(false);
+                  setNotificationSettingsVisible(true);
+                }}
+                accessible={true}
+                accessibilityLabel="Notification settings"
+                accessibilityRole="button"
+              >
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
+                    Notification Settings
+                  </Text>
                 </View>
               </TouchableOpacity>
 
@@ -419,8 +471,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 accessibilityRole="button"
               >
                 <View style={styles.menuItemContent}>
-                  <Ionicons name="settings-outline" size={20} color="#667eea" />
-                  <Text style={styles.menuItemText}>Settings & Data</Text>
+                  <Ionicons name="settings-outline" size={20} color={theme.colors.secondary} />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Settings & Data</Text>
                 </View>
               </TouchableOpacity>
 
@@ -428,6 +480,12 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           </View>
         </TouchableWithoutFeedback>
       )}
+
+      {/* Notification Settings Modal */}
+      <NotificationSettings 
+        visible={notificationSettingsVisible}
+        onClose={() => setNotificationSettingsVisible(false)}
+      />
 
       <AddProjectScreen visible={addVisible} onClose={() => setAddVisible(false)} />
 
@@ -541,12 +599,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: 'rgba(102, 126, 234, 0.15)',
-    shadowColor: "#667eea",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -598,19 +653,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 20,
     right: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 12,
     minWidth: 200,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 12,
     backdropFilter: "blur(20px)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   menuItem: {
     paddingVertical: 12,

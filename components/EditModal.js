@@ -14,13 +14,15 @@ import FlashCalendar from "../components/FlashCalendar";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
-import { useModalAnimation, usePanGesture } from "../hooks/useAnimations";
+import { useModalAnimation } from "../hooks/useAnimations";
 import { MODAL_SIZES, SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
+import { useTheme } from "../context/ThemeContext";
 
 const { height } = Dimensions.get("window");
 const modalHeight = height * 0.90;
 
 export default function EditModal({ visible, onClose, project, onSave }) {
+  const { theme } = useTheme();
   // Performance monitoring (sadece development'ta)
   usePerformanceMonitor('EditModal');
   
@@ -38,6 +40,15 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   // Animasyon değerleri using custom hook
   const { translateY, opacity, scale, closeModal } = useModalAnimation(visible, onClose);
   const { dragY, handlePanEnd, resetDrag } = usePanGesture(closeModal, SWIPE_THRESHOLDS.CLOSE);
+
+  // Fallback close function
+  const fallbackClose = useCallback(() => {
+    try {
+      onClose && onClose();
+    } catch (error) {
+      console.error('Error in fallback close:', error);
+    }
+  }, [onClose]);
 
   // Focus input when modal opens - iOS tarzı timing
   useEffect(() => {
@@ -81,16 +92,56 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   }, [onSave, onClose, project, title, startDate, endDate]);
 
   const handleClose = useCallback(() => {
-    closeModal();
-  }, [closeModal]);
+    try {
+      closeModal();
+    } catch (error) {
+      console.error('Error closing modal:', error);
+      fallbackClose();
+    }
+  }, [closeModal, fallbackClose]);
 
   const panGesture = useMemo(() => Gesture.Pan()
+    .activeOffsetY(10) // Start gesture after 10px vertical movement
+    .onStart(() => {
+      // Reset drag position when gesture starts
+      dragY.value = 0;
+    })
     .onUpdate((e) => {
-      if (e.translationY > 0) dragY.value = e.translationY;
+      // Only allow downward swipes
+      if (e.translationY > 0) {
+        dragY.value = e.translationY;
+        console.log('Pan gesture update:', e.translationY, e.velocityY);
+      }
     })
     .onEnd((e) => {
-      handlePanEnd(e.translationY);
-    }), [dragY, handlePanEnd]);
+      try {
+        // Check if swipe distance or velocity is enough to close
+        const shouldClose = e.translationY > 80 || e.velocityY > 500;
+        console.log('Pan gesture end:', e.translationY, e.velocityY, 'shouldClose:', shouldClose);
+        
+        if (shouldClose) {
+          // Close modal
+          console.log('Closing modal via swipe');
+          closeModal();
+        } else {
+          // Reset to original position
+          console.log('Resetting modal position');
+          dragY.value = withSpring(0, {
+            damping: 20,
+            stiffness: 300,
+            mass: 0.8,
+          });
+        }
+      } catch (error) {
+        console.error('Error handling pan end:', error);
+        // Fallback: reset drag position
+        dragY.value = withSpring(0, {
+          damping: 20,
+          stiffness: 300,
+          mass: 0.8,
+        });
+      }
+    }), [dragY, closeModal]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -100,46 +151,102 @@ export default function EditModal({ visible, onClose, project, onSave }) {
     opacity: opacity.value,
   }));
 
-  if (!visible) return null;
+  if (!visible) {
+    // Reset drag position when modal is not visible
+    try {
+      resetDrag();
+    } catch (error) {
+      console.error('Error resetting drag:', error);
+    }
+    return null;
+  }
 
   return (
     <View style={styles.overlay}>
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.container, animatedStyle]}>
+        <Animated.View style={[
+          styles.container,
+          {
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+            shadowRadius: theme.name === 'dark' ? 20 : 8,
+            elevation: theme.name === 'dark' ? 20 : 20,
+          },
+          animatedStyle
+        ]}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             style={{ flex: 1 }}
           >
-            <Text style={styles.header}>Edit Project</Text>
+            <Text style={[
+              styles.header,
+              { color: theme.name === 'dark' ? '#FFFFFF' : '#545454' }
+            ]}>Edit Project</Text>
             <TextInput
               ref={inputRef}
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  borderBottomColor: theme.name === 'dark' ? '#636366' : '#ccc',
+                  color: theme.name === 'dark' ? '#FFFFFF' : '#333',
+                }
+              ]}
               placeholder="Project Title"
+              placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
               value={title}
               onChangeText={setTitle}
               selectTextOnFocus
             />
             <TouchableOpacity
-              style={styles.dateSelector}
+              style={[
+                styles.dateSelector,
+                {
+                  backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#F5F1F1',
+                }
+              ]}
               onPress={() => setCalendarVisible(true)}
             >
-              <Ionicons name="calendar-outline" size={22} color="#6C63FF" />
+              <Ionicons 
+                name="calendar-outline" 
+                size={22} 
+                color={theme.name === 'dark' ? '#FF6B6B' : '#6C63FF'} 
+              />
               <View style={{ marginLeft: 10 }}>
-                <Text style={styles.dateLabel}>Project Duration</Text>
-                <Text style={styles.dateValue}>
+                <Text style={[
+                  styles.dateLabel,
+                  { color: theme.name === 'dark' ? '#8E8E93' : '#777' }
+                ]}>Project Duration</Text>
+                <Text style={[
+                  styles.dateValue,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#545454' }
+                ]}>
                   {startDate.toDateString()} → {endDate.toDateString()}
                 </Text>
               </View>
             </TouchableOpacity>
             <View style={styles.btnRow}>
               <TouchableOpacity
-                style={[styles.btn, styles.cancel]}
+                style={[
+                  styles.btn,
+                  {
+                    backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#eee',
+                  }
+                ]}
                 onPress={handleClose}
               >
-                <Text style={styles.btnText}>Cancel</Text>
+                <Text style={[
+                  styles.btnText,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                ]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.btn, styles.save]}
+                style={[
+                  styles.btn,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF',
+                  }
+                ]}
                 onPress={handleSave}
               >
                 <Text style={[styles.btnText, { color: "#fff" }]}>Save</Text>
@@ -172,47 +279,39 @@ const styles = StyleSheet.create({
   },
   container: {
     height: modalHeight,
-    backgroundColor: "#FFFFFF",
     padding: 30,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     width: "100%",
-    elevation: 20,
   },
   header: {
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
     marginBottom: 25,
-    color: "#545454",
     padding: 10,
   },
   input: {
     borderBottomWidth: 1.5,
-    borderBottomColor: "#ccc",
     paddingVertical: 8,
     fontSize: 22,
     marginBottom: 25,
     marginTop: 10,
     fontFamily: "Poppins_600SemiBold",
-    color: "#333",
   },
   dateSelector: {
     flexDirection: "row",
     alignItems: "center",
     padding: 15,
     borderRadius: 12,
-    backgroundColor: "#F5F1F1",
     marginBottom: 25,
   },
   dateLabel: {
     fontSize: 14,
     fontFamily: "Poppins_500Medium",
-    color: "#777",
   },
   dateValue: {
     fontSize: 15,
     fontFamily: "Poppins_600SemiBold",
-    color: "#545454",
     marginTop: 2,
   },
   btnRow: {
@@ -225,12 +324,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     borderRadius: 10,
     marginLeft: 10,
-  },
-  cancel: {
-    backgroundColor: "#eee",
-  },
-  save: {
-    backgroundColor: "#6C63FF",
   },
   btnText: {
     fontSize: 14,

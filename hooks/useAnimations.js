@@ -50,27 +50,35 @@ export const useModalAnimation = (visible, onClose = null) => {
     }
   }, [visible]);
 
-  const closeModal = () => {
-    // Smooth kapanış animasyonu
-    translateY.value = withSpring(height, {
-      damping: 25,
-      stiffness: 400,
-      mass: 0.7,
-    });
-    opacity.value = withTiming(0, { 
-      duration: 200,
-      easing: Easing.out(Easing.quad),
-    }, () => {
+  const closeModal = useCallback(() => {
+    try {
+      // Smooth kapanış animasyonu
+      translateY.value = withSpring(height, {
+        damping: 25,
+        stiffness: 400,
+        mass: 0.7,
+      });
+      opacity.value = withTiming(0, { 
+        duration: 200,
+        easing: Easing.out(Easing.quad),
+      }, (finished) => {
+        if (finished && onClose) {
+          runOnJS(onClose)();
+        }
+      });
+      scale.value = withSpring(0.95, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.5,
+      });
+    } catch (error) {
+      console.error('Error in closeModal:', error);
+      // Fallback: direct close
       if (onClose) {
-        runOnJS(onClose)();
+        onClose();
       }
-    });
-    scale.value = withSpring(0.95, {
-      damping: 20,
-      stiffness: 300,
-      mass: 0.5,
-    });
-  };
+    }
+  }, [onClose]);
 
   return { translateY, opacity, scale, closeModal };
 };
@@ -139,35 +147,50 @@ export const useScaleAnimation = (visible) => {
 export const usePanGesture = (onClose, threshold = 120) => {
   const dragY = useSharedValue(0);
 
-  const handlePanEnd = (translationY) => {
-    if (translationY > threshold) {
-      // Smooth kapanış animasyonu
-      dragY.value = withSpring(height, {
-        damping: 25,
-        stiffness: 400,
-        mass: 0.7,
-      }, () => {
-        if (onClose) {
-          runOnJS(onClose)();
-        }
-      });
-    } else {
-      // Smooth geri dönüş animasyonu
+  const handlePanEnd = useCallback((translationY) => {
+    try {
+      if (translationY > threshold) {
+        // Smooth kapanış animasyonu
+        dragY.value = withSpring(height, {
+          damping: 25,
+          stiffness: 400,
+          mass: 0.7,
+        }, (finished) => {
+          if (finished && onClose) {
+            runOnJS(onClose)();
+          }
+        });
+      } else {
+        // Smooth geri dönüş animasyonu
+        dragY.value = withSpring(0, {
+          damping: 20,
+          stiffness: 300,
+          mass: 0.8,
+        });
+      }
+    } catch (error) {
+      console.error('Error in handlePanEnd:', error);
+      // Fallback: reset position
       dragY.value = withSpring(0, {
         damping: 20,
         stiffness: 300,
         mass: 0.8,
       });
     }
-  };
+  }, [onClose, threshold]);
 
-  const resetDrag = () => {
-    dragY.value = withSpring(0, {
-      damping: 20,
-      stiffness: 300,
-      mass: 0.8,
-    });
-  };
+  const resetDrag = useCallback(() => {
+    try {
+      dragY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
+      });
+    } catch (error) {
+      console.error('Error in resetDrag:', error);
+      dragY.value = 0;
+    }
+  }, []);
 
   return { dragY, handlePanEnd, resetDrag };
 };
