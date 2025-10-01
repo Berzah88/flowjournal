@@ -318,7 +318,7 @@ const MyDayScreen = memo(function MyDayScreen({
             })()}
           </View>
         ) : (
-          selectedDateActiveTasks.map((project) => (
+          selectedDateActiveTasks.map((project, index) => (
             <TouchableOpacity 
               key={project.id} 
               style={[
@@ -330,6 +330,7 @@ const MyDayScreen = memo(function MyDayScreen({
                   shadowOpacity: theme.name === 'dark' ? 0.3 : 0.06,
                   shadowRadius: theme.name === 'dark' ? 12 : 8,
                   elevation: theme.name === 'dark' ? 8 : 2,
+                  marginBottom: index < selectedDateActiveTasks.length - 1 ? 20 : 0,
                 },
                 project.isLastDay && styles.lastDayProjectCard
               ]}
