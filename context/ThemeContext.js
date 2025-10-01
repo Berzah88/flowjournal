@@ -65,19 +65,19 @@ export const THEMES = {
   DARK: {
     name: 'dark',
     colors: {
-      // Background colors
-      background: '#1F2937',
-      surface: '#374151',
-      surfaceSecondary: '#4B5563',
+      // Background colors - Yumuşatılmış renkler
+      background: '#2D3748', // Daha yumuşak koyu gri
+      surface: '#4A5568', // Daha yumuşak orta gri
+      surfaceSecondary: '#718096', // Daha yumuşak açık gri
       
-      // Text colors
-      text: '#F9FAFB',
-      textSecondary: '#D1D5DB',
-      textTertiary: '#9CA3AF',
+      // Text colors - Daha yumuşak beyaz tonları
+      text: '#F7FAFC', // Daha yumuşak beyaz
+      textSecondary: '#E2E8F0', // Daha yumuşak gri-beyaz
+      textTertiary: '#A0AEC0', // Daha yumuşak gri
       
-      // Border colors
-      border: '#4B5563',
-      borderLight: '#6B7280',
+      // Border colors - Daha yumuşak border renkleri
+      border: '#718096', // Daha yumuşak border
+      borderLight: '#A0AEC0', // Daha yumuşak açık border
       
       // Primary colors (mevcut renkler korunuyor)
       primary: '#8E7DBE',
@@ -95,23 +95,23 @@ export const THEMES = {
       warning: '#FFD700',
       info: '#4A90E2',
       
-      // Gray scale (dark mode için ters çevrilmiş)
+      // Gray scale (dark mode için yumuşatılmış)
       gray: {
-        50: '#111827',
-        100: '#1F2937',
-        200: '#374151',
-        300: '#4B5563',
-        400: '#6B7280',
-        500: '#9CA3AF',
-        600: '#D1D5DB',
-        700: '#E5E7EB',
-        800: '#F3F4F6',
-        900: '#F9FAFB',
+        50: '#2D3748', // Daha yumuşak en koyu
+        100: '#4A5568', // Daha yumuşak koyu
+        200: '#718096', // Daha yumuşak orta-koyu
+        300: '#A0AEC0', // Daha yumuşak orta
+        400: '#CBD5E0', // Daha yumuşak orta-açık
+        500: '#E2E8F0', // Daha yumuşak açık
+        600: '#EDF2F7', // Daha yumuşak çok açık
+        700: '#F7FAFC', // Daha yumuşak beyaza yakın
+        800: '#F7FAFC', // Yumuşak beyaz
+        900: '#FFFFFF', // Saf beyaz
       },
       
-      // Special colors
-      white: '#1F2937',
-      black: '#F9FAFB',
+      // Special colors - Yumuşatılmış
+      white: '#2D3748', // Daha yumuşak koyu gri
+      black: '#F7FAFC', // Daha yumuşak beyaz
       
       // Shadow colors
       shadow: 'rgba(0, 0, 0, 0.3)',

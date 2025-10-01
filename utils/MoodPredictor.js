@@ -378,7 +378,8 @@ export const analyzeSentiment = (text, userHistory = []) => {
       'brilliant', 'spectacular', 'magnificent', 'marvelous', 'superb',
       'excellent', 'perfect', 'wonderful', 'awesome', 'extraordinary',
       'delighted', 'thrilled', 'ecstatic', 'overjoyed', 'elated',
-      'satisfied', 'content', 'pleased', 'grateful', 'blessed'
+      'satisfied', 'content', 'pleased', 'grateful', 'blessed',
+      'great', 'feeling', 'accomplished', 'lot' // Add for "feeling great" and "accomplished a lot"
     ],
     medium: [
       // Türkçe orta pozitif kelimeler
@@ -424,7 +425,8 @@ export const analyzeSentiment = (text, userHistory = []) => {
       'devastating', 'catastrophic', 'miserable', 'desperate', 'hopeless',
       'frustrated', 'annoyed', 'irritated', 'angry', 'furious', 'livid',
       'depressed', 'sad', 'melancholy', 'gloomy', 'sorrowful', 'grief',
-      'anxious', 'worried', 'concerned', 'troubled', 'distressed', 'upset'
+      'anxious', 'worried', 'concerned', 'troubled', 'distressed', 'upset',
+      'everything' // Add 'everything' for "I hate everything" pattern
     ],
     medium: [
       // Türkçe orta negatif kelimeler - FRUSTRATION FOCUSED

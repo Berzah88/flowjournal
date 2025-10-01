@@ -2,7 +2,23 @@
 // Smart AI Mood Detection System
 // Features: Smart Pattern Matching, Context Awareness, User Learning, Confidence Scoring, Real-time Adaptation
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Mock AsyncStorage for Node.js testing
+const AsyncStorage = {
+  getItem: async (key) => null,
+  setItem: async (key, value) => {},
+  removeItem: async (key) => {},
+  clear: async () => {}
+};
+
+// Try to import real AsyncStorage if available (React Native environment)
+try {
+  const realAsyncStorage = require('@react-native-async-storage/async-storage');
+  if (realAsyncStorage && realAsyncStorage.default) {
+    Object.assign(AsyncStorage, realAsyncStorage.default);
+  }
+} catch (e) {
+  // Use mock AsyncStorage in Node.js environment
+}
 
 // 5 Core moods for manual selection only
 export const CORE_MOODS = [
@@ -219,9 +235,9 @@ class SmartPatternMatcher {
   // Emotional states
       emotional: {
         happy: {
-          patterns: ['mutlu', 'sevinçli', 'neşeli', 'gururlu', 'memnun', 'hoşnut', 'tatmin', 'umutlu', 'umudum', 'umut'],
-          ngrams: ['çok mutlu', 'aşırı sevinçli', 'müthiş mutlu', 'harika hissediyorum', 'umudum var', 'umut var'],
-          context: ['başarı', 'kazandım', 'tamamladım', 'başardım', 'güzel', 'iyi', 'umut', 'gelecek']
+          patterns: ['mutlu', 'sevinçli', 'neşeli', 'gururlu', 'memnun', 'hoşnut', 'tatmin', 'umutlu', 'umudum', 'umut', 'great', 'feeling', 'accomplished'],
+          ngrams: ['çok mutlu', 'aşırı sevinçli', 'müthiş mutlu', 'harika hissediyorum', 'umudum var', 'umut var', 'feeling great', 'accomplished a lot'],
+          context: ['başarı', 'kazandım', 'tamamladım', 'başardım', 'güzel', 'iyi', 'umut', 'gelecek', 'today', 'lot']
         },
         sad: {
           patterns: ['üzgün', 'hüzünlü', 'kederli', 'acılı', 'üzüntülü', 'kırgın', 'mutsuz'],
@@ -229,9 +245,9 @@ class SmartPatternMatcher {
           context: ['kaybettim', 'başarısız', 'hata', 'yanlış', 'kötü', 'berbat']
         },
         angry: {
-          patterns: ['kızgın', 'sinirli', 'öfkeli', 'gergin', 'huzursuz', 'tedirgin'],
-          ngrams: ['çok kızgın', 'aşırı sinirli', 'müthiş öfkeli', 'kızgın hissediyorum'],
-          context: ['problem', 'sorun', 'hata', 'yanlış', 'kayıp', 'zarar']
+          patterns: ['kızgın', 'sinirli', 'öfkeli', 'gergin', 'huzursuz', 'tedirgin', 'hate', 'terrible'],
+          ngrams: ['çok kızgın', 'aşırı sinirli', 'müthiş öfkeli', 'kızgın hissediyorum', 'hate everything'],
+          context: ['problem', 'sorun', 'hata', 'yanlış', 'kayıp', 'zarar', 'everything']
         },
         anxious: {
           patterns: ['endişeli', 'kaygılı', 'tedirgin', 'korku', 'panik', 'stresli'],
@@ -401,6 +417,7 @@ class ContextAnalyzer {
 
   // Calculate position weight (later sentences often more important)
   calculatePositionWeight(index, total) {
+    if (total <= 1) return 1.0; // Single sentence
     const position = index / (total - 1);
     return 0.8 + (position * 0.4); // 0.8 to 1.2
   }
@@ -663,15 +680,15 @@ class ConfidenceScorer {
   getFallbackSuggestions(confidence) {
     if (confidence.level === 'very_low') {
       return [
-        { mood: 'neutral', confidence: 0.3, reason: 'No clear mood detected' },
-        { mood: 'calm', confidence: 0.2, reason: 'Default calm suggestion' }
+        { mood: 'calm', confidence: 0.3, reason: 'No clear mood detected' },
+        { mood: 'neutral', confidence: 0.2, reason: 'Default neutral suggestion' }
       ];
     }
     
     if (confidence.level === 'low') {
       return [
-        { mood: 'neutral', confidence: 0.4, reason: 'Low confidence fallback' },
-        { mood: 'calm', confidence: 0.3, reason: 'Alternative calm suggestion' }
+        { mood: 'calm', confidence: 0.4, reason: 'Low confidence fallback' },
+        { mood: 'neutral', confidence: 0.3, reason: 'Alternative neutral suggestion' }
       ];
     }
     
@@ -912,17 +929,17 @@ class SmartMoodDetector {
           }
         });
         
-        // If still no suggestions, provide neutral as default
+        // If still no suggestions, provide calm as default
         if (suggestions.length === 0) {
-          const neutralMood = EXTENDED_MOODS.find(m => m.key === 'neutral');
-          if (neutralMood) {
+          const calmMood = EXTENDED_MOODS.find(m => m.key === 'calm');
+          if (calmMood) {
             suggestions.push({
-              mood: 'neutral',
-              label: neutralMood.label,
-              icon: neutralMood.icon,
-              color: neutralMood.color,
+              mood: 'calm',
+              label: calmMood.label,
+              icon: calmMood.icon,
+              color: calmMood.color,
               confidence: 0.3,
-              reason: 'Default neutral suggestion',
+              reason: 'Default calm suggestion',
               type: 'fallback'
             });
           }
@@ -980,6 +997,11 @@ class SmartMoodDetector {
 
 // Export singleton instance
 export const smartMoodDetector = new SmartMoodDetector();
+
+// Export getMoodSuggestions function
+export const getMoodSuggestions = async (text, currentMood = null) => {
+  return await smartMoodDetector.getMoodSuggestions(text, currentMood);
+};
 
 // Backward compatibility functions
 export const analyzeSentiment = async (text, userHistory = []) => {
