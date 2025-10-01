@@ -35,17 +35,9 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   const inputRef = useRef(null);
 
   // Animasyon değerleri using custom hook
-  const { translateY, opacity, scale, closeModal } = useModalAnimation(visible, onClose);
+  const { translateY, opacity, scale } = useModalAnimation(visible, onClose);
   const dragY = useSharedValue(0);
 
-  // Fallback close function
-  const fallbackClose = useCallback(() => {
-    try {
-      onClose && onClose();
-    } catch (error) {
-      console.error('Error in fallback close:', error);
-    }
-  }, [onClose]);
 
   // Focus input when modal opens - iOS tarzı timing
   useEffect(() => {
@@ -93,12 +85,14 @@ export default function EditModal({ visible, onClose, project, onSave }) {
 
   const handleClose = useCallback(() => {
     try {
-      closeModal();
+      // Direct close without animation to avoid crashes
+      onClose && onClose();
     } catch (error) {
       console.error('Error closing modal:', error);
-      fallbackClose();
+      // Fallback: direct close
+      onClose && onClose();
     }
-  }, [closeModal, fallbackClose]);
+  }, [onClose]);
 
   const panGesture = useMemo(() => Gesture.Pan()
     .activeOffsetY(10) // Start gesture after 10px vertical movement
@@ -113,8 +107,8 @@ export default function EditModal({ visible, onClose, project, onSave }) {
       const shouldClose = e.translationY > 80 || e.velocityY > 500;
       
       if (shouldClose) {
-        // Close modal
-        closeModal();
+        // Close modal directly without animation
+        onClose && onClose();
       } else {
         // Reset to original position
         dragY.value = withSpring(0, {
@@ -123,7 +117,7 @@ export default function EditModal({ visible, onClose, project, onSave }) {
           mass: 0.8,
         });
       }
-    }), [dragY, closeModal]);
+    }), [dragY, onClose]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
