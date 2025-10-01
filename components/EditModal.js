@@ -39,7 +39,7 @@ export default function EditModal({ visible, onClose, project, onSave }) {
 
   // Animasyon değerleri using custom hook
   const { translateY, opacity, scale, closeModal } = useModalAnimation(visible, onClose);
-  const { dragY, handlePanEnd, resetDrag } = usePanGesture(closeModal, SWIPE_THRESHOLDS.CLOSE);
+  const dragY = useSharedValue(0);
 
   // Fallback close function
   const fallbackClose = useCallback(() => {
@@ -110,22 +110,18 @@ export default function EditModal({ visible, onClose, project, onSave }) {
       // Only allow downward swipes
       if (e.translationY > 0) {
         dragY.value = e.translationY;
-        console.log('Pan gesture update:', e.translationY, e.velocityY);
       }
     })
     .onEnd((e) => {
       try {
         // Check if swipe distance or velocity is enough to close
         const shouldClose = e.translationY > 80 || e.velocityY > 500;
-        console.log('Pan gesture end:', e.translationY, e.velocityY, 'shouldClose:', shouldClose);
         
         if (shouldClose) {
           // Close modal
-          console.log('Closing modal via swipe');
           closeModal();
         } else {
           // Reset to original position
-          console.log('Resetting modal position');
           dragY.value = withSpring(0, {
             damping: 20,
             stiffness: 300,
@@ -154,7 +150,7 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   if (!visible) {
     // Reset drag position when modal is not visible
     try {
-      resetDrag();
+      dragY.value = 0;
     } catch (error) {
       console.error('Error resetting drag:', error);
     }
