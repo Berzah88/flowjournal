@@ -13,7 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "../components/FlashCalendar";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { useModalAnimation } from "../hooks/useAnimations";
 import { MODAL_SIZES, SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
@@ -23,8 +22,6 @@ const modalHeight = height * 0.90;
 
 export default function EditModal({ visible, onClose, project, onSave }) {
   const { theme } = useTheme();
-  // Performance monitoring (sadece development'ta)
-  usePerformanceMonitor('EditModal');
   
   const [title, setTitle] = useState(project?.title || "");
   const [startDate, setStartDate] = useState(
@@ -57,8 +54,11 @@ export default function EditModal({ visible, onClose, project, onSave }) {
         inputRef.current?.focus();
       }, 450); // Biraz daha geç focus için
       return () => clearTimeout(timer);
+    } else {
+      // Reset drag position when modal closes
+      dragY.value = 0;
     }
-  }, [visible]);
+  }, [visible, dragY]);
 
   // Project değişirse state güncelle
   useEffect(() => {
@@ -102,10 +102,6 @@ export default function EditModal({ visible, onClose, project, onSave }) {
 
   const panGesture = useMemo(() => Gesture.Pan()
     .activeOffsetY(10) // Start gesture after 10px vertical movement
-    .onStart(() => {
-      // Reset drag position when gesture starts
-      dragY.value = 0;
-    })
     .onUpdate((e) => {
       // Only allow downward swipes
       if (e.translationY > 0) {
@@ -113,24 +109,14 @@ export default function EditModal({ visible, onClose, project, onSave }) {
       }
     })
     .onEnd((e) => {
-      try {
-        // Check if swipe distance or velocity is enough to close
-        const shouldClose = e.translationY > 80 || e.velocityY > 500;
-        
-        if (shouldClose) {
-          // Close modal
-          closeModal();
-        } else {
-          // Reset to original position
-          dragY.value = withSpring(0, {
-            damping: 20,
-            stiffness: 300,
-            mass: 0.8,
-          });
-        }
-      } catch (error) {
-        console.error('Error handling pan end:', error);
-        // Fallback: reset drag position
+      // Check if swipe distance or velocity is enough to close
+      const shouldClose = e.translationY > 80 || e.velocityY > 500;
+      
+      if (shouldClose) {
+        // Close modal
+        closeModal();
+      } else {
+        // Reset to original position
         dragY.value = withSpring(0, {
           damping: 20,
           stiffness: 300,
@@ -148,12 +134,6 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   }));
 
   if (!visible) {
-    // Reset drag position when modal is not visible
-    try {
-      dragY.value = 0;
-    } catch (error) {
-      console.error('Error resetting drag:', error);
-    }
     return null;
   }
 
