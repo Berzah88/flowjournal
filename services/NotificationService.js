@@ -217,8 +217,18 @@ class NotificationService {
       const warningDate = new Date(deadline);
       warningDate.setDate(deadline.getDate() - daysBefore);
 
+      const now = new Date();
+      console.log('Notification Debug:', {
+        projectTitle,
+        deadline: deadline.toISOString(),
+        warningDate: warningDate.toISOString(),
+        now: now.toISOString(),
+        daysBefore,
+        isWarningDateInPast: warningDate <= now
+      });
+
       // Geçmiş tarihse planlama
-      if (warningDate <= new Date()) {
+      if (warningDate <= now) {
         console.log('Deadline uyarısı geçmiş tarih için planlanamaz');
         return null;
       }
