@@ -84,40 +84,32 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   }, [onSave, onClose, project, title, startDate, endDate]);
 
   const handleClose = useCallback(() => {
-    try {
-      // Direct close without animation to avoid crashes
-      onClose && onClose();
-    } catch (error) {
-      console.error('Error closing modal:', error);
-      // Fallback: direct close
-      onClose && onClose();
-    }
-  }, [onClose]);
+    // Same animation as ActiveProject
+    translateY.value = withTiming(height, { duration: 200 });
+    opacity.value = withTiming(0, { duration: 200 }, () => {
+      if (onClose) runOnJS(onClose)();
+    });
+  }, [onClose, translateY, opacity, height]);
 
   const panGesture = useMemo(() => Gesture.Pan()
-    .activeOffsetY(10) // Start gesture after 10px vertical movement
     .onUpdate((e) => {
-      // Only allow downward swipes
-      if (e.translationY > 0) {
+      // Only allow downward swipes from top area (like ActiveProject)
+      if (e.translationY > 0 && e.y <= 120) {
         dragY.value = e.translationY;
       }
     })
     .onEnd((e) => {
-      // Check if swipe distance or velocity is enough to close
-      const shouldClose = e.translationY > 80 || e.velocityY > 500;
-      
-      if (shouldClose) {
-        // Close modal directly without animation
-        onClose && onClose();
+      // Check if swipe distance is enough to close (like ActiveProject)
+      if (e.translationY > 120 && e.y <= 120) {
+        // Animate close with same timing as ActiveProject
+        dragY.value = withTiming(height, { duration: 200 }, () => {
+          runOnJS(() => onClose && onClose())();
+        });
       } else {
         // Reset to original position
-        dragY.value = withSpring(0, {
-          damping: 20,
-          stiffness: 300,
-          mass: 0.8,
-        });
+        dragY.value = withTiming(0, { duration: 150 });
       }
-    }), [dragY, onClose]);
+    }), [dragY, onClose, height]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
