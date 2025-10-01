@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "../components/FlashCalendar";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, Easing } from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { MODAL_SIZES, SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
@@ -33,42 +33,11 @@ export default function EditModal({ visible, onClose, project, onSave }) {
 
   const inputRef = useRef(null);
 
-  // Animasyon değerleri - direkt tanımlama
+  // Animasyon değerleri - ActiveProject ile aynı
   const translateY = useSharedValue(height);
   const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.95);
+  const scale = useSharedValue(1);
   const dragY = useSharedValue(0);
-
-
-  // Modal açılış/kapanış animasyonları
-  useEffect(() => {
-    if (visible) {
-      // Açılış animasyonu
-      translateY.value = withSpring(0, {
-        damping: 20,
-        stiffness: 300,
-        mass: 0.8,
-      });
-      opacity.value = withTiming(1, { 
-        duration: 250,
-        easing: Easing.out(Easing.cubic),
-      });
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 200,
-        mass: 0.6,
-      });
-      
-      // Focus input after animation
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 450);
-      return () => clearTimeout(timer);
-    } else {
-      // Reset drag position when modal closes
-      dragY.value = 0;
-    }
-  }, [visible, dragY, translateY, opacity, scale]);
 
   // Project değişirse state güncelle
   useEffect(() => {
@@ -101,28 +70,41 @@ export default function EditModal({ visible, onClose, project, onSave }) {
     onClose && onClose();
   }, [onSave, onClose, project, title, startDate, endDate]);
 
+  // ActiveProject ile aynı animasyon mantığı
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 320 });
+    scale.value = withTiming(1, { duration: 320 });
+    opacity.value = withTiming(1, { duration: 320 });
+    
+    // Focus input after animation
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 450);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleClose = useCallback(() => {
-    // Direct close without animation to prevent crashes
-    onClose && onClose();
+    translateY.value = withTiming(height, { duration: 200 });
+    opacity.value = withTiming(0, { duration: 200 }, () => {
+      if (onClose) runOnJS(onClose)();
+    });
   }, [onClose]);
 
-  const panGesture = useMemo(() => Gesture.Pan()
+  const panGesture = Gesture.Pan()
     .onUpdate((e) => {
-      // Only allow downward swipes from top area (like ActiveProject)
       if (e.translationY > 0 && e.y <= 120) {
         dragY.value = e.translationY;
       }
     })
     .onEnd((e) => {
-      // Check if swipe distance is enough to close (like ActiveProject)
       if (e.translationY > 120 && e.y <= 120) {
-        // Close immediately without animation to prevent crashes
-        onClose && onClose();
+        dragY.value = withTiming(height, { duration: 200 }, () => {
+          runOnJS(handleClose)();
+        });
       } else {
-        // Reset to original position
         dragY.value = withTiming(0, { duration: 150 });
       }
-    }), [dragY, onClose]);
+    });
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
