@@ -314,13 +314,34 @@ class NotificationService {
   // Milestone deadline hatırlatıcısı planla
   async scheduleMilestoneReminder(milestoneId, milestoneTitle, projectTitle, deadlineDate, daysBefore = 1) {
     try {
+      // Check if notification already exists for this milestone
+      const existingKey = `notification_milestone_reminder_${milestoneId}`;
+      const existingData = await AsyncStorage.getItem(existingKey);
+      
+      if (existingData) {
+        console.log('🔔 DEBUG: Notification already exists for milestone', milestoneId);
+        return null; // Don't schedule duplicate notification
+      }
+
       const deadline = new Date(deadlineDate);
       const reminderDate = new Date(deadline);
       reminderDate.setDate(deadline.getDate() - daysBefore);
 
+      console.log('🔔 DEBUG: scheduleMilestoneReminder called', {
+        milestoneId,
+        milestoneTitle,
+        projectTitle,
+        deadlineDate,
+        deadline: deadline.toISOString(),
+        reminderDate: reminderDate.toISOString(),
+        daysBefore,
+        now: new Date().toISOString(),
+        isReminderInPast: reminderDate <= new Date()
+      });
+
       // Geçmiş tarihse planlama
       if (reminderDate <= new Date()) {
-        console.log('Milestone hatırlatıcısı geçmiş tarih için planlanamaz');
+        console.log('❌ Milestone hatırlatıcısı geçmiş tarih için planlanamaz');
         return null;
       }
 
@@ -328,13 +349,13 @@ class NotificationService {
         date: reminderDate,
       };
 
-      // Milestone mesajları
+      // Milestone mesajları - sadece son gün için
       const milestoneMessages = [
-        `"${milestoneTitle}" task ends in ${daysBefore} days!`,
-        `Last ${daysBefore} days for "${milestoneTitle}".`,
-        `You have ${daysBefore} days to complete "${milestoneTitle}" task!`,
-        `Time to focus on "${milestoneTitle}" milestone!`,
-        `"${milestoneTitle}" task is approaching. Are you ready?`
+        `"${milestoneTitle}" milestone ends tomorrow!`,
+        `Last day for "${milestoneTitle}" milestone.`,
+        `"${milestoneTitle}" deadline is tomorrow!`,
+        `Final day for "${milestoneTitle}" milestone!`,
+        `"${milestoneTitle}" milestone deadline tomorrow!`
       ];
 
       const randomMessage = milestoneMessages[Math.floor(Math.random() * milestoneMessages.length)];
@@ -435,12 +456,12 @@ class NotificationService {
       for (const project of projects) {
         if (!project.done && project.milestones) {
           for (const milestone of project.milestones) {
-            if (!milestone.completed && milestone.deadline) {
+            if (!milestone.completed && milestone.endDate) {
               await this.scheduleMilestoneReminder(
                 milestone.id,
                 milestone.title,
                 project.title,
-                milestone.deadline,
+                milestone.endDate,
                 1
               );
             }
@@ -731,19 +752,19 @@ class NotificationService {
     try {
       const settings = await AsyncStorage.getItem('notification_settings');
       return settings ? JSON.parse(settings) : {
-        journalReminderEnabled: true,
+        journalReminderEnabled: false, // Günlük hatırlatıcıyı kapat
         journalReminderTime: '20:00',
-        deadlineWarningsEnabled: true,
-        milestoneRemindersEnabled: true,
+        deadlineWarningsEnabled: false, // Proje deadline uyarılarını kapat
+        milestoneRemindersEnabled: true, // Sadece milestone hatırlatıcıları açık
       };
     } catch (error) {
       console.error('Bildirim ayarları yükleme hatası:', error);
       return {
-        journalReminderEnabled: true,
+        journalReminderEnabled: false, // Günlük hatırlatıcıyı kapat
         journalReminderTime: '20:00',
-        deadlineWarningsEnabled: true,
-        milestoneRemindersEnabled: true,
-        progressFeedbackEnabled: true,
+        deadlineWarningsEnabled: false, // Proje deadline uyarılarını kapat
+        milestoneRemindersEnabled: true, // Sadece milestone hatırlatıcıları açık
+        progressFeedbackEnabled: false, // Progress feedback'i kapat
         progressFeedbackFrequency: 'weekly', // daily, weekly, biweekly
       };
     }

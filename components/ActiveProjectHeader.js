@@ -43,7 +43,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
       <View style={[
         styles.modernHeader,
         {
-          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+          backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
           borderBottomColor: theme.name === 'dark' ? '#636366' : 'rgba(0, 0, 0, 0.05)',
         }
       ]}>

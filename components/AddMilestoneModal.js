@@ -106,11 +106,41 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
       return;
     }
 
+    // If endDate is not selected, use startDate + 1 day as endDate
+    const finalStartDate = startDate || selectedDate;
+    const finalEndDate = endDate || (() => {
+      const nextDay = new Date(finalStartDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      return nextDay;
+    })();
+
+    // Fix timezone issue - ensure dates are at start of day in local timezone
+    const fixTimezone = (date) => {
+      const fixed = new Date(date);
+      fixed.setHours(0, 0, 0, 0); // Set to start of day in local timezone
+      return fixed;
+    };
+
+    const finalStartDateFixed = fixTimezone(finalStartDate);
+    const finalEndDateFixed = fixTimezone(finalEndDate);
+
+    console.log('📅 DEBUG: AddMilestoneModal milestone data', {
+      title: title.trim(),
+      originalStartDate: startDate?.toISOString(),
+      originalEndDate: endDate?.toISOString(),
+      selectedDate: selectedDate.toISOString(),
+      finalStartDate: finalStartDate.toISOString(),
+      finalEndDate: finalEndDate.toISOString(),
+      finalStartDateFixed: finalStartDateFixed.toISOString(),
+      finalEndDateFixed: finalEndDateFixed.toISOString(),
+      isEditing: !!editingMilestone
+    });
+
     const milestoneData = {
       ...(editingMilestone && { id: editingMilestone.id }), // Only provide ID in edit mode
       title: title.trim(),
-      startDate: (startDate || selectedDate).toISOString(),
-      endDate: (endDate || selectedDate).toISOString(),
+      startDate: finalStartDateFixed.toISOString(),
+      endDate: finalEndDateFixed.toISOString(),
       completed: editingMilestone ? editingMilestone.completed : false,
       journalEntries: editingMilestone ? editingMilestone.journalEntries : [],
     };
@@ -270,7 +300,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 ref={inputRef}
                 style={[
                   styles.titleInputWithButtons,
-                  { color: theme.text }
+                  { color: theme.name === 'dark' ? '#FFFFFF' : theme.text }
                 ]}
                 value={title}
                 onChangeText={setTitle}

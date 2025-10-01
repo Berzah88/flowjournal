@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Animated,
   PanResponder,
+  Alert,
   Dimensions,
   TouchableWithoutFeedback,
   Image,
@@ -26,6 +27,7 @@ import { useDataRecoveryOperations } from "../hooks/useDataRecoveryOperations";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { useTheme } from "../context/ThemeContext";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import StatusTabs from "../components/StatusTabs";
 import StatusBarComponent from "../components/StatusBar";
 import Card from "../components/Card";
@@ -38,6 +40,8 @@ import MyDayScreen from "./MyDayScreen";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 import ThemeToggle from "../components/ThemeToggle";
 import NotificationSettings from "../components/NotificationSettings";
+import Motive from "../components/Motive";
+import ProjectAnalyzer from "../utils/ProjectAnalyzer";
 
 const { width, height } = Dimensions.get("window");
 
@@ -45,7 +49,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
   const isSaving = useTaskSaving();
-  const { clearStorage, addMilestone } = useTaskActions();
+  const { clearStorage, addMilestone, clearAllNotifications } = useTaskActions();
   const { recoverData, createManualBackup, getDataStatus } = useDataRecovery();
   const { handleDataRecovery, handleCreateBackup, handleCheckDataStatus } = useDataRecoveryOperations();
   const { theme } = useTheme();
@@ -74,6 +78,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [myDayAddMilestoneModalVisible, setMyDayAddMilestoneModalVisible] = useState(false);
   const [myDaySelectedProjectForMilestone, setMyDaySelectedProjectForMilestone] = useState(null);
   const [notificationSettingsVisible, setNotificationSettingsVisible] = useState(false);
+  const [welcomePopupVisible, setWelcomePopupVisible] = useState(false);
+  const [currentFeedback, setCurrentFeedback] = useState(null);
 
   // horizontal pan value (translateX)
   const panX = useRef(new Animated.Value(0)).current;
@@ -130,6 +136,88 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       }
     };
   }, [panX]);
+
+  // Advanced AI-powered feedback system using ProjectAnalyzer
+  const getAIFeedback = useCallback(async () => {
+    try {
+      const analysis = await ProjectAnalyzer.analyzeProjects(activeTasks || [], completedTasks || []);
+      
+      if (!analysis.shouldShow) {
+        return {
+          type: 'no_feedback',
+          title: '',
+          message: '',
+          icon: '',
+          color: '',
+          priority: 'none',
+          shouldShow: false,
+          reason: analysis.reason
+        };
+      }
+      
+      return analysis.feedback;
+    } catch (error) {
+      console.error('Error getting AI feedback:', error);
+      return {
+        type: 'error',
+        title: 'Analysis Error',
+        message: 'Unable to analyze your progress right now.',
+        icon: 'warning',
+        color: '#FF3B30',
+        priority: 'none',
+        shouldShow: false
+      };
+    }
+  }, [activeTasks, completedTasks]);
+
+  // Load AI feedback and check if should be shown
+  useEffect(() => {
+    const loadAIFeedback = async () => {
+      try {
+        const feedback = await getAIFeedback();
+        
+        // Only proceed if feedback should be shown
+        if (!feedback.shouldShow) {
+          console.log('AI feedback not shown, reason:', feedback.reason);
+          return;
+        }
+        
+        setCurrentFeedback(feedback);
+        
+        const lastFeedbackDate = await AsyncStorage.getItem('lastAIFeedbackDate');
+        const lastSessionTime = await AsyncStorage.getItem('lastSessionTime');
+        const today = new Date().toDateString();
+        const now = Date.now();
+        
+        // Calculate session time (if user has been active for more than 2 minutes)
+        const sessionTime = lastSessionTime ? now - parseInt(lastSessionTime) : 0;
+        const hasBeenActive = sessionTime > 120000; // 2 minutes
+        
+        // Show popup if:
+        // 1. Never seen before, OR
+        // 2. Last seen was more than 1 day ago, OR
+        // 3. High priority feedback (celebration, motivation, emotional support), OR
+        // 4. User has been active for more than 2 minutes and medium priority
+        const shouldShow = !lastFeedbackDate || 
+                          lastFeedbackDate !== today ||
+                          feedback.priority === 'high' ||
+                          (hasBeenActive && feedback.priority === 'medium');
+        
+        if (shouldShow) {
+          setTimeout(() => {
+            setWelcomePopupVisible(true);
+          }, 2000);
+        }
+        
+        // Update session time
+        await AsyncStorage.setItem('lastSessionTime', now.toString());
+      } catch (error) {
+        console.error('Error loading AI feedback:', error);
+      }
+    };
+
+    loadAIFeedback();
+  }, [getAIFeedback]);
 
   // Memoized animate to page index (0 or 1)
   const animateToIndex = useCallback((index) => {
@@ -215,6 +303,18 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     animateToIndex(index);
   }, [activeIndex, animateToIndex]);
 
+  // AI feedback close handler
+  const handleAIFeedbackClose = useCallback(async () => {
+    try {
+      const today = new Date().toDateString();
+      await AsyncStorage.setItem('lastAIFeedbackDate', today);
+      setWelcomePopupVisible(false);
+    } catch (error) {
+      console.error('Error saving AI feedback state:', error);
+      setWelcomePopupVisible(false);
+    }
+  }, []);
+
   // Memoized render functions for FlatList
   const renderActiveItem = useCallback(({ item }) => (
     <Card
@@ -291,7 +391,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
             <View style={styles.headerLeft}>
               <View style={styles.logoContainer}>
                 <Image 
-                  source={require('../assets/Logo.png')} 
+                  source={theme.name === 'dark' 
+                    ? require('../assets/icon2.png') 
+                    : require('../assets/Logo.png')
+                  } 
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
@@ -301,6 +404,60 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               </View>
             </View>
             <View style={styles.headerActions}>
+              {/* Test Buttons */}
+              <TouchableOpacity 
+                style={[
+                  styles.testButton,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#FF9500' : 'rgba(255, 149, 0, 0.8)',
+                    borderColor: theme.name === 'dark' ? '#FF9500' : 'rgba(255, 149, 0, 0.3)',
+                    shadowColor: theme.name === 'dark' ? '#FF9500' : '#FF9500',
+                  }
+                ]} 
+                onPress={async () => {
+                  const feedback = await getAIFeedback();
+                  if (feedback.shouldShow !== false) {
+                    setCurrentFeedback(feedback);
+                    setWelcomePopupVisible(true);
+                  } else {
+                    Alert.alert('No Feedback', `Reason: ${feedback.reason || 'Unknown'}`);
+                  }
+                }}
+                accessible={true}
+                accessibilityLabel="Test motive popup"
+                accessibilityRole="button"
+              >
+                <Ionicons 
+                  name="flask" 
+                  size={16} 
+                  color={theme.name === 'dark' ? '#FFFFFF' : '#FFFFFF'} 
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[
+                  styles.testButton,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#34C759' : 'rgba(52, 199, 89, 0.8)',
+                    borderColor: theme.name === 'dark' ? '#34C759' : 'rgba(52, 199, 89, 0.3)',
+                    shadowColor: theme.name === 'dark' ? '#34C759' : '#34C759',
+                  }
+                ]} 
+                onPress={async () => {
+                  await AsyncStorage.removeItem('lastWelcomePopupDate');
+                  Alert.alert('Success', 'Welcome popup reset! Restart app to see it.');
+                }}
+                accessible={true}
+                accessibilityLabel="Reset welcome popup"
+                accessibilityRole="button"
+              >
+                <Ionicons 
+                  name="refresh" 
+                  size={16} 
+                  color={theme.name === 'dark' ? '#FFFFFF' : '#FFFFFF'} 
+                />
+              </TouchableOpacity>
+
               <TouchableOpacity 
                 style={[
                   styles.menuButton,
@@ -476,6 +633,66 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
 
+              {/* Clear All Notifications */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={async () => {
+                  setMainMenuVisible(false);
+                  await clearAllNotifications();
+                  Alert.alert('Success', 'All notifications have been cleared!');
+                }}
+                accessible={true}
+                accessibilityLabel="Clear all notifications"
+                accessibilityRole="button"
+              >
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="notifications-off-outline" size={20} color="#FF6B6B" />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
+                    Clear All Notifications
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Test Motive Popup */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMainMenuVisible(false);
+                  setWelcomePopupVisible(true);
+                }}
+                accessible={true}
+                accessibilityLabel="Test motive popup"
+                accessibilityRole="button"
+              >
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="flask-outline" size={20} color="#FF9500" />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
+                    Test Motive Popup
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Reset AI Feedback */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={async () => {
+                  setMainMenuVisible(false);
+                  await AsyncStorage.removeItem('lastAIFeedbackDate');
+                  await AsyncStorage.removeItem('lastSessionTime');
+                  Alert.alert('Success', 'AI feedback reset! It will show on next app start.');
+                }}
+                accessible={true}
+                accessibilityLabel="Reset AI feedback"
+                accessibilityRole="button"
+              >
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="refresh-outline" size={20} color="#34C759" />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
+                    Reset AI Feedback
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
               {/* Settings & Data */}
               <TouchableOpacity
                 style={styles.menuItem}
@@ -557,6 +774,18 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           navigation.navigate('CompletedProjects');
         }}
       />
+
+      {/* AI Feedback Notification */}
+      {welcomePopupVisible && currentFeedback && (
+        <Motive
+          visible={welcomePopupVisible}
+          onClose={handleAIFeedbackClose}
+          type={currentFeedback.type}
+          title={currentFeedback.title}
+          message={currentFeedback.message}
+          color={currentFeedback.color}
+        />
+      )}
       </LinearGradient>
     );
   } catch (error) {
@@ -623,6 +852,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  testButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    marginRight: 8,
   },
   viewport: { 
     flex: 1, 

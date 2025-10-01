@@ -43,7 +43,7 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
       <View style={[
         styles.container,
         {
-          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 0, 0, 0.06)',
+          backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 0, 0, 0.08)',
           borderColor: theme.name === 'dark' ? '#636366' : 'rgba(0, 0, 0, 0.04)',
         }
       ]}>
@@ -52,7 +52,7 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
           style={[
             styles.indicator,
             {
-              backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
+              backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
               shadowColor: theme.name === 'dark' ? '#000000' : '#000',
               shadowOpacity: theme.name === 'dark' ? 0.2 : 0.1,
               transform: [{ translateX: indicatorTranslate }],

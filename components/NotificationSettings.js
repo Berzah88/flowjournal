@@ -10,11 +10,11 @@ const { width, height } = Dimensions.get('window');
 export default function NotificationSettings({ visible, onClose }) {
   const { theme } = useTheme();
   const [settings, setSettings] = useState({
-    journalReminderEnabled: true,
+    journalReminderEnabled: false, // Günlük hatırlatıcıyı kapat
     journalReminderTime: '20:00',
-    deadlineWarningsEnabled: true,
-    milestoneRemindersEnabled: true,
-    progressFeedbackEnabled: true,
+    deadlineWarningsEnabled: false, // Proje deadline uyarılarını kapat
+    milestoneRemindersEnabled: true, // Sadece milestone hatırlatıcıları açık
+    progressFeedbackEnabled: false, // Progress feedback'i kapat
     progressFeedbackFrequency: 'weekly',
   });
 

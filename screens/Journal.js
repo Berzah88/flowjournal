@@ -730,15 +730,25 @@ export default function Journal({
                 ]}>{todayText}</Text>
                 {/* Mood tarihin yanında */}
                 {selectedMood && (
-                  <View style={[styles.moodTag, { backgroundColor: selectedMood.color || "transparent" }]}>
+                  <View style={[
+                    styles.moodTag, 
+                    { 
+                      backgroundColor: theme.name === 'dark' 
+                        ? (selectedMood.color || "transparent") + 'CC' // Add transparency for dark mode
+                        : selectedMood.color || "transparent",
+                      borderColor: theme.name === 'dark' 
+                        ? 'rgba(255, 255, 255, 0.3)' 
+                        : 'rgba(0, 0, 0, 0.1)'
+                    }
+                  ]}>
                     <MaterialIcons
                       name={getValidIconName(selectedMood.icon)}
                       size={18}
-                      color={theme.name === 'dark' ? theme.colors.gray[400] : '#333'}
+                      color={theme.name === 'dark' ? '#000000' : '#333'}
                     />
                     <Text style={[
                       styles.moodLabel,
-                      { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                      { color: theme.name === 'dark' ? '#000000' : '#333' }
                     ]}>{selectedMood.label}</Text>
                   </View>
                 )}
@@ -793,7 +803,14 @@ export default function Journal({
                       key={index}
                       style={[
                         styles.moodTag,
-                        { backgroundColor: suggestedMood?.color || '#4A90E2' }
+                        { 
+                          backgroundColor: theme.name === 'dark' 
+                            ? (suggestedMood?.color || '#4A90E2') + 'CC' // Add transparency for dark mode
+                            : suggestedMood?.color || '#4A90E2',
+                          borderColor: theme.name === 'dark' 
+                            ? 'rgba(255, 255, 255, 0.3)' 
+                            : 'rgba(0, 0, 0, 0.1)'
+                        }
                       ]}
                       activeOpacity={0.7}
                       onPress={() => {
@@ -803,16 +820,16 @@ export default function Journal({
                           setAutoMoodApplied(true);
                         }
                       }}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                     >
                       <MaterialIcons 
                         name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
                         size={18} 
-                        color={theme.name === 'dark' ? theme.colors.gray[400] : '#000'} 
+                        color={theme.name === 'dark' ? '#000000' : '#000'} 
                       />
                       <Text style={[
                         styles.moodTagText,
-                        { color: theme.name === 'dark' ? '#FFFFFF' : '#000' }
+                        { color: theme.name === 'dark' ? '#000000' : '#000' }
                       ]}>{suggestedMood?.label}</Text>
                     </TouchableOpacity>
                   );
@@ -896,7 +913,15 @@ export default function Journal({
                             key={`suggestion-${index}`}
                             style={[
                               styles.suggestionMoodOption,
-                              { backgroundColor: suggestedMood.color },
+                              { 
+                                backgroundColor: theme.name === 'dark' 
+                                  ? suggestedMood.color + 'CC' // Add transparency for dark mode
+                                  : suggestedMood.color,
+                                borderColor: theme.name === 'dark' 
+                                  ? 'rgba(255, 255, 255, 0.3)' 
+                                  : 'rgba(0, 0, 0, 0.1)',
+                                borderWidth: 1
+                              },
                               selectedMood?.key === suggestedMood.key ? { borderColor: "#007AFF", borderWidth: 2 } : null,
                             ]}
                             activeOpacity={0.8}
@@ -905,15 +930,16 @@ export default function Journal({
                               setAutoMoodApplied(true);
                               setShowMoodPicker(false);
                             }}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           >
                             <MaterialIcons 
                               name={getValidIconName(suggestedMood.icon)} 
                               size={16} 
-                              color={theme.name === 'dark' ? theme.colors.gray[400] : '#333'} 
+                              color={theme.name === 'dark' ? '#000000' : '#333'} 
                             />
                             <Text style={[
                               styles.suggestionMoodLabel,
-                              { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                              { color: theme.name === 'dark' ? '#000000' : '#333' }
                             ]}>{suggestedMood.label}</Text>
                           </TouchableOpacity>
                         );
@@ -1271,6 +1297,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginRight: 4,
     marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   suggestionMoodLabel: {
     fontSize: 11,
@@ -1421,9 +1452,11 @@ const styles = StyleSheet.create({
     minWidth: 60,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   moodTagText: {
     fontSize: 12,

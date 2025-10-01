@@ -99,7 +99,7 @@ const MyDayScreen = memo(function MyDayScreen({
     }, 1500);
   }, [completeMilestone]);
 
-  // Check if milestone is suitable for today
+  // Check if milestone is suitable for today - SHOW OVERDUE MILESTONES
   const isMilestoneActiveToday = useCallback((milestone, selectedDate) => {
     const today = new Date(selectedDate);
     today.setHours(0, 0, 0, 0); // Take only date part
@@ -115,18 +115,10 @@ const MyDayScreen = memo(function MyDayScreen({
       }
     }
     
-    // End date check
-    if (milestone.endDate) {
-      const milestoneEndDate = new Date(milestone.endDate);
-      milestoneEndDate.setHours(23, 59, 59, 999); // Until end of day
-      
-      // Don't show if milestone is finished
-      if (milestoneEndDate < today) {
-        return false;
-      }
-    }
+    // REMOVED: End date check - now show overdue milestones too
+    // Milestones will be shown until they are completed, regardless of end date
     
-    return true; // Between start and end dates
+    return true; // Show all milestones that have started (including overdue ones)
   }, []);
 
   // Check if milestone is overdue
@@ -382,9 +374,9 @@ const MyDayScreen = memo(function MyDayScreen({
                   style={[
                     styles.minimalAddMilestoneButton,
                     {
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(34, 139, 34, 0.1)',
-                      borderColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(34, 139, 34, 0.3)',
-                      borderWidth: theme.name === 'dark' ? 0.5 : 0.5,
+                      backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(34, 139, 34, 0.1)',
+                      borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(34, 139, 34, 0.2)',
+                      borderWidth: 0.5,
                     }
                   ]}
                   onPress={() => {
@@ -394,7 +386,7 @@ const MyDayScreen = memo(function MyDayScreen({
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="add" size={16} color={theme.name === 'dark' ? '#FFFFFF' : '#228B22'} />
+                  <Ionicons name="add" size={16} color={theme.name === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(34, 139, 34, 0.7)'} />
                 </TouchableOpacity>
               )}
               
@@ -738,9 +730,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 6,
-    marginTop: 8,
+    marginTop: 6,
     borderWidth: 0.5,
     alignSelf: 'flex-end',
+    minWidth: 28,
+    minHeight: 28,
   },
   // Son gününde olan projeler için özel style'lar
   lastDayProjectCard: {
