@@ -72,16 +72,30 @@ export default function EditModal({ visible, onClose, project, onSave }) {
 
   // ActiveProject ile aynı animasyon mantığı
   useEffect(() => {
-    translateY.value = withTiming(0, { duration: 320 });
-    scale.value = withTiming(1, { duration: 320 });
-    opacity.value = withTiming(1, { duration: 320 });
-    
-    // Focus input after animation
-    const timer = setTimeout(() => {
-      inputRef.current?.focus();
-    }, 450);
-    return () => clearTimeout(timer);
-  }, []);
+    if (visible) {
+      // Reset values first
+      translateY.value = height;
+      opacity.value = 0;
+      scale.value = 1;
+      dragY.value = 0;
+      
+      // Then animate in
+      translateY.value = withTiming(0, { duration: 320 });
+      scale.value = withTiming(1, { duration: 320 });
+      opacity.value = withTiming(1, { duration: 320 });
+      
+      // Focus input after animation
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 450);
+      return () => clearTimeout(timer);
+    } else {
+      // Reset when not visible
+      translateY.value = height;
+      opacity.value = 0;
+      dragY.value = 0;
+    }
+  }, [visible]);
 
   const handleClose = useCallback(() => {
     translateY.value = withTiming(height, { duration: 200 });
