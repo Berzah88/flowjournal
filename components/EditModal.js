@@ -11,9 +11,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "../components/FlashCalendar";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, Easing } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useModalAnimation } from "../hooks/useAnimations";
 import { MODAL_SIZES, SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
 
@@ -34,23 +33,42 @@ export default function EditModal({ visible, onClose, project, onSave }) {
 
   const inputRef = useRef(null);
 
-  // Animasyon değerleri using custom hook
-  const { translateY, opacity, scale } = useModalAnimation(visible, onClose);
+  // Animasyon değerleri - direkt tanımlama
+  const translateY = useSharedValue(height);
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.95);
   const dragY = useSharedValue(0);
 
 
-  // Focus input when modal opens - iOS tarzı timing
+  // Modal açılış/kapanış animasyonları
   useEffect(() => {
     if (visible) {
+      // Açılış animasyonu
+      translateY.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.8,
+      });
+      opacity.value = withTiming(1, { 
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+      });
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 200,
+        mass: 0.6,
+      });
+      
+      // Focus input after animation
       const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 450); // Biraz daha geç focus için
+      }, 450);
       return () => clearTimeout(timer);
     } else {
       // Reset drag position when modal closes
       dragY.value = 0;
     }
-  }, [visible, dragY]);
+  }, [visible, dragY, translateY, opacity, scale]);
 
   // Project değişirse state güncelle
   useEffect(() => {
@@ -84,12 +102,9 @@ export default function EditModal({ visible, onClose, project, onSave }) {
   }, [onSave, onClose, project, title, startDate, endDate]);
 
   const handleClose = useCallback(() => {
-    // Same animation as ActiveProject
-    translateY.value = withTiming(height, { duration: 200 });
-    opacity.value = withTiming(0, { duration: 200 }, () => {
-      if (onClose) runOnJS(onClose)();
-    });
-  }, [onClose, translateY, opacity, height]);
+    // Direct close without animation to prevent crashes
+    onClose && onClose();
+  }, [onClose]);
 
   const panGesture = useMemo(() => Gesture.Pan()
     .onUpdate((e) => {
@@ -101,15 +116,13 @@ export default function EditModal({ visible, onClose, project, onSave }) {
     .onEnd((e) => {
       // Check if swipe distance is enough to close (like ActiveProject)
       if (e.translationY > 120 && e.y <= 120) {
-        // Animate close with same timing as ActiveProject
-        dragY.value = withTiming(height, { duration: 200 }, () => {
-          runOnJS(() => onClose && onClose())();
-        });
+        // Close immediately without animation to prevent crashes
+        onClose && onClose();
       } else {
         // Reset to original position
         dragY.value = withTiming(0, { duration: 150 });
       }
-    }), [dragY, onClose, height]);
+    }), [dragY, onClose]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
