@@ -705,7 +705,7 @@ export default function Journal({
       <Animated.View style={[dynamicStyles.modalContainer, modalStyle]}>
         <LinearGradient
           colors={theme.name === 'dark' 
-            ? ['#1C1C1E', '#1A1A1A', '#000000'] 
+            ? ['#1A1A1A', theme.colors.gray[50], theme.colors.gray[100]] 
             : ['#f8f9fa', '#ffffff', '#f1f3f4']}
           style={styles.gradientBackground}
           start={{ x: 0, y: 0 }}
@@ -726,7 +726,7 @@ export default function Journal({
               <View style={styles.dateAndMoodContainer}>
                 <Text style={[
                   styles.dateText,
-                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1d1d1f' }
+                  { color: theme.name === 'dark' ? theme.colors.gray[400] : '#1d1d1f' }
                 ]}>{todayText}</Text>
                 {/* Mood tarihin yanında */}
                 {selectedMood && (
@@ -734,7 +734,7 @@ export default function Journal({
                     <MaterialIcons
                       name={getValidIconName(selectedMood.icon)}
                       size={18}
-                      color={theme.name === 'dark' ? '#FFFFFF' : '#333'}
+                      color={theme.name === 'dark' ? theme.colors.gray[400] : '#333'}
                     />
                     <Text style={[
                       styles.moodLabel,
@@ -808,7 +808,7 @@ export default function Journal({
                       <MaterialIcons 
                         name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
                         size={18} 
-                        color={theme.name === 'dark' ? '#FFFFFF' : '#000'} 
+                        color={theme.name === 'dark' ? theme.colors.gray[400] : '#000'} 
                       />
                       <Text style={[
                         styles.moodTagText,
@@ -844,8 +844,8 @@ export default function Journal({
                    // Dynamic height using same logic as buttons + 50% margin bottom
                    height: Math.max(150, (modalHeight - (keyboardHeight || 0)) * 0.5), // 50% of available space (50% margin bottom)
                   minHeight: 150,
-                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.9)',
-                  color: theme.name === 'dark' ? '#FFFFFF' : '#1d1d1f',
+                  backgroundColor: 'transparent',
+                  color: theme.name === 'dark' ? theme.colors.gray[400] : '#1d1d1f',
                 }
               ]}
               placeholder={(milestone?.title ? milestone.title + ": " : "") + "Write about it..."}
@@ -872,9 +872,9 @@ export default function Journal({
                   styles.moodPicker, 
                   { 
                     bottom: keyboardHeight ? keyboardHeight + 90 : 106,
-                    backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#ffffff',
-                    borderColor: theme.name === 'dark' ? '#000000' : '#e0e0e0',
-                    shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                    backgroundColor: theme.name === 'dark' ? theme.colors.gray[100] : '#ffffff',
+                    borderColor: theme.name === 'dark' ? theme.colors.gray[200] : '#e0e0e0',
+                    shadowColor: theme.name === 'dark' ? theme.colors.gray[50] : '#000',
                     shadowOpacity: theme.name === 'dark' ? 0.3 : 0.12,
                     shadowRadius: theme.name === 'dark' ? 12 : 12,
                     elevation: theme.name === 'dark' ? 10 : 10,
@@ -909,7 +909,7 @@ export default function Journal({
                             <MaterialIcons 
                               name={getValidIconName(suggestedMood.icon)} 
                               size={16} 
-                              color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+                              color={theme.name === 'dark' ? theme.colors.gray[400] : '#333'} 
                             />
                             <Text style={[
                               styles.suggestionMoodLabel,
@@ -953,7 +953,7 @@ export default function Journal({
                         <MaterialIcons 
                           name={getValidIconName(m.icon)} 
                           size={14} 
-                          color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+                          color={theme.name === 'dark' ? theme.colors.gray[400] : '#333'} 
                         />
                       </View>
                       <Text style={[
@@ -972,8 +972,8 @@ export default function Journal({
             { 
               bottom: fromActiveProject ? (keyboardHeight || 0) + 20 : (keyboardHeight || 0), 
               marginBottom: 15,
-              backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : 'rgba(248, 249, 250, 0.95)',
-              borderTopColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0,0,0,0.1)',
+              backgroundColor: theme.name === 'dark' ? theme.colors.gray[200] : 'rgba(248, 249, 250, 0.95)',
+              borderTopColor: theme.name === 'dark' ? theme.colors.gray[300] : 'rgba(0,0,0,0.1)',
             }
           ]}>
             {buttons.map((btn, i) => (
@@ -982,9 +982,9 @@ export default function Journal({
                 style={[
                   styles.button,
                   {
-                    backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#ffffff',
-                    borderColor: theme.name === 'dark' ? '#000000' : '#e0e0e0',
-                    shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                    backgroundColor: theme.name === 'dark' ? theme.colors.gray[100] : '#ffffff',
+                    borderColor: theme.name === 'dark' ? theme.colors.gray[200] : '#e0e0e0',
+                    shadowColor: theme.name === 'dark' ? theme.colors.gray[50] : '#000',
                     shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
                     shadowRadius: theme.name === 'dark' ? 12 : 6,
                     elevation: theme.name === 'dark' ? 8 : 4,
@@ -996,11 +996,11 @@ export default function Journal({
                 <Ionicons 
                   name={btn.icon} 
                   size={18} 
-                  color={theme.name === 'dark' ? '#FF6B6B' : '#545454'} 
+                  color={theme.name === 'dark' ? theme.colors.gray[400] : '#545454'} 
                 />
                 <Text style={[
                   styles.buttonText,
-                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1d1d1f' }
+                  { color: theme.name === 'dark' ? theme.colors.gray[400] : '#1d1d1f' }
                 ]}>{btn.label === "Save" ? "Save" : btn.label}</Text>
               </TouchableOpacity>
             ))}
