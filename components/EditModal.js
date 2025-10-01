@@ -233,6 +233,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     backgroundColor: "rgba(0,0,0,0.0)",
     justifyContent: "flex-end",
+    zIndex: 1000,
   },
   container: {
     height: modalHeight,
