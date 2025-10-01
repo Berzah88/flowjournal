@@ -416,16 +416,16 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
               style={[
                 styles.menuButton,
                 {
-                  backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'transparent',
-                  borderRadius: theme.name === 'dark' ? 20 : 0,
-                  padding: theme.name === 'dark' ? 8 : 8,
+                  backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(108, 99, 255, 0.1)',
+                  borderRadius: 20,
+                  padding: 8,
                 }
               ]}
             >
               <Ionicons 
                 name="ellipsis-vertical" 
                 size={22} 
-                color={isCompleted ? "#fff" : (theme.name === 'dark' ? "#FF6B6B" : "#333")} 
+                color={isCompleted ? "#fff" : (theme.name === 'dark' ? "#FF6B6B" : "#6C63FF")} 
               />
             </TouchableOpacity>
           )}
