@@ -633,65 +633,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
 
-              {/* Clear All Notifications */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={async () => {
-                  setMainMenuVisible(false);
-                  await clearAllNotifications();
-                  Alert.alert('Success', 'All notifications have been cleared!');
-                }}
-                accessible={true}
-                accessibilityLabel="Clear all notifications"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemContent}>
-                  <Ionicons name="notifications-off-outline" size={20} color="#FF6B6B" />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
-                    Clear All Notifications
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Test Motive Popup */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMainMenuVisible(false);
-                  setWelcomePopupVisible(true);
-                }}
-                accessible={true}
-                accessibilityLabel="Test motive popup"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemContent}>
-                  <Ionicons name="flask-outline" size={20} color="#FF9500" />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
-                    Test Motive Popup
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Reset AI Feedback */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={async () => {
-                  setMainMenuVisible(false);
-                  await AsyncStorage.removeItem('lastAIFeedbackDate');
-                  await AsyncStorage.removeItem('lastSessionTime');
-                  Alert.alert('Success', 'AI feedback reset! It will show on next app start.');
-                }}
-                accessible={true}
-                accessibilityLabel="Reset AI feedback"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemContent}>
-                  <Ionicons name="refresh-outline" size={20} color="#34C759" />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
-                    Reset AI Feedback
-                  </Text>
-                </View>
-              </TouchableOpacity>
 
               {/* Settings & Data */}
               <TouchableOpacity

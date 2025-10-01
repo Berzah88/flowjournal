@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert, TouchableWitho
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import notificationService from '../services/NotificationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FONTS, SPACING, BORDER_RADIUS } from '../constants';
 
 const { width, height } = Dimensions.get('window');
@@ -157,6 +158,30 @@ export default function NotificationSettings({ visible, onClose }) {
       // Tüm progress feedback bildirimlerini iptal et
       await notificationService.cancelAllNotificationsByType('progress_feedback');
     }
+  };
+
+  const handleResetAIFeedback = async () => {
+    Alert.alert(
+      'Reset AI Feedback',
+      'This will reset the AI feedback system and allow it to show again on next app start. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('lastAIFeedbackDate');
+              await AsyncStorage.removeItem('lastSessionTime');
+              Alert.alert('Success', 'AI feedback has been reset! It will show on next app start.');
+            } catch (error) {
+              console.error('Error resetting AI feedback:', error);
+              Alert.alert('Error', 'Failed to reset AI feedback. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
 
@@ -478,6 +503,52 @@ export default function NotificationSettings({ visible, onClose }) {
                   ios_backgroundColor={theme.name === 'dark' ? '#3A3A3C' : '#E5E5E7'}
                 />
               </View>
+
+              {/* Reset AI Feedback */}
+              <TouchableOpacity 
+                style={[
+                  styles.settingItem,
+                  {
+                    backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                    borderColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 0, 0, 0.05)',
+                  }
+                ]}
+                onPress={handleResetAIFeedback}
+              >
+                <View style={styles.settingLeft}>
+                  <View style={[
+                    styles.settingIcon,
+                    { 
+                      backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.15)',
+                    }
+                  ]}>
+                    <Ionicons 
+                      name="refresh-outline" 
+                      size={18} 
+                      color={theme.name === 'dark' ? '#34C759' : '#34C759'} 
+                    />
+                  </View>
+                  <View style={styles.settingText}>
+                    <Text style={[
+                      styles.settingTitle,
+                      { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+                    ]}>
+                      Reset AI Feedback
+                    </Text>
+                    <Text style={[
+                      styles.settingDescription,
+                      { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
+                    ]}>
+                      Reset AI feedback system to show again
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons 
+                  name="chevron-forward" 
+                  size={18} 
+                  color={theme.name === 'dark' ? '#8E8E93' : '#666666'} 
+                />
+              </TouchableOpacity>
 
             </ScrollView>
           </Animated.View>
