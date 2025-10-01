@@ -404,60 +404,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               </View>
             </View>
             <View style={styles.headerActions}>
-              {/* Test Buttons */}
-              <TouchableOpacity 
-                style={[
-                  styles.testButton,
-                  {
-                    backgroundColor: theme.name === 'dark' ? '#FF9500' : 'rgba(255, 149, 0, 0.8)',
-                    borderColor: theme.name === 'dark' ? '#FF9500' : 'rgba(255, 149, 0, 0.3)',
-                    shadowColor: theme.name === 'dark' ? '#FF9500' : '#FF9500',
-                  }
-                ]} 
-                onPress={async () => {
-                  const feedback = await getAIFeedback();
-                  if (feedback.shouldShow !== false) {
-                    setCurrentFeedback(feedback);
-                    setWelcomePopupVisible(true);
-                  } else {
-                    Alert.alert('No Feedback', `Reason: ${feedback.reason || 'Unknown'}`);
-                  }
-                }}
-                accessible={true}
-                accessibilityLabel="Test motive popup"
-                accessibilityRole="button"
-              >
-                <Ionicons 
-                  name="flask" 
-                  size={16} 
-                  color={theme.name === 'dark' ? '#FFFFFF' : '#FFFFFF'} 
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[
-                  styles.testButton,
-                  {
-                    backgroundColor: theme.name === 'dark' ? '#34C759' : 'rgba(52, 199, 89, 0.8)',
-                    borderColor: theme.name === 'dark' ? '#34C759' : 'rgba(52, 199, 89, 0.3)',
-                    shadowColor: theme.name === 'dark' ? '#34C759' : '#34C759',
-                  }
-                ]} 
-                onPress={async () => {
-                  await AsyncStorage.removeItem('lastWelcomePopupDate');
-                  Alert.alert('Success', 'Welcome popup reset! Restart app to see it.');
-                }}
-                accessible={true}
-                accessibilityLabel="Reset welcome popup"
-                accessibilityRole="button"
-              >
-                <Ionicons 
-                  name="refresh" 
-                  size={16} 
-                  color={theme.name === 'dark' ? '#FFFFFF' : '#FFFFFF'} 
-                />
-              </TouchableOpacity>
-
               <TouchableOpacity 
                 style={[
                   styles.menuButton,
@@ -793,19 +739,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-  },
-  testButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    marginRight: 8,
   },
   viewport: { 
     flex: 1, 
