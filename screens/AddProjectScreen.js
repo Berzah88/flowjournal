@@ -15,6 +15,7 @@ import { useTaskActions } from "../hooks/useTaskContext";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { useSpringAnimation } from "../hooks/useAnimations";
 import FlashCalendar from "../components/FlashCalendar";
+import { useTheme } from "../context/ThemeContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +26,7 @@ import Animated, {
 
 
 export default function AddProjectScreen({ visible, onClose }) {
+  const { theme } = useTheme();
   const { addTask } = useTaskActions();
   
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
@@ -106,12 +108,23 @@ export default function AddProjectScreen({ visible, onClose }) {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <Animated.View style={[styles.modalContent, animatedStyle]}>
+              <Animated.View style={[
+                styles.modalContent, 
+                { backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF' },
+                animatedStyle
+              ]}>
                 <TextInput
                   ref={inputRef}
-                  style={styles.inputOverlay}
+                  style={[
+                    styles.inputOverlay,
+                    { 
+                      color: theme.text,
+                      borderBottomColor: theme.name === 'dark' ? '#8E8E93' : '#ccc'
+                    }
+                  ]}
                   value={newTitle}
                   placeholder="Enter project title"
+                  placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
                   onChangeText={setNewTitle}
                   onSubmitEditing={() => {
                     if (newTitle.trim() !== "") setCalendarVisible(true);
@@ -127,7 +140,11 @@ export default function AddProjectScreen({ visible, onClose }) {
                 <TouchableOpacity
                   style={[
                     styles.dateButton,
-                    { backgroundColor: newTitle.trim() ? "#4A90E2" : "#888" },
+                    { 
+                      backgroundColor: newTitle.trim() 
+                        ? (theme.name === 'dark' ? '#FF6B6B' : '#6C63FF') 
+                        : (theme.name === 'dark' ? '#8E8E93' : '#888') 
+                    },
                   ]}
                   disabled={!newTitle.trim()}
                   onPress={() => setCalendarVisible(true)}
@@ -179,7 +196,6 @@ const styles = StyleSheet.create({
     width: "100%",
     fontSize: 20,
     fontFamily: "Poppins_700Bold",
-    color: "#525252",
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
     marginVertical: 15,

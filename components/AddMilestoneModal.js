@@ -22,10 +22,12 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import { FONTS, COLORS, ANIMATION_DURATIONS, SWIPE_THRESHOLDS } from "../constants";
 import { useSpringAnimation } from "../hooks/useAnimations";
+import { useTheme } from "../context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null }) {
+  const { theme } = useTheme();
   const [title, setTitle] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -34,9 +36,9 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
   const [endDate, setEndDate] = useState(null);
   const [isSelectingRange, setIsSelectingRange] = useState(false);
 
-  // Determine modal color - Always white/Apple style
+  // Determine modal color - Theme aware
   const getModalColor = () => {
-    return getMilestoneCardColor(); // Always the same white color
+    return theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF';
   };
   
   // Use spring animation hook - same as Add Project screen
@@ -266,11 +268,14 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
               
               <TextInput
                 ref={inputRef}
-                style={styles.titleInputWithButtons}
+                style={[
+                  styles.titleInputWithButtons,
+                  { color: theme.text }
+                ]}
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Enter milestone title..."
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
                 returnKeyType="done"
                 onSubmitEditing={handleSave}
                 multiline={true}
@@ -281,18 +286,25 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
               {/* Action Buttons */}
               <View style={styles.actionButtonsInline}>
                 <TouchableOpacity 
-                  style={styles.cancelBtn} 
+                  style={[
+                    styles.cancelBtn,
+                    { backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' }
+                  ]} 
                   onPress={handleCloseModal}
                   accessible={true}
                   accessibilityLabel="Cancel milestone creation"
                   accessibilityHint="Closes the milestone creation modal without saving"
                   accessibilityRole="button"
                 >
-                  <Ionicons name="close" size={18} color="#7f8c8d" />
+                  <Ionicons name="close" size={18} color={theme.name === 'dark' ? '#FF6B6B' : '#7f8c8d'} />
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                  style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]} 
+                  style={[
+                    styles.saveBtn, 
+                    !title.trim() && styles.saveBtnDisabled,
+                    { backgroundColor: title.trim() ? (theme.name === 'dark' ? '#FF6B6B' : '#6C63FF') : (theme.name === 'dark' ? 'rgba(255, 107, 107, 0.3)' : 'rgba(108, 99, 255, 0.3)') }
+                  ]} 
                   onPress={handleSave}
                   disabled={!title.trim()}
                   accessible={true}
@@ -300,7 +312,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                   accessibilityHint="Saves the milestone with the entered title and dates"
                   accessibilityRole="button"
                 >
-                  <Ionicons name="checkmark" size={18} color={title.trim() ? "#fff" : "#999"} />
+                  <Ionicons name="checkmark" size={18} color={title.trim() ? "#fff" : (theme.name === 'dark' ? '#8E8E93' : '#999')} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -314,10 +326,10 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 style={styles.navButton}
                 onPress={() => navigateMonth(-1)}
               >
-                <Ionicons name="chevron-back" size={20} color="#7f8c8d" />
+                <Ionicons name="chevron-back" size={20} color={theme.name === 'dark' ? '#8E8E93' : '#7f8c8d'} />
               </TouchableOpacity>
               
-              <Text style={styles.monthYearText}>
+              <Text style={[styles.monthYearText, { color: theme.text }]}>
                 {formatMonthYear(currentMonth)}
               </Text>
               
@@ -325,14 +337,14 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 style={styles.navButton}
                 onPress={() => navigateMonth(1)}
               >
-                <Ionicons name="chevron-forward" size={20} color="#7f8c8d" />
+                <Ionicons name="chevron-forward" size={20} color={theme.name === 'dark' ? '#8E8E93' : '#7f8c8d'} />
               </TouchableOpacity>
             </View>
 
             {/* Day Headers */}
             <View style={styles.dayHeaders}>
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <Text key={day} style={styles.dayHeaderText}>{day}</Text>
+                <Text key={day} style={[styles.dayHeaderText, { color: theme.name === 'dark' ? '#8E8E93' : '#666' }]}>{day}</Text>
               ))}
             </View>
 

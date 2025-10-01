@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
+import { useTheme } from "../context/ThemeContext";
 
 const toDateKey = (d) =>
   d ? (d instanceof Date ? d.toISOString().split("T")[0] : new Date(d).toISOString().split("T")[0]) : null;
@@ -22,6 +23,7 @@ export default function FlashCalendar({
   onCancel, // () => void
   minDate, // Date (optional)
 }) {
+  const { theme } = useTheme();
   const [localStart, setLocalStart] = useState(initialStart ? new Date(initialStart) : null);
   const [localEnd, setLocalEnd] = useState(initialEnd ? new Date(initialEnd) : null);
 
@@ -106,8 +108,11 @@ export default function FlashCalendar({
       </TouchableWithoutFeedback>
 
       <View style={styles.wrapper} pointerEvents="box-none">
-        <View style={styles.card}>
-          <Text style={styles.heading}>Select date range</Text>
+        <View style={[
+          styles.card,
+          { backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF' }
+        ]}>
+          <Text style={[styles.heading, { color: theme.text }]}>Select date range</Text>
 
           <Calendar
             onDayPress={handleDayPress}
@@ -115,16 +120,16 @@ export default function FlashCalendar({
             markingType={"period"}
             minDate={minDate ? toDateKey(minDate) : undefined}
             theme={{
-              backgroundColor: "#f9f7fc",
-              calendarBackground: "#f9f7fc",
-              textSectionTitleColor: "#8E7DBE",
-              selectedDayBackgroundColor: "#8E7DBE",
+              backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#f9f7fc',
+              calendarBackground: theme.name === 'dark' ? '#2C2C2E' : '#f9f7fc',
+              textSectionTitleColor: theme.name === 'dark' ? '#FF6B6B' : '#8E7DBE',
+              selectedDayBackgroundColor: theme.name === 'dark' ? '#FF6B6B' : '#8E7DBE',
               selectedDayTextColor: "#fff",
-              todayTextColor: "#8E7DBE",
-              dayTextColor: "#222",
-              textDisabledColor: "#aaa",
-              arrowColor: "#8E7DBE",
-              monthTextColor: "#505050",
+              todayTextColor: theme.name === 'dark' ? '#FF6B6B' : '#8E7DBE',
+              dayTextColor: theme.name === 'dark' ? '#FFFFFF' : '#222',
+              textDisabledColor: theme.name === 'dark' ? '#8E8E93' : '#aaa',
+              arrowColor: theme.name === 'dark' ? '#FF6B6B' : '#8E7DBE',
+              monthTextColor: theme.name === 'dark' ? '#FFFFFF' : '#505050',
               textMonthFontFamily: "Poppins_700Bold",
               textDayFontFamily: "Poppins_500Medium",
               textDayHeaderFontFamily: "Poppins_600SemiBold",
@@ -136,27 +141,33 @@ export default function FlashCalendar({
 
           {/* Seçim durumu göstergesi */}
           <View style={styles.statusContainer}>
-            <Text style={styles.statusText}>
+            <Text style={[styles.statusText, { color: theme.name === 'dark' ? '#8E8E93' : '#666' }]}>
               {!localStart ? "Başlangıç tarihi seçin" : 
                !localEnd ? "Bitiş tarihi seçin" : 
                "Tarih aralığı seçildi"}
             </Text>
             {localStart && (
               <TouchableOpacity 
-                style={styles.clearBtn}
+                style={[
+                  styles.clearBtn,
+                  { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(108, 99, 255, 0.1)' }
+                ]}
                 onPress={() => {
                   setLocalStart(null);
                   setLocalEnd(null);
                 }}
               >
-                <Text style={styles.clearText}>Temizle</Text>
+                <Text style={[styles.clearText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>Temizle</Text>
               </TouchableOpacity>
             )}
           </View>
 
           <View style={styles.presetsRow}>
             <TouchableOpacity
-              style={styles.presetBtn}
+              style={[
+                styles.presetBtn,
+                { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(108, 99, 255, 0.1)' }
+              ]}
               onPress={() => {
                 const today = new Date();
                 const end = new Date();
@@ -165,11 +176,14 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={styles.presetText}>1 Hafta</Text>
+              <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>1 Hafta</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.presetBtn}
+              style={[
+                styles.presetBtn,
+                { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(108, 99, 255, 0.1)' }
+              ]}
               onPress={() => {
                 const today = new Date();
                 const end = new Date();
@@ -178,7 +192,7 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={styles.presetText}>2 Hafta</Text>
+              <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>2 Hafta</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
