@@ -2,7 +2,7 @@
   "expo": {
     "name": "Flow Journal",
     "slug": "WITApp",
-    "version": "4.9.4",
+    "version": "5.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon2.png",
     "userInterfaceStyle": "light",
