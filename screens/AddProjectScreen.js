@@ -118,7 +118,7 @@ export default function AddProjectScreen({ visible, onClose }) {
                   style={[
                     styles.inputOverlay,
                     { 
-                      color: theme.text,
+                      color: theme.name === 'dark' ? '#FFFFFF' : theme.text,
                       borderBottomColor: theme.name === 'dark' ? '#8E8E93' : '#ccc'
                     }
                   ]}
