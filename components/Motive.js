@@ -41,12 +41,7 @@ const Motive = ({
         }),
       ]).start();
 
-      // Auto close after 8 seconds (longer for AI feedback)
-      const timer = setTimeout(() => {
-        handleClose();
-      }, 8000);
-
-      return () => clearTimeout(timer);
+      // Auto close removed - user must manually close
     } else {
       // Slide out animation
       Animated.parallel([
@@ -105,7 +100,7 @@ const Motive = ({
           <View style={styles.textContainer}>
             <Text style={[
               styles.title,
-              { color: theme.name === 'dark' ? theme.colors.error : theme.colors.info }
+              { color: theme.name === 'dark' ? '#FF6B6B' : theme.colors.text }
             ]}>
               {title}
             </Text>

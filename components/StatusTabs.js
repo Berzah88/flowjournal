@@ -2,10 +2,12 @@
 import React, { useEffect, useRef } from "react";
 import { View, Animated, TouchableOpacity, StyleSheet, Text, Dimensions } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 const { width } = Dimensions.get("window");
 
 export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   // progress: 0 => Active selected, 1 => Completed selected
   const progress = useRef(new Animated.Value(activeIndex === 0 ? 0 : 1)).current;
 
@@ -60,11 +62,11 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
           ]}
         />
         <TouchableOpacity style={styles.tab} onPress={() => onTabPress(0)} activeOpacity={0.8}>
-          <Animated.Text style={[styles.tabText, { color: activeColor }]}>My Day</Animated.Text>
+          <Animated.Text style={[styles.tabText, { color: activeColor }]}>{t('myDay')}</Animated.Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.tab} onPress={() => onTabPress(1)} activeOpacity={0.8}>
-          <Animated.Text style={[styles.tabText, { color: completedColor }]}>Active Projects</Animated.Text>
+          <Animated.Text style={[styles.tabText, { color: completedColor }]}>{t('active')}</Animated.Text>
         </TouchableOpacity>
       </View>
     </View>

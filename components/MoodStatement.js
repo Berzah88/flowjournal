@@ -9,6 +9,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MOODS } from '../utils/AIMoodPredictor';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const MoodStatement = ({ 
   activeTasks = [], 
@@ -16,6 +17,7 @@ const MoodStatement = ({
   onPress = null
 }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   // Bugünkü mood'ları hesapla
   const todayMoodData = useMemo(() => {
     const today = new Date(selectedDate);
@@ -134,8 +136,8 @@ const MoodStatement = ({
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
           ]}>
             {todayMoodData.dominantMood ? 
-              `Today you feel a bit ${todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}` :
-              "How are you feeling today?"
+              `${t('todayYouFeel')} ${todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}` :
+              t('howAreYouFeelingToday')
             }
           </Text>
           
@@ -148,8 +150,8 @@ const MoodStatement = ({
             }
           ]}>
             {todayMoodData.totalEntries > 0 ? 
-              "View more details" :
-              "Click on a Milestone right away and start writing your journal"
+              t('viewMoreDetails') :
+              t('clickMilestoneStartWriting')
             }
           </Text>
         </View>

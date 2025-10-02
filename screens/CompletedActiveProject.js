@@ -4,6 +4,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
+import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import EditModal from "../components/EditModal";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
@@ -25,6 +27,8 @@ const { width, height } = Dimensions.get("window");
 
 export default function CompletedActiveProject({ selectedCard, onClose, setMainActiveTab, navigation }) {
   const tasks = useTasks();
+  const { theme } = useTheme();
+  const { t } = useLanguage();
   const {
     deleteTask,
     completeTask,
@@ -343,7 +347,7 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
           >
             {/* Project Journals Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Project Journals</Text>
+              <Text style={styles.sectionTitle}>{t('projectJournals')}</Text>
               
               {allMilestones && allMilestones.length > 0 ? (
                 <View style={styles.milestonesList}>
@@ -388,8 +392,8 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
               ) : (
                 <View style={styles.emptyState}>
                   <Ionicons name="journal-outline" size={48} color="#8E8E93" />
-                  <Text style={styles.emptyTitle}>No Journals</Text>
-                  <Text style={styles.emptySubtitle}>This project has no journal entries</Text>
+                  <Text style={styles.emptyTitle}>{t('noJournals')}</Text>
+                  <Text style={styles.emptySubtitle}>{t('noJournalEntries')}</Text>
                 </View>
               )}
             </View>

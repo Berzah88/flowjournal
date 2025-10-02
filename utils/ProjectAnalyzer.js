@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class ProjectAnalyzer {
   constructor() {
-    this.confidenceThreshold = 0.4; // Minimum confidence to show feedback
+    this.confidenceThreshold = 0.6; // Minimum confidence to show feedback (increased for quality)
     this.dailyDisplayKey = 'project_analyzer_daily_display';
   }
 
@@ -324,14 +324,7 @@ class ProjectAnalyzer {
       confidence += 0.1;
     }
 
-    console.log('Confidence calculation:', {
-      projectCount: analysis.projectCount,
-      totalMilestones: analysis.totalMilestones,
-      hasMoodData: analysis.moodAnalysis.hasData,
-      overdueCount: analysis.timelineAnalysis.overdue.length,
-      endingSoonCount: analysis.timelineAnalysis.endingSoon.length,
-      finalConfidence: Math.min(1, confidence)
-    });
+    // Confidence calculation completed
 
     return Math.min(1, confidence);
   }

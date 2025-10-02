@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert, TouchableWithoutFeedback, ScrollView, Animated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import notificationService from '../services/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FONTS, SPACING, BORDER_RADIUS } from '../constants';
@@ -10,6 +11,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function NotificationSettings({ visible, onClose }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [settings, setSettings] = useState({
     journalReminderEnabled: false, // Günlük hatırlatıcıyı kapat
     journalReminderTime: '20:00',
@@ -104,12 +106,12 @@ export default function NotificationSettings({ visible, onClose }) {
 
   const handleJournalTimeChange = async () => {
     Alert.prompt(
-      'Günlük Hatırlatıcı Saati',
-      'Hatırlatıcının gönderileceği saati girin (HH:MM formatında):',
+      t('dailyReminderTime'),
+      t('enterReminderTime'),
       [
-        { text: 'İptal', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Kaydet',
+          text: t('save'),
           onPress: async (time) => {
             if (time && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
               const newSettings = { ...settings, journalReminderTime: time };
@@ -120,7 +122,7 @@ export default function NotificationSettings({ visible, onClose }) {
                 await notificationService.scheduleJournalReminder(time);
               }
             } else {
-              Alert.alert('Hata', 'Geçerli bir saat formatı girin (HH:MM)');
+              Alert.alert(t('error'), t('enterValidTimeFormat'));
             }
           }
         }
@@ -162,21 +164,21 @@ export default function NotificationSettings({ visible, onClose }) {
 
   const handleResetAIFeedback = async () => {
     Alert.alert(
-      'Reset AI Feedback',
-      'This will reset the AI feedback system and allow it to show again on next app start. Continue?',
+      t('resetAIFeedback'),
+      t('resetAIFeedbackDescription'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Reset',
+          text: t('reset'),
           style: 'destructive',
           onPress: async () => {
             try {
               await AsyncStorage.removeItem('lastAIFeedbackDate');
               await AsyncStorage.removeItem('lastSessionTime');
-              Alert.alert('Success', 'AI feedback has been reset! It will show on next app start.');
+              Alert.alert(t('success'), t('aiFeedbackResetSuccess'));
             } catch (error) {
               console.error('Error resetting AI feedback:', error);
-              Alert.alert('Error', 'Failed to reset AI feedback. Please try again.');
+              Alert.alert(t('error'), t('aiFeedbackResetError'));
             }
           }
         }

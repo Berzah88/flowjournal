@@ -68,7 +68,7 @@ export const EXTENDED_MOODS = [
   {
     key: "frustrated",
     label: "Frustrated",
-    icon: "psychology",
+    icon: "mood-bad",
     color: "#FFCCBC", // Light brown
     category: "negative"
   },
@@ -110,7 +110,7 @@ export const EXTENDED_MOODS = [
   {
     key: "overwhelmed",
     label: "Overwhelmed",
-    icon: "psychology",
+    icon: "psychology-alt",
     color: "#FFEBEE", // Light pink
     category: "negative"
   },
@@ -138,7 +138,7 @@ export const EXTENDED_MOODS = [
   {
     key: "disappointed",
     label: "Disappointed",
-    icon: "sentiment-dissatisfied",
+    icon: "sentiment-very-dissatisfied",
     color: "#FFE0E6", // Light rose
     category: "negative"
   },
@@ -180,16 +180,23 @@ export const EXTENDED_MOODS = [
   {
     key: "content",
     label: "Content",
-    icon: "sentiment-satisfied",
-    color: "#E8F5E8", // Light mint green (same as grateful, but that's ok)
+    icon: "sentiment-very-satisfied",
+    color: "#E8F5E8", // Light mint green
     category: "positive"
   },
   {
     key: "worried",
     label: "Worried",
-    icon: "psychology",
+    icon: "help-outline",
     color: "#FCE4EC", // Light magenta
     category: "negative"
+  },
+  {
+    key: "natural",
+    label: "Natural",
+    icon: "sentiment-neutral",
+    color: "#CFD8DC", // Light gray
+    category: "neutral"
   }
 ];
 
@@ -210,9 +217,21 @@ class SmartPatternMatcher {
       'not', 'no', 'never', 'none', 'nothing', 'nowhere', 'neither', 'nor'
     ];
     this.intensityModifiers = {
-      high: ['çok', 'aşırı', 'müthiş', 'muhteşem', 'olağanüstü', 'son derece', 'fazlasıyla'],
-      medium: ['oldukça', 'epey', 'hayli', 'bir hayli', 'oldukça'],
-      low: ['biraz', 'az', 'orta', 'idare', 'tamam']
+      high: [
+        'çok', 'aşırı', 'müthiş', 'muhteşem', 'olağanüstü', 'son derece', 'fazlasıyla',
+        'so', 'very', 'really', 'extremely', 'incredibly', 'absolutely', 'totally',
+        'completely', 'utterly', 'terribly', 'awfully', 'super', 'superbly'
+      ],
+      medium: [
+        'oldukça', 'epey', 'hayli', 'bir hayli', 'oldukça',
+        'quite', 'rather', 'pretty', 'fairly', 'somewhat', 'reasonably',
+        'moderately', 'relatively', 'comparatively'
+      ],
+      low: [
+        'biraz', 'az', 'orta', 'idare', 'tamam',
+        'a bit', 'a little', 'slightly', 'somewhat', 'kind of', 'sort of',
+        'mildly', 'gently', 'softly'
+      ]
     };
   }
 
@@ -316,6 +335,9 @@ class SmartPatternMatcher {
     // Check for intensity modifiers
     const intensity = this.detectIntensity(lowerText);
     
+    // Enhanced pattern detection for better accuracy
+    this.detectAdvancedPatterns(lowerText, matches, intensity, hasNegation);
+    
     // Pattern matching
     for (const [category, moods] of Object.entries(this.patterns)) {
       for (const [mood, data] of Object.entries(moods)) {
@@ -381,6 +403,203 @@ class SmartPatternMatcher {
       }
     }
     return { level: 'normal', multiplier: 1.0 };
+  }
+
+  // Enhanced pattern detection for better accuracy
+  detectAdvancedPatterns(text, matches, intensity, hasNegation) {
+    // Turkish specific patterns
+    const turkishPatterns = {
+      'frustrated': [
+        'can sıkıcı', 'sıkıldım', 'bıktım', 'usandım', 'bezgin', 'yeter artık',
+        'ne kadar sıkıcı', 'çok sıkıcı', 'sıkılmaya başladım'
+      ],
+      'overwhelmed': [
+        'çok fazla', 'aşırı yüklenmiş', 'bunalmış', 'bitkin', 'tükenmiş',
+        'çok fazla iş', 'aşırı yüklenmiş', 'bunalmış hissediyorum'
+      ],
+      'anxious': [
+        'endişeli', 'kaygılı', 'tedirgin', 'korku', 'panik', 'stresli',
+        'çok endişeli', 'aşırı kaygılı', 'müthiş stresli', 'panik hissediyorum'
+      ],
+      'hopeful': [
+        'umudum var', 'umut var', 'gelecek güzel', 'iyi olacak', 'düzelecek',
+        'umutlu', 'pozitif düşünüyorum', 'iyi şeyler olacak'
+      ],
+      'grateful': [
+        'minnettar', 'şükür', 'teşekkür', 'memnun', 'hoşnut',
+        'çok minnettar', 'aşırı şükür', 'müthiş minnettar', 'şükür hissediyorum'
+      ]
+    };
+
+    // Check for Turkish patterns
+    Object.entries(turkishPatterns).forEach(([mood, patterns]) => {
+      patterns.forEach(pattern => {
+        if (text.includes(pattern)) {
+          let score = 2.0; // High score for specific patterns
+          
+          // Apply intensity modifier
+          score *= intensity.multiplier;
+          
+          // Apply negation penalty
+          if (hasNegation) {
+            score *= -0.7;
+          }
+          
+          matches.push({
+            mood,
+            category: 'advanced',
+            score,
+            matchedPatterns: [pattern],
+            intensity: intensity.level,
+            hasNegation
+          });
+        }
+      });
+    });
+
+    // English specific patterns
+    const englishPatterns = {
+      'frustrated': [
+        'frustrated', 'annoyed', 'irritated', 'fed up', 'sick of',
+        'can\'t take it', 'too much', 'had enough'
+      ],
+      'overwhelmed': [
+        'overwhelmed', 'swamped', 'drowning', 'too much', 'can\'t handle',
+        'burned out', 'exhausted', 'drained'
+      ],
+      'anxious': [
+        'anxious', 'worried', 'concerned', 'nervous', 'stressed',
+        'panic', 'fear', 'scared'
+      ],
+      'hopeful': [
+        'hopeful', 'optimistic', 'positive', 'looking forward',
+        'excited about', 'can\'t wait'
+      ],
+      'grateful': [
+        'grateful', 'thankful', 'appreciate', 'blessed',
+        'lucky', 'fortunate'
+      ],
+      'tired': [
+        'tired', 'exhausted', 'drained', 'worn out', 'fatigued',
+        'sleepy', 'drowsy', 'weary', 'beat', 'pooped'
+      ],
+      'sad': [
+        'sad', 'depressed', 'down', 'blue', 'melancholy', 'gloomy',
+        'miserable', 'unhappy', 'dejected', 'disheartened', 'disappointed'
+      ],
+      'angry': [
+        'angry', 'mad', 'furious', 'irritated', 'annoyed', 'rage',
+        'livid', 'outraged', 'fuming', 'upset', 'cross'
+      ],
+      'excited': [
+        'excited', 'thrilled', 'enthusiastic', 'pumped', 'hyped',
+        'eager', 'elated', 'ecstatic', 'overjoyed'
+      ],
+      'proud': [
+        'proud', 'accomplished', 'achieved', 'successful', 'victorious',
+        'triumphant', 'satisfied', 'fulfilled'
+      ],
+      'calm': [
+        'calm', 'peaceful', 'relaxed', 'serene', 'tranquil',
+        'composed', 'collected', 'cool', 'chill'
+      ]
+    };
+
+    // Check for English patterns
+    Object.entries(englishPatterns).forEach(([mood, patterns]) => {
+      patterns.forEach(pattern => {
+        if (text.includes(pattern)) {
+          let score = 2.0; // High score for specific patterns
+          
+          // Apply intensity modifier
+          score *= intensity.multiplier;
+          
+          // Apply negation penalty
+          if (hasNegation) {
+            score *= -0.7;
+          }
+          
+          matches.push({
+            mood,
+            category: 'advanced',
+            score,
+            matchedPatterns: [pattern],
+            intensity: intensity.level,
+            hasNegation
+          });
+        }
+      });
+    });
+
+    // Enhanced phrase matching for English
+    this.detectEnglishPhrases(text, matches, intensity, hasNegation);
+  }
+
+  // Enhanced English phrase detection
+  detectEnglishPhrases(text, matches, intensity, hasNegation) {
+    const lowerText = text.toLowerCase();
+    
+    // English phrase patterns
+    const englishPhrases = {
+      'tired': [
+        'tired of', 'sick of', 'fed up with', 'had enough of',
+        'worn out from', 'exhausted by', 'drained from'
+      ],
+      'sad': [
+        'sad about', 'disappointed in', 'let down by', 'heartbroken over',
+        'down about', 'blue about', 'upset about'
+      ],
+      'angry': [
+        'angry at', 'mad at', 'furious with', 'upset with',
+        'irritated by', 'annoyed by', 'frustrated with'
+      ],
+      'excited': [
+        'excited about', 'thrilled about', 'pumped for', 'hyped for',
+        'looking forward to', 'can\'t wait for', 'eager for'
+      ],
+      'grateful': [
+        'grateful for', 'thankful for', 'appreciate the', 'blessed with',
+        'lucky to have', 'fortunate to have'
+      ],
+      'hopeful': [
+        'hopeful for', 'optimistic about', 'positive about', 'confident in',
+        'believing in', 'trusting in'
+      ],
+      'anxious': [
+        'anxious about', 'worried about', 'concerned about', 'nervous about',
+        'stressed about', 'fearful of', 'scared of'
+      ],
+      'overwhelmed': [
+        'overwhelmed by', 'swamped with', 'drowning in', 'buried under',
+        'can\'t handle', 'too much to', 'burned out from'
+      ]
+    };
+
+    // Check for phrase patterns
+    Object.entries(englishPhrases).forEach(([mood, phrases]) => {
+      phrases.forEach(phrase => {
+        if (lowerText.includes(phrase)) {
+          let score = 3.0; // Higher score for phrases (more specific)
+          
+          // Apply intensity modifier
+          score *= intensity.multiplier;
+          
+          // Apply negation penalty
+          if (hasNegation) {
+            score *= -0.7;
+          }
+          
+          matches.push({
+            mood,
+            category: 'phrase',
+            score,
+            matchedPatterns: [phrase],
+            intensity: intensity.level,
+            hasNegation
+          });
+        }
+      });
+    });
   }
 }
 
@@ -680,15 +899,15 @@ class ConfidenceScorer {
   getFallbackSuggestions(confidence) {
     if (confidence.level === 'very_low') {
       return [
-        { mood: 'calm', confidence: 0.3, reason: 'No clear mood detected' },
-        { mood: 'neutral', confidence: 0.2, reason: 'Default neutral suggestion' }
+        { mood: 'natural', confidence: 0.4, reason: 'Sistem güvenilirliği düşük - Natural mode öneriliyor' },
+        { mood: 'calm', confidence: 0.3, reason: 'No clear mood detected' }
       ];
     }
     
     if (confidence.level === 'low') {
       return [
-        { mood: 'calm', confidence: 0.4, reason: 'Low confidence fallback' },
-        { mood: 'neutral', confidence: 0.3, reason: 'Alternative neutral suggestion' }
+        { mood: 'natural', confidence: 0.5, reason: 'Düşük güvenilirlik - Natural mode öneriliyor' },
+        { mood: 'calm', confidence: 0.4, reason: 'Low confidence fallback' }
       ];
     }
     
@@ -764,8 +983,45 @@ class SmartMoodDetector {
     this.confidenceScorer = new ConfidenceScorer();
     this.realTimeAdapter = new RealTimeAdapter();
     
+    // Performance optimization - Cache system
+    this.cache = new Map();
+    this.cacheMaxSize = 100;
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    
     // Initialize user data
     this.userLearning.loadUserData();
+  }
+
+  // Cache management methods
+  generateCacheKey(text, userHistory = []) {
+    const textHash = text.toLowerCase().trim();
+    const historyHash = userHistory.length > 0 ? 
+      userHistory.slice(-5).map(h => h.mood || '').join(',') : '';
+    return `${textHash}_${historyHash}`;
+  }
+
+  getFromCache(key) {
+    const cached = this.cache.get(key);
+    if (cached && (Date.now() - cached.timestamp) < this.cacheTimeout) {
+      return cached.data;
+    }
+    if (cached) {
+      this.cache.delete(key); // Remove expired cache
+    }
+    return null;
+  }
+
+  setCache(key, data) {
+    // Clean cache if it's too large
+    if (this.cache.size >= this.cacheMaxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
   }
 
   // Main mood detection function
@@ -777,6 +1033,13 @@ class SmartMoodDetector {
           confidence: { score: 0.1, level: 'very_low', factors: ['No text provided'] },
           reason: 'No text provided'
         };
+      }
+
+      // Check cache first
+      const cacheKey = this.generateCacheKey(text, userHistory);
+      const cachedResult = this.getFromCache(cacheKey);
+      if (cachedResult) {
+        return { ...cachedResult, fromCache: true };
       }
 
       // Split into sentences for context analysis
@@ -817,7 +1080,7 @@ class SmartMoodDetector {
       // 6. Real-time Adaptation
       this.realTimeAdapter.trackPrediction(finalMood, text, confidence.score, null);
       
-      return {
+      const result = {
         mood: finalMood,
         confidence,
         reason,
@@ -825,6 +1088,11 @@ class SmartMoodDetector {
         userPrediction,
         context: contexts
       };
+
+      // Cache the result
+      this.setCache(cacheKey, result);
+      
+      return result;
       
     } catch (error) {
       console.error('Mood detection error:', error);
@@ -894,10 +1162,12 @@ class SmartMoodDetector {
         }
       }
       
-      // Alternative suggestions from extended moods
+      // Alternative suggestions from extended moods - NO DUPLICATES
       if (detection.matches.length > 1) {
+        const usedMoods = new Set(suggestions.map(s => s.mood)); // Track used moods
+        
         detection.matches.slice(1, 3).forEach(match => {
-          if (Math.abs(match.score) > 0.1) {
+          if (Math.abs(match.score) > 0.1 && !usedMoods.has(match.mood)) {
             const suggestedMood = EXTENDED_MOODS.find(m => m.key === match.mood);
             if (suggestedMood) {
               suggestions.push({
@@ -909,6 +1179,7 @@ class SmartMoodDetector {
                 reason: `Alternative: ${match.matchedPatterns.join(', ')}`,
                 type: 'alternative'
               });
+              usedMoods.add(match.mood); // Mark as used
             }
           }
         });
@@ -916,21 +1187,26 @@ class SmartMoodDetector {
       
       // Fallback suggestions from extended moods - Always provide at least one suggestion
       if (suggestions.length === 0) {
+        const usedMoods = new Set(suggestions.map(s => s.mood)); // Track used moods
         const fallbacks = this.confidenceScorer.getFallbackSuggestions(detection.confidence);
+        
         fallbacks.forEach(fallback => {
-          const suggestedMood = EXTENDED_MOODS.find(m => m.key === fallback.mood);
-          if (suggestedMood) {
-            suggestions.push({
-              ...fallback,
-              label: suggestedMood.label,
-              icon: suggestedMood.icon,
-              color: suggestedMood.color
-            });
+          if (!usedMoods.has(fallback.mood)) {
+            const suggestedMood = EXTENDED_MOODS.find(m => m.key === fallback.mood);
+            if (suggestedMood) {
+              suggestions.push({
+                ...fallback,
+                label: suggestedMood.label,
+                icon: suggestedMood.icon,
+                color: suggestedMood.color
+              });
+              usedMoods.add(fallback.mood); // Mark as used
+            }
           }
         });
         
         // If still no suggestions, provide calm as default
-        if (suggestions.length === 0) {
+        if (suggestions.length === 0 && !usedMoods.has('calm')) {
           const calmMood = EXTENDED_MOODS.find(m => m.key === 'calm');
           if (calmMood) {
             suggestions.push({
@@ -946,7 +1222,18 @@ class SmartMoodDetector {
         }
       }
       
-      return suggestions;
+      // Final deduplication - Remove any remaining duplicates
+      const finalSuggestions = [];
+      const seenMoods = new Set();
+      
+      suggestions.forEach(suggestion => {
+        if (!seenMoods.has(suggestion.mood)) {
+          finalSuggestions.push(suggestion);
+          seenMoods.add(suggestion.mood);
+        }
+      });
+      
+      return finalSuggestions;
       
     } catch (error) {
       console.error('Mood suggestions error:', error);
@@ -1158,6 +1445,7 @@ export const getValidIconName = (name) => {
     "spa": "spa",
     "bedtime": "bedtime",
     "psychology": "psychology",
+    "psychology-alt": "psychology",
     "warning": "warning",
     "favorite": "favorite",
     "wb-sunny": "wb-sunny",
@@ -1166,9 +1454,12 @@ export const getValidIconName = (name) => {
     "person-off": "person-off",
     "self-improvement": "self-improvement",
     "help": "help",
+    "help-outline": "help",
     "emoji-events": "emoji-events",
     "explore": "explore",
     "sentiment-neutral": "sentiment-neutral",
+    "sentiment-very-satisfied": "sentiment-satisfied",
+    "sentiment-very-dissatisfied": "sentiment-dissatisfied",
     "surprise": "surprise"
   };
   return fallback[name] ? fallback[name] : name;

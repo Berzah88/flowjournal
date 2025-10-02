@@ -4,10 +4,12 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, milestones = [] }) => {
   const [currentWeek, setCurrentWeek] = useState(0);
   const { theme } = useTheme();
+  const { t, language } = useLanguage();
 
   // 7 günlük tarihleri hesapla - bugünü ortaya hizala
   const weekDates = useMemo(() => {
@@ -32,8 +34,8 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
 
   // Gün kısaltması
   const getDayAbbreviation = (date) => {
-    const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    return days[date.getDay()];
+    const dayAbbreviations = t('dayAbbreviations');
+    return dayAbbreviations[date.getDay()];
   };
 
   // Bugün mü kontrolü

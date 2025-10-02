@@ -19,6 +19,7 @@ import { getMilestoneColor } from "../utils/milestoneColors";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ActiveProject from "./ActiveProject";
 import AddMilestoneModal from "../components/AddMilestoneModal";
@@ -45,6 +46,7 @@ const MyDayScreen = memo(function MyDayScreen({
   const activeTasks = useActiveTasks();
   const { addMilestone, updateMilestone, completeMilestone, addJournalEntry } = useTaskActions();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   
   // Performance monitoring (only in development) - temporarily disabled
   // usePerformanceMonitor('MyDayScreen');
@@ -238,7 +240,7 @@ const MyDayScreen = memo(function MyDayScreen({
           <Text style={[
             styles.summaryHeaderTitle,
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-          ]}>Today's Summary</Text>
+          ]}>{t('todaysSummary')}</Text>
         </View>
         
         {/* Mood Statement */}
@@ -259,7 +261,7 @@ const MyDayScreen = memo(function MyDayScreen({
         {selectedDateActiveTasks.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
-            <Text style={styles.emptyTitle}>No project on this date</Text>
+            <Text style={styles.emptyTitle}>{t('noProjectOnThisDate')}</Text>
             <Text style={styles.emptyText}>
               {(() => {
                 const today = new Date();
@@ -268,9 +270,9 @@ const MyDayScreen = memo(function MyDayScreen({
                 selected.setHours(0, 0, 0, 0);
                 
                 if (selected < today) {
-                  return "No project on this date";
+                  return t('noProjectOnThisDate');
                 } else {
-                  return "No active project on selected date.\nWould you like to create a new project?";
+                  return t('noActiveProjectOnSelectedDate');
                 }
               })()}
             </Text>
@@ -302,7 +304,7 @@ const MyDayScreen = memo(function MyDayScreen({
                     <Text style={[
                       styles.addProjectButtonText,
                       { color: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }
-                    ]}>Add Project</Text>
+                    ]}>{t('addProject')}</Text>
                   </TouchableOpacity>
                 );
               }

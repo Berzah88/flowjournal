@@ -5,6 +5,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { getMilestoneColor } from '../utils/milestoneColors';
 import { useTasks } from '../hooks/useTaskContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get("window");
 const CELL_SIZE = (width - 40) / 7; // Equal width for 7 days
@@ -12,6 +13,7 @@ const CELL_HEIGHT = CELL_SIZE + 10; // Reduce cell height
 
 export default function ProjectCalendar({ milestones = [], projectStartDate, projectEndDate }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
   const tasks = useTasks(); // Get all tasks
   
@@ -171,7 +173,7 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
   };
 
   const days = getDaysInMonth(currentDate);
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = t('dayAbbreviations');
 
   return (
     <View style={styles.container}>

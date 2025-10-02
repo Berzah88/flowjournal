@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MOODS } from '../utils/MoodPredictor';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +24,7 @@ const DailyMoodSummary = ({
   onPress = null
 }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   // Bugünkü mood'ları hesapla
   const todayMoodData = useMemo(() => {
     const today = new Date(selectedDate);
@@ -87,25 +89,25 @@ const DailyMoodSummary = ({
     
     if (totalEntries === 0) {
       return {
-        title: "How are you feeling today?",
-        subtitle: "Start recording your emotions and make sense of your day",
-        action: "Write your first journal"
+        title: t('howAreYouFeelingToday'),
+        subtitle: t('startRecordingEmotions'),
+        action: t('writeYourFirstJournal')
       };
     }
     
     if (totalEntries === 1) {
       return {
-        title: "Great start!",
-        subtitle: "Keep sharing your emotions, this is very valuable",
-        action: "Write more"
+        title: t('greatStart'),
+        subtitle: t('keepSharingEmotions'),
+        action: t('writeMore')
       };
     }
     
     if (totalEntries >= 3) {
       return {
-        title: "Very active day!",
-        subtitle: "You express your emotions beautifully, this is great",
-        action: "Continue"
+        title: t('veryActiveDay'),
+        subtitle: t('expressEmotionsBeautifully'),
+        action: t('continue')
       };
     }
     
@@ -113,43 +115,43 @@ const DailyMoodSummary = ({
     if (dominantMood) {
       const moodMessages = {
         'happy': {
-          title: "Happy day!",
-          subtitle: "Keep recording this positive energy",
-          action: "Share your happiness"
+          title: t('happyDay'),
+          subtitle: t('keepRecordingPositiveEnergy'),
+          action: t('shareYourHappiness')
         },
         'calm': {
-          title: "Calm day",
-          subtitle: "Recording these peaceful moments is beautiful",
-          action: "Write your peace"
+          title: t('calmDay'),
+          subtitle: t('recordingPeacefulMoments'),
+          action: t('writeYourPeace')
         },
         'angry': {
-          title: "Challenging day",
-          subtitle: "Writing your emotions will relax you",
-          action: "Express your emotions"
+          title: t('challengingDay'),
+          subtitle: t('writingEmotionsWillRelax'),
+          action: t('expressYourEmotions')
         },
         'sick': {
-          title: "Time to rest",
-          subtitle: "Recording how you feel helps your recovery",
-          action: "Write your condition"
+          title: t('timeToRest'),
+          subtitle: t('recordingHelpsRecovery'),
+          action: t('writeYourCondition')
         },
         'Natural': {
-          title: "Normal day",
-          subtitle: "Every day has its own unique story",
-          action: "Record your day"
+          title: t('normalDay'),
+          subtitle: t('everyDayHasUniqueStory'),
+          action: t('recordYourDay')
         }
       };
       
       return moodMessages[dominantMood.key] || {
-        title: "Going well!",
-        subtitle: "Keep recording your emotions",
-        action: "Write more"
+        title: t('goingWell'),
+        subtitle: t('keepRecordingEmotions'),
+        action: t('writeMore')
       };
     }
     
     return {
-      title: "Going well!",
-      subtitle: "Keep recording your emotions",
-      action: "Write more"
+      title: t('goingWell'),
+      subtitle: t('keepRecordingEmotions'),
+      action: t('writeMore')
     };
   };
   

@@ -13,10 +13,12 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../constants";
+import { useLanguage } from "../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function WelcomeScreen({ navigation }) {
+  const { t } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -107,7 +109,7 @@ export default function WelcomeScreen({ navigation }) {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.appName}>Flow Journal</Text>
+            <Text style={styles.appName}>{t('appName')}</Text>
           </View>
 
 
@@ -122,7 +124,7 @@ export default function WelcomeScreen({ navigation }) {
             ]}
           >
             <Text style={styles.subtitle}>
-              Track your projects while recording your emotions. Flow Journal allows you to track your projects along with your personal experiences.
+              {t('welcomeDescription')}
             </Text>
 
             <TouchableOpacity
@@ -145,7 +147,7 @@ export default function WelcomeScreen({ navigation }) {
                   end={{ x: 1, y: 1 }}
                   style={styles.buttonGradient}
                 >
-                  <Text style={styles.buttonText}>Get Started</Text>
+                  <Text style={styles.buttonText}>{t('getStarted')}</Text>
                   <Ionicons name="arrow-forward" size={20} color={COLORS.PRIMARY} style={styles.buttonIcon} />
                 </LinearGradient>
               </Animated.View>

@@ -218,18 +218,24 @@ class NotificationService {
       warningDate.setDate(deadline.getDate() - daysBefore);
 
       const now = new Date();
+      
+      // Minimum 1 saat gecikme ekle (anında bildirim önleme)
+      const minimumDelay = new Date(now.getTime() + (60 * 60 * 1000)); // 1 saat sonra
+      
       console.log('Notification Debug:', {
         projectTitle,
         deadline: deadline.toISOString(),
         warningDate: warningDate.toISOString(),
         now: now.toISOString(),
+        minimumDelay: minimumDelay.toISOString(),
         daysBefore,
-        isWarningDateInPast: warningDate <= now
+        isWarningDateInPast: warningDate <= now,
+        isWarningDateTooSoon: warningDate <= minimumDelay
       });
 
-      // Geçmiş tarihse planlama
-      if (warningDate <= now) {
-        console.log('Deadline uyarısı geçmiş tarih için planlanamaz');
+      // Geçmiş tarihse veya çok yakın tarihse planlama
+      if (warningDate <= minimumDelay) {
+        console.log('Deadline uyarısı çok yakın tarih için planlanamaz (minimum 1 saat gecikme gerekli)');
         return null;
       }
 
@@ -327,6 +333,11 @@ class NotificationService {
       const reminderDate = new Date(deadline);
       reminderDate.setDate(deadline.getDate() - daysBefore);
 
+      const now = new Date();
+      
+      // Minimum 1 saat gecikme ekle (anında bildirim önleme)
+      const minimumDelay = new Date(now.getTime() + (60 * 60 * 1000)); // 1 saat sonra
+
       console.log('🔔 DEBUG: scheduleMilestoneReminder called', {
         milestoneId,
         milestoneTitle,
@@ -334,14 +345,16 @@ class NotificationService {
         deadlineDate,
         deadline: deadline.toISOString(),
         reminderDate: reminderDate.toISOString(),
+        now: now.toISOString(),
+        minimumDelay: minimumDelay.toISOString(),
         daysBefore,
-        now: new Date().toISOString(),
-        isReminderInPast: reminderDate <= new Date()
+        isReminderInPast: reminderDate <= now,
+        isReminderTooSoon: reminderDate <= minimumDelay
       });
 
-      // Geçmiş tarihse planlama
-      if (reminderDate <= new Date()) {
-        console.log('❌ Milestone hatırlatıcısı geçmiş tarih için planlanamaz');
+      // Geçmiş tarihse veya çok yakın tarihse planlama
+      if (reminderDate <= minimumDelay) {
+        console.log('❌ Milestone hatırlatıcısı çok yakın tarih için planlanamaz (minimum 1 saat gecikme gerekli)');
         return null;
       }
 
@@ -523,7 +536,7 @@ class NotificationService {
             color: '#4CAF50'
           }),
         },
-        trigger: null, // Anında gönder
+        trigger: { seconds: 60 }, // 1 dakika gecikme ile gönder
       });
 
       console.log(`Başarı kutlaması gönderildi: ${type}`);
@@ -588,7 +601,7 @@ class NotificationService {
             color: '#8E7DBE'
           }),
         },
-        trigger: null, // Anında gönder
+        trigger: { seconds: 60 }, // 1 dakika gecikme ile gönder
       });
 
       console.log(`Progress feedback bildirimi gönderildi: ${projectTitle}`);
@@ -725,7 +738,7 @@ class NotificationService {
             color: '#8E7DBE'
           }),
         },
-        trigger: null, // Anında gönder
+        trigger: { seconds: 60 }, // 1 dakika gecikme ile gönder
       });
 
       console.log('Motivasyon mesajı gönderildi');

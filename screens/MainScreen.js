@@ -26,6 +26,7 @@ import { useActiveTasks, useCompletedTasks, useTaskActions, useTaskSaving, useDa
 import { useDataRecoveryOperations } from "../hooks/useDataRecoveryOperations";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import StatusTabs from "../components/StatusTabs";
@@ -42,6 +43,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import NotificationSettings from "../components/NotificationSettings";
 import Motive from "../components/Motive";
 import ProjectAnalyzer from "../utils/ProjectAnalyzer";
+import LanguageSettings from "../components/LanguageSettings";
 
 const { width, height } = Dimensions.get("window");
 
@@ -53,6 +55,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const { recoverData, createManualBackup, getDataStatus } = useDataRecovery();
   const { handleDataRecovery, handleCreateBackup, handleCheckDataStatus } = useDataRecoveryOperations();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   
   // Performance monitoring (only in development) - temporarily disabled
   // usePerformanceMonitor('MainScreen');
@@ -62,6 +65,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [addVisible, setAddVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [dataRecoveryMenuVisible, setDataRecoveryMenuVisible] = useState(false);
+  const [languageSettingsVisible, setLanguageSettingsVisible] = useState(false);
   const [mainMenuVisible, setMainMenuVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
@@ -107,6 +111,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Data recovery menu handlers
   const openDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(true), []);
   const closeDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(false), []);
+  
+  // Language settings handlers
+  const openLanguageSettings = useCallback(() => setLanguageSettingsVisible(true), []);
+  const closeLanguageSettings = useCallback(() => setLanguageSettingsVisible(false), []);
 
   const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
 
@@ -309,18 +317,12 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   useEffect(() => {
     const checkDailyAnalysis = async () => {
       try {
-        // Use static method with force show for testing
-        // TODO: Remove forceShow: true in production
-        const analysis = await ProjectAnalyzer.getDailyAnalysis(activeTasks, completedTasks, true);
-        
-        console.log('Daily analysis result:', analysis); // Debug log
+        // Use static method - production ready
+        const analysis = await ProjectAnalyzer.getDailyAnalysis(activeTasks, completedTasks, false);
         
         if (analysis.shouldShow && analysis.feedback) {
-          console.log('Showing daily analysis:', analysis.feedback); // Debug log
           setDailyAnalysis(analysis.feedback);
           setDailyAnalysisVisible(true);
-        } else {
-          console.log('Daily analysis not shown, reason:', analysis.reason); // Debug log
         }
       } catch (error) {
         console.error('Daily analysis error:', error);
@@ -329,12 +331,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
     // Check daily analysis when component mounts or when tasks change
     if (activeTasks && activeTasks.length > 0) {
-      console.log('Checking daily analysis for', activeTasks.length, 'active tasks'); // Debug log
       checkDailyAnalysis();
-    } else {
-      console.log('No active tasks, skipping daily analysis'); // Debug log
     }
   }, [activeTasks, completedTasks, refreshKey]);
+
 
   // Daily analysis close handler
   const handleDailyAnalysisClose = useCallback(() => {
@@ -518,8 +518,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               ListEmptyComponent={
                 <View style={styles.emptyStateContainer}>
                   <Text style={styles.emptyStateIcon}>📋</Text>
-                  <Text style={styles.emptyStateTitle}>No Active Projects</Text>
-                  <Text style={styles.emptyStateSubtitle}>Start your journey by creating your first project</Text>
+                  <Text style={styles.emptyStateTitle}>{t('noActiveProjects')}</Text>
+                  <Text style={styles.emptyStateSubtitle}>{t('startYourJourney')}</Text>
                 </View>
               }
               showsVerticalScrollIndicator={false}
@@ -558,7 +558,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Add New Project</Text>
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('addProject')}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -575,7 +575,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Completed Projects</Text>
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('completedProjects')}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -592,7 +592,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="heart-outline" size={20} color="#FF6B6B" />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Emotional Journal</Text>
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('journal')}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -613,7 +613,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 <View style={styles.menuItemContent}>
                   <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
                   <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
-                    Notification Settings
+                    {t('notifications')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -632,9 +632,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="settings-outline" size={20} color={theme.colors.secondary} />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Settings & Data</Text>
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('settings')} & {t('data')}</Text>
                 </View>
               </TouchableOpacity>
+
 
             </AnimatedReanimated.View>
           </View>
@@ -696,8 +697,16 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           const result = await handleCreateBackup();
           alert(result.message);
         }}
-        onViewCompleted={() => {
-          navigation.navigate('CompletedProjects');
+        onLanguageSettings={openLanguageSettings}
+      />
+
+      {/* Language Settings Modal */}
+      <LanguageSettings
+        visible={languageSettingsVisible}
+        onClose={closeLanguageSettings}
+        onLanguageChange={(languageCode) => {
+          console.log('Language changed to:', languageCode);
+          // Language change is handled by LanguageContext
         }}
       />
 

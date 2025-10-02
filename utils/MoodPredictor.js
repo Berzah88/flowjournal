@@ -99,14 +99,14 @@ export const EXTENDED_MOODS = [
   {
     key: "anxious",
     label: "Anxious", 
-    icon: "psychology",
+    icon: "warning",
     color: "#FFF3E0",
     category: "negative"
   },
   {
     key: "overwhelmed",
     label: "Overwhelmed",
-    icon: "warning",
+    icon: "psychology-alt",
     color: "#FFEBEE",
     category: "negative"
   },
@@ -162,7 +162,7 @@ export const EXTENDED_MOODS = [
   {
     key: "stressed",
     label: "Stressed",
-    icon: "psychology",
+    icon: "psychology-alt",
     color: "#FFEBEE",
     category: "negative"
   },
@@ -176,7 +176,7 @@ export const EXTENDED_MOODS = [
   {
     key: "disappointed",
     label: "Disappointed",
-    icon: "sentiment-dissatisfied",
+    icon: "sentiment-very-dissatisfied",
     color: "#FFCDD2",
     category: "negative"
   },
@@ -218,14 +218,14 @@ export const EXTENDED_MOODS = [
   {
     key: "content",
     label: "Content",
-    icon: "sentiment-satisfied",
+    icon: "sentiment-very-satisfied",
     color: "#E8F5E8",
     category: "positive"
   },
   {
     key: "worried",
     label: "Worried",
-    icon: "psychology",
+    icon: "help-outline",
     color: "#FFEBEE",
     category: "negative"
   }
@@ -1686,8 +1686,19 @@ export const getSmartMoodSuggestion = (sentiment, currentMood, userHistory = [],
     }
     }
   
+  // Final deduplication - Remove any remaining duplicates
+  const finalSuggestions = [];
+  const seenMoods = new Set();
+  
+  suggestions.forEach(suggestion => {
+    if (!seenMoods.has(suggestion.mood)) {
+      finalSuggestions.push(suggestion);
+      seenMoods.add(suggestion.mood);
+    }
+  });
+
   // Add confidence indicator to suggestions
-  return suggestions.map(suggestion => ({
+  return finalSuggestions.map(suggestion => ({
     ...suggestion,
     confidence: sentiment.confidence,
     sentimentScore: sentiment.score
@@ -1838,6 +1849,10 @@ export const getValidIconName = (name) => {
     "celebration": "celebration",
     "spa": "spa",
     "bedtime": "bedtime",
+    "psychology-alt": "psychology",
+    "help-outline": "help",
+    "sentiment-very-satisfied": "sentiment-satisfied",
+    "sentiment-very-dissatisfied": "sentiment-dissatisfied",
   };
   return fallback[name] ? fallback[name] : name;
 };

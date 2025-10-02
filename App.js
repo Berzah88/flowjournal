@@ -13,6 +13,7 @@ import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
 import EmotionalJournalScreen from './screens/EmotionalJournalScreen';
 import { TaskProvider } from './context/TaskContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { useHasAnyTasks, useTaskLoading } from './hooks/useTaskContext';
 import { useTheme } from './context/ThemeContext';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -119,9 +120,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <ThemeProvider>
-          <ThemedApp />
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            <ThemedApp />
+          </ThemeProvider>
+        </LanguageProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>
   );

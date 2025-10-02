@@ -15,12 +15,14 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { MODAL_SIZES, SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const { height } = Dimensions.get("window");
 const modalHeight = height * 0.90;
 
 export default function EditModal({ visible, onClose, project, onSave }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   
   const [title, setTitle] = useState(project?.title || "");
   const [startDate, setStartDate] = useState(
@@ -166,7 +168,7 @@ export default function EditModal({ visible, onClose, project, onSave }) {
                   color: theme.name === 'dark' ? '#FFFFFF' : '#333',
                 }
               ]}
-              placeholder="Project Title"
+              placeholder={t('projectTitle')}
               placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
               value={title}
               onChangeText={setTitle}
@@ -223,7 +225,7 @@ export default function EditModal({ visible, onClose, project, onSave }) {
                 ]}
                 onPress={handleSave}
               >
-                <Text style={[styles.btnText, { color: "#fff" }]}>Save</Text>
+                <Text style={[styles.btnText, { color: "#fff" }]}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

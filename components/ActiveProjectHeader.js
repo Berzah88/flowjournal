@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 // Format date range as "23 Mar 2025 - 24 Mar 2025"
 const formatDateRange = (startDate, endDate) => {
@@ -30,6 +31,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   panGesture
 }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const start = currentTask?.startDate ? new Date(currentTask.startDate) : null;
   const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
 
@@ -56,7 +58,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
               { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
               isCompleted && styles.completedText
             ]}>
-              {currentTask?.title || "Untitled"}
+              {currentTask?.title || t('untitled')}
             </Text>
             {start && end && (
               <Text style={[

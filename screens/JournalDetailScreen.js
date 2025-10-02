@@ -15,6 +15,7 @@ import * as Location from "expo-location";
 import Journal from "./Journal";
 import { useActiveTasks } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -23,6 +24,7 @@ const JournalDetailScreen = ({
   navigation
 }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const { selectedMediaData: initialMediaData } = route.params;
   const activeTasks = useActiveTasks();
   const [locationText, setLocationText] = useState(null);
@@ -66,7 +68,7 @@ const JournalDetailScreen = ({
               const city = location.city || location.subregion || location.region;
               const district = location.district || location.subLocality;
               
-              let locationText = "Location";
+              let locationText = t('location');
               if (city && district && city !== district) {
                 locationText = `${district}, ${city}`;
               } else if (city) {

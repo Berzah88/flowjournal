@@ -4,6 +4,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import PropTypes from "prop-types";
 import { FONTS, COLORS } from '../constants';
+import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const CompletedProjectCard = memo(({ 
   title, 
@@ -14,6 +16,8 @@ const CompletedProjectCard = memo(({
   style,
   compact = false // Grid view için compact mode
 }) => {
+  const { theme } = useTheme();
+  const { t } = useLanguage();
   // Milestone istatistikleri
   const milestoneStats = useMemo(() => {
     const total = milestones.length;
@@ -68,7 +72,7 @@ const CompletedProjectCard = memo(({
             </Text>
             <View style={styles.completedBadge}>
               <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-              <Text style={styles.completedText}>Tamamlandı</Text>
+              <Text style={styles.completedText}>{t('completed')}</Text>
             </View>
           </View>
         </View>

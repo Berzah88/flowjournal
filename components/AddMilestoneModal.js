@@ -23,11 +23,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { FONTS, COLORS, ANIMATION_DURATIONS, SWIPE_THRESHOLDS } from "../constants";
 import { useSpringAnimation } from "../hooks/useAnimations";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [title, setTitle] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -304,7 +306,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 ]}
                 value={title}
                 onChangeText={setTitle}
-                placeholder="Enter milestone title..."
+                placeholder={t('enterMilestoneTitle')}
                 placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
                 returnKeyType="done"
                 onSubmitEditing={handleSave}
@@ -373,7 +375,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
 
             {/* Day Headers */}
             <View style={styles.dayHeaders}>
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              {t('dayAbbreviations').map(day => (
                 <Text key={day} style={[styles.dayHeaderText, { color: theme.name === 'dark' ? '#8E8E93' : '#666' }]}>{day}</Text>
               ))}
             </View>

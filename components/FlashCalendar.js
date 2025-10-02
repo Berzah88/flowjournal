@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const toDateKey = (d) =>
   d ? (d instanceof Date ? d.toISOString().split("T")[0] : new Date(d).toISOString().split("T")[0]) : null;
@@ -24,6 +25,7 @@ export default function FlashCalendar({
   minDate, // Date (optional)
 }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [localStart, setLocalStart] = useState(initialStart ? new Date(initialStart) : null);
   const [localEnd, setLocalEnd] = useState(initialEnd ? new Date(initialEnd) : null);
 
@@ -112,7 +114,7 @@ export default function FlashCalendar({
           styles.card,
           { backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF' }
         ]}>
-          <Text style={[styles.heading, { color: theme.text }]}>Select date range</Text>
+          <Text style={[styles.heading, { color: theme.name === 'dark' ? '#FF6B6B' : theme.colors.text }]}>{t('selectDateRange')}</Text>
 
           <Calendar
             onDayPress={handleDayPress}
@@ -142,9 +144,9 @@ export default function FlashCalendar({
           {/* Seçim durumu göstergesi */}
           <View style={styles.statusContainer}>
             <Text style={[styles.statusText, { color: theme.name === 'dark' ? '#8E8E93' : '#666' }]}>
-              {!localStart ? "Başlangıç tarihi seçin" : 
-               !localEnd ? "Bitiş tarihi seçin" : 
-               "Tarih aralığı seçildi"}
+              {!localStart ? t('selectStartDate') : 
+               !localEnd ? t('selectEndDate') : 
+               t('dateRangeSelected')}
             </Text>
             {localStart && (
               <TouchableOpacity 
@@ -157,7 +159,7 @@ export default function FlashCalendar({
                   setLocalEnd(null);
                 }}
               >
-                <Text style={[styles.clearText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>Temizle</Text>
+                <Text style={[styles.clearText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>{t('clear')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -176,7 +178,7 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>1 Hafta</Text>
+                <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>1 {t('week')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -192,11 +194,14 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>2 Hafta</Text>
+                <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>2 {t('weeks')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.presetBtn}
+              style={[
+                styles.presetBtn,
+                { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(108, 99, 255, 0.1)' }
+              ]}
               onPress={() => {
                 const today = new Date();
                 const end = new Date();
@@ -205,11 +210,14 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={styles.presetText}>1 Ay</Text>
+                <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>1 {t('month')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.presetBtn}
+              style={[
+                styles.presetBtn,
+                { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(108, 99, 255, 0.1)' }
+              ]}
               onPress={() => {
                 const today = new Date();
                 const end = new Date();
@@ -218,17 +226,17 @@ export default function FlashCalendar({
                 setLocalEnd(end);
               }}
             >
-              <Text style={styles.presetText}>3 Ay</Text>
+                <Text style={[styles.presetText, { color: theme.name === 'dark' ? '#FF6B6B' : '#6C63FF' }]}>3 {t('months')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.actionsRow}>
             <TouchableOpacity style={styles.actionLeft} onPress={onCancel}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t('cancel')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionRight} onPress={handleConfirm}>
-              <Text style={styles.confirmText}>Confirm</Text>
+              <Text style={styles.confirmText}>{t('confirm')}</Text>
             </TouchableOpacity>
           </View>
         </View>

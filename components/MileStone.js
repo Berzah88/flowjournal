@@ -7,6 +7,7 @@ import PropTypes from "prop-types";
 import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
 
@@ -24,6 +25,7 @@ function MileStone({
   navigation,
 }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
   // usePerformanceMonitor('MileStone');
   
@@ -90,16 +92,16 @@ function MileStone({
 
   const handleDelete = useCallback(() => {
     Alert.alert(
-      "Are you sure? Deleted Milestone cannot be recovered",
+      t('deleteMilestoneConfirm'),
       "",
       [
         {
-          text: "Cancel",
+          text: t('cancel'),
           style: "cancel",
           onPress: hideDeleteOptionWithAnimation,
         },
         {
-          text: "Delete",
+          text: t('delete'),
           style: "destructive",
           onPress: () => {
             hideDeleteOptionWithAnimation();

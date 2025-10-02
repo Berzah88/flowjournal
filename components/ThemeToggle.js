@@ -2,17 +2,19 @@ import React from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { FONTS, SPACING, BORDER_RADIUS } from '../constants';
 
 export default function ThemeToggle({ style }) {
   const { theme, toggleTheme, isDark } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <TouchableOpacity
       style={[styles.menuItem, style]}
       onPress={toggleTheme}
       accessible={true}
-      accessibilityLabel={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      accessibilityLabel={isDark ? t('switchToLightTheme') : t('switchToDarkTheme')}
       accessibilityRole="button"
     >
       <View style={styles.menuItemContent}>
@@ -22,7 +24,7 @@ export default function ThemeToggle({ style }) {
           color={theme.colors.primary} 
         />
         <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
-          {isDark ? 'Light Mode' : 'Dark Mode'}
+          {isDark ? t('lightMode') : t('darkMode')}
         </Text>
       </View>
     </TouchableOpacity>

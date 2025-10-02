@@ -30,6 +30,7 @@ import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import { 
   MOODS, 
   EXTENDED_MOODS,
@@ -96,6 +97,7 @@ export default function Journal({
 }) {
 
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const { addJournalEntry, updateJournalEntry } = useTaskActions();
 
   // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler
@@ -685,10 +687,10 @@ export default function Journal({
   };
 
   const buttons = [
-    { label: "Location", icon: "map-outline" },
-    { label: "Photo", icon: "image-outline" },
+    { label: t('addLocation'), icon: "map-outline" },
+    { label: t('addPhoto'), icon: "image-outline" },
     { label: "Mood", icon: "happy-outline" },
-    { label: "Save", icon: "save-outline" },
+    { label: t('save'), icon: "save-outline" },
   ];
 
   if (!visible) return null;
@@ -808,22 +810,27 @@ export default function Journal({
                           borderColor: theme.name === 'dark' 
                             ? 'rgba(255, 255, 255, 0.3)' 
                             : 'rgba(0, 0, 0, 0.1)',
-                          borderWidth: 1
+                          borderWidth: 1,
+                          zIndex: 15,
+                          elevation: 15,
                         }
                       ]}
-                      activeOpacity={0.7}
+                      activeOpacity={0.6}
                       onPress={() => {
+                        console.log('Mood suggestion pressed:', suggestedMood?.label);
                         if (suggestedMood) {
                           setSelectedMood(suggestedMood);
                           setShowSuggestions(false);
                           setAutoMoodApplied(true);
                         }
                       }}
-                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      delayPressIn={0}
+                      delayPressOut={0}
                     >
                       <MaterialIcons 
                         name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
-                        size={18} 
+                        size={16} 
                         color={theme.name === 'dark' ? '#000000' : '#000'} 
                       />
                       <Text style={[
@@ -864,7 +871,7 @@ export default function Journal({
                   color: theme.name === 'dark' ? theme.colors.gray[400] : '#1d1d1f',
                 }
               ]}
-              placeholder={(milestone?.title ? milestone.title + ": " : "") + "Write about it..."}
+              placeholder={(milestone?.title ? milestone.title + ": " : "") + t('writeYourThoughts')}
               multiline
               underlineColorAndroid="transparent"
               placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
@@ -989,7 +996,7 @@ export default function Journal({
                 <Text style={[
                   styles.buttonText,
                   { color: theme.name === 'dark' ? theme.colors.gray[400] : '#1d1d1f' }
-                ]}>{btn.label === "Save" ? "Save" : btn.label}</Text>
+                ]}>{btn.label === t('save') ? t('save') : btn.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1110,8 +1117,9 @@ const styles = StyleSheet.create({
   },
   previewWrapper: {
     paddingHorizontal: 16,
-    marginTop: -4, // 0'dan -4'e düşürdüm - daha yukarıya aldım
+    marginTop: 4, // Pozitif değer yaparak mood önerilerinden uzaklaştırdım
     height: PREVIEW_HEIGHT,
+    zIndex: 1,
   },
   asymmetricGrid: {
     flexDirection: "row",
@@ -1375,12 +1383,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     minHeight: 40,
+    zIndex: 10,
+    elevation: 10,
   },
   moodSuggestionsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     flex: 1,
     gap: 6,
+    zIndex: 10,
+    elevation: 10,
   },
   mediaCounterContainer: {
     alignItems: "flex-end",
@@ -1405,23 +1417,23 @@ const styles = StyleSheet.create({
   moodTag: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 6,
-    marginBottom: 4,
-    minHeight: 36,
-    minWidth: 60,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 5,
+    marginBottom: 3,
+    minHeight: 32,
+    minWidth: 55,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   moodTagText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Poppins_500Medium",
     marginLeft: 4,
     letterSpacing: -0.1,

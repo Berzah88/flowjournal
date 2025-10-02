@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../constants";
+import { useLanguage } from "../context/LanguageContext";
 import AddProjectScreen from "./AddProjectScreen";
 import ActiveProject from "./ActiveProject";
 import Journal from "./Journal";
@@ -21,6 +22,7 @@ import MainScreen from "./MainScreen";
 const { width, height } = Dimensions.get("window");
 
 export default function TutorialScreen({ navigation }) {
+  const { t } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const [currentStep, setCurrentStep] = useState(0);
@@ -28,29 +30,29 @@ export default function TutorialScreen({ navigation }) {
   const tutorialSteps = [
     {
       id: 1,
-      title: "Create Project",
-      description: "Add a new project and set start-end dates",
+      title: t('createProject'),
+      description: t('createProjectDescription'),
       color: "#10B981",
       screen: "AddProject"
     },
     {
       id: 2,
-      title: "Add Milestones",
-      description: "Add step-by-step milestones to your project and track your progress",
+      title: t('addMilestones'),
+      description: t('addMilestonesDescription'),
       color: "#3B82F6",
       screen: "ActiveProject"
     },
     {
       id: 3,
-      title: "Emotion Journal",
-      description: "Write journals and record your emotions. Transform your experiences throughout your projects into valuable memories",
+      title: t('emotionJournal'),
+      description: t('emotionJournalDescription'),
       color: "#F59E0B",
       screen: "Journal"
     },
     {
       id: 4,
-      title: "View Progress",
-      description: "Analyze your project progress and emotional journey",
+      title: t('viewProgress'),
+      description: t('viewProgressDescription'),
       color: "#8B5CF6",
       screen: "Main"
     }
@@ -185,7 +187,7 @@ export default function TutorialScreen({ navigation }) {
             style={styles.skipButton}
             onPress={handleSkip}
           >
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={styles.skipText}>{t('skip')}</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -268,7 +270,7 @@ export default function TutorialScreen({ navigation }) {
             >
               <View style={styles.buttonGradient}>
                 <Text style={styles.buttonText}>
-                  {currentStep === tutorialSteps.length - 1 ? "Get Started" : "Continue"}
+                  {currentStep === tutorialSteps.length - 1 ? t('getStarted') : t('continue')}
                 </Text>
                 <Ionicons 
                   name={currentStep === tutorialSteps.length - 1 ? "arrow-forward" : "chevron-forward"} 

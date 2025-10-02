@@ -7,6 +7,7 @@ import PropTypes from "prop-types";
 import * as Location from "expo-location";
 import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/MoodPredictor";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const { width } = Dimensions.get("window");
 const PREVIEW_HEIGHT = 120; // Medya alanı için 120px yükseklik
@@ -18,7 +19,8 @@ const MOODS = MOODS_FROM_PREDICTOR;
 // Location tag component
 const LocationTag = memo(({ locationData, getLocationText }) => {
   const { theme } = useTheme();
-  const [locationText, setLocationText] = useState("Location");
+  const { t } = useLanguage();
+  const [locationText, setLocationText] = useState(t('location'));
 
   React.useEffect(() => {
     if (locationData) {
@@ -51,14 +53,15 @@ const LocationTag = memo(({ locationData, getLocationText }) => {
 
 const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, taskId, milestoneId, isCompleted }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [locationTexts, setLocationTexts] = useState({});
 
   // Location koordinatlarını şehir/ilçe formatına çevir
   const getLocationText = useCallback(async (locationData) => {
-    if (!locationData) return "Location";
+    if (!locationData) return t('location');
     
     const coords = locationData.coords || locationData;
-    if (!coords || !coords.latitude || !coords.longitude) return "Location";
+    if (!coords || !coords.latitude || !coords.longitude) return t('location');
     
     const key = `${coords.latitude}_${coords.longitude}`;
     

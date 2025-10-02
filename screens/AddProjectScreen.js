@@ -16,6 +16,7 @@ import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { useSpringAnimation } from "../hooks/useAnimations";
 import FlashCalendar from "../components/FlashCalendar";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -27,6 +28,7 @@ import Animated, {
 
 export default function AddProjectScreen({ visible, onClose }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const { addTask } = useTaskActions();
   
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
@@ -123,7 +125,7 @@ export default function AddProjectScreen({ visible, onClose }) {
                     }
                   ]}
                   value={newTitle}
-                  placeholder="Enter project title"
+                  placeholder={t('enterProjectTitle')}
                   placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
                   onChangeText={setNewTitle}
                   onSubmitEditing={() => {
@@ -149,7 +151,7 @@ export default function AddProjectScreen({ visible, onClose }) {
                   disabled={!newTitle.trim()}
                   onPress={() => setCalendarVisible(true)}
                 >
-                  <Text style={styles.dateButtonText}>Add Date</Text>
+                  <Text style={styles.dateButtonText}>{t('addDate')}</Text>
                 </TouchableOpacity>
               </Animated.View>
             </TouchableWithoutFeedback>

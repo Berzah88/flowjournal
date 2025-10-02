@@ -7,6 +7,7 @@ import PropTypes from "prop-types";
 import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -84,6 +85,7 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
   
   // Theme context
   const { theme } = useTheme();
+  const { t } = useLanguage();
   
   // Memoize expensive calculations
   const { totalDays, remainingDays, progress } = useMemo(() => {
@@ -325,7 +327,7 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
                       completed ? styles.completedMilestoneText : {},
                       ms.completed ? { opacity: 0.9 } : {}
                     ]}>
-                      {ms.title || "Untitled"}
+                      {ms.title || t('untitled')}
                     </Text>
                     <MoodTags milestone={ms} theme={theme} />
                   </View>

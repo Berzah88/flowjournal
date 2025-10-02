@@ -16,11 +16,13 @@ import { useActiveTasks, useCompletedTasks } from '../hooks/useTaskContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS, ELEVATION } from '../constants';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
 const EmotionalJournalScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
 
@@ -1191,7 +1193,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
             <Text style={[
               styles.headerTitle,
               { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-            ]}>Emotional Journal</Text>
+            ]}>{t('journal')}</Text>
             <View style={styles.placeholder} />
           </View>
           
@@ -1204,12 +1206,12 @@ const EmotionalJournalScreen = ({ navigation }) => {
             <Text style={[
               styles.emptyTitle,
               { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-            ]}>No Mood Data Yet</Text>
+            ]}>{t('noMoodDataYet')}</Text>
             <Text style={[
               styles.emptyText,
               { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
             ]}>
-              Start writing journal entries with mood tags to see your emotional journey here.
+              {t('startWritingJournal')}
             </Text>
           </View>
         </LinearGradient>
@@ -1249,7 +1251,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
           <Text style={[
             styles.headerTitle,
             { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-          ]}>Emotional Journal</Text>
+          ]}>{t('journal')}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -1283,7 +1285,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <Text style={[
                   styles.overviewLabel,
                   { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
-                ]}>Entries</Text>
+                ]}>{t('entries')}</Text>
               </View>
 
               {/* Last 7 Days */}
@@ -1298,7 +1300,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <Text style={[
                   styles.overviewLabel,
                   { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
-                ]}>This Week</Text>
+                ]}>{t('thisWeek')}</Text>
               </View>
 
               {/* Last 30 Days */}
@@ -1313,7 +1315,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <Text style={[
                   styles.overviewLabel,
                   { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
-                ]}>This Month</Text>
+                ]}>{t('thisMonth')}</Text>
               </View>
 
               {/* Words Written */}
@@ -1328,7 +1330,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 <Text style={[
                   styles.overviewLabel,
                   { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
-                ]}>Words</Text>
+                ]}>{t('words')}</Text>
               </View>
             </View>
           </View>

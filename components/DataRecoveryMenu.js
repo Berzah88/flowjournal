@@ -3,6 +3,7 @@ import React, { useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,9 +16,10 @@ export default function DataRecoveryMenu({
   onClose, 
   onRecoverData, 
   onCreateBackup,
-  onViewCompleted 
+  onLanguageSettings 
 }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   // Smooth animasyon değerleri
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -63,10 +65,10 @@ export default function DataRecoveryMenu({
     onClose?.();
   }, [onCreateBackup, onClose]);
 
-  const handleViewCompleted = useCallback(() => {
-    onViewCompleted?.();
+  const handleLanguageSettings = useCallback(() => {
+    onLanguageSettings?.();
     onClose?.();
-  }, [onViewCompleted, onClose]);
+  }, [onLanguageSettings, onClose]);
 
   if (!visible) return null;
 
@@ -85,7 +87,7 @@ export default function DataRecoveryMenu({
           },
           animatedContainerStyle
         ]}>
-          {/* View Completed Projects */}
+          {/* Language Settings */}
           <TouchableOpacity
             style={[
               styles.item,
@@ -93,21 +95,21 @@ export default function DataRecoveryMenu({
                 backgroundColor: 'transparent',
               }
             ]}
-            onPress={handleViewCompleted}
+            onPress={handleLanguageSettings}
             accessible={true}
-            accessibilityLabel="View completed projects"
+            accessibilityLabel="Language settings"
             accessibilityRole="button"
           >
             <View style={styles.itemContent}>
               <Ionicons 
-                name="checkmark-circle-outline" 
+                name="language-outline" 
                 size={20} 
                 color={theme.name === 'dark' ? '#FF6B6B' : '#FFA726'} 
               />
               <Text style={[
                 styles.itemText,
                 { color: theme.name === 'dark' ? '#FFFFFF' : '#2c3e50' }
-              ]}>Completed Projects</Text>
+              ]}>{t('language')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -133,7 +135,7 @@ export default function DataRecoveryMenu({
               <Text style={[
                 styles.itemText,
                 { color: theme.name === 'dark' ? '#34C759' : '#4ECDC4' }
-              ]}>Create Backup</Text>
+              ]}>{t('createBackup')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -159,7 +161,7 @@ export default function DataRecoveryMenu({
               <Text style={[
                 styles.itemText,
                 { color: theme.name === 'dark' ? '#FF6B6B' : '#FF6B6B' }
-              ]}>Recover Data</Text>
+              ]}>{t('recoverData')}</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>

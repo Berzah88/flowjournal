@@ -16,6 +16,7 @@ import { useCompletedTasks, useTaskActions } from "../hooks/useTaskContext";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import Card from "../components/Card";
 import CompletedActiveProject from "./CompletedActiveProject";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -24,6 +25,7 @@ const { width } = Dimensions.get("window");
 
 const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigation }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const completedTasks = useCompletedTasks();
   const { deleteTask, completeTask, addMilestone, updateMilestone, completeMilestone, setActiveMilestone, deleteMilestone, updateTask } = useTaskActions();
   
@@ -102,7 +104,7 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
         <Text style={[
           styles.headerTitle,
           { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-        ]}>Completed Projects</Text>
+        ]}>{t('completedProjects')}</Text>
         
         <View style={styles.headerSpacer} />
       </View>
@@ -228,7 +230,7 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
             <Text style={[
               styles.emptyTitle,
               { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-            ]}>No Completed Projects</Text>
+            ]}>{t('noCompletedProjects')}</Text>
             <Text style={[
               styles.emptySubtitle,
               { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
