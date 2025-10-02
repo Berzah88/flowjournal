@@ -385,13 +385,13 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     <AnimatedReanimated.View style={[
       styles.modernContainer, 
       {
-        backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
+        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
       },
       isCompleted && {
         backgroundColor: theme.name === 'dark' ? '#1A1A1A' : '#1A1A1A',
       }, 
       activeTab === 1 && {
-        backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
+        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
       },
       animatedStyle
     ]}>

@@ -243,12 +243,12 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       style={[
         styles.dayCard,
         {
-          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
-          borderColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F0F0',
+          backgroundColor: theme.name === 'dark' ? '#2A2A2E' : '#FFFFFF',
+          borderColor: theme.name === 'dark' ? '#3A3A3E' : '#F0F0F0',
           shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
-          shadowRadius: theme.name === 'dark' ? 8 : 3,
-          elevation: theme.name === 'dark' ? 4 : 1,
+          shadowOpacity: theme.name === 'dark' ? 0.2 : 0.05,
+          shadowRadius: theme.name === 'dark' ? 6 : 3,
+          elevation: theme.name === 'dark' ? 3 : 1,
         }
       ]}
       onPress={() => {
@@ -276,7 +276,7 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       <View style={[
         styles.dayHeader,
         {
-          borderBottomColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F0F0',
+          borderBottomColor: theme.name === 'dark' ? '#3A3A3E' : '#F0F0F0',
         }
       ]}>
         <View style={styles.dayHeaderContent}>
@@ -288,19 +288,24 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
             <View style={[
               styles.dayMoodTag, 
               { 
-                backgroundColor: dayMoodObj.color || (theme.name === 'dark' ? '#2C2C2E' : '#fff'), 
+                backgroundColor: theme.name === 'dark' 
+                  ? (dayMoodObj.color || '#2C2C2E') + 'CC' // Add transparency for dark mode
+                  : dayMoodObj.color || '#fff', 
                 marginLeft: 4,
-                borderColor: theme.name === 'dark' ? '#3A3A3C' : 'rgba(0,0,0,0.1)',
+                borderColor: theme.name === 'dark' 
+                  ? 'rgba(255, 255, 255, 0.2)' 
+                  : 'rgba(0,0,0,0.1)',
+                borderWidth: 1,
               }
             ]}>
               <MaterialIcons 
                 name={getValidIconName(dayMoodObj.icon)} 
                 size={16} 
-                color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+                color={theme.name === 'dark' ? '#000000' : '#333'} 
               />
               <Text style={[
                 styles.dayMoodLabel,
-                { color: theme.name === 'dark' ? '#FFFFFF' : '#555' }
+                { color: theme.name === 'dark' ? '#000000' : '#555' }
               ]}>{dayMoodObj.label}</Text>
             </View>
           )}
@@ -330,7 +335,7 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
             styles.firstTextContent,
             {
               color: theme.name === 'dark' ? '#FFFFFF' : '#333',
-              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#F8F9FA',
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#F8F9FA',
             }
           ]}>{truncateText(firstTextEntry.text, 120)}</Text>
         </View>
@@ -343,8 +348,8 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
             <View key={index} style={[
               styles.textTag,
               {
-                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E9ECEF',
-                borderColor: theme.name === 'dark' ? '#3A3A3C' : '#DEE2E6',
+                backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.12)' : '#E9ECEF',
+                borderColor: theme.name === 'dark' ? '#3A3A3E' : '#DEE2E6',
               }
             ]}>
               <Text style={[

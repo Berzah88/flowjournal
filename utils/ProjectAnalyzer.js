@@ -3,17 +3,66 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class ProjectAnalyzer {
   constructor() {
-    this.confidenceThreshold = 0.6; // Minimum confidence to show feedback
+    this.confidenceThreshold = 0.4; // Minimum confidence to show feedback
+    this.dailyDisplayKey = 'project_analyzer_daily_display';
+  }
+
+  /**
+   * Check if analysis should be shown today (once per day)
+   * @returns {boolean} Whether analysis should be displayed
+   */
+  async shouldShowToday() {
+    try {
+      const today = new Date().toDateString(); // YYYY-MM-DD format
+      const lastDisplayDate = await AsyncStorage.getItem(this.dailyDisplayKey);
+      
+      if (lastDisplayDate !== today) {
+        // First time today or new day - should show
+        await AsyncStorage.setItem(this.dailyDisplayKey, today);
+        return true;
+      }
+      
+      return false; // Already shown today
+    } catch (error) {
+      console.warn('Failed to check daily display status:', error);
+      return true; // Default to showing if error
+    }
+  }
+
+  /**
+   * Mark analysis as shown for today
+   */
+  async markAsShownToday() {
+    try {
+      const today = new Date().toDateString();
+      await AsyncStorage.setItem(this.dailyDisplayKey, today);
+    } catch (error) {
+      console.warn('Failed to mark analysis as shown:', error);
+    }
   }
 
   /**
    * Analyze all projects and generate comprehensive feedback
    * @param {Array} activeProjects - Active projects with milestones and journal entries
    * @param {Array} completedProjects - Recently completed projects
+   * @param {boolean} forceShow - Force display even if already shown today
    * @returns {Object} Analysis result with feedback and confidence
    */
-  async analyzeProjects(activeProjects = [], completedProjects = []) {
+  async analyzeProjects(activeProjects = [], completedProjects = [], forceShow = false) {
     try {
+      // Check if we should show today (unless forced)
+      if (!forceShow) {
+        const shouldShow = await this.shouldShowToday();
+        if (!shouldShow) {
+          return {
+            shouldShow: false,
+            reason: 'already_shown_today',
+            confidence: 0,
+            feedback: null
+          };
+        }
+      }
+
       // Basic validation
       if (!activeProjects || activeProjects.length === 0) {
         return {
@@ -75,8 +124,15 @@ class ProjectAnalyzer {
         analysis.feedback = this.generateFeedback(analysis);
         analysis.shouldShow = true;
       } else {
-        analysis.shouldShow = false;
-        analysis.reason = 'low_confidence';
+        // Even with low confidence, provide basic feedback for single projects
+        if (analysis.projectCount === 1 && analysis.totalMilestones > 0) {
+          analysis.feedback = this.generateBasicFeedback(analysis);
+          analysis.shouldShow = true;
+          analysis.confidence = 0.4; // Boost confidence for basic feedback
+        } else {
+          analysis.shouldShow = false;
+          analysis.reason = 'low_confidence';
+        }
       }
 
       return analysis;
@@ -225,34 +281,102 @@ class ProjectAnalyzer {
   calculateConfidence(analysis) {
     let confidence = 0;
 
-    // Base confidence from project count
+    // Base confidence from project count (more generous)
     if (analysis.projectCount >= 2) {
-      confidence += 0.3; // Busy user = higher confidence
+      confidence += 0.4; // Busy user = higher confidence
     } else if (analysis.projectCount === 1) {
-      confidence += 0.2;
+      confidence += 0.3; // Even single project is valuable
     }
 
-    // Confidence from milestone data
+    // Confidence from milestone data (more generous)
     if (analysis.totalMilestones > 0) {
-      confidence += 0.2;
+      confidence += 0.3;
       if (analysis.totalMilestones >= 3) {
+        confidence += 0.1;
+      }
+      if (analysis.totalMilestones >= 5) {
         confidence += 0.1;
       }
     }
 
-    // Confidence from mood data
+    // Confidence from mood data (more generous)
     if (analysis.moodAnalysis.hasData) {
       confidence += 0.2;
       confidence += analysis.moodAnalysis.confidence * 0.2;
-    }
-
-    // Confidence from timeline data
-    if (analysis.timelineAnalysis.overdue.length > 0 || 
-        analysis.timelineAnalysis.endingSoon.length > 0) {
+    } else {
+      // Even without mood data, we can still provide general feedback
       confidence += 0.1;
     }
 
+    // Confidence from timeline data (more generous)
+    if (analysis.timelineAnalysis.overdue.length > 0) {
+      confidence += 0.2; // Overdue milestones are important
+    }
+    if (analysis.timelineAnalysis.endingSoon.length > 0) {
+      confidence += 0.1; // Ending soon milestones
+    }
+    if (analysis.timelineAnalysis.aheadOfSchedule.length > 0) {
+      confidence += 0.1; // Positive feedback opportunity
+    }
+
+    // Minimum confidence boost for having any data
+    if (analysis.projectCount > 0) {
+      confidence += 0.1;
+    }
+
+    console.log('Confidence calculation:', {
+      projectCount: analysis.projectCount,
+      totalMilestones: analysis.totalMilestones,
+      hasMoodData: analysis.moodAnalysis.hasData,
+      overdueCount: analysis.timelineAnalysis.overdue.length,
+      endingSoonCount: analysis.timelineAnalysis.endingSoon.length,
+      finalConfidence: Math.min(1, confidence)
+    });
+
     return Math.min(1, confidence);
+  }
+
+  /**
+   * Generate basic feedback for simple cases
+   */
+  generateBasicFeedback(analysis) {
+    const { projectCount, totalMilestones, completedMilestones } = analysis;
+    
+    const completionRate = totalMilestones > 0 ? (completedMilestones / totalMilestones) : 0;
+    
+    let title, message, color, priority;
+    
+    if (completionRate >= 0.8) {
+      title = "🎉 Harika İlerleme!";
+      message = `${completedMilestones}/${totalMilestones} milestone'ını tamamladınız. Devam edin!`;
+      color = "#4CAF50";
+      priority = "high";
+    } else if (completionRate >= 0.5) {
+      title = "📈 İyi Gidiyorsunuz";
+      message = `Projenizde ${completedMilestones}/${totalMilestones} milestone tamamlandı.`;
+      color = "#2196F3";
+      priority = "medium";
+    } else {
+      title = "🚀 Başlangıç Yapın";
+      message = `${totalMilestones} milestone'ınız var. İlk adımları atın!`;
+      color = "#FF9800";
+      priority = "medium";
+    }
+    
+    return {
+      type: 'basic_progress',
+      title,
+      message,
+      color,
+      priority,
+      analysis: {
+        projectCount,
+        totalMilestones,
+        completedMilestones,
+        completionRate,
+        confidence: 0.4
+      }
+    };
   }
 
   /**
@@ -568,6 +692,52 @@ class ProjectAnalyzer {
         confidence: analysis.confidence
       }
     };
+  }
+
+  /**
+   * Get daily analysis for main screen (once per day)
+   * @param {Array} activeProjects - Active projects
+   * @param {Array} completedProjects - Completed projects
+   * @returns {Object} Daily analysis result
+   */
+  async getDailyAnalysis(activeProjects = [], completedProjects = []) {
+    try {
+      const analysis = await this.analyzeProjects(activeProjects, completedProjects);
+      
+      // If analysis should be shown, mark as shown
+      if (analysis.shouldShow && analysis.feedback) {
+        await this.markAsShownToday();
+      }
+      
+      return analysis;
+    } catch (error) {
+      console.error('Daily analysis error:', error);
+      return {
+        shouldShow: false,
+        reason: 'analysis_error',
+        confidence: 0,
+        feedback: null
+      };
+    }
+  }
+
+  /**
+   * Static method to get daily analysis
+   * @param {Array} activeProjects - Active projects
+   * @param {Array} completedProjects - Completed projects
+   * @param {boolean} forceShow - Force show analysis (for testing)
+   * @returns {Object} Daily analysis result
+   */
+  static async getDailyAnalysis(activeProjects = [], completedProjects = [], forceShow = false) {
+    const analyzer = new ProjectAnalyzer();
+    
+    if (forceShow) {
+      // For testing - force show analysis
+      const analysis = await analyzer.analyzeProjects(activeProjects, completedProjects, true);
+      return analysis;
+    }
+    
+    return await analyzer.getDailyAnalysis(activeProjects, completedProjects);
   }
 }
 

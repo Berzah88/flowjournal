@@ -55,7 +55,13 @@ const MoodTags = memo(({ milestone, theme }) => {
             style={[
               styles.moodTag, 
               { 
-                backgroundColor,
+                backgroundColor: theme.name === 'dark' 
+                  ? backgroundColor + 'CC' // Add transparency for dark mode
+                  : backgroundColor,
+                borderColor: theme.name === 'dark' 
+                  ? 'rgba(255, 255, 255, 0.2)' 
+                  : 'rgba(0, 0, 0, 0.1)',
+                borderWidth: 1,
                 zIndex: index + 1 // Sağdaki (son eklenen) en yüksek zIndex
               }
             ]}
@@ -63,7 +69,7 @@ const MoodTags = memo(({ milestone, theme }) => {
             <MaterialIcons
               name={iconName}
               size={12}
-              color={theme.name === 'dark' ? '#FFFFFF' : '#333'}
+              color={theme.name === 'dark' ? '#000000' : '#333'}
             />
           </View>
         );
@@ -216,17 +222,38 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
 
       {/* Completed Stats Section */}
       {completed && (
-        <View style={styles.completedStatsSection}>
+        <View style={[
+          styles.completedStatsSection,
+          {
+            borderTopColor: theme.name === 'dark' 
+              ? 'rgba(255, 255, 255, 0.15)' 
+              : 'rgba(199, 199, 204, 0.3)',
+          }
+        ]}>
           <View style={styles.statRow}>
             <View style={styles.statItem}>
-              <Ionicons name="list" size={16} color={theme.colors.textTertiary} />
-              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
+              <Ionicons 
+                name="list" 
+                size={16} 
+                color={theme.name === 'dark' ? '#AEAEB2' : theme.colors.textTertiary} 
+              />
+              <Text style={[
+                styles.statText, 
+                { color: theme.name === 'dark' ? '#AEAEB2' : theme.colors.textSecondary }
+              ]}>
                 {activeMilestones.length} milestone
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="location" size={16} color={theme.colors.textTertiary} />
-              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
+              <Ionicons 
+                name="location" 
+                size={16} 
+                color={theme.name === 'dark' ? '#AEAEB2' : theme.colors.textTertiary} 
+              />
+              <Text style={[
+                styles.statText, 
+                { color: theme.name === 'dark' ? '#AEAEB2' : theme.colors.textSecondary }
+              ]}>
                 {activeMilestones.reduce((total, ms) => 
                   total + (ms.journalEntries?.filter(entry => entry.location).length || 0), 0
                 )} konum
@@ -235,14 +262,28 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
           </View>
           <View style={styles.statRow}>
             <View style={styles.statItem}>
-              <Ionicons name="journal" size={16} color={theme.colors.textTertiary} />
-              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
+              <Ionicons 
+                name="journal" 
+                size={16} 
+                color={theme.name === 'dark' ? '#AEAEB2' : theme.colors.textTertiary} 
+              />
+              <Text style={[
+                styles.statText, 
+                { color: theme.name === 'dark' ? '#AEAEB2' : theme.colors.textSecondary }
+              ]}>
                 {activeMilestones.reduce((total, ms) => total + (ms.journalEntries?.length || 0), 0)} günlük
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="image" size={16} color={theme.colors.textTertiary} />
-              <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
+              <Ionicons 
+                name="image" 
+                size={16} 
+                color={theme.name === 'dark' ? '#AEAEB2' : theme.colors.textTertiary} 
+              />
+              <Text style={[
+                styles.statText, 
+                { color: theme.name === 'dark' ? '#AEAEB2' : theme.colors.textSecondary }
+              ]}>
                 {activeMilestones.reduce((total, ms) => 
                   total + (ms.journalEntries?.reduce((entryTotal, entry) => 
                     entryTotal + (entry.images?.length || 0), 0) || 0), 0

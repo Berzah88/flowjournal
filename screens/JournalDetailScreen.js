@@ -214,18 +214,23 @@ const JournalDetailScreen = ({
               <View style={[
                 styles.mood, 
                 { 
-                  backgroundColor: selectedMediaData.mood.color || (theme.name === 'dark' ? '#2C2C2E' : '#fff'),
-                  borderColor: theme.name === 'dark' ? '#3A3A3C' : '#E9ECEF',
+                  backgroundColor: theme.name === 'dark' 
+                    ? (selectedMediaData.mood.color || '#2C2C2E') + 'CC' // Add transparency for dark mode
+                    : selectedMediaData.mood.color || '#fff',
+                  borderColor: theme.name === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.2)' 
+                    : '#E9ECEF',
+                  borderWidth: 1
                 }
               ]}>
                 <MaterialIcons 
                   name={getValidIconName(selectedMediaData.mood.icon)} 
                   size={16} 
-                  color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
+                  color={theme.name === 'dark' ? '#000000' : '#333'} 
                 />
                 <Text style={[
                   styles.moodText,
-                  { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                  { color: theme.name === 'dark' ? '#000000' : '#333' }
                 ]}>{selectedMediaData.mood.label}</Text>
               </View>
             )}

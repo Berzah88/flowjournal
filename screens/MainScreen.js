@@ -66,6 +66,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [dailyAnalysisVisible, setDailyAnalysisVisible] = useState(false);
+  const [dailyAnalysis, setDailyAnalysis] = useState(null);
   
   // Menu animation values
   const menuScale = useSharedValue(0);
@@ -302,6 +304,43 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     offsetRef.current = -index * width;
     animateToIndex(index);
   }, [activeIndex, animateToIndex]);
+
+  // Daily analysis effect - runs when component mounts or tasks change
+  useEffect(() => {
+    const checkDailyAnalysis = async () => {
+      try {
+        // Use static method with force show for testing
+        // TODO: Remove forceShow: true in production
+        const analysis = await ProjectAnalyzer.getDailyAnalysis(activeTasks, completedTasks, true);
+        
+        console.log('Daily analysis result:', analysis); // Debug log
+        
+        if (analysis.shouldShow && analysis.feedback) {
+          console.log('Showing daily analysis:', analysis.feedback); // Debug log
+          setDailyAnalysis(analysis.feedback);
+          setDailyAnalysisVisible(true);
+        } else {
+          console.log('Daily analysis not shown, reason:', analysis.reason); // Debug log
+        }
+      } catch (error) {
+        console.error('Daily analysis error:', error);
+      }
+    };
+
+    // Check daily analysis when component mounts or when tasks change
+    if (activeTasks && activeTasks.length > 0) {
+      console.log('Checking daily analysis for', activeTasks.length, 'active tasks'); // Debug log
+      checkDailyAnalysis();
+    } else {
+      console.log('No active tasks, skipping daily analysis'); // Debug log
+    }
+  }, [activeTasks, completedTasks, refreshKey]);
+
+  // Daily analysis close handler
+  const handleDailyAnalysisClose = useCallback(() => {
+    setDailyAnalysisVisible(false);
+    setDailyAnalysis(null);
+  }, []);
 
   // AI feedback close handler
   const handleAIFeedbackClose = useCallback(async () => {
@@ -661,6 +700,18 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           navigation.navigate('CompletedProjects');
         }}
       />
+
+      {/* Daily Analysis Notification */}
+      {dailyAnalysisVisible && dailyAnalysis && (
+        <Motive
+          visible={dailyAnalysisVisible}
+          onClose={handleDailyAnalysisClose}
+          type="daily_analysis"
+          title={dailyAnalysis.title}
+          message={dailyAnalysis.message}
+          color={dailyAnalysis.color}
+        />
+      )}
 
       {/* AI Feedback Notification */}
       {welcomePopupVisible && currentFeedback && (

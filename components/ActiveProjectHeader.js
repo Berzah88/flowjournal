@@ -43,8 +43,8 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
       <View style={[
         styles.modernHeader,
         {
-          backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
-          borderBottomColor: theme.name === 'dark' ? '#636366' : 'rgba(0, 0, 0, 0.05)',
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+          borderBottomColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 0, 0, 0.05)',
         }
       ]}>
         {/* Modern Header Content */}
@@ -53,7 +53,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
           <View style={styles.titleSection}>
             <Text style={[
               styles.modernTitle, 
-              { color: theme.name === 'dark' ? '#FF6B6B' : '#1D1D1F' },
+              { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
               isCompleted && styles.completedText
             ]}>
               {currentTask?.title || "Untitled"}
@@ -61,7 +61,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
             {start && end && (
               <Text style={[
                 styles.dateRange, 
-                { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' },
+                { color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93' },
                 isCompleted && styles.completedDateText
               ]}>
                 {formatDateRange(start, end)}
@@ -73,7 +73,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
           <View style={[
             styles.tabSwitcher,
             {
-              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+              backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 0, 0, 0.05)',
             }
           ]}>
             <TouchableOpacity 
@@ -81,7 +81,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
                 styles.tabButton, 
                 activeTab === 0 && [
                   styles.activeTabButton,
-                  { backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF' }
+                  { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF' }
                 ]
               ]} 
               onPress={() => handleTabSwitch(0)}
@@ -89,7 +89,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
             >
               <Text style={[
                 styles.tabButtonText, 
-                { color: theme.name === 'dark' ? '#4B5563' : '#8E8E93' },
+                { color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93' },
                 activeTab === 0 && {
                   color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
                   fontFamily: 'Poppins_600SemiBold',
@@ -104,7 +104,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
                 styles.tabButton, 
                 activeTab === 1 && [
                   styles.activeTabButton,
-                  { backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF' }
+                  { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF' }
                 ]
               ]} 
               onPress={() => handleTabSwitch(1)}
@@ -112,7 +112,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
             >
               <Text style={[
                 styles.tabButtonText, 
-                { color: theme.name === 'dark' ? '#4B5563' : '#8E8E93' },
+                { color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93' },
                 activeTab === 1 && {
                   color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
                   fontFamily: 'Poppins_600SemiBold',

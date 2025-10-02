@@ -32,6 +32,7 @@ import { useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { 
   MOODS, 
+  EXTENDED_MOODS,
   analyzeSentiment, 
   analyzeSentimentBySentences,
   getSmartMoodSuggestion, 
@@ -319,7 +320,6 @@ export default function Journal({
         let m = MOODS.find((mm) => mm.key === existingEntry.mood);
         if (!m) {
           // EXTENDED_MOODS'da ara
-          const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
           m = EXTENDED_MOODS.find((mm) => mm.key === existingEntry.mood);
         }
         if (m) {
@@ -549,7 +549,6 @@ export default function Journal({
         let suggestedMood = MOODS.find(m => m.key === moodSuggestions[0].mood);
         if (!suggestedMood) {
           // EXTENDED_MOODS'dan bul
-          const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
           suggestedMood = EXTENDED_MOODS.find(m => m.key === moodSuggestions[0].mood);
         }
         if (suggestedMood) {
@@ -793,8 +792,7 @@ export default function Journal({
                   // First try to find in basic MOODS, then in EXTENDED_MOODS
                   let suggestedMood = MOODS.find(m => m.key === suggestion.mood);
                   if (!suggestedMood) {
-                    // Import EXTENDED_MOODS if not already imported
-                    const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
+                    // EXTENDED_MOODS'da ara
                     suggestedMood = EXTENDED_MOODS.find(m => m.key === suggestion.mood);
                   }
                   
@@ -809,7 +807,8 @@ export default function Journal({
                             : suggestedMood?.color || '#4A90E2',
                           borderColor: theme.name === 'dark' 
                             ? 'rgba(255, 255, 255, 0.3)' 
-                            : 'rgba(0, 0, 0, 0.1)'
+                            : 'rgba(0, 0, 0, 0.1)',
+                          borderWidth: 1
                         }
                       ]}
                       activeOpacity={0.7}
@@ -889,64 +888,16 @@ export default function Journal({
                   styles.moodPicker, 
                   { 
                     bottom: keyboardHeight ? keyboardHeight + 90 : 106,
-                    backgroundColor: theme.name === 'dark' ? theme.colors.gray[100] : '#ffffff',
-                    borderColor: theme.name === 'dark' ? theme.colors.gray[200] : '#e0e0e0',
-                    shadowColor: theme.name === 'dark' ? theme.colors.gray[50] : '#000',
-                    shadowOpacity: theme.name === 'dark' ? 0.3 : 0.12,
-                    shadowRadius: theme.name === 'dark' ? 12 : 12,
-                    elevation: theme.name === 'dark' ? 10 : 10,
+                    backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#ffffff',
+                    borderColor: theme.name === 'dark' ? '#2C2C2E' : '#e0e0e0',
+                    shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                    shadowOpacity: theme.name === 'dark' ? 0.5 : 0.12,
+                    shadowRadius: theme.name === 'dark' ? 15 : 12,
+                    elevation: theme.name === 'dark' ? 15 : 10,
                   }
                 ]}
                 onStartShouldSetResponder={() => true}
               >
-                {/* AI Suggestions Section */}
-                {moodSuggestions.length > 0 && (
-                  <View style={styles.suggestionsSection}>
-                    <View style={styles.suggestionsContainer}>
-                      {moodSuggestions.slice(0, 3).map((suggestion, index) => {
-                        const suggestedMood = MOODS.find(m => m.key === suggestion.mood) || 
-                                             EXTENDED_MOODS.find(m => m.key === suggestion.mood);
-                        if (!suggestedMood) return null;
-                        
-                        return (
-                          <TouchableOpacity
-                            key={`suggestion-${index}`}
-                            style={[
-                              styles.suggestionMoodOption,
-                              { 
-                                backgroundColor: theme.name === 'dark' 
-                                  ? suggestedMood.color + 'CC' // Add transparency for dark mode
-                                  : suggestedMood.color,
-                                borderColor: theme.name === 'dark' 
-                                  ? 'rgba(255, 255, 255, 0.3)' 
-                                  : 'rgba(0, 0, 0, 0.1)',
-                                borderWidth: 1
-                              },
-                              selectedMood?.key === suggestedMood.key ? { borderColor: "#007AFF", borderWidth: 2 } : null,
-                            ]}
-                            activeOpacity={0.8}
-                            onPress={() => {
-                              setSelectedMood(suggestedMood);
-                              setAutoMoodApplied(true);
-                              setShowMoodPicker(false);
-                            }}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                          >
-                            <MaterialIcons 
-                              name={getValidIconName(suggestedMood.icon)} 
-                              size={16} 
-                              color={theme.name === 'dark' ? '#000000' : '#333'} 
-                            />
-                            <Text style={[
-                              styles.suggestionMoodLabel,
-                              { color: theme.name === 'dark' ? '#000000' : '#333' }
-                            ]}>{suggestedMood.label}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                )}
                 
                 {/* Manual Selection Section */}
                 <View style={styles.manualMoodContainer}>
@@ -975,11 +926,22 @@ export default function Journal({
                         }
                       }}
                     >
-                      <View style={[styles.moodIconWrap, { backgroundColor: m.color }]}>
+                      <View style={[
+                        styles.moodIconWrap, 
+                        { 
+                          backgroundColor: theme.name === 'dark' 
+                            ? m.color + 'CC' // Add transparency for dark mode
+                            : m.color,
+                          borderColor: theme.name === 'dark' 
+                            ? 'rgba(255, 255, 255, 0.2)' 
+                            : 'rgba(0, 0, 0, 0.1)',
+                          borderWidth: 1
+                        }
+                      ]}>
                         <MaterialIcons 
                           name={getValidIconName(m.icon)} 
                           size={14} 
-                          color={theme.name === 'dark' ? theme.colors.gray[400] : '#333'} 
+                          color={theme.name === 'dark' ? '#000000' : '#333'} 
                         />
                       </View>
                       <Text style={[
