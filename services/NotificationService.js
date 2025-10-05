@@ -62,7 +62,12 @@ class NotificationService {
     try {
       console.log('🔔 NotificationService başlatılıyor...');
       
-      // Development build kontrolü kaldırıldı - production build için
+      // Development build'de bildirimleri devre dışı bırak
+      if (__DEV__) {
+        console.log('⚠️ Development build - Bildirimler devre dışı bırakıldı');
+        this.isInitialized = true;
+        return true;
+      }
       
       // Bildirim izinlerini kontrol et ve al
       const hasPermission = await this.requestPermissions();
@@ -179,7 +184,11 @@ class NotificationService {
     try {
       console.log('📝 Günlük hatırlatıcı ayarlanıyor...');
       
-      // Development build kontrolü kaldırıldı
+      // Development build'de bildirimleri devre dışı bırak
+      if (__DEV__) {
+        console.log('⚠️ Development build - Günlük bildirim devre dışı');
+        return true;
+      }
       
       // Önceki günlük bildirimleri iptal et
       await this.cancelNotificationByType('daily-reminder');
@@ -269,7 +278,11 @@ class NotificationService {
     try {
       console.log(`🎯 Proje bildirimi ayarlanıyor: "${projectTitle}"`);
       
-      // Development build kontrolü kaldırıldı
+      // Development build'de bildirimleri devre dışı bırak
+      if (__DEV__) {
+        console.log('⚠️ Development build - Proje bildirimi devre dışı');
+        return true;
+      }
       
       // End date'i güvenli şekilde parse et
       let endDateObj;
@@ -362,7 +375,11 @@ class NotificationService {
     try {
       console.log(`🚀 Milestone bildirimi ayarlanıyor: "${milestoneTitle}"`);
       
-      // Development build kontrolü kaldırıldı
+      // Development build'de bildirimleri devre dışı bırak
+      if (__DEV__) {
+        console.log('⚠️ Development build - Milestone bildirimi devre dışı');
+        return true;
+      }
       
       // End date'i güvenli şekilde parse et
       let endDateObj;
@@ -594,7 +611,11 @@ class NotificationService {
     try {
       console.log('🧪 Test bildirimi gönderiliyor...');
       
-      // Development build kontrolü kaldırıldı
+      // Development build'de test bildirimi devre dışı
+      if (__DEV__) {
+        console.log('⚠️ Development build - Test bildirimi devre dışı');
+        return true;
+      }
       
       // 5 saniye sonra test bildirimi gönder
       const testDate = new Date();
