@@ -19,7 +19,7 @@ export default function ThemeToggle({ style }) {
     >
       <View style={styles.menuItemContent}>
         <Ionicons 
-          name={isDark ? "moon" : "sunny"} 
+          name={isDark ? "sunny" : "moon"} 
           size={20} 
           color={theme.colors.primary} 
         />

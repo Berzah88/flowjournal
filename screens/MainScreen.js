@@ -25,6 +25,7 @@ import AnimatedReanimated, {
 import { useActiveTasks, useCompletedTasks, useTaskActions, useTaskSaving, useDataRecovery } from "../hooks/useTaskContext";
 import { useDataRecoveryOperations } from "../hooks/useDataRecoveryOperations";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
+import { usePerformanceOptimization } from "../utils/PerformanceOptimizer";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
@@ -40,10 +41,11 @@ import DataRecoveryMenu from "../components/DataRecoveryMenu";
 import MyDayScreen from "./MyDayScreen";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 import ThemeToggle from "../components/ThemeToggle";
-import NotificationSettings from "../components/NotificationSettings";
+import MoodStatement from "../components/MoodStatement";
 import Motive from "../components/Motive";
 import ProjectAnalyzer from "../utils/ProjectAnalyzer";
 import LanguageSettings from "../components/LanguageSettings";
+import NotificationSettings from "../components/NotificationSettings";
 
 const { width, height } = Dimensions.get("window");
 
@@ -51,14 +53,22 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
   const isSaving = useTaskSaving();
-  const { clearStorage, addMilestone, clearAllNotifications } = useTaskActions();
+  const { clearStorage, addMilestone } = useTaskActions();
   const { recoverData, createManualBackup, getDataStatus } = useDataRecovery();
   const { handleDataRecovery, handleCreateBackup, handleCheckDataStatus } = useDataRecoveryOperations();
   const { theme } = useTheme();
   const { t } = useLanguage();
   
   // Performance monitoring (only in development) - temporarily disabled
-  // usePerformanceMonitor('MainScreen');
+  // Performance monitoring - daha az agresif
+  const performanceData = usePerformanceMonitor('MainScreen', {
+    trackFPS: false, // FPS tracking'i kapat
+    warnThreshold: 100, // 100ms'den az render frequency için uyar
+    criticalThreshold: 50 // 50ms'den az için kritik uyarı
+  });
+  
+  // Performance optimization
+  const { flatListProps, runAfterInteractions } = usePerformanceOptimization();
 
 
   const [activeIndex, setActiveIndex] = useState(0); // 0 = my day, 1 = active
@@ -66,6 +76,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [dataRecoveryMenuVisible, setDataRecoveryMenuVisible] = useState(false);
   const [languageSettingsVisible, setLanguageSettingsVisible] = useState(false);
+  const [notificationSettingsVisible, setNotificationSettingsVisible] = useState(false);
   const [mainMenuVisible, setMainMenuVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
@@ -83,7 +94,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [myDaySelectedMilestone, setMyDaySelectedMilestone] = useState(null);
   const [myDayAddMilestoneModalVisible, setMyDayAddMilestoneModalVisible] = useState(false);
   const [myDaySelectedProjectForMilestone, setMyDaySelectedProjectForMilestone] = useState(null);
-  const [notificationSettingsVisible, setNotificationSettingsVisible] = useState(false);
   const [welcomePopupVisible, setWelcomePopupVisible] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState(null);
 
@@ -95,6 +105,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Memoized handlers to prevent unnecessary re-renders
   const openCard = useCallback((card) => setSelectedCard(card), []);
   const closeCard = useCallback(() => setSelectedCard(null), []);
+
 
 
   // Function to open journal for MyDay screen
@@ -115,6 +126,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Language settings handlers
   const openLanguageSettings = useCallback(() => setLanguageSettingsVisible(true), []);
   const closeLanguageSettings = useCallback(() => setLanguageSettingsVisible(false), []);
+
+  // Notification settings handlers
+  const openNotificationSettings = useCallback(() => setNotificationSettingsVisible(true), []);
+  const closeNotificationSettings = useCallback(() => setNotificationSettingsVisible(false), []);
 
   const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
 
@@ -143,6 +158,17 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     return () => {
       if (panX) {
         panX.stopAnimation();
+        // Remove all listeners to prevent memory leaks
+        if (panX.removeAllListeners) {
+          panX.removeAllListeners();
+        }
+        // Reset animation values
+        panX.setValue(0);
+        try {
+          panX.flattenOffset();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
       }
     };
   }, [panX]);
@@ -153,6 +179,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       const analysis = await ProjectAnalyzer.analyzeProjects(activeTasks || [], completedTasks || []);
       
       if (!analysis.shouldShow) {
+        // AI feedback not shown
         return {
           type: 'no_feedback',
           title: '',
@@ -165,6 +192,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         };
       }
       
+      // AI feedback should be shown
       return analysis.feedback;
     } catch (error) {
       console.error('Error getting AI feedback:', error);
@@ -178,21 +206,24 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         shouldShow: false
       };
     }
-  }, [activeTasks, completedTasks]);
+  }, [activeTasks.length, completedTasks.length]);
 
-  // Load AI feedback and check if should be shown
+  // Load AI feedback and check if should be shown - only once per session
+  const [aiFeedbackLoaded, setAiFeedbackLoaded] = useState(false);
+  
   useEffect(() => {
+    if (aiFeedbackLoaded) return; // Prevent multiple calls
+    
     const loadAIFeedback = async () => {
       try {
         const feedback = await getAIFeedback();
         
         // Only proceed if feedback should be shown
         if (!feedback.shouldShow) {
-          console.log('AI feedback not shown, reason:', feedback.reason);
+          setAiFeedbackLoaded(true);
           return;
         }
         
-        setCurrentFeedback(feedback);
         
         const lastFeedbackDate = await AsyncStorage.getItem('lastAIFeedbackDate');
         const lastSessionTime = await AsyncStorage.getItem('lastSessionTime');
@@ -202,6 +233,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         // Calculate session time (if user has been active for more than 2 minutes)
         const sessionTime = lastSessionTime ? now - parseInt(lastSessionTime) : 0;
         const hasBeenActive = sessionTime > 120000; // 2 minutes
+        
         
         // Show popup if:
         // 1. Never seen before, OR
@@ -214,20 +246,37 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                           (hasBeenActive && feedback.priority === 'medium');
         
         if (shouldShow) {
+          // Ensure feedback has required properties
+          const safeFeedback = {
+            type: feedback.type || 'welcome',
+            title: feedback.title || 'AI Feedback',
+            message: feedback.message || 'No message available',
+            color: feedback.color || '#667eea',
+            priority: feedback.priority || 'medium'
+          };
+          
+          setCurrentFeedback(safeFeedback);
+          
+          // Show with 1 second delay
           setTimeout(() => {
             setWelcomePopupVisible(true);
-          }, 2000);
+          }, 1000);
         }
         
         // Update session time
         await AsyncStorage.setItem('lastSessionTime', now.toString());
       } catch (error) {
         console.error('Error loading AI feedback:', error);
+      } finally {
+        setAiFeedbackLoaded(true);
       }
     };
 
-    loadAIFeedback();
-  }, [getAIFeedback]);
+    // Only run if we have tasks to analyze
+    if (activeTasks.length > 0 || completedTasks.length > 0) {
+      loadAIFeedback();
+    }
+  }, [activeTasks.length, completedTasks.length, aiFeedbackLoaded]);
 
   // Memoized animate to page index (0 or 1)
   const animateToIndex = useCallback((index) => {
@@ -354,6 +403,19 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     }
   }, []);
 
+  // Force AI feedback reload (for testing)
+  const forceReloadAIFeedback = useCallback(() => {
+    setAiFeedbackLoaded(false);
+  }, []);
+
+  // Global fonksiyonu override et
+  useEffect(() => {
+    global.forceReloadAIFeedback = forceReloadAIFeedback;
+    return () => {
+      global.forceReloadAIFeedback = () => {};
+    };
+  }, [forceReloadAIFeedback]);
+
   // Memoized render functions for FlatList
   const renderActiveItem = useCallback(({ item }) => (
     <Card
@@ -362,17 +424,20 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       endDate={item.endDate}
       completed={item.done}
       activeMilestones={item.milestones?.filter((m) => !m.completed) ?? []}
-      onMilestonePress={(milestone) => {
-        const milestoneData = {
-          ...milestone,
+      onMilestonePress={() => {
+        // Project-based journal system - open journal for the entire project
+        const projectData = {
+          id: 'project-journal',
+          title: 'Project Journal',
           taskId: item.id,
           projectTitle: item.title,
-          autoOpenJournal: true
+          isProjectBased: true
         };
-        setMyDaySelectedMilestone(milestoneData);
+        setMyDaySelectedMilestone(projectData);
       }}
       onPress={() => openCard(item)}
       style={{ marginBottom: 15 }}
+      task={item}
     />
   ), [openCard]);
 
@@ -386,6 +451,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       onMilestonePress={null} // Completed cards don't allow milestone taps
       onPress={() => openCard(item)}
       style={{ marginBottom: 15 }}
+      task={item}
     />
   ), [openCard]);
 
@@ -403,11 +469,11 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Memoized data arrays with content-based dependencies
   const activeTasksReversed = useMemo(() => {
     return [...activeTasks].reverse();
-  }, [activeTasks.length, activeTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.milestones?.map(m => `${m.id}-${m.title}-${m.completed}-${m.journalEntries?.length || 0}-${m.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',') || ''}`).join(',')]);
+  }, [activeTasks.length, activeTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.journalEntries?.length || 0}-${t.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',')]);
   
   const completedTasksReversed = useMemo(() => {
     return [...completedTasks].reverse();
-  }, [completedTasks.length, completedTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.milestones?.map(m => `${m.id}-${m.title}-${m.completed}-${m.journalEntries?.length || 0}-${m.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',') || ''}`).join(',')]);
+  }, [completedTasks.length, completedTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.journalEntries?.length || 0}-${t.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',')]);
 
   // Additional safety check
   if (!activeTasks || !completedTasks || !Array.isArray(activeTasks) || !Array.isArray(completedTasks)) {
@@ -425,6 +491,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
+        
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
             <View style={styles.headerLeft}>
@@ -443,6 +510,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               </View>
             </View>
             <View style={styles.headerActions}>
+
               <TouchableOpacity 
                 style={[
                   styles.menuButton,
@@ -467,6 +535,13 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           </View>
         </View>
 
+
+      {/* Mood Statement - StatusTabs üstünde */}
+      <MoodStatement 
+        activeTasks={activeTasks} 
+        selectedDate={new Date()}
+        onPress={() => navigation.navigate('EmotionalJournal')}
+      />
 
       {/* Status Tabs - Swipe alanı dışında */}
       <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
@@ -523,6 +598,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 </View>
               }
               showsVerticalScrollIndicator={false}
+              {...flatListProps}
             />
           </View>
         </Animated.View>
@@ -545,22 +621,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               },
               menuAnimatedStyle
             ]}>
-              {/* Add New Project */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMainMenuVisible(false);
-                  setAddVisible(true);
-                }}
-                accessible={true}
-                accessibilityLabel="Add new project"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemContent}>
-                  <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('addProject')}</Text>
-                </View>
-              </TouchableOpacity>
 
               {/* Completed Projects */}
               <TouchableOpacity
@@ -579,7 +639,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
 
-              {/* Emotional Journal */}
+              {/* Mood Tracker */}
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
@@ -599,24 +659,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               {/* Theme Toggle */}
               <ThemeToggle />
 
-              {/* Notification Settings */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setMainMenuVisible(false);
-                  setNotificationSettingsVisible(true);
-                }}
-                accessible={true}
-                accessibilityLabel="Notification settings"
-                accessibilityRole="button"
-              >
-                <View style={styles.menuItemContent}>
-                  <Ionicons name="notifications-outline" size={20} color={theme.colors.primary} />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
-                    {t('notifications')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
 
 
               {/* Settings & Data */}
@@ -632,7 +674,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="settings-outline" size={20} color={theme.colors.secondary} />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('settings')} & {t('data')}</Text>
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('settings')}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -642,11 +684,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         </TouchableWithoutFeedback>
       )}
 
-      {/* Notification Settings Modal */}
-      <NotificationSettings 
-        visible={notificationSettingsVisible}
-        onClose={() => setNotificationSettingsVisible(false)}
-      />
+
 
       <AddProjectScreen visible={addVisible} onClose={() => setAddVisible(false)} />
 
@@ -666,6 +704,9 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           setForceUpdate(prev => prev + 1);
         }}
         fromMainScreen={true}
+        // Project-based journal support
+        currentTask={activeTasks.find(t => t.id === myDaySelectedMilestone?.taskId)}
+        isProjectBased={myDaySelectedMilestone?.isProjectBased || false}
       />}
 
       {/* MyDay AddMilestoneModal */}
@@ -698,6 +739,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           alert(result.message);
         }}
         onLanguageSettings={openLanguageSettings}
+        onNotificationSettings={openNotificationSettings}
       />
 
       {/* Language Settings Modal */}
@@ -705,9 +747,14 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         visible={languageSettingsVisible}
         onClose={closeLanguageSettings}
         onLanguageChange={(languageCode) => {
-          console.log('Language changed to:', languageCode);
           // Language change is handled by LanguageContext
         }}
+      />
+
+      {/* Notification Settings Modal */}
+      <NotificationSettings 
+        visible={notificationSettingsVisible}
+        onClose={closeNotificationSettings}
       />
 
       {/* Daily Analysis Notification */}
@@ -723,14 +770,14 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       )}
 
       {/* AI Feedback Notification */}
-      {welcomePopupVisible && currentFeedback && (
+      {welcomePopupVisible && (
         <Motive
           visible={welcomePopupVisible}
           onClose={handleAIFeedbackClose}
-          type={currentFeedback.type}
-          title={currentFeedback.title}
-          message={currentFeedback.message}
-          color={currentFeedback.color}
+          type={currentFeedback?.type || 'welcome'}
+          title={currentFeedback?.title || 'AI Feedback'}
+          message={currentFeedback?.message || 'No message available'}
+          color={currentFeedback?.color || '#667eea'}
         />
       )}
       </LinearGradient>
@@ -746,18 +793,18 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    paddingTop: 50 // 60'tan 50'ye düşürdüm - daha kompakt
+    paddingTop: 40 // 30'dan 40'a çıkardım - header'ı biraz aşağıya aldım
   },
   headerContainer: {
     paddingHorizontal: 24,
-    paddingVertical: 20, // 12'den 20'ye çıkardım - header'ı vertical genişlettim
-    marginBottom: 8,
+    paddingVertical: 12, // 20'den 12'ye düşürdüm - header'ı daha kompakt yaptım
+    marginBottom: 8, // 4'ten 8'e çıkardım - MoodStatement ile arasındaki boşluğu artırdım
   },
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20, // Logo ve başlığa margin top
+    marginTop: 15, // 10'dan 15'e çıkardım - header'ı biraz aşağıya aldım
     marginBottom: 4,
   },
   headerLeft: {
@@ -844,7 +891,7 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     position: "absolute",
-    top: 20,
+    top: 60,
     right: 18,
     borderRadius: 16,
     paddingVertical: 8,
@@ -878,6 +925,28 @@ const styles = StyleSheet.create({
   },
   myDayScrollContent: {
     paddingBottom: 40,
+  },
+  // Debug Panel Styles
+  debugPanel: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    zIndex: 1000,
+  },
+  closeDebugPanel: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f44336',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1001,
   },
 });
 

@@ -17,22 +17,17 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
   const [currentDate, setCurrentDate] = useState(new Date());
   const tasks = useTasks(); // Get all tasks
   
-  // Collect all journal entries from all tasks
+  // Collect all journal entries from all tasks (project-based system)
   const getAllJournalEntries = () => {
     const allEntries = [];
     tasks.forEach(task => {
-      if (task.milestones) {
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              allEntries.push({
-                ...entry,
-                taskId: task.id,
-                milestoneId: milestone.id,
-                projectTitle: task.title
-              });
-            });
-          }
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          allEntries.push({
+            ...entry,
+            taskId: task.id,
+            projectTitle: task.title
+          });
         });
       }
     });

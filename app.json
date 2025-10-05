@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Flow Journal",
-    "slug": "WITApp",
-    "version": "5.3.0",
+    "slug": "WITApp-FCM",
+    "version": "7.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon2.png",
     "userInterfaceStyle": "light",
@@ -19,19 +19,31 @@
         "NSPhotoLibraryUsageDescription": "App needs access to your photos to attach images to journal entries."
       }
     },
+    "notification": {
+      "icon": "./assets/icon2.png",
+      "color": "#4CAF50",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedTitle": "Flow Journal"
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon2.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.WITApp",
+      "package": "com.witapp.fcm",
+      "versionCode": 7,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ]
     },
     "web": {
@@ -40,21 +52,27 @@
     "plugins": [
       "expo-font",
       "expo-asset",
+      "expo-maps",
       [
         "expo-notifications",
         {
           "icon": "./assets/icon2.png",
-          "color": "#8E7DBE",
-          "defaultChannel": "default"
+          "color": "#4CAF50",
+          "sounds": []
         }
       ],
-      "expo-maps"
+      [
+        "expo-background-fetch",
+        {
+          "backgroundFetchInterval": 15
+        }
+      ]
     ],
+    "owner": "mberzah88",
     "extra": {
       "eas": {
-        "projectId": "8cb30275-61a8-4b87-a711-ed6c7a0b69c2"
+        "projectId": "70562018-2bef-4ecf-9fa9-655aaa441455"
       }
-    },
-    "owner": "mberzah"
+    }
   }
 }

@@ -76,7 +76,7 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
 const styles = StyleSheet.create({
   wrapper: {
     marginHorizontal: 20,
-    marginTop: 20, // Status Tabs margin top - 50'den 20'ye düşürdüm
+    marginTop: 8, // Status Tabs margin top - MoodStatement ile arasındaki boşluğu azalttım
     marginBottom: 0,
     paddingHorizontal: 0,
   },

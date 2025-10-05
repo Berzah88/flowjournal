@@ -5,6 +5,8 @@ import { assignUniqueColor } from "../utils/milestoneColors";
 import { STORAGE_KEYS } from "../constants";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
+// Yeni bildirim servisi
+import DataIntegrityManager from "../utils/DataIntegrityManager";
 import notificationService from "../services/NotificationService";
 
 // Re-render optimization by splitting context
@@ -32,12 +34,15 @@ export const TaskProvider = ({ children }) => {
   const justLoadedRef = useRef(false); // skip first save immediately after load
   const saveLockRef = useRef(false); // prevent concurrent saves
   const lastSaveVersionRef = useRef(0); // version control for race condition prevention
+  const hasInitializedRef = useRef(false); // Component-level initialization flag
   
   // Error handling
   const { handleAsyncStorageError } = useErrorHandler();
   
-  // Performance monitoring (sadece development'ta)
-  useContextPerformanceMonitor('TaskContext');
+  // Performance monitoring (sadece development'ta) - minimal
+  if (__DEV__) {
+    useContextPerformanceMonitor('TaskContext');
+  }
 
   // Cleanup mount flag
   useEffect(() => {
@@ -47,66 +52,113 @@ export const TaskProvider = ({ children }) => {
     };
   }, []);
 
-  // ---------- INITIAL LOAD (guarded by module-level flag) ----------
+  // ---------- INITIAL LOAD (guarded by component-level flag) ----------
   useEffect(() => {
-    if (HAS_INITIALIZED) {
+    if (hasInitializedRef.current) {
       // Ensure loading flag is false so UI can proceed
       if (isMountedRef.current) setIsLoading(false);
       return;
     }
 
-    HAS_INITIALIZED = true;
+    hasInitializedRef.current = true;
 
     const loadTasks = async () => {
       try {
-        const storedTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
-
-        if (storedTasks !== null && storedTasks !== '') {
-          const parsedTasks = JSON.parse(storedTasks);
-
-          if (Array.isArray(parsedTasks)) {
-            if (isMountedRef.current) setTasks(parsedTasks);
+        // First, validate data integrity
+        const integrityCheck = await DataIntegrityManager.validateDataIntegrity();
+        
+        if (!integrityCheck.isValid) {
+          console.warn('⚠️ Data integrity issue detected, attempting recovery...');
+          const recoveryResult = await DataIntegrityManager.recoverFromCorruption();
+          
+          if (recoveryResult.success && recoveryResult.recoveredData) {
+            if (isMountedRef.current) setTasks(recoveryResult.recoveredData);
           } else {
             if (isMountedRef.current) setTasks([]);
           }
         } else {
-          if (isMountedRef.current) setTasks([]);
+          // Normal data loading
+          const storedTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
+
+          if (storedTasks !== null && storedTasks !== '') {
+            const parsedTasks = JSON.parse(storedTasks);
+
+            if (Array.isArray(parsedTasks)) {
+              if (isMountedRef.current) setTasks(parsedTasks);
+            } else {
+              if (isMountedRef.current) setTasks([]);
+            }
+          } else {
+            if (isMountedRef.current) setTasks([]);
+          }
         }
       } catch (error) {
+        console.error('❌ Critical error during data loading:', error);
         handleAsyncStorageError(error, "load");
-        if (isMountedRef.current) setTasks([]);
+        
+        // Attempt emergency recovery
         try {
-          await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
-        } catch (clearError) {
-          console.error("TaskProvider: Failed to clear corrupted data:", clearError);
+          const recoveryResult = await DataIntegrityManager.recoverFromCorruption();
+          if (recoveryResult.success && recoveryResult.recoveredData) {
+            if (isMountedRef.current) setTasks(recoveryResult.recoveredData);
+          } else {
+            if (isMountedRef.current) setTasks([]);
+          }
+        } catch (recoveryError) {
+          console.error('❌ Emergency recovery failed:', recoveryError);
+          if (isMountedRef.current) setTasks([]);
         }
       } finally {
         // Mark that we just loaded so the next save effect can skip one save cycle
         justLoadedRef.current = true;
         if (isMountedRef.current) setIsLoading(false);
+        
       }
     };
 
     loadTasks();
   }, []);
 
+  // ---------- NOTIFICATION SYSTEM INITIALIZATION ----------
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      if (isLoading || tasks.length === 0) return;
+      
+      try {
+        console.log('🔔 Notification sistemi başlatılıyor...');
+        
+        // Notification servisini başlat
+        await notificationService.initialize();
+        
+        // Günlük bildirimi planla (20:00)
+        await notificationService.scheduleDailyReminder();
+        
+        // Tüm proje ve milestone bildirimlerini planla
+        await notificationService.scheduleAllProjectNotifications(tasks);
+        
+        console.log('✅ Notification sistemi başlatıldı ve tüm bildirimler planlandı');
+      } catch (error) {
+        console.error('❌ Notification sistemi başlatma hatası:', error);
+      }
+    };
+
+    initializeNotifications();
+  }, [isLoading, tasks]);
+
   // ---------- RACE CONDITION SAFE SAVE FUNCTION ----------
   const saveTasks = useCallback(async (tasksToSave, version) => {
     // Lock control - prevent concurrent saves
     if (saveLockRef.current) {
-      console.log("🔄 Save operation in progress, skipping...");
       return;
     }
 
     // Version control - prevent save with old data
     if (version <= lastSaveVersionRef.current) {
-      console.log("⏰ Old data, skipping save operation");
       return;
     }
 
     // Mount control
     if (!isMountedRef.current) {
-      console.log("🚫 Component unmounted, skipping save operation");
       return;
     }
 
@@ -134,7 +186,6 @@ export const TaskProvider = ({ children }) => {
         const currentTasks = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
         if (currentTasks) {
           await AsyncStorage.setItem(`${STORAGE_KEYS.TASKS}_backup`, currentTasks);
-          console.log("📦 Backup created");
         }
       } catch (backupError) {
         console.warn("⚠️ Could not create backup:", backupError);
@@ -143,7 +194,6 @@ export const TaskProvider = ({ children }) => {
       const serialized = JSON.stringify(tasksToSave);
       await AsyncStorage.setItem(STORAGE_KEYS.TASKS, serialized);
       lastSaveVersionRef.current = version;
-      console.log("✅ Data saved successfully, version:", version);
     } catch (error) {
       console.error("❌ Save operation failed:", error);
       
@@ -224,9 +274,9 @@ export const TaskProvider = ({ children }) => {
     const taskWithId = { ...newTask, id: Date.now(), done: false, milestones: [] };
     setTasks((prev) => [...prev, taskWithId]);
     
-    // Proje eklendiğinde bildirim planla
-    scheduleProjectNotifications(taskWithId);
-  }, [scheduleProjectNotifications]);
+    // Bildirim planlama scheduleAllNotifications tarafından yapılacak
+    // scheduleProjectNotifications(taskWithId); // Çifte bildirim sorunu - kaldırıldı
+  }, []);
 
   const deleteTask = useCallback((id) => {
     setTasks((prev) => prev.filter((task) => task.id !== id));
@@ -457,6 +507,100 @@ export const TaskProvider = ({ children }) => {
   }, []);
 
   // -------- JOURNAL ENTRIES --------
+  
+  // NEW: Project-based journal entries
+  const addProjectJournalEntry = useCallback((taskId, entry) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              journalEntries: (() => {
+                const currentEntries = task.journalEntries || [];
+                const newEntry = {
+                  id: Date.now(),
+                  ...entry,
+                  createdAt: new Date().toISOString(),
+                  relatedMilestones: entry.relatedMilestones || [],
+                  isGeneral: entry.isGeneral || false,
+                };
+
+                // Eğer yeni entry'de mood varsa, aynı günün diğer entry'lerindeki mood'ları temizle
+                if (entry.mood || entry.moodIcon || entry.moodColor) {
+                  const today = new Date().toDateString();
+                  const updatedEntries = currentEntries.map(existingEntry => {
+                    const existingDate = new Date(existingEntry.createdAt).toDateString();
+                    if (existingDate === today && (existingEntry.mood || existingEntry.moodIcon || existingEntry.moodColor)) {
+                      // Aynı günün mood bilgilerini temizle
+                      const { mood, moodIcon, moodColor, ...cleanedEntry } = existingEntry;
+                      return cleanedEntry;
+                    }
+                    return existingEntry;
+                  });
+                  return [...updatedEntries, newEntry];
+                }
+
+                return [...currentEntries, newEntry];
+              })(),
+            }
+          : task
+      )
+    );
+  }, []);
+
+  const updateProjectJournalEntry = useCallback((taskId, entryId, updates) => {
+    console.log('🔄 updateProjectJournalEntry called:', { taskId, entryId, updates });
+    
+    setTasks((prev) => {
+      const updatedTasks = prev.map((task) => {
+        if (task.id === taskId) {
+          const updatedEntries = task.journalEntries?.map((entry) => {
+            if (entry.id === entryId) {
+              const updatedEntry = { ...entry, ...updates };
+              console.log('✅ Journal entry updated:', { 
+                oldEntry: entry, 
+                newEntry: updatedEntry 
+              });
+              return updatedEntry;
+            }
+            return entry;
+          }) || [];
+          
+          const updatedTask = {
+            ...task,
+            journalEntries: updatedEntries,
+          };
+          
+          console.log('✅ Task updated with new journal entries:', {
+            taskId: task.id,
+            taskTitle: task.title,
+            entriesCount: updatedEntries.length,
+            updatedEntry: updatedEntries.find(e => e.id === entryId)
+          });
+          
+          return updatedTask;
+        }
+        return task;
+      });
+      
+      return updatedTasks;
+    });
+  }, []);
+
+  const deleteProjectJournalEntry = useCallback((taskId, entryId) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              journalEntries: task.journalEntries?.filter((entry) => entry.id !== entryId) || [],
+            }
+          : task
+      )
+    );
+  }, []);
+
+  // LEGACY: Milestone-based journal entries (for backward compatibility)
   const addJournalEntry = useCallback((taskId, msId, entry) => {
     setTasks((prev) =>
       prev.map((task) =>
@@ -750,90 +894,105 @@ export const TaskProvider = ({ children }) => {
     }
   }, [handleAsyncStorageError]);
 
+
+
   // ==================== NOTIFICATION FUNCTIONS ====================
+  // Eski bildirim fonksiyonları kaldırıldı - yeni sistem kurulacak
 
   // Tüm bildirimleri planla
   const scheduleAllNotifications = useCallback(async () => {
     try {
-      // Journal reminder planla
-      await notificationService.scheduleJournalReminder('20:00');
+      console.log('🔔 Bildirim sistemi yeniden kuruluyor...');
       
-      // Tüm projeler için deadline uyarıları
-      await notificationService.scheduleAllProjectDeadlines(tasks);
+      // Notification servisini başlat
+      await notificationService.initialize();
       
-      // Tüm milestone'lar için hatırlatıcılar
-      await notificationService.scheduleAllMilestoneReminders(tasks);
+      // Günlük bildirimi planla (20:00)
+      await notificationService.scheduleDailyReminder();
       
-      console.log('Tüm bildirimler planlandı');
+      // Tüm proje ve milestone bildirimlerini planla
+      await notificationService.scheduleAllProjectNotifications(tasks);
+      
+      console.log('✅ Tüm bildirimler başarıyla planlandı');
     } catch (error) {
-      console.error('Bildirim planlama hatası:', error);
+      console.error('❌ Bildirim planlama hatası:', error);
     }
   }, [tasks]);
 
   // Proje eklendiğinde bildirim planla
   const scheduleProjectNotifications = useCallback(async (project) => {
     try {
-      if (!project.done && project.endDate) {
-        // 3 gün önce uyarı
-        await notificationService.scheduleProjectDeadlineWarning(
-          project.id,
-          project.title,
-          project.endDate,
-          3
-        );
-        
-        // 1 gün önce uyarı
-        await notificationService.scheduleProjectDeadlineWarning(
-          project.id,
-          project.title,
-          project.endDate,
-          1
+      console.log('🎯 Proje bildirimleri planlanıyor:', project.title);
+      
+      // Notification servisini başlat
+      await notificationService.initialize();
+      
+      // Proje bitiş tarihi bildirimi planla
+      if (project.endDate) {
+        await notificationService.scheduleProjectEndDateNotification(
+          project.id, 
+          project.title, 
+          project.endDate
         );
       }
+      
+      console.log('✅ Proje bildirimleri planlandı:', project.title);
     } catch (error) {
-      console.error('Proje bildirim planlama hatası:', error);
+      console.error('❌ Proje bildirim planlama hatası:', error);
     }
   }, []);
 
   // Milestone eklendiğinde bildirim planla
   const scheduleMilestoneNotifications = useCallback(async (milestone, projectTitle) => {
     try {
-      if (!milestone.completed && milestone.deadline) {
-        await notificationService.scheduleMilestoneReminder(
-          milestone.id,
-          milestone.title,
-          projectTitle,
-          milestone.deadline,
-          1
+      console.log('🚀 Milestone bildirimleri planlanıyor:', milestone.title);
+      
+      // Notification servisini başlat
+      await notificationService.initialize();
+      
+      // Milestone son günü bildirimi planla
+      if (milestone.endDate) {
+        await notificationService.scheduleMilestoneEndDateNotification(
+          milestone.id, 
+          milestone.title, 
+          projectTitle, 
+          milestone.endDate
         );
       }
+      
+      console.log('✅ Milestone bildirimleri planlandı:', milestone.title);
     } catch (error) {
-      console.error('Milestone bildirim planlama hatası:', error);
+      console.error('❌ Milestone bildirim planlama hatası:', error);
     }
   }, []);
 
   // Proje silindiğinde bildirimleri iptal et
   const cancelProjectNotifications = useCallback(async (projectId) => {
     try {
-      await notificationService.cancelProjectDeadlineWarning(projectId);
+      console.log('🗑️ Proje bildirimleri iptal ediliyor:', projectId);
+      await notificationService.cancelProjectNotification(projectId);
+      console.log('✅ Proje bildirimleri iptal edildi:', projectId);
     } catch (error) {
-      console.error('Proje bildirim iptal hatası:', error);
+      console.error('❌ Proje bildirim iptal hatası:', error);
     }
   }, []);
 
   // Milestone silindiğinde bildirimleri iptal et
   const cancelMilestoneNotifications = useCallback(async (milestoneId) => {
     try {
-      await notificationService.cancelMilestoneReminder(milestoneId);
+      console.log('🗑️ Milestone bildirimleri iptal ediliyor:', milestoneId);
+      await notificationService.cancelMilestoneNotification(milestoneId);
+      console.log('✅ Milestone bildirimleri iptal edildi:', milestoneId);
     } catch (error) {
-      console.error('Milestone bildirim iptal hatası:', error);
+      console.error('❌ Milestone bildirim iptal hatası:', error);
     }
   }, []);
 
   // Progress feedback bildirimlerini planla
   const scheduleProgressFeedbackNotifications = useCallback(async () => {
     try {
-      await notificationService.scheduleAllProgressFeedbacks(tasks);
+      console.log('Progress feedback - yeni sistem kurulacak');
+      // Yeni sistem kurulacak
     } catch (error) {
       console.error('Progress feedback planlama hatası:', error);
     }
@@ -842,7 +1001,8 @@ export const TaskProvider = ({ children }) => {
   // Progress feedback bildirimini iptal et
   const cancelProgressFeedbackNotifications = useCallback(async (projectId) => {
     try {
-      await notificationService.cancelProgressFeedbackNotification(projectId);
+      console.log('Progress feedback iptal - yeni sistem kurulacak');
+      // Yeni sistem kurulacak
     } catch (error) {
       console.error('Progress feedback iptal hatası:', error);
     }
@@ -871,6 +1031,9 @@ export const TaskProvider = ({ children }) => {
     addJournalEntry,
     updateJournalEntry,
     deleteJournalEntry,
+    addProjectJournalEntry,
+    updateProjectJournalEntry,
+    deleteProjectJournalEntry,
     addMedia,
     updateLocation,
     setMilestoneWasEdited,
@@ -880,6 +1043,7 @@ export const TaskProvider = ({ children }) => {
     restoreFromBackupManually,
     checkDataStatus,
     clearStorage,
+    // Migration functions
     // Notification functions
     scheduleAllNotifications,
     scheduleProjectNotifications,
@@ -902,6 +1066,9 @@ export const TaskProvider = ({ children }) => {
     addJournalEntry,
     updateJournalEntry,
     deleteJournalEntry,
+    addProjectJournalEntry,
+    updateProjectJournalEntry,
+    deleteProjectJournalEntry,
     addMedia,
     updateLocation,
     setMilestoneWasEdited,
@@ -912,6 +1079,7 @@ export const TaskProvider = ({ children }) => {
     checkDataStatus,
     clearStorage,
     shouldUpdateProjectEndDate, // Dependency eklendi
+    // Migration dependencies
     // Notification dependencies
     scheduleAllNotifications,
     scheduleProjectNotifications,

@@ -18,6 +18,7 @@ import { useHasAnyTasks, useTaskLoading } from './hooks/useTaskContext';
 import { useTheme } from './context/ThemeContext';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
+import GlobalErrorHandler from './utils/GlobalErrorHandler';
 import notificationService from './services/NotificationService';
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 
@@ -96,19 +97,34 @@ export default function App() {
     Poppins_800ExtraBold,
   });
 
-  // Bildirim servisini başlat
+  // Global error handler'ı ve bildirim servisini initialize et
   useEffect(() => {
-    const initializeNotifications = async () => {
+    const initializeApp = async () => {
       try {
-        await notificationService.initialize();
-        console.log('Bildirim servisi başlatıldı');
+        console.log('🚀 App başlatılıyor...');
+        
+        // Global error handler'ı başlat
+        GlobalErrorHandler.init();
+        
+        // Bildirim servisini başlat
+               console.log('🔔 Bildirim servisi başlatılıyor...');
+               await notificationService.initialize();
+               console.log('✅ Bildirim servisi başlatıldı');
+        
+        // Global AI feedback reload fonksiyonu
+        global.forceReloadAIFeedback = () => {
+          // Bu fonksiyon MainScreen'de override edilecek
+        };
+        
+        console.log('✅ App başarıyla başlatıldı');
       } catch (error) {
-        console.error('Bildirim servisi başlatma hatası:', error);
+        console.error('❌ App initialization hatası:', error);
+        GlobalErrorHandler.reportError(error, { context: 'app_initialization' });
       }
     };
 
     if (fontsLoaded) {
-      initializeNotifications();
+      initializeApp();
     }
   }, [fontsLoaded]);
 

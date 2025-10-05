@@ -10,6 +10,8 @@ import ProjectCalendar from "../components/ProjectCalendar";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 import ActiveProjectHeader from "../components/ActiveProjectHeader";
 import ActiveProjectMilestones from "../components/ActiveProjectMilestones";
+import ProjectJourney from "../components/ProjectJourney";
+import AIMilestoneSuggestion from "../components/AIMilestoneSuggestion";
 import AnimatedReanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -40,11 +42,15 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   const [editVisible, setEditVisible] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [selectedJournalMilestone, setSelectedJournalMilestone] = useState(null);
-  const [activeTab, setActiveTab] = useState(0); // 0 = milestones, 1 = calendar
+  const [activeTab, setActiveTab] = useState(0); // 0 = milestones, 1 = journey
   const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0); // For refresh after journal entry
   const [forceUpdate, setForceUpdate] = useState(0); // For force update
+  
+  // AI Milestone Suggestion states
+  const [aiSuggestionVisible, setAiSuggestionVisible] = useState(false);
+  const [hasAnalyzedJournals, setHasAnalyzedJournals] = useState(false);
 
   // Horizontal tab switching animations (like MainScreen)
   const panX = useRef(new Animated.Value(0)).current;
@@ -104,19 +110,12 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
   const isModalOpen = !!(editVisible || selectedMilestone || selectedJournalMilestone || addMilestoneModalVisible);
 
-  // Progress calculation with proper memoization
-  const progress = useMemo(() => {
-    return currentTask?.milestones?.length
-      ? currentTask.milestones.filter((m) => m.completed).length /
-        currentTask.milestones.length
-      : 0;
-  }, [currentTask?.milestones?.length, currentTask?.milestones?.filter(m => m.completed).length]);
+
 
   const translateY = useSharedValue(height);
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
   const dragY = useSharedValue(0);
-  const progressAnim = useSharedValue(0);
   
   // Cleanup refs for memory leak prevention
   const animationCleanupRef = useRef([]);
@@ -174,8 +173,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     translateY.value = withTiming(0, { duration: 320 });
     scale.value = withTiming(1, { duration: 320 });
     opacity.value = withTiming(1, { duration: 320 });
-    progressAnim.value = withTiming(progress, { duration: 400 });
-  }, [progress]);
+  }, []);
 
   useEffect(() => {
     const backAction = () => {
@@ -210,7 +208,6 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
       if (scale) scale.value = 1;
       if (opacity) opacity.value = 0;
       if (dragY) dragY.value = 0;
-      if (progressAnim) progressAnim.value = 0;
       
       // PanX cleanup
       if (panX) {
@@ -236,7 +233,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
         animationCleanupRef.current = [];
       }
     };
-  }, [translateY, scale, opacity, dragY, progressAnim, panX]); // Dependencies eklendi
+  }, [translateY, scale, opacity, dragY, panX]); // Dependencies eklendi
 
   const handleClose = useCallback(() => {
     translateY.value = withTiming(height, { duration: 200 });
@@ -270,13 +267,31 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     setAddMilestoneModalVisible(true);
   }, []);
 
-  const handleOpenJournal = useCallback((milestone) => {
-    const milestoneData = {
-      ...milestone,
-      taskId: currentTask.id,
-      projectTitle: currentTask.title,
-    };
-    setSelectedJournalMilestone(milestoneData);
+  const handleOpenJournal = useCallback((milestoneOrEntry) => {
+    if (milestoneOrEntry) {
+      // Check if it's a journal entry (has text, createdAt, etc.) or a milestone
+      if (milestoneOrEntry.text || milestoneOrEntry.createdAt) {
+        // It's a journal entry - editing existing entry
+        setSelectedJournalMilestone(milestoneOrEntry);
+      } else {
+        // It's a milestone - create milestone data
+        const milestoneData = {
+          ...milestoneOrEntry,
+          taskId: currentTask.id,
+          projectTitle: currentTask.title,
+        };
+        setSelectedJournalMilestone(milestoneData);
+      }
+    } else {
+      // Creating new journal entry - create a dummy milestone for project-based journal
+      const dummyMilestone = {
+        id: 'project-journal',
+        title: 'Project Journal',
+        taskId: currentTask?.id,
+        isProjectBased: true
+      };
+      setSelectedJournalMilestone(dummyMilestone);
+    }
   }, [currentTask]);
 
   const handleSaveMilestone = useCallback((milestoneData) => {
@@ -334,6 +349,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
 
 
 
+
   const panGesture = Gesture.Pan()
     .enabled(!isModalOpen)
     .onUpdate((e) => {
@@ -360,9 +376,6 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     opacity: opacity.value,
   }));
 
-  const progressStyle = useAnimatedStyle(() => ({
-    width: progressAnim.value * 100 + "%",
-  }));
 
 
   // Tab switching with horizontal animation
@@ -404,8 +417,6 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
           onTabSwitch={handleTabSwitch}
           onMenuPress={() => setMenuVisible((s) => !s)}
           isModalOpen={isModalOpen}
-          progress={progress}
-          progressStyle={progressStyle}
           panGesture={panGesture}
         />
 
@@ -416,16 +427,16 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
               style={[
                 styles.menuButton,
                 {
-                  backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(108, 99, 255, 0.1)',
-                  borderRadius: 20,
-                  padding: 8,
+                  backgroundColor: 'transparent',
+                  borderRadius: 16,
+                  padding: 6,
                 }
               ]}
             >
               <Ionicons 
-                name="ellipsis-vertical" 
-                size={22} 
-                color={isCompleted ? "#fff" : (theme.name === 'dark' ? "#FF6B6B" : "#6C63FF")} 
+                name="ellipsis-horizontal" 
+                size={18} 
+                color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
               />
             </TouchableOpacity>
           )}
@@ -464,12 +475,14 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 />
               </View>
 
-              {/* Calendar Tab (right) */}
+              {/* Journey Tab (right) */}
               <View style={{ width }}>
-                <ProjectCalendar 
-                  milestones={allMilestones}
-                  projectStartDate={currentTask?.startDate}
-                  projectEndDate={currentTask?.endDate}
+                <ProjectJourney 
+                  currentTask={currentTask}
+                  onOpenJournal={handleOpenJournal}
+                  navigation={navigation}
+                  availableMilestones={allMilestones} // AI analizi için milestone'ları geç
+                  refreshKey={refreshKey} // Refresh trigger
                 />
               </View>
             </Animated.View>
@@ -497,6 +510,9 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                   setSelectedJournalMilestone(null);
                 }}
                 fromActiveProject={true}
+                // NEW: Project-based journal support
+                currentTask={currentTask}
+                isProjectBased={true}
               />}
               <AddMilestoneModal 
                 visible={addMilestoneModalVisible} 
@@ -536,17 +552,12 @@ const styles = StyleSheet.create({
   },
   menuButton: { 
     position: "absolute", 
-    top: 10, 
-    right: 24, 
-    padding: 8, 
+    top: 12, 
+    right: 20, 
+    padding: 6, 
     zIndex: 110,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: 'transparent',
+    borderRadius: 16,
   },
   tabContainer: { 
     flexDirection: "row", 

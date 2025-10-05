@@ -8,6 +8,20 @@ class ProjectAnalyzer {
   }
 
   /**
+   * Get current language from AsyncStorage
+   * @returns {string} Language code ('tr' or 'en')
+   */
+  async getCurrentLanguage() {
+    try {
+      const language = await AsyncStorage.getItem('app_language');
+      return language || 'en';
+    } catch (error) {
+      console.warn('Failed to get language:', error);
+      return 'en';
+    }
+  }
+
+  /**
    * Check if analysis should be shown today (once per day)
    * @returns {boolean} Whether analysis should be displayed
    */
@@ -16,12 +30,16 @@ class ProjectAnalyzer {
       const today = new Date().toDateString(); // YYYY-MM-DD format
       const lastDisplayDate = await AsyncStorage.getItem(this.dailyDisplayKey);
       
+      // Debug logs removed for production
+      
       if (lastDisplayDate !== today) {
         // First time today or new day - should show
         await AsyncStorage.setItem(this.dailyDisplayKey, today);
+        // First time today - should show
         return true;
       }
       
+      // Already shown today
       return false; // Already shown today
     } catch (error) {
       console.warn('Failed to check daily display status:', error);
@@ -94,11 +112,13 @@ class ProjectAnalyzer {
         if (project.milestones) {
           project.milestones.forEach(milestone => {
             allMilestones.push({ ...milestone, projectName: project.title });
-            if (milestone.journalEntries) {
-              milestone.journalEntries.forEach(entry => {
-                allJournalEntries.push({ ...entry, projectName: project.title, milestoneName: milestone.title });
-              });
-            }
+          });
+        }
+        
+        // Project-based journal entries
+        if (project.journalEntries) {
+          project.journalEntries.forEach(entry => {
+            allJournalEntries.push({ ...entry, projectName: project.title });
           });
         }
       });
@@ -121,14 +141,15 @@ class ProjectAnalyzer {
 
       // Generate feedback if confidence is sufficient
       if (analysis.confidence >= this.confidenceThreshold) {
-        analysis.feedback = this.generateFeedback(analysis);
+        analysis.feedback = await this.generateFeedback(analysis);
         analysis.shouldShow = true;
       } else {
         // Even with low confidence, provide basic feedback for single projects
-        if (analysis.projectCount === 1 && analysis.totalMilestones > 0) {
-          analysis.feedback = this.generateBasicFeedback(analysis);
+        if (analysis.projectCount === 1) {
+          analysis.feedback = await this.generateBasicFeedback(analysis);
           analysis.shouldShow = true;
           analysis.confidence = 0.4; // Boost confidence for basic feedback
+          // Basic feedback generated for single project
         } else {
           analysis.shouldShow = false;
           analysis.reason = 'low_confidence';
@@ -332,27 +353,54 @@ class ProjectAnalyzer {
   /**
    * Generate basic feedback for simple cases
    */
-  generateBasicFeedback(analysis) {
+  async generateBasicFeedback(analysis) {
     const { projectCount, totalMilestones, completedMilestones } = analysis;
+    const language = await this.getCurrentLanguage();
     
     const completionRate = totalMilestones > 0 ? (completedMilestones / totalMilestones) : 0;
     
     let title, message, color, priority;
     
     if (completionRate >= 0.8) {
-      title = "🎉 Harika İlerleme!";
-      message = `${completedMilestones}/${totalMilestones} milestone'ını tamamladınız. Devam edin!`;
+      if (language === 'tr') {
+        title = "🎉 Harika İlerleme!";
+        message = `${completedMilestones}/${totalMilestones} milestone'ını tamamladınız. Devam edin!`;
+      } else {
+        title = "🎉 Great Progress!";
+        message = `You've completed ${completedMilestones}/${totalMilestones} milestones. Keep going!`;
+      }
       color = "#4CAF50";
       priority = "high";
     } else if (completionRate >= 0.5) {
-      title = "📈 İyi Gidiyorsunuz";
-      message = `Projenizde ${completedMilestones}/${totalMilestones} milestone tamamlandı.`;
+      if (language === 'tr') {
+        title = "📈 İyi Gidiyorsunuz";
+        message = `Projenizde ${completedMilestones}/${totalMilestones} milestone tamamlandı.`;
+      } else {
+        title = "📈 You're Doing Great";
+        message = `${completedMilestones}/${totalMilestones} milestones completed in your project.`;
+      }
       color = "#2196F3";
       priority = "medium";
-    } else {
-      title = "🚀 Başlangıç Yapın";
-      message = `${totalMilestones} milestone'ınız var. İlk adımları atın!`;
+    } else if (totalMilestones > 0) {
+      if (language === 'tr') {
+        title = "🚀 Başlangıç Yapın";
+        message = `${totalMilestones} milestone'ınız var. İlk adımları atın!`;
+      } else {
+        title = "🚀 Get Started";
+        message = `You have ${totalMilestones} milestones. Take the first steps!`;
+      }
       color = "#FF9800";
+      priority = "medium";
+    } else {
+      // No milestones case
+      if (language === 'tr') {
+        title = "📝 Projenize Başlayın";
+        message = "Aktif projeniz var! İlk milestone'ları ekleyerek ilerlemeye başlayın.";
+      } else {
+        title = "📝 Start Your Project";
+        message = "You have an active project! Add your first milestones to get started.";
+      }
+      color = "#9C27B0";
       priority = "medium";
     }
     
@@ -375,8 +423,9 @@ class ProjectAnalyzer {
   /**
    * Generate personalized feedback based on analysis
    */
-  generateFeedback(analysis) {
+  async generateFeedback(analysis) {
     const { projectCount, moodAnalysis, timelineAnalysis, overdueMilestones, endingSoonMilestones } = analysis;
+    const language = await this.getCurrentLanguage();
 
     // Create truly unique combinations for variety using multiple factors
     const now = new Date();
@@ -399,7 +448,28 @@ class ProjectAnalyzer {
       
       if (projectCount >= 3) {
         // Multiple variations for busy users with overdue milestones
-        const overdueVariations = [
+        const overdueVariations = language === 'tr' ? [
+           {
+             title: 'Kontrolü Yeniden Ele Alın',
+             message: `${projectCount} projeyi yönetirken sadece ${avgDaysOverdue} gün geridesiniz. Yetenekleriniz var, şimdi gösterin.`,
+             color: '#F49BAB' // Soft pink
+           },
+           {
+             title: 'Geri Dönüş Şimdi Başlıyor',
+             message: `${projectCount} projeyi yönetirken ${avgDaysOverdue} gün geride olmak sizi insan yapar. Geri adımlar geri dönüşleri efsane yapar.`,
+             color: '#FFD6BA' // Soft orange
+           },
+           {
+             title: 'Sıfırla ve Yenilen',
+             message: `${projectCount} projede ${avgDaysOverdue} gün geridesiniz. Her usta bir zamanlar acemiydi. Bu başarısızlık değil - veri.`,
+             color: '#C0C9EE' // Soft purple
+           },
+           {
+             title: 'Gelgit Dönüyor',
+             message: `${projectCount} projede ${avgDaysOverdue} gün geride olmak ezici gelebilir, ama harika bir şey yaratmak üzeresiniz.`,
+             color: '#CBDCEB' // Soft blue
+           }
+        ] : [
            {
              title: 'Time to Regain Control',
              message: `You're juggling ${projectCount} projects and just ${avgDaysOverdue} days behind. You've got the skills, now show them.`,
@@ -429,7 +499,23 @@ class ProjectAnalyzer {
         priority = 'high';
       } else {
         // Single project variations
-        const singleProjectVariations = [
+        const singleProjectVariations = language === 'tr' ? [
+           {
+             title: 'Yeniden Odaklan ve Yenilen',
+             message: `Milestone${overdueMilestones.length > 1 ? 'larınızda' : 'ınızda'} ${avgDaysOverdue} gün geridesiniz, ama bu parlamanızın anı.`,
+             color: '#D1D8BE' // Soft olive
+           },
+           {
+             title: 'Anınız Geldi',
+             message: `${avgDaysOverdue} gün geride olmak geri adım değil - en büyük geri dönüşünüzün hazırlığı.`,
+             color: '#F0F1C5' // Soft lemon
+           },
+           {
+             title: 'Baskı Elmas Yaratır',
+             message: `${avgDaysOverdue} gün geridesiniz, ama tek bir projeye derinlemesine dalıyorsunuz. Bu odaklanmış yoğunluk atılımlar yaratır.`,
+             color: '#E7CCCC' // Soft rose
+           }
+        ] : [
            {
              title: 'Refocus and Recharge',
              message: `You're ${avgDaysOverdue} days behind on your milestone${overdueMilestones.length > 1 ? 's' : ''}, but this is your moment to shine.`,
@@ -455,7 +541,29 @@ class ProjectAnalyzer {
       }
     } else if (endingSoonMilestones.length > 0) {
       // Multiple variations for ending soon milestones
-      const endingSoonVariations = [
+      const endingSoonVariations = language === 'tr' ? [
+        {
+          title: 'Son Hamle Öncesi',
+          message: projectCount >= 3 
+            ? `${projectCount} projenizde ${endingSoonMilestones.length} milestone${endingSoonMilestones.length > 1 ? '' : ''} yakında bitiyor. Şampiyonların kendilerini ayırdığı an burası.`
+            : `Milestone${endingSoonMilestones.length > 1 ? 'larınız' : 'ınız'} son günlerde ve güçlü bitirmek için mükemmel konumdasınız. Bu odaklanmış yaklaşım iyi işi harika işten ayıran şey.`,
+          color: '#9FB3DF' // Soft sky blue
+        },
+        {
+          title: 'Bitiş Çizgisi Sizi Bekliyor',
+          message: projectCount >= 3
+            ? `${projectCount} projede ${endingSoonMilestones.length} milestone${endingSoonMilestones.length > 1 ? '' : ''} yakında bitiyor. Efsanelerin yaratıldığı bölgedesiniz. Dünyaya neler yapabileceğinizi gösterme anınız.`
+            : `Milestone${endingSoonMilestones.length > 1 ? 'larınız' : 'ınız'} bitiş çizgisine yaklaşıyor. Sihrin gerçekleştiği yer burası - iyinin harika olduğu, harikanın unutulmaz olduğu yer.`,
+          color: '#BDDDE4' // Soft ice blue
+        },
+        {
+          title: 'Büyük Final',
+          message: projectCount >= 3
+            ? `${projectCount} projede ${endingSoonMilestones.length} milestone${endingSoonMilestones.length > 1 ? '' : ''} yakında bitiyor. Büyük finali orkestra ediyorsunuz. Bu sizin senfoniniz ve dünya şaheserinizi duymak üzere.`
+            : `Milestone${endingSoonMilestones.length > 1 ? 'larınız' : 'ınız'} doruk noktasına ulaşıyor. Tüm hazırlığınızın fırsatla buluştuğu yer burası. En büyük performansınız için sahne hazır.`,
+          color: '#C7D9DD' // Soft gray blue
+        }
+      ] : [
         {
           title: 'Final Push Ahead',
           message: projectCount >= 3 
@@ -489,7 +597,36 @@ class ProjectAnalyzer {
       const totalAhead = timelineAnalysis.totalDaysAhead;
       
       // Multiple variations for ahead of schedule
-      const aheadVariations = [
+      const aheadVariations = language === 'tr' ? [
+        {
+          title: 'Harika Gidiyorsunuz',
+          message: projectCount >= 3
+            ? `İnanılmaz! ${projectCount} projede ${aheadCount} milestone${aheadCount > 1 ? '' : ''} planın önünde. Bu seviyede üretkenlik ve organizasyon nadirdir. Sadece beklentileri karşılamıyorsunuz - yeniden tanımlıyorsunuz.`
+            : `${aheadCount} milestone${aheadCount > 1 ? '' : ''} planın ${totalAhead} gün önünde. Bu tür ileri momentum tam olarak atılım anları yaratan şey. Çoğu insanın sadece hayal ettiği seviyede çalışıyorsunuz.`,
+          color: '#B6CEB4' // Soft green
+        },
+        {
+          title: 'Şimşeği Şişede Yakaladınız',
+          message: projectCount >= 3
+            ? `${projectCount} projede planın ${totalAhead} gün önünde kalarak şimşeği şişede yakaladınız. Bu sadece üretkenlik değil - sanat. Zamanla resim yapıyorsunuz.`
+            : `Planın ${totalAhead} gün önündesiniz, usta bir zanaatkarın hassasiyetiyle hareket ediyorsunuz. Bu tür ileri momentum tesadüfen olmaz - hazırlık fırsatla buluştuğunda olur.`,
+          color: '#D5E5D5' // Soft mint
+        },
+        {
+          title: 'Çalışan Maestro',
+          message: projectCount >= 3
+            ? `${projectCount} projede bir senfoni yönetiyorsunuz, planın ${totalAhead} gün önünde kalıyorsunuz. Bu ustalığın nasıl göründüğü - etrafınızdaki herkesi ilhamlandıran zahmetsiz mükemmellik.`
+            : `Planın ${totalAhead} gün öndesiniz, bir maestro'nun zarafetiyle hareket ediyorsunuz. Bu sadece verimlilik değil - harekette zarafet. Sadece görevleri tamamlamıyorsunuz, sanat yaratıyorsunuz.`,
+          color: '#DEE5D4' // Soft mint green
+        },
+        {
+          title: 'Yeni Standartlar Belirliyorsunuz',
+          message: projectCount >= 3
+            ? `${projectCount} projede ${aheadCount} milestone${aheadCount > 1 ? '' : ''} planın önünde değilsiniz - mümkün olanın yeni standartlarını belirliyorsunuz. Efsaneler böyle doğar.`
+            : `Planın ${totalAhead} gün öndesiniz, mükemmelliğin mükemmellikle ilgili olmadığını - ilerlemeyle ilgili olduğunu kanıtlıyorsunuz. Sadece son tarihleri karşılamıyorsunuz, yeni olasılıklar yaratıyorsunuz.`,
+          color: '#FFF2EB' // Soft cream
+        }
+      ] : [
         {
           title: 'You\'re Crushing It',
           message: projectCount >= 3
@@ -536,7 +673,29 @@ class ProjectAnalyzer {
           .slice(0, 2)
           .map(([mood]) => mood);
         
-        const positiveVariations = [
+        const positiveVariations = language === 'tr' ? [
+          {
+            title: 'Enerjiniz Bulaşıcı',
+            message: projectCount >= 3
+              ? `${topMoods[0]} enerjiniz tüm ${projectCount} projeye yayılıyor. ${totalEntries} son giriş bu pozitifliği gösteriyor. Sadece projeler yönetmiyorsunuz - ilerlemeye ilham veriyorsunuz.`
+              : `Son ${topMoods[0]} mood kalıplarınız inanılmaz odak gösteriyor. Bu duygusal temel tam olarak atılım performansını tetikleyen şey. Bölgedesiniz ve bu görülüyor.`,
+            color: '#B6CEB4' // Soft green
+          },
+          {
+            title: 'Pozitiflikle Resim Yapıyorsunuz',
+            message: projectCount >= 3
+              ? `${projectCount} projenizi ${topMoods[0]} enerjisiyle boyuyorsunuz. Bu sadece iyi mood değil - dokunduğu her şeyi dönüştüren yaratıcı enerji. İyimserliğin sanatçısısınız.`
+              : `${topMoods[0]} enerjiniz olasılık dalgalanmaları yaratıyor. Bu tür duygusal temel sadece işinizi desteklemiyor - onu olağanüstü bir şeye yükseltiyor.`,
+            color: '#FFD2A0' // Soft peach
+          },
+          {
+            title: 'İyimserlik Sirkı',
+            message: projectCount >= 3
+              ? `${projectCount} projede ${topMoods[0]} enerjisinin üç halkalı sirki yönetiyorsunuz. ${totalEntries} giriş bu pozitifliği gösteriyor. Sadece performans sergilemiyorsunuz - ilham veriyorsunuz.`
+              : `${topMoods[0]} enerjiniz mükemmel ayarlanmış bir enstrüman gibi. Bu duygusal temel tam olarak atılım anları yaratan şey.`,
+            color: '#F0F1C5' // Soft lemon
+          }
+        ] : [
           {
             title: 'Your Energy is Contagious',
             message: projectCount >= 3
@@ -572,7 +731,29 @@ class ProjectAnalyzer {
           .slice(0, 2)
           .map(([mood]) => mood);
         
-        const negativeVariations = [
+        const negativeVariations = language === 'tr' ? [
+          {
+            title: 'Bu da Geçecek',
+            message: projectCount >= 3
+              ? `${projectCount} projeyi ${topMoods[0]} hissederken yönetmek inanılmaz güç gösteriyor. ${totalEntries} son girişle, bu zor anlar gerçek büyümenin olduğu yer. Dayanıklılık inşa ediyorsunuz.`
+              : `Son ${topMoods[0]} kalıplarınız zorlu bir fazı gösteriyor. Unutmayın, her başarılı yolculuğun vadileri vardır. Önemli olan ileri hareket etmeye devam etmeniz, adım adım.`,
+            color: '#F1D3CE' // Soft coral
+          },
+          {
+            title: 'Fırtınalarda Büyüyorsunuz',
+            message: projectCount >= 3
+              ? `${projectCount} projede ${topMoods[0]} fırtınalarını atlatıyorsunuz. ${totalEntries} giriş bu zorluğu gösteriyor, her adımda daha güçlü oluyorsunuz. Karakterin dövüldüğü yer burası.`
+              : `${topMoods[0]} yolculuğunuz insan olduğunuzu gösteriyor ve bu güzel. Bu zorlu anlar gerçek sihrin gerçekleştiği yer - gerçek gücünüzü keşfettiğiniz yer.`,
+            color: '#E7CCCC' // Soft rose
+          },
+          {
+            title: 'Baskı Elmas Yaratır',
+            message: projectCount >= 3
+              ? `${projectCount} projede ${topMoods[0]} hissediyorsunuz, ama gerçek şu: baskı elmas yaratır. Bu zorlu anlar sizi olağanüstü bir şeye dönüştürüyor.`
+              : `${topMoods[0]} ağırlığını hissediyorsunuz, ama unutmayın: elmaslar baskı altında oluşur. Bu duygusal yoğunluk atılım anları yaratır.`,
+            color: '#FFD6BA' // Soft orange
+          }
+        ] : [
           {
             title: 'This Too Shall Pass',
             message: projectCount >= 3
@@ -608,7 +789,29 @@ class ProjectAnalyzer {
           .slice(0, 2)
           .map(([mood]) => mood);
         
-        const balancedVariations = [
+        const balancedVariations = language === 'tr' ? [
+          {
+            title: 'Sabit İlerleme',
+            message: projectCount >= 3
+              ? `${projectCount} projede ${topMoods[0]} ve ${topMoods[1]} dengeli karışımınız dikkat çekici olgunluk gösteriyor. ${totalEntries} girişle, bu duygusal zeka iyi liderleri harikalardan ayırır.`
+              : `${topMoods[0]} ve ${topMoods[1]} arasındaki duygusal dengeniz sürdürülebilir başarı için mükemmel temel yaratıyor. Bu iç istikrar atılım anlarını mümkün kılıyor.`,
+            color: '#B6CEB4' // Soft green
+          },
+          {
+            title: 'Denge Sanatı',
+            message: projectCount >= 3
+              ? `${projectCount} projede ${topMoods[0]} ve ${topMoods[1]} dengeleme sanatında ustalaşıyorsunuz. ${totalEntries} girişle, bu sadece istikrar değil - eylemde bilgelik.`
+              : `${topMoods[0]} ve ${topMoods[1]} arasındaki duygusal dengeniz mükemmel dengelenmiş bir terazi gibi. Bu iç uyum atılım anları için alan yaratıyor.`,
+            color: '#CBDCEB' // Soft blue
+          },
+          {
+            title: 'Merkezi ve Odaklı',
+            message: projectCount >= 3
+              ? `${projectCount} projede ${topMoods[0]} enerjisiyle merkezlisiniz. ${totalEntries} giriş bu dengeyi gösteriyor, usta bir okçu hassasiyetiyle hareket ediyorsunuz.`
+              : `${topMoods[0]} ile duygusal merkeziniz başarı için güçlü temel yaratıyor. Bu iç istikrar hedeflerinizi hassasiyetle vurmanızı sağlıyor.`,
+            color: '#C0C9EE' // Soft purple
+          }
+        ] : [
           {
             title: 'Steady Progress',
             message: projectCount >= 3
@@ -640,7 +843,29 @@ class ProjectAnalyzer {
       }
     } else {
       // Multiple variations for no journal data
-      const noJournalVariations = [
+      const noJournalVariations = language === 'tr' ? [
+        {
+          title: 'Hikayeniz Bekliyor',
+          message: projectCount >= 3
+            ? `${projectCount} projeyi etkileyici organizasyonla yönetiyorsunuz, ancak hikayeniz yarıda kalıyor. Deneyimlerinizi günlüğe yazmak sadece neyi başardığınızı değil, kişi olarak nasıl büyüdüğünüzü anlamanıza yardımcı olacak.`
+            : `Bu projeye odaklanmış yaklaşımınız takdire şayan, ancak asıl büyü yolculuğunuzu belgelediğinizde gerçekleşir. Gelecekteki benliğiniz bu büyüme ve keşif anlarını yakaladığınız için size teşekkür edecek.`,
+          color: '#D1D8BE' // Soft olive
+        },
+        {
+          title: 'Yazılmamış Bölüm',
+          message: projectCount >= 3
+            ? `${projectCount} projeyi usta bir orkestra şefi gibi yönetiyorsunuz, ancak senfoninizin en güzel kısmı yazılmamış kalıyor. Günlüğünüz yolculuğunuzun büyüsünü yakalamak için bekliyor.`
+            : `Projeniz güzel bir hikaye gibi gelişiyor, ancak en önemli bölümler henüz yazılmamış. Günlüğünüz büyümenizin görünür olduğu tuvaldir.`,
+          color: '#F0F1C5' // Soft lemon
+        },
+        {
+          title: 'Parlaklığınızı Yakalayın',
+          message: projectCount >= 3
+            ? `${projectCount} projeyi dikkat çekici beceriyle yönetiyorsunuz, ancak parlaklığınız yakalanmayı hak ediyor. Günlüğünüz yolculuğunuzun ne kadar olağanüstü olduğunu gösterecek aynadır.`
+            : `Odaklanmış adanmışlığınız güzel bir şey yaratıyor, ancak asıl hazine büyümenizi belgelemekte. Günlüğünüz tam potansiyelinizi ortaya çıkarmanın anahtarıdır.`,
+          color: '#E7CCCC' // Soft rose
+        }
+      ] : [
         {
           title: 'Your Story Awaits',
           message: projectCount >= 3

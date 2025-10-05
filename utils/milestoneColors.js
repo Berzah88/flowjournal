@@ -26,6 +26,11 @@ let usedColors = new Set();
 
 // Milestone icon arkaplan rengini belirleyen fonksiyon
 export const getMilestoneColor = (milestone, theme = 'light') => {
+  // Güvenlik kontrolü - milestone objesi değilse varsayılan renk döndür
+  if (!milestone || typeof milestone !== 'object') {
+    return theme === 'dark' ? "#6B7280" : "#BFBFBF";
+  }
+  
   if (milestone.completed) {
     return theme === 'dark' ? "#6B7280" : "#BFBFBF"; // Completed milestone'lar tema uyumlu gri
   }
@@ -46,6 +51,11 @@ export const getMilestoneCardColor = () => {
 
 // Unique renk atama fonksiyonu
 export const assignUniqueColor = (milestone, theme = 'light') => {
+  // Güvenlik kontrolü - milestone objesi değilse varsayılan renk döndür
+  if (!milestone || typeof milestone !== 'object') {
+    return theme === 'dark' ? "#6B7280" : "#BFBFBF";
+  }
+  
   const colorPalette = theme === 'dark' ? DARK_MODE_MILESTONE_COLORS : MILESTONE_COLORS;
   
   // Önce paletten kullanılmayan renk ara

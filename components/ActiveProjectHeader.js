@@ -26,8 +26,6 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   onTabSwitch,
   onMenuPress,
   isModalOpen,
-  progress,
-  progressStyle,
   panGesture
 }) {
   const { theme } = useTheme();
@@ -97,7 +95,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
                   fontFamily: 'Poppins_600SemiBold',
                 }
               ]}>
-                Milestones
+                {t('milestones')}
               </Text>
             </TouchableOpacity>
             
@@ -120,46 +118,12 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
                   fontFamily: 'Poppins_600SemiBold',
                 }
               ]}>
-                Calendar
+                {t('journey')}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Modern Progress Section - Her iki tab'da da görünür */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeader}>
-            <Text style={[
-              styles.progressLabel, 
-              { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' },
-              isCompleted && styles.completedProgressText
-            ]}>
-              Progress
-            </Text>
-            <Text style={[
-              styles.progressPercentage, 
-              { color: theme.name === 'dark' ? '#FF6B6B' : '#007AFF' },
-              isCompleted && styles.completedProgressText
-            ]}>
-              {Math.round(progress * 100)}%
-            </Text>
-          </View>
-          <View style={[
-            styles.progressBarContainer, 
-            {
-              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-            },
-            isCompleted && styles.completedProgressBarContainer
-          ]}>
-            <Animated.View style={[
-              styles.progressBar, 
-              { 
-                width: `${progress * 100}%`,
-                backgroundColor: theme.name === 'dark' ? '#FF6B6B' : '#007AFF'
-              }
-            ]} />
-          </View>
-        </View>
       </View>
     </GestureDetector>
   );
@@ -171,17 +135,19 @@ const styles = StyleSheet.create({
   // Modern Header Styles
   modernHeader: {
     paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 0.5,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerContent: {
     flexDirection: 'column',
-    gap: 12,
+    gap: 16,
   },
   titleSection: {
     flexDirection: 'column',
-    gap: 4,
+    gap: 6,
   },
   modernTitle: {
     fontSize: 24,
@@ -197,13 +163,13 @@ const styles = StyleSheet.create({
   tabSwitcher: {
     flexDirection: 'row',
     borderRadius: 12,
-    padding: 4,
+    padding: 3,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -225,41 +191,5 @@ const styles = StyleSheet.create({
   },
   completedDateText: {
     color: "#A0A0A0",
-  },
-  // Modern Progress Styles
-  progressSection: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingBottom: 8,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    fontSize: 14,
-    fontFamily: "Poppins_500Medium",
-    letterSpacing: -0.2,
-  },
-  progressPercentage: {
-    fontSize: 14,
-    fontFamily: "Poppins_600SemiBold",
-  },
-  progressBarContainer: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  completedProgressText: {
-    color: "#A0A0A0",
-  },
-  completedProgressBarContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
 });

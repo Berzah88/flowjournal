@@ -23,19 +23,19 @@ const hexToRgb = (hex) => {
 };
 
 // Mood tag'lerini render eden fonksiyon - basit ve temiz
-const MoodTags = memo(({ milestone, theme }) => {
+const MoodTags = memo(({ project, theme }) => {
   const recentMoods = useMemo(() => {
-    if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
+    if (!project || !project.journalEntries || project.journalEntries.length === 0) {
       return [];
     }
 
     // Son 3 mood'u al (en yeni önce)
-    return milestone.journalEntries
+    return project.journalEntries
       ?.slice()
       ?.sort((a, b) => b.id - a.id) // En yeni entry'ler önce
       ?.filter(entry => entry.mood || entry.moodIcon || entry.moodColor) // Sadece mood'u olan entry'ler
       ?.slice(0, 3); // En fazla 3 mood göster
-  }, [milestone.journalEntries]);
+  }, [project.journalEntries]);
 
   // Eğer mood yoksa hiçbir şey gösterme
   if (recentMoods.length === 0) {
@@ -79,13 +79,23 @@ const MoodTags = memo(({ milestone, theme }) => {
   );
 });
 
-const Card = memo(function Card({ title, startDate, endDate, completed = false, activeMilestones = [], onMilestonePress, onPress }) {
+const Card = memo(function Card({ title, startDate, endDate, completed = false, activeMilestones = [], onMilestonePress, onPress, task }) {
   // Performance monitoring (sadece development'ta)
-  usePerformanceMonitor('Card');
+  // Performance monitoring - sadece kritik durumlarda uyar
+  usePerformanceMonitor('Card', {
+    trackFPS: false, // FPS tracking'i kapat
+    warnThreshold: 200, // Daha yüksek threshold
+    criticalThreshold: 500 // Daha yüksek critical threshold
+  });
   
   // Theme context
   const { theme } = useTheme();
   const { t } = useLanguage();
+  
+  // Safety check for required props
+  if (!title || !startDate || !endDate) {
+    return null;
+  }
   
   // Memoize expensive calculations
   const { totalDays, remainingDays, progress } = useMemo(() => {
@@ -182,6 +192,7 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
           ]}>
             {title}
           </Text>
+          
           <View style={[
             styles.modernDateFrame, 
             {
@@ -199,6 +210,9 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
               {new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
             </Text>
           </View>
+          
+          {/* Project Mood Indicator - Tarihin altında */}
+          {task && <MoodTags project={task} theme={theme} />}
         </View>
       </View>
 
@@ -329,7 +343,6 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
                     ]}>
                       {ms.title || t('untitled')}
                     </Text>
-                    <MoodTags milestone={ms} theme={theme} />
                   </View>
                 </View>
               </View>
@@ -615,7 +628,8 @@ const styles = StyleSheet.create({
   moodTagsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 8,
+    marginBottom: 4,
     flexWrap: "wrap",
     backgroundColor: 'transparent',
   },
@@ -688,6 +702,7 @@ Card.propTypes = {
   ),
   onMilestonePress: PropTypes.func,
   onPress: PropTypes.func,
+  task: PropTypes.object,
 };
 
 Card.defaultProps = {

@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import PropTypes from "prop-types";
 import * as Location from "expo-location";
 import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/MoodPredictor";
+import { getMilestoneColor } from "../utils/milestoneColors";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -51,7 +52,16 @@ const LocationTag = memo(({ locationData, getLocationText }) => {
   );
 });
 
-const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, taskId, milestoneId, isCompleted }) {
+const JournalCard = memo(function JournalCard({ 
+  dayGroup, 
+  onPress, 
+  navigation, 
+  taskId, 
+  milestoneId, 
+  isCompleted,
+  availableMilestones = [], // Mevcut milestone'lar
+  refreshKey = 0 // Refresh trigger
+}) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const [locationTexts, setLocationTexts] = useState({});
@@ -119,8 +129,10 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       //   media.push({ type: "map", content: entry.location });
       // }
     });
+    
+    
     return media;
-  }, [dayGroup.allEntries]);
+  }, [dayGroup.allEntries, refreshKey]); // refreshKey dependency eklendi
 
   // O günün mood bilgisini al (mood bilgisi olan en son girişten)
   const dayMoodObj = useMemo(() => {
@@ -180,6 +192,92 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
     if (!text || text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
   }, []);
+
+  // AI milestone analizi - günlük kayıtlarını analiz ederek hangi milestone'a ait olduğunu belirler
+  const analyzeMilestoneRelevance = useCallback((journalText, milestones) => {
+    if (!journalText || !milestones || milestones.length === 0) return null;
+    
+    const textLower = journalText.toLowerCase();
+    let bestMatch = null;
+    let bestScore = 0;
+    
+    milestones.forEach(milestone => {
+      if (!milestone.title) return;
+      
+      const milestoneTitle = milestone.title.toLowerCase();
+      let score = 0;
+      
+      // Direkt başlık eşleşmesi
+      if (textLower.includes(milestoneTitle)) {
+        score += 0.8;
+      }
+      
+      // Başlıktaki anahtar kelimeler
+      const titleWords = milestoneTitle.split(' ').filter(word => word.length > 3);
+      titleWords.forEach(word => {
+        if (textLower.includes(word)) {
+          score += 0.3;
+        }
+      });
+      
+      // Milestone'a özel anahtar kelimeler
+      const milestoneKeywords = {
+        'başlangıç': ['başla', 'start', 'ilk', 'commence', 'begin'],
+        'tamamla': ['bitir', 'complete', 'finish', 'son', 'end'],
+        'test': ['test', 'deneme', 'kontrol', 'check', 'sınama'],
+        'tasarım': ['design', 'plan', 'mimari', 'architecture', 'blueprint'],
+        'geliştirme': ['development', 'code', 'kod', 'programming', 'build'],
+        'dokümantasyon': ['documentation', 'belge', 'rapor', 'manual'],
+        'deploy': ['yayınla', 'publish', 'release', 'dağıt', 'launch'],
+        'optimizasyon': ['optimize', 'iyileştir', 'performance', 'hızlandır']
+      };
+      
+      // Her milestone türü için anahtar kelime kontrolü
+      Object.entries(milestoneKeywords).forEach(([key, keywords]) => {
+        if (milestoneTitle.includes(key) || milestoneTitle.includes(keywords[0])) {
+          keywords.forEach(keyword => {
+            if (textLower.includes(keyword)) {
+              score += 0.2;
+            }
+          });
+        }
+      });
+      
+      // Zaman bazlı analiz (milestone tarihlerine göre)
+      if (milestone.startDate && milestone.endDate) {
+        const entryDate = new Date(dayGroup.allEntries[0]?.createdAt);
+        const startDate = new Date(milestone.startDate);
+        const endDate = new Date(milestone.endDate);
+        
+        if (entryDate >= startDate && entryDate <= endDate) {
+          score += 0.4; // Tarih aralığında ise bonus puan
+        }
+      }
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = milestone;
+      }
+    });
+    
+    // Minimum güven skoru (0.3)
+    return bestScore >= 0.3 ? { milestone: bestMatch, confidence: Math.min(bestScore, 1) } : null;
+  }, [dayGroup.allEntries]);
+
+  // Bu günlük kayıtları için en uygun milestone'ı bul
+  const relevantMilestone = useMemo(() => {
+    if (!availableMilestones || availableMilestones.length === 0) return null;
+    
+    // Tüm günlük metinlerini birleştir
+    const allTexts = dayGroup.allEntries
+      .filter(entry => entry.text && entry.text.trim().length > 0)
+      .map(entry => entry.text.trim())
+      .join(' ');
+    
+    if (allTexts.length === 0) return null;
+    
+    return analyzeMilestoneRelevance(allTexts, availableMilestones);
+  }, [dayGroup.allEntries, availableMilestones, analyzeMilestoneRelevance]);
 
   // Medya preview render fonksiyonu (harita hariç - APK crash sorunu)
   const renderPreviewGridForEntry = useCallback((entry) => {
@@ -246,14 +344,22 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       style={[
         styles.dayCard,
         {
-          backgroundColor: theme.name === 'dark' ? '#2A2A2E' : '#FFFFFF',
-          borderColor: theme.name === 'dark' ? '#3A3A3E' : '#F0F0F0',
+          // Consistent solid backgrounds
+          backgroundColor: theme.name === 'dark' 
+            ? '#2A2A2E' 
+            : '#FFFFFF',
+          borderColor: theme.name === 'dark' 
+            ? 'rgba(255, 255, 255, 0.1)' 
+            : 'rgba(0, 0, 0, 0.05)',
+          // Enhanced shadows for modern look
           shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-          shadowOpacity: theme.name === 'dark' ? 0.2 : 0.05,
-          shadowRadius: theme.name === 'dark' ? 6 : 3,
-          elevation: theme.name === 'dark' ? 3 : 1,
+          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+          shadowRadius: theme.name === 'dark' ? 12 : 8,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: theme.name === 'dark' ? 8 : 4,
         }
       ]}
+      activeOpacity={0.7}
       onPress={() => {
         openJournalDetail({
           images: allMedia.filter(m => m.type === "image").map(m => m.content),
@@ -265,16 +371,40 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
       }}
       activeOpacity={0.8}
     >
-      {/* Medya bölümü - o günün tüm medyaları */}
-      {allMedia.length > 0 && (
-        <View style={styles.dayMediaSection}>
-          {renderPreviewGridForEntry({ 
-            images: allMedia.filter(m => m.type === "image").map(m => m.content)
-            // location kaldırıldı - APK crash sorunu nedeniyle
-          })}
+      {/* Milestone Etiketi - Medya olsun ya da olmasın her zaman göster */}
+      {relevantMilestone && (
+        <View style={[
+          styles.milestoneTagContainer,
+          {
+            backgroundColor: theme.name === 'dark' 
+              ? 'rgba(28,28,30,0.95)' 
+              : 'rgba(255,255,255,0.95)',
+            borderColor: theme.name === 'dark' 
+              ? 'rgba(255,255,255,0.15)' 
+              : 'rgba(0,0,0,0.1)',
+            marginBottom: 8,
+          }
+        ]}>
+          {/* Milestone renkli dot ikonu */}
+          <View style={[
+            styles.milestoneDot,
+            {
+              backgroundColor: getMilestoneColor(relevantMilestone.milestone, theme.name)
+            }
+          ]} />
+          <Text style={[
+            styles.milestoneTag,
+            { 
+              color: theme.name === 'dark' 
+                ? '#FFFFFF' 
+                : getMilestoneColor(relevantMilestone.milestone, theme.name)
+            }
+          ]}>
+            {relevantMilestone.milestone.title}
+          </Text>
         </View>
       )}
-      
+
       {/* Tarih başlığı ve mood */}
       <View style={[
         styles.dayHeader,
@@ -292,11 +422,11 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
               styles.dayMoodTag, 
               { 
                 backgroundColor: theme.name === 'dark' 
-                  ? (dayMoodObj.color || '#2C2C2E') + 'CC' // Add transparency for dark mode
-                  : dayMoodObj.color || '#fff', 
+                  ? (dayMoodObj.color ? dayMoodObj.color + 'CC' : '#4A4A4E') // Karanlık temada daha parlak
+                  : (dayMoodObj.color || '#fff'),
                 marginLeft: 4,
                 borderColor: theme.name === 'dark' 
-                  ? 'rgba(255, 255, 255, 0.2)' 
+                  ? 'rgba(255, 255, 255, 0.3)' 
                   : 'rgba(0,0,0,0.1)',
                 borderWidth: 1,
               }
@@ -304,30 +434,53 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
               <MaterialIcons 
                 name={getValidIconName(dayMoodObj.icon)} 
                 size={16} 
-                color={theme.name === 'dark' ? '#000000' : '#333'} 
+                color={theme.name === 'dark' ? '#FFFFFF' : '#333'} 
               />
               <Text style={[
                 styles.dayMoodLabel,
-                { color: theme.name === 'dark' ? '#000000' : '#555' }
+                { 
+                  color: theme.name === 'dark' ? '#FFFFFF' : '#555',
+                  fontWeight: theme.name === 'dark' ? '600' : '500' // Karanlık temada daha kalın
+                }
               ]}>{dayMoodObj.label}</Text>
             </View>
           )}
         </View>
         {/* Location etiketi - tarihin altında */}
-        {dayGroup.allEntries.some(entry => entry.location) && (
-          <LocationTag 
-            locationData={dayGroup.allEntries.find(entry => entry.location)?.location} 
-            getLocationText={getLocationText} 
-          />
-        )}
+        {(() => {
+          const hasLocation = dayGroup.allEntries.some(entry => entry.location);
+          const locationEntry = dayGroup.allEntries.find(entry => entry.location);
+          
+          
+          if (hasLocation && locationEntry) {
+            return (
+              <LocationTag 
+                locationData={locationEntry.location} 
+                getLocationText={getLocationText} 
+              />
+            );
+          } else {
+            return null;
+          }
+        })()}
       </View>
       
-      {/* İlk metin girişi - saat ile birlikte */}
-      {firstTextEntry && (
-        <View style={styles.firstTextSection}>
+      {/* İlk metin girişi - medya olmayan kartlarda tarih başlığından hemen sonra */}
+      {firstTextEntry && allMedia.length === 0 && (
+        <View style={[
+          styles.firstTextSection, 
+          { 
+            marginTop: 4, // 8'den 4'e düşürüldü - daha kompakt
+            alignSelf: 'stretch', // Tam genişlik
+            width: '100%',
+          }
+        ]}>
           <Text style={[
             styles.firstTextTime,
-            { color: theme.name === 'dark' ? '#8E8E93' : '#888' }
+            { 
+              color: theme.name === 'dark' ? '#8E8E93' : '#888',
+              alignSelf: 'flex-start',
+            }
           ]}>
             {new Date(firstTextEntry.createdAt).toLocaleTimeString('tr-TR', {
               hour: '2-digit',
@@ -339,8 +492,71 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
             {
               color: theme.name === 'dark' ? '#FFFFFF' : '#333',
               backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#F8F9FA',
+              alignSelf: 'stretch', // Tam genişlik
+              width: '100%',
             }
-          ]}>{truncateText(firstTextEntry.text, 120)}</Text>
+          ]}>{truncateText(firstTextEntry.text, 100)}</Text>
+        </View>
+      )}
+
+      {/* Medya bölümü - o günün tüm medyaları */}
+      {allMedia.length > 0 && (
+        <View style={styles.dayMediaSection}>
+          {/* Media Header - Sadece medya sayısı */}
+          <View style={styles.mediaHeader}>
+            <View style={styles.mediaHeaderContent}>
+              <MaterialIcons 
+                name="photo-library" 
+                size={14} 
+                color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
+              />
+              <Text style={[
+                styles.mediaHeaderText,
+                { color: theme.name === 'dark' ? '#8E8E93' : '#666' }
+              ]}>
+                {allMedia.length} {allMedia.length === 1 ? 'photo' : 'photos'}
+              </Text>
+            </View>
+          </View>
+          
+          {renderPreviewGridForEntry({ 
+            images: allMedia.filter(m => m.type === "image").map(m => m.content)
+            // location kaldırıldı - APK crash sorunu nedeniyle
+          })}
+        </View>
+      )}
+      
+      {/* İlk metin girişi - medya olan kartlarda medyadan sonra */}
+      {firstTextEntry && allMedia.length > 0 && (
+        <View style={[
+          styles.firstTextSection, 
+          { 
+            marginTop: 4,
+            alignSelf: 'stretch', // Tam genişlik
+            width: '100%',
+          }
+        ]}>
+          <Text style={[
+            styles.firstTextTime,
+            { 
+              color: theme.name === 'dark' ? '#8E8E93' : '#888',
+              alignSelf: 'flex-start',
+            }
+          ]}>
+            {new Date(firstTextEntry.createdAt).toLocaleTimeString('tr-TR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </Text>
+          <Text style={[
+            styles.firstTextContent,
+            {
+              color: theme.name === 'dark' ? '#FFFFFF' : '#333',
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#F8F9FA',
+              alignSelf: 'stretch', // Tam genişlik
+              width: '100%',
+            }
+          ]}>{truncateText(firstTextEntry.text, 100)}</Text>
         </View>
       )}
       
@@ -374,6 +590,7 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
   // Custom comparison function for better performance
   return (
     prevProps.dayGroup.date === nextProps.dayGroup.date &&
+    prevProps.refreshKey === nextProps.refreshKey && // RefreshKey kontrolü eklendi
     prevProps.dayGroup.allEntries.length === nextProps.dayGroup.allEntries.length &&
     prevProps.dayGroup.allEntries.every((entry, index) => {
       const nextEntry = nextProps.dayGroup.allEntries[index];
@@ -382,7 +599,9 @@ const JournalCard = memo(function JournalCard({ dayGroup, onPress, navigation, t
              entry.createdAt === nextEntry.createdAt &&
              entry.mood === nextEntry.mood &&
              entry.moodIcon === nextEntry.moodIcon &&
-             entry.moodColor === nextEntry.moodColor;
+             entry.moodColor === nextEntry.moodColor &&
+             JSON.stringify(entry.images) === JSON.stringify(nextEntry.images) && // Medya kontrolü
+             JSON.stringify(entry.location) === JSON.stringify(nextEntry.location); // Konum kontrolü
     })
   );
 });
@@ -391,14 +610,21 @@ export default JournalCard;
 
 const styles = StyleSheet.create({
   dayCard: {
-    borderRadius: 8, 
-    padding: 6, 
-    marginBottom: 4,
-    marginLeft: 4,
-    marginRight: 20,
-    shadowOffset: { width: 0, height: 1 },
-    borderWidth: 0.5,
-    minHeight: 80,
+    borderRadius: 24, // Daha yuvarlak köşeler
+    padding: 16, // Daha fazla padding
+    marginTop: 30,
+    marginBottom: 0,
+    marginLeft: 8,
+    marginRight: 24,
+    borderWidth: 1, // Daha kalın border
+    minHeight: 90, // Biraz daha yüksek
+    maxWidth: width * 0.75, // Daha dar kartlar
+    // Modern glassmorphism properties
+    backdropFilter: 'blur(10px)', // Web için blur efekti
+    overflow: 'hidden', // İçeriğin taşmasını önle
+    // Flexbox properties for better alignment
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
   },
   dayHeader: {
     marginBottom: 6,
@@ -419,51 +645,61 @@ const styles = StyleSheet.create({
   dayMoodTag: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16, // Daha yuvarlak
     borderWidth: 1,
-    minWidth: 50,
+    minWidth: 60,
     justifyContent: "center",
+    // Modern glassmorphism effect
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   dayMoodLabel: {
     marginLeft: 3,
     fontSize: 9,
     fontFamily: "Poppins_500Medium",
     letterSpacing: 0.3,
+    // fontWeight will be overridden by inline style
   },
   firstTextSection: {
-    marginTop: 4,
     marginBottom: 4,
     minHeight: 40,
-    maxHeight: 80,
+    maxHeight: 70, // 60'tan 70'e artırıldı - biraz daha uzun
+    paddingHorizontal: 0, // Yan boşlukları kaldır
   },
   firstTextTime: {
     fontSize: 9,
     fontFamily: "Poppins_500Medium",
-    marginBottom: 2,
-    paddingHorizontal: 2,
+    marginBottom: 4, // 8'den 4'e düşürüldü - daha kompakt
+    paddingHorizontal: 0, // Yan boşlukları kaldır
     letterSpacing: 0.4,
   },
   firstTextContent: {
     fontSize: 11,
     fontFamily: "Poppins_400Regular",
-    lineHeight: 15,
+    lineHeight: 15, // 14'ten 15'e artırıldı - biraz daha uzun
     letterSpacing: 0.2,
     borderRadius: 6,
-    padding: 6,
+    padding: 6, // 8'den 6'ya düşürüldü - daha kompakt
+    marginHorizontal: 0, // Yan boşlukları kaldır
   },
   additionalTextTags: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 4,
-    marginTop: 4,
+    marginTop: 22, // 8'den 16'ya artırıldı
+    marginBottom: 0, // Alt boşluk sıfırlandı
   },
   textTag: {
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 1,
+    marginBottom: 0, // Alt boşluk sıfırlandı
   },
   textTagTime: {
     fontSize: 8,
@@ -474,6 +710,49 @@ const styles = StyleSheet.create({
   dayMediaSection: {
     marginBottom: 6,
     marginHorizontal: -2,
+  },
+  // Media Header Styles
+  mediaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  mediaHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mediaHeaderText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 6,
+    letterSpacing: 0.3,
+  },
+  mediaExpandButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  // Milestone Tag Styles
+  milestoneTagContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  milestoneDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  milestoneTag: {
+    fontSize: 13,
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.3,
   },
   previewWrapper: { 
     flexDirection: "row", 
@@ -569,6 +848,13 @@ JournalCard.propTypes = {
   taskId: PropTypes.string,
   milestoneId: PropTypes.string,
   isCompleted: PropTypes.bool,
+  availableMilestones: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    title: PropTypes.string,
+    startDate: PropTypes.string,
+    endDate: PropTypes.string,
+  })),
+  refreshKey: PropTypes.number,
 };
 
 
@@ -578,4 +864,6 @@ JournalCard.defaultProps = {
   taskId: null,
   milestoneId: null,
   isCompleted: false,
+  availableMilestones: [],
+  refreshKey: 0,
 };

@@ -2,11 +2,11 @@
 import React, { useState, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+// MaterialIcons removed - no mood stickers needed
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 
-const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, milestones = [] }) => {
+const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
   const [currentWeek, setCurrentWeek] = useState(0);
   const { theme } = useTheme();
   const { t, language } = useLanguage();
@@ -51,33 +51,7 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
   };
 
 
-  // Tarihte görev var mı kontrolü
-  const hasTasks = (date) => {
-    const dateString = date.toDateString();
-    return tasksByDate[dateString] && tasksByDate[dateString].length > 0;
-  };
-
-  // O güne ait mood bilgisini bulan fonksiyon
-  const getMoodForDate = (currentDate) => {
-    for (const milestone of milestones) {
-      if (!milestone.journalEntries || milestone.journalEntries.length === 0) {
-        continue;
-      }
-
-      const entryForThisDate = milestone.journalEntries.find(entry => {
-        const entryDate = new Date(entry.createdAt);
-        return entryDate.toDateString() === currentDate.toDateString();
-      });
-
-      if (entryForThisDate && (entryForThisDate.mood || entryForThisDate.moodIcon || entryForThisDate.moodColor)) {
-        return {
-          icon: entryForThisDate.moodIcon || entryForThisDate.mood || 'sentiment-satisfied',
-          color: entryForThisDate.moodColor || '#8E7DBE'
-        };
-      }
-    }
-    return null;
-  };
+  // Task and mood functionality removed - only date selection
 
 
   return (
@@ -97,8 +71,6 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
            const dayAbbr = getDayAbbreviation(date);
            const isTodayDate = isToday(date);
            const isSelectedDate = isSelected(date);
-           const hasTasksForDate = hasTasks(date);
-           const moodInfo = getMoodForDate(date);
 
            return (
              <TouchableOpacity
@@ -118,9 +90,6 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
                    borderWidth: 2,
                    borderColor: theme.name === 'dark' ? '#FF6B6B' : '#4A90E2',
                  },
-                 hasTasksForDate && {
-                   backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                 },
                ]}
                onPress={() => onDateSelect && onDateSelect(date)}
                accessible={true}
@@ -136,9 +105,6 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
                    color: '#FFFFFF',
                    fontFamily: 'Poppins_600SemiBold',
                  },
-                 hasTasksForDate && {
-                   color: theme.name === 'dark' ? '#F9FAFB' : '#1D1D1F',
-                 },
                ]}>
                  {dayNumber}
                </Text>
@@ -151,38 +117,10 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, tasksByDate = {}, mile
                    color: '#FFFFFF',
                    fontFamily: 'Poppins_500Medium',
                  },
-                 hasTasksForDate && {
-                   color: theme.name === 'dark' ? '#F9FAFB' : '#1D1D1F',
-                 },
                ]}>
                  {dayAbbr}
                </Text>
-               
-               {/* Mood sticker */}
-               {moodInfo && (
-                 <View style={styles.moodTagContainer}>
-                   <View style={[styles.moodTag, { backgroundColor: moodInfo.color }]}>
-                     <MaterialIcons
-                       name={moodInfo.icon}
-                       size={10}
-                       color="#333"
-                     />
-                   </View>
-                 </View>
-               )}
-               
-               {/* Task indicator dot */}
-               {hasTasksForDate && !moodInfo && (
-                 <View style={[
-                   styles.taskDot,
-                   {
-                     backgroundColor: theme.name === 'dark' ? '#4A90E2' : '#007AFF',
-                   },
-                   isSelectedDate && {
-                     backgroundColor: '#FFFFFF',
-                   },
-                 ]} />
-               )}
+               {/* All indicators removed - only date selection */}
              </TouchableOpacity>
            );
          })}
@@ -224,26 +162,5 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     marginTop: -4, // -2'den -4'e düşürdüm - daha da yakınlaştırdım
   },
-  taskDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
-  },
-  moodTagContainer: {
-    position: "absolute",
-    bottom: 4,
-    right: 4,
-  },
-  moodTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-    minWidth: 16,
-    minHeight: 16,
-    elevation: 1,
-  },
+  // Task and mood styles removed - only date selection
 });

@@ -51,6 +51,7 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
       onMilestonePress={null} // Completed cards don't allow milestone taps
       onPress={() => openCard(item)}
       style={{ marginBottom: 15 }}
+      task={item} // Task prop'u ekledik
     />
   ), [openCard]);
 
@@ -59,7 +60,7 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
   // Memoized data arrays with content-based dependencies
   const completedTasksReversed = useMemo(() => {
     return [...completedTasks].reverse();
-  }, [completedTasks.length, completedTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.milestones?.map(m => `${m.id}-${m.title}-${m.completed}-${m.journalEntries?.length || 0}-${m.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',') || ''}`).join(',')]);
+  }, [completedTasks.length, completedTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.journalEntries?.length || 0}-${t.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',')]);
 
   // Additional safety check
   if (!completedTasksReversed) {
@@ -169,9 +170,7 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
                 { color: theme.name === 'dark' ? '#FFFFFF' : '#636366' }
               ]}>
                 {completedTasksReversed.reduce((total, task) => 
-                  total + (task.milestones?.reduce((milestoneTotal, milestone) => 
-                    milestoneTotal + (milestone.journalEntries?.length || 0), 0
-                  ) || 0), 0
+                  total + (task.journalEntries?.length || 0), 0
                 )}
               </Text>
             </View>
@@ -194,17 +193,15 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
               ]}>
                 {(() => {
                   const totalWords = completedTasksReversed.reduce((total, task) => 
-                    total + (task.milestones?.reduce((milestoneTotal, milestone) => 
-                      milestoneTotal + (milestone.journalEntries?.reduce((entryTotal, entry) => {
-                        // Journal entry'lerde 'text' alanı kullanılıyor
-                        const text = entry.text || entry.content || '';
-                        if (text && typeof text === 'string' && text.trim().length > 0) {
-                          const words = text.trim().split(/\s+/).filter(word => word.length > 0);
-                          return entryTotal + words.length;
-                        }
-                        return entryTotal;
-                      }, 0) || 0), 0
-                    ) || 0), 0
+                    total + (task.journalEntries?.reduce((entryTotal, entry) => {
+                      // Journal entry'lerde 'text' alanı kullanılıyor
+                      const text = entry.text || entry.content || '';
+                      if (text && typeof text === 'string' && text.trim().length > 0) {
+                        const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+                        return entryTotal + words.length;
+                      }
+                      return entryTotal;
+                    }, 0) || 0), 0
                   );
                   return totalWords > 1000 ? `${Math.round(totalWords / 1000)}k` : totalWords.toString();
                 })()}

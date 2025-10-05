@@ -1,5 +1,5 @@
 // screens/Journal.js
-import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
+import React, { useEffect, useRef, useState, useContext, useCallback, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -44,35 +44,35 @@ import {
   predictMood
 } from '../utils/AIMoodPredictor';
 
-// Temel mood picker için sadece 5 mood
-const BASIC_MOODS = [
+// Temel mood picker için sadece 5 mood - Bu component içinde kullanılacak
+const getBasicMoods = (t) => [
   {
     key: "happy",
-    label: "Happy",
+    label: t('happy'),
     icon: "sentiment-satisfied",
     color: "#C8E6C9", // Light green
   },
   {
     key: "excited",
-    label: "Excited",
+    label: t('excited'),
     icon: "celebration",
     color: "#FFE0B2", // Light orange
   },
   {
     key: "tired",
-    label: "Tired",
+    label: t('tired'),
     icon: "bedtime",
     color: "#E1BEE7", // Light purple
   },
   {
     key: "sad",
-    label: "Sad",
+    label: t('sad'),
     icon: "sentiment-dissatisfied",
     color: "#FFCDD2", // Light red
   },
   {
     key: "angry",
-    label: "Angry",
+    label: t('angry'),
     icon: "mood-bad",
     color: "#FFAB91", // Light deep orange
   },
@@ -94,11 +94,17 @@ export default function Journal({
   onSave = () => {},
   fromMainScreen = false,
   fromActiveProject = false,
+  // NEW: Project-based journal support
+  currentTask = null,
+  isProjectBased = false,
 }) {
 
   const { theme } = useTheme();
   const { t } = useLanguage();
-  const { addJournalEntry, updateJournalEntry } = useTaskActions();
+  const { 
+    addProjectJournalEntry,
+    updateProjectJournalEntry 
+  } = useTaskActions();
 
   // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler
   const dynamicTopGap = fromActiveProject ? 0 : (fromMainScreen ? 40 : TOP_GAP);
@@ -145,6 +151,7 @@ export default function Journal({
   const [showImageModal, setShowImageModal] = useState(false);
   const [autoMoodApplied, setAutoMoodApplied] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  
 
   // sentiment analysis state
   const [sentiment, setSentiment] = useState({ score: 0, label: 'neutral' });
@@ -264,7 +271,6 @@ export default function Journal({
       
       // Get mood suggestions with enhanced context
       const moodSugs = await getSmartMoodSuggestion(analysis, selectedMood?.key, userHistory, allText);
-      console.log('Mood suggestions:', moodSugs);
       setMoodSuggestions(moodSugs);
     } catch (error) {
       console.error('Mood analysis error:', error);
@@ -308,7 +314,6 @@ export default function Journal({
   // Populate when editing existing entry
   useEffect(() => {
     if (existingEntry) {
-      console.log('Journal existingEntry:', existingEntry);
       setTextValue(existingEntry.text || "");
       const existingPreviews = [
         ...(existingEntry.images || []).map((uri) => ({ type: "image", content: uri })),
@@ -520,11 +525,11 @@ export default function Journal({
   };
 
   const handleButtonPress = async (label) => {
-    if (label === "Location") {
+    if (label === t('location')) {
       await pickLocation();
       return;
     }
-    if (label === "Photo") {
+    if (label === t('photo')) {
       await pickImage();
       return;
     }
@@ -533,14 +538,15 @@ export default function Journal({
       setShowMoodPicker((s) => !s);
       return;
     }
-    if (label === "Save") {
-      if (!milestone || !milestone.id) {
+    if (label === t('save')) {
+      // For project-based journals, milestone can be a dummy milestone
+      if (!isProjectBased && (!milestone || !milestone.id)) {
         handleClose();
         return;
       }
 
-      const taskId = milestone.taskId || milestone.parentTaskId || milestone.task?.id;
-      const msId = milestone.id;
+      const taskId = isProjectBased ? currentTask?.id : (milestone.taskId || milestone.parentTaskId || milestone.task?.id);
+      const msId = isProjectBased ? null : milestone.id;
 
       // Mood seçimi - kullanıcının seçtiği mood'u veya otomatik öneriyi kullan
       let finalMood = selectedMood;
@@ -582,17 +588,21 @@ export default function Journal({
 
       // Save işlemini async olarak yap ve tamamlandıktan sonra modal'ı kapat
       try {
-        console.log('Save - editingEntryId:', editingEntryId, 'payload:', payload);
-        if (editingEntryId) {
-          if (updateJournalEntry) {
-            console.log('Updating journal entry:', editingEntryId);
-            updateJournalEntry(taskId, msId, editingEntryId, payload);
+        
+        if (isProjectBased && currentTask) {
+          // Project-based journal entry
+          if (editingEntryId) {
+            if (updateProjectJournalEntry) {
+              updateProjectJournalEntry(currentTask.id, editingEntryId, payload);
+            }
+          } else {
+            if (addProjectJournalEntry) {
+              addProjectJournalEntry(currentTask.id, payload);
+            }
           }
         } else {
-          if (addJournalEntry) {
-            console.log('Adding new journal entry');
-            addJournalEntry(taskId, msId, payload);
-          }
+          // Legacy milestone-based journal entry - REMOVED
+          console.warn('Legacy milestone-based journal system is no longer supported');
         }
         
         // Update user history for pattern learning
@@ -635,7 +645,7 @@ export default function Journal({
         </TouchableOpacity>
       );
     }
-    // Harita artık medya alanında gösterilmiyor, konum bilgisi mood sticker'ının yanında gösterilecek
+    // Harita artık medya alanında gösterilmiyor
     return null;
   };
 
@@ -687,8 +697,8 @@ export default function Journal({
   };
 
   const buttons = [
-    { label: t('addLocation'), icon: "map-outline" },
-    { label: t('addPhoto'), icon: "image-outline" },
+    { label: t('location'), icon: "map-outline" },
+    { label: t('photo'), icon: "image-outline" },
     { label: "Mood", icon: "happy-outline" },
     { label: t('save'), icon: "save-outline" },
   ];
@@ -781,6 +791,7 @@ export default function Journal({
                   <Ionicons name="location" size={12} color="#007AFF" />
                   <Text style={styles.locationText}>{locationText}</Text>
                 </View>
+                
               </View>
             )}
           </View>
@@ -817,7 +828,6 @@ export default function Journal({
                       ]}
                       activeOpacity={0.6}
                       onPress={() => {
-                        console.log('Mood suggestion pressed:', suggestedMood?.label);
                         if (suggestedMood) {
                           setSelectedMood(suggestedMood);
                           setShowSuggestions(false);
@@ -908,7 +918,7 @@ export default function Journal({
                 
                 {/* Manual Selection Section */}
                 <View style={styles.manualMoodContainer}>
-                  {BASIC_MOODS.map((m) => (
+                  {getBasicMoods(t).map((m) => (
                     <TouchableOpacity
                       key={m.key}
                       style={[
@@ -926,7 +936,6 @@ export default function Journal({
                         if (textValue.trim().length > 0) {
                           try {
                             await learnFromUser(m.key, textValue);
-                            console.log('Learned from user:', m.key, textValue);
                           } catch (error) {
                             console.warn('Failed to learn from user:', error);
                           }
@@ -961,6 +970,7 @@ export default function Journal({
               </Animated.View>
             </TouchableOpacity>
           )}
+
 
           <View style={[
             styles.buttonRow, 

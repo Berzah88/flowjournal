@@ -21,7 +21,8 @@ const DailyMoodSummary = ({
   activeTasks = [], 
   selectedDate,
   hasMedia = false,
-  onPress = null
+  onPress = null,
+  navigation = null
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -33,29 +34,25 @@ const DailyMoodSummary = ({
     const todayMoods = [];
     const moodCounts = {};
     
-    // Tüm projelerdeki milestone'ları tara
+    // Tüm projelerdeki journal entries'leri tara
     activeTasks.forEach(task => {
-      if (task.milestones) {
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              const entryDate = new Date(entry.createdAt);
-              entryDate.setHours(0, 0, 0, 0);
-              
-              // Bugünkü entry'leri filtrele
-              if (entryDate.getTime() === today.getTime() && entry.mood) {
-                todayMoods.push({
-                  mood: entry.mood,
-                  moodIcon: entry.moodIcon,
-                  moodColor: entry.moodColor,
-                  text: entry.text,
-                  timestamp: entry.createdAt
-                });
-                
-                // Mood sayısını artır
-                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-              }
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          const entryDate = new Date(entry.createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          
+          // Bugünkü entry'leri filtrele
+          if (entryDate.getTime() === today.getTime() && entry.mood) {
+            todayMoods.push({
+              mood: entry.mood,
+              moodIcon: entry.moodIcon,
+              moodColor: entry.moodColor,
+              text: entry.text,
+              timestamp: entry.createdAt
             });
+            
+            // Mood sayısını artır
+            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
           }
         });
       }
@@ -252,7 +249,7 @@ const DailyMoodSummary = ({
               <Text style={[
                 styles.progressText,
                 { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-              ]}>Progress Status</Text>
+              ]}>{t('progressStatus')}</Text>
               <Text style={[
                 styles.progressPercentage,
                 { 
@@ -286,15 +283,11 @@ const DailyMoodSummary = ({
     </View>
   );
 
-  if (onPress) {
-    return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return content;
+  return (
+    <View>
+      {content}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Alert, Pressable, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
 import JournalCard from "./JournalCard";
 import PropTypes from "prop-types";
@@ -23,6 +24,7 @@ function MileStone({
   onEditToggle,
   onOpenJournal,
   navigation,
+  currentTask = null, // Project bilgilerini almak için
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -30,6 +32,15 @@ function MileStone({
   // usePerformanceMonitor('MileStone');
   
   if (!milestone) return null;
+
+  // Ensure milestone has required properties - useMemo to prevent infinite loop
+  const safeMilestone = useMemo(() => ({
+    ...milestone,
+    title: milestone.title || '',
+    id: milestone.id || 'unknown',
+    startDate: milestone.startDate || new Date().toISOString(),
+    endDate: milestone.endDate || new Date().toISOString()
+  }), [milestone?.id, milestone?.title, milestone?.startDate, milestone?.endDate]);
 
   const [title, setTitle] = useState(milestone.title || "");
   const [startDate, setStartDate] = useState(
@@ -117,7 +128,6 @@ function MileStone({
   }, [onDelete, hideDeleteOptionWithAnimation]);
 
   const handleEditToggle = useCallback(() => {
-    console.log('MileStone: handleEditToggle called', { milestoneId: milestone.id, milestoneTitle: milestone.title });
     // Open modal for editing
     onEditToggle?.(milestone);
   }, [onEditToggle, milestone]);
@@ -151,28 +161,34 @@ function MileStone({
   };
 
   const getDaysText = () => {
-    const today = new Date();
-    const diffStart = Math.ceil((startDate - today) / 86400000);
-    const diffEnd = Math.ceil((endDate - today) / 86400000);
+    try {
+      const today = new Date();
+      const diffStart = Math.ceil((startDate - today) / 86400000);
+      const diffEnd = Math.ceil((endDate - today) / 86400000);
 
-    if (isCompleted) {
-      const diff = Math.ceil((endDate - startDate) / 86400000);
-      return `Completed in ${diff} day${diff !== 1 ? "s" : ""}`;
-    } else if (diffStart > 0) {
-      return `Starts in ${diffStart} day${diffStart !== 1 ? "s" : ""}`;
-    } else if (diffEnd >= 0) {
-      return `Ends in ${diffEnd} day${diffEnd !== 1 ? "s" : ""}`;
-    } else {
-      return `Ended ${Math.abs(diffEnd)} day${Math.abs(diffEnd) !== 1 ? "s" : ""} ago`;
+      if (isCompleted) {
+        const diff = Math.ceil((endDate - startDate) / 86400000);
+        return `Completed in ${diff} day${diff !== 1 ? "s" : ""}`;
+      } else if (diffStart > 0) {
+        return `Starts in ${diffStart} day${diffStart !== 1 ? "s" : ""}`;
+      } else if (diffEnd >= 0) {
+        return `Ends in ${diffEnd} day${diffEnd !== 1 ? "s" : ""}`;
+      } else {
+        return `Ended ${Math.abs(diffEnd)} day${Math.abs(diffEnd) !== 1 ? "s" : ""} ago`;
+      }
+    } catch (error) {
+      console.error('Error in getDaysText:', error);
+      return '';
     }
   };
 
   // Renk sistemi - kart gövdesi beyaz, icon arkaplanı renkli
   const cardBgColor = useMemo(() => getMilestoneCardColor(), []);
-  const iconBgColor = useMemo(() => getMilestoneColor(milestone), [milestone]);
+  const iconBgColor = useMemo(() => getMilestoneColor(safeMilestone), [safeMilestone]);
 
-  // Günlük kartları için gerekli fonksiyonlar
-  const entries = milestone?.journalEntries?.slice().sort((a, b) => b.id - a.id) || [];
+
+  // Günlük kartları için gerekli fonksiyonlar - Project-based system
+  const entries = []; // Milestone-based journal entries removed
 
   // Günlükleri tarihlere göre gruplandır
   const groupEntriesByDate = useCallback((entries) => {
@@ -221,7 +237,7 @@ function MileStone({
             style={({ pressed }) => [
               styles.milestoneItemClickable,
               {
-                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 122, 255, 0.04)',
+                backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
                 transform: [{ scale: pressed && !editable ? 0.96 : 1 }],
               }
             ]}
@@ -229,7 +245,15 @@ function MileStone({
             onPress={() => {
               if (!editable && !showDeleteOption) {
                 if (onOpenJournal) {
-                  onOpenJournal(milestone);
+                  // Project-based journal system - open journal for the entire project
+                  const projectData = {
+                    id: 'project-journal',
+                    title: 'Project Journal',
+                    taskId: milestone.taskId,
+                    projectTitle: milestone.projectTitle || 'Project',
+                    isProjectBased: true
+                  };
+                  onOpenJournal(projectData);
                 } else if (onOpenDetail) {
                   onOpenDetail();
                 }
@@ -251,7 +275,7 @@ function MileStone({
                   ref={inputRef}
                   style={styles.milestoneText}
                   value={title}
-                  placeholder="Milestone title"
+                  placeholder={t('enterMilestoneTitle')}
                   onChangeText={setTitle}
                   editable={editable}
                   onSubmitEditing={handleCreateMilestone}
@@ -264,34 +288,37 @@ function MileStone({
                   styles.milestoneText, 
                   { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
                   isCompleted && styles.completedText
-                ]}>{title}</Text>
+                ]}>{title || ''}</Text>
               )}
               
               {/* Date info - only show if not editable or if milestone has dates */}
               {(!editable || (startDate && endDate)) && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.dateRow,
-                    {
-                      transform: [{ scale: pressed && editable ? 0.98 : 1 }],
-                      opacity: pressed && editable ? 0.8 : 1,
-                    }
-                  ]}
-                  onPress={() => !isCompleted && editable && setCalendarVisible(true)}
-                >
-                  <Ionicons 
-                    name="calendar-outline" 
-                    size={12} 
-                    color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
-                    style={styles.timerIcon} 
-                  />
-                  <Text style={[
-                    styles.daysText, 
-                    { color: theme.name === 'dark' ? '#8E8E93' : '#666' },
-                    isCompleted && styles.completedText
-                  ]}>{getDaysText()}</Text>
-                  {editable && <Ionicons name="chevron-down" size={14} color={theme.name === 'dark' ? '#8E8E93' : '#555'} />}
-                </Pressable>
+                <View style={styles.dateRowContainer}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.dateRow,
+                      {
+                        transform: [{ scale: pressed && editable ? 0.98 : 1 }],
+                        opacity: pressed && editable ? 0.8 : 1,
+                      }
+                    ]}
+                    onPress={() => !isCompleted && editable && setCalendarVisible(true)}
+                  >
+                    <Ionicons 
+                      name="calendar-outline" 
+                      size={12} 
+                      color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
+                      style={styles.timerIcon} 
+                    />
+                    <Text style={[
+                      styles.daysText, 
+                      { color: theme.name === 'dark' ? '#8E8E93' : '#666' },
+                      isCompleted && styles.completedText
+                    ]}>{getDaysText() || ''}</Text>
+                    {editable && <Ionicons name="chevron-down" size={14} color={theme.name === 'dark' ? '#8E8E93' : '#555'} />}
+                  </Pressable>
+
+                </View>
               )}
             </View>
 
@@ -332,25 +359,8 @@ function MileStone({
           </Pressable>
 
           {/* Günlük Kartları */}
-          {!editable && groupedEntries.length > 0 && (
-            <View style={styles.journalCardsContainer}>
-              {groupedEntries.slice(0, 3).map((dayGroup) => (
-                <JournalCard 
-                  key={dayGroup.date}
-                  dayGroup={dayGroup}
-                  navigation={navigation}
-                  taskId={milestone?.taskId}
-                  milestoneId={milestone?.id}
-                  isCompleted={isCompleted}
-                />
-              ))}
-              {groupedEntries.length > 3 && (
-                <View style={styles.moreEntriesIndicator}>
-                  <Text style={styles.moreEntriesText}>+{groupedEntries.length - 3} daha fazla gün</Text>
-                </View>
-              )}
-            </View>
-          )}
+          {/* Journal Entries - Project-based system only */}
+          {/* Milestone-based journal entries removed */}
 
         {/* Animated Action Buttons - Theme Consistent */}
         {showDeleteOption && (
@@ -358,6 +368,7 @@ function MileStone({
             style={[
               styles.actionButtonsContainer,
               {
+                backgroundColor: theme.name === 'dark' ? 'rgba(44, 44, 46, 0.95)' : 'rgba(248, 249, 250, 0.95)',
                 opacity: deleteAnimation,
                 transform: [
                   {
@@ -370,7 +381,7 @@ function MileStone({
               },
             ]}
           >
-            {/* Complete Button - LEFT */}
+            {/* Complete/Reopen Button - LEFT */}
             {!isCompleted ? (
               <TouchableOpacity
                 style={[styles.themeButton, styles.completeButtonTheme]}
@@ -395,7 +406,7 @@ function MileStone({
                 <View style={styles.buttonIconContainer}>
                   <Ionicons name="play-circle" size={20} color="#2196F3" />
                 </View>
-                <Text style={styles.themeButtonText}>Set Active</Text>
+                <Text style={styles.themeButtonText}>Reopen</Text>
               </TouchableOpacity>
             )}
 
@@ -412,10 +423,16 @@ function MileStone({
 
             {/* Close Button - Elegant */}
             <TouchableOpacity
-              style={styles.elegantCloseButton}
+              style={[
+                styles.elegantCloseButton,
+                {
+                  backgroundColor: theme.name === 'dark' ? 'rgba(44, 44, 46, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                  borderColor: theme.name === 'dark' ? 'rgba(142, 142, 147, 0.3)' : 'rgba(142, 142, 147, 0.2)',
+                }
+              ]}
               onPress={hideDeleteOptionWithAnimation}
             >
-              <Ionicons name="close" size={18} color="#8E8E93" />
+              <Ionicons name="close" size={18} color={theme.name === 'dark' ? '#FFFFFF' : '#8E8E93'} />
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -438,8 +455,8 @@ export default MileStone;
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 25,
-    marginBottom: 16,
+    marginTop: 8, // 16'dan 8'e düşürüldü
+    marginBottom: 0, // 10'dan 0'a düşürüldü
     marginHorizontal: 28,
   },
   milestoneItemClickable: {
@@ -447,7 +464,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 12,
+    borderRadius: 16,
     minHeight: 40,
     justifyContent: 'flex-start',
   },
@@ -470,11 +487,17 @@ const styles = StyleSheet.create({
   },
   completedText: {
     color: "#888", // Daha soluk renk completed milestone'lar için
+    opacity: 0.7,
+  },
+  dateRowContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
   },
   dateRow: { 
     flexDirection: "row", 
     alignItems: "center",
-    marginTop: 4,
   },
   timerIcon: { marginRight: 4 },
   daysText: {
@@ -488,7 +511,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#545454",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 16,
     elevation: 2,
     shadowColor: "#545454",
     shadowOffset: { width: 0, height: 2 },
@@ -502,7 +525,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0, 0, 0, 0.8)",
-    borderRadius: 20,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
@@ -514,7 +537,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     backgroundColor: "#fff",
-    borderRadius: 18,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     elevation: 6,
@@ -531,7 +554,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     flexDirection: "row",
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: "hidden",
     elevation: 6,
     shadowColor: "#000",
@@ -695,6 +718,7 @@ MileStone.propTypes = {
   onEditToggle: PropTypes.func,
   onOpenJournal: PropTypes.func,
   navigation: PropTypes.object,
+  currentTask: PropTypes.object, // Project bilgileri için
 };
 
 MileStone.defaultProps = {
@@ -708,5 +732,6 @@ MileStone.defaultProps = {
   onEditToggle: null,
   onOpenJournal: null,
   navigation: null,
+  currentTask: null,
 };
 

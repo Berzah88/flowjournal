@@ -26,29 +26,25 @@ const MoodStatement = ({
     const todayMoods = [];
     const moodCounts = {};
     
-    // Tüm projelerdeki milestone'ları tara
+    // Tüm projelerdeki journal entry'leri tara (project-based system)
     activeTasks.forEach(task => {
-      if (task.milestones) {
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              const entryDate = new Date(entry.createdAt);
-              entryDate.setHours(0, 0, 0, 0);
-              
-              // Bugünkü entry'leri filtrele
-              if (entryDate.getTime() === today.getTime() && entry.mood) {
-                todayMoods.push({
-                  mood: entry.mood,
-                  moodIcon: entry.moodIcon,
-                  moodColor: entry.moodColor,
-                  text: entry.text,
-                  timestamp: entry.createdAt
-                });
-                
-                // Mood sayısını artır
-                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-              }
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          const entryDate = new Date(entry.createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          
+          // Bugünkü entry'leri filtrele
+          if (entryDate.getTime() === today.getTime() && entry.mood) {
+            todayMoods.push({
+              mood: entry.mood,
+              moodIcon: entry.moodIcon,
+              moodColor: entry.moodColor,
+              text: entry.text,
+              timestamp: entry.createdAt
             });
+            
+            // Mood sayısını artır
+            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
           }
         });
       }
@@ -136,7 +132,8 @@ const MoodStatement = ({
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
           ]}>
             {todayMoodData.dominantMood ? 
-              `${t('todayYouFeel')} ${todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}` :
+              t(`todayMood${todayMoodData.dominantMood.key.charAt(0).toUpperCase() + todayMoodData.dominantMood.key.slice(1)}`) || 
+              t('todayYouFeel') + ' ' + t(todayMoodData.dominantMood.key) :
               t('howAreYouFeelingToday')
             }
           </Text>
@@ -173,13 +170,13 @@ const MoodStatement = ({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 30, // DailyMoodSummary ile aynı
-    marginTop: 8, // DailyMoodSummary ile aynı
-    marginBottom: 4, // DailyMoodSummary ile aynı
+    marginTop: 8, // DailyMoodSummary ile arasındaki boşluğu artırdım
+    marginBottom: 4, // StatusTabs ile arasındaki boşluğu biraz artırdım
   },
   moodStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,
     borderLeftWidth: 3,

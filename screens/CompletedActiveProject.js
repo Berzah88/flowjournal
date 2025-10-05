@@ -371,15 +371,15 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
                         </View>
                       </View>
                       
-                      {/* Journal Entries */}
-                      {milestone.journalEntries && milestone.journalEntries.length > 0 && (
+                      {/* Journal Entries - Project-based system */}
+                      {currentTask.journalEntries && currentTask.journalEntries.length > 0 && (
                         <View style={styles.journalCardsContainer}>
-                          {groupEntriesByDate(milestone.journalEntries).slice(0, 3).map((dayGroup) => (
+                          {groupEntriesByDate(currentTask.journalEntries).slice(0, 3).map((dayGroup) => (
                             <JournalCard 
                               key={dayGroup.date}
                               dayGroup={dayGroup}
                               navigation={navigation}
-                              taskId={milestone?.taskId || currentTask.id}
+                              taskId={currentTask.id}
                               milestoneId={milestone?.id}
                               isCompleted={milestone.completed}
                             />

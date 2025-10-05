@@ -17,6 +17,7 @@ import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS, ELEVATION } from '../constants';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import MoodCalendar from '../components/MoodCalendar';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,7 +27,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
 
-  // Günün dominant mood'unu hesapla (MoodStatement'ten alınan mantık)
+  // Günün dominant mood'unu hesapla (Yeni proje bazlı sistem)
   const todayDominantMood = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -34,27 +35,23 @@ const EmotionalJournalScreen = ({ navigation }) => {
     const todayMoods = [];
     const moodCounts = {};
     
-    // Tüm projelerdeki milestone'ları tara
-    activeTasks.forEach(task => {
-      if (task.milestones) {
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              const entryDate = new Date(entry.createdAt);
-              entryDate.setHours(0, 0, 0, 0);
-              
-              // Bugünkü entry'leri filtrele
-              if (entryDate.getTime() === today.getTime() && entry.mood) {
-                todayMoods.push({
-                  mood: entry.mood,
-                  moodIcon: entry.moodIcon,
-                  moodColor: entry.moodColor,
-                });
-                
-                // Mood sayısını artır
-                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-              }
+    // Tüm projelerdeki günlükleri tara (sadece proje bazlı sistem)
+    [...activeTasks, ...completedTasks].forEach(task => {
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          const entryDate = new Date(entry.createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          
+          // Bugünkü entry'leri filtrele
+          if (entryDate.getTime() === today.getTime() && entry.mood) {
+            todayMoods.push({
+              mood: entry.mood,
+              moodIcon: entry.moodIcon,
+              moodColor: entry.moodColor,
             });
+            
+            // Mood sayısını artır
+            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
           }
         });
       }
@@ -78,32 +75,28 @@ const EmotionalJournalScreen = ({ navigation }) => {
     });
     
     return dominantMood;
-  }, [activeTasks]);
+  }, [activeTasks, completedTasks]);
 
-  // Tüm mood verilerini topla
+  // Tüm mood verilerini topla (Sadece proje bazlı sistem)
   const allMoodData = useMemo(() => {
     const moodEntries = [];
     const allTasks = [...activeTasks, ...completedTasks];
     
     allTasks.forEach(task => {
-      if (task.milestones) {
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              if (entry.mood || entry.moodIcon || entry.moodColor) {
-                moodEntries.push({
-                  id: entry.id,
-                  mood: entry.mood,
-                  moodIcon: entry.moodIcon,
-                  moodColor: entry.moodColor,
-                  text: entry.text,
-                  createdAt: entry.createdAt,
-                  projectTitle: task.title,
-                  milestoneTitle: milestone.title,
-                  taskId: task.id,
-                  milestoneId: milestone.id
-                });
-              }
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          if (entry.mood || entry.moodIcon || entry.moodColor) {
+            moodEntries.push({
+              id: entry.id,
+              mood: entry.mood,
+              moodIcon: entry.moodIcon,
+              moodColor: entry.moodColor,
+              text: entry.text,
+              createdAt: entry.createdAt,
+              projectTitle: task.title,
+              milestoneTitle: entry.originalMilestoneTitle || entry.milestoneTitle || 'General Entry',
+              taskId: task.id,
+              milestoneId: entry.originalMilestoneId || entry.milestoneId
             });
           }
         });
@@ -209,6 +202,28 @@ const EmotionalJournalScreen = ({ navigation }) => {
     return 'stable';
   }, [allMoodData]);
 
+  // Activity Timeline analizi (Project Analyzer'dan adapte edildi)
+  const timelineAnalysis = useMemo(() => {
+    const now = new Date();
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    const recentActivity = allMoodData.reduce((acc, entry) => {
+      const entryDate = new Date(entry.createdAt);
+      if (entryDate >= last30Days) {
+        const dayKey = entryDate.toISOString().split('T')[0];
+        if (!acc[dayKey]) acc[dayKey] = 0;
+        acc[dayKey]++;
+      }
+      return acc;
+    }, {});
+
+    return {
+      recentActivity,
+      totalActivityDays: Object.keys(recentActivity).length,
+      averageDailyActivity: Object.values(recentActivity).reduce((sum, count) => sum + count, 0) / 30
+    };
+  }, [allMoodData]);
+
   const getMoodInfo = useCallback((moodKey) => {
     const mood = MOODS.find(m => m.key === moodKey) || 
                  EXTENDED_MOODS.find(m => m.key === moodKey) || 
@@ -265,196 +280,81 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
   // AI-powered motivation sentence generator - Mood-based
   const generateMotivationSentence = useCallback((project, progressType, dominantMood) => {
-    const motivationSentences = {
-      // Positive mood-specific motivations
-      happy: [
-        "Your happiness is your greatest asset - let it guide you to even more success!",
-        "This joy you're feeling is well-deserved. You've earned every smile!",
-        "Keep riding this wave of happiness! Your positive energy is contagious and powerful!"
-      ],
-      excited: [
-        "Your excitement is the spark that ignites great achievements! Channel this energy!",
-        "This enthusiasm is your secret weapon - use it to make amazing things happen!",
-        "Your excitement is magnetic! Let it attract more opportunities and success!"
-      ],
-      grateful: [
-        "Gratitude attracts more good things. Keep this beautiful energy flowing!",
-        "Your appreciation mindset is creating a positive ripple effect in your life!",
-        "This grateful heart is opening doors to even more opportunities and blessings!"
-      ],
-      hopeful: [
-        "Your hope is the light that guides you through any darkness. Keep it burning bright!",
-        "This optimism is your superpower - it's turning possibilities into realities!",
-        "Hope is the foundation of all great achievements. You're building something amazing!"
-      ],
-      proud: [
-        "You have every right to be proud. This is just the beginning of your greatness!",
-        "Your pride is well-earned. Let it motivate you to reach even higher heights!",
-        "This sense of accomplishment is the fuel for your next victory. Keep going!"
-      ],
-      motivated: [
-        "Your motivation is unstoppable! Keep this momentum going and achieve greatness!",
-        "This drive is your competitive advantage - leverage it fully and succeed!",
-        "Your determination is inspiring. Let it guide you to the success you deserve!"
-      ],
-      peaceful: [
-        "Your peace is a superpower in a chaotic world. Use it to make wise decisions!",
-        "This tranquility is creating space for clarity and focus. Embrace it fully!",
-        "Your serenity is your strength. Let it guide you through any challenge!"
-      ],
-      content: [
-        "Contentment is the highest form of success. You're exactly where you need to be!",
-        "This satisfaction is the foundation for even greater achievements ahead!",
-        "Your contentment is a sign of wisdom. You've found the perfect balance!"
-      ],
-      confident: [
-        "Your confidence is magnetic! It's attracting success and opportunities to you!",
-        "This self-belief is your greatest asset. Trust it and watch miracles happen!",
-        "Confidence is the key to unlocking your full potential. You've got this!"
-      ],
-      
-      // Negative mood-specific motivations
-      sad: [
-        "It's okay to feel this way. Your feelings are valid and this too shall pass!",
-        "This sadness is just making room for even greater joy ahead. You're stronger than you know!",
-        "Every cloud has a silver lining. Your breakthrough is coming - stay strong!"
-      ],
-      angry: [
-        "Your anger shows you care deeply. Channel this passion into positive action!",
-        "This frustration is temporary, but your strength is permanent. Keep pushing forward!",
-        "Anger can be a powerful motivator. Use it to fuel your determination to succeed!"
-      ],
-      tired: [
-        "Rest is not giving up, it's preparing for the next victory! Listen to your body!",
-        "Even the strongest warriors need to rest. You're still winning - just recharge!",
-        "Your body is asking for care. Take a break and come back even stronger!"
-      ],
-      frustrated: [
-        "Frustration is just success in disguise. You're closer than you think!",
-        "This challenge is making you stronger. Every expert was once a beginner!",
-        "Your frustration shows you're pushing your limits. That's where growth happens!"
-      ],
-      anxious: [
-        "Breathe deeply. You've overcome challenges before, and you will again!",
-        "Your anxiety is just your mind preparing for success. Trust the process!",
-        "This feeling is temporary, but your strength is permanent. You've got this!"
-      ],
-      overwhelmed: [
-        "Break it down into smaller steps. You've got this, one piece at a time!",
-        "Overwhelm is just excitement in disguise. You're capable of amazing things!",
-        "Remember: you don't have to do everything at once. Progress, not perfection!"
-      ],
-      lonely: [
-        "Your solitude is a gift. Use this time to connect with your inner strength!",
-        "This loneliness is temporary. You're building resilience and self-reliance!",
-        "Sometimes we need to be alone to discover how strong we really are!"
-      ],
-      confused: [
-        "Confusion is the beginning of wisdom. You're about to discover something amazing!",
-        "This uncertainty is just the universe preparing you for clarity. Trust the process!",
-        "Every breakthrough starts with confusion. You're exactly where you need to be!"
-      ],
-      disappointed: [
-        "Disappointment is just a detour, not a dead end. Your success story continues!",
-        "This setback is setting you up for an even greater comeback. Stay strong!",
-        "Your disappointment shows you have high standards. That's a sign of greatness!"
-      ],
-      worried: [
-        "Worry is just your mind trying to protect you. You're stronger than your fears!",
-        "This concern shows you care deeply. Channel that care into positive action!",
-        "Your worries are temporary, but your ability to overcome them is permanent!"
-      ],
-      bored: [
-        "Boredom is the birthplace of creativity. Use this time to explore new possibilities!",
-        "This restlessness is a sign that you're ready for your next big adventure!",
-        "When you're bored, you're actually ready to discover something amazing!"
-      ],
-      stressed: [
-        "Stress is just your body preparing for success. You're stronger than you think!",
-        "This pressure is creating diamonds. You're being forged into something incredible!",
-        "Your stress shows you're pushing boundaries. That's where breakthroughs happen!"
-      ],
-      exhausted: [
-        "Exhaustion is a sign of hard work. You're building something meaningful!",
-        "This tiredness shows you've been giving your all. Rest and come back stronger!",
-        "Even the strongest need to recharge. You're still winning - just take a break!"
-      ],
-      
-      // Neutral mood-specific motivations
-      calm: [
-        "Your calmness is a superpower in a chaotic world. Use it wisely and succeed!",
-        "This peaceful energy is creating space for clarity and focus. Embrace it!",
-        "Your serenity is your strength. Let it guide you to make wise decisions!"
-      ],
-      curious: [
-        "Your curiosity is the key to unlocking new possibilities! Keep exploring!",
-        "This sense of wonder is what drives innovation. You're on the right path!",
-        "Your questions are leading you to amazing discoveries. Stay curious!"
-      ],
-      nostalgic: [
-        "Your nostalgia shows you have beautiful memories. Create even more amazing ones!",
-        "This fondness for the past is fueling your appreciation for the present!",
-        "Your memories are treasures. Use them to build an even brighter future!"
-      ],
-      surprised: [
-        "Your surprise shows you're open to new experiences. That's where magic happens!",
-        "This sense of wonder is keeping you young at heart. Embrace every surprise!",
-        "Your openness to surprises is your greatest asset. Keep expecting the unexpected!"
-      ],
-      focused: [
-        "Your focus is laser-sharp! This concentration is your path to success!",
-        "This deep focus is creating something amazing. Keep your eyes on the prize!",
-        "Your concentration is a superpower. Use it to achieve your biggest dreams!"
-      ],
-      neutral: [
-        "Steady progress is still progress. You're exactly where you need to be!",
-        "Consistency is the mother of mastery. Keep going and watch the magic happen!",
-        "Your steady approach is building something beautiful. Trust the process!"
-      ],
-      
-      // Default fallback
-      default: [
-        "You're exactly where you need to be right now. Trust the journey!",
-        "Every step you take is bringing you closer to your goals. Keep going!",
-        "Your progress is real and meaningful. You're building something amazing!"
-      ]
-    };
-
-    const moodSentences = motivationSentences[dominantMood?.key] || motivationSentences.default;
+    const moodKey = dominantMood?.key || 'default';
+    const randomIndex = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+    const translationKey = `motivation${moodKey.charAt(0).toUpperCase() + moodKey.slice(1)}${randomIndex}`;
     
-    // Return a random sentence from the appropriate mood category
-    return moodSentences[Math.floor(Math.random() * moodSentences.length)];
-  }, []);
+    return t(translationKey);
+  }, [t]);
 
-  // Get projects without mood entries for encouragement
+  // Get projects without mood entries for encouragement (Proje bazlı sistem)
   const getProjectsWithoutMoods = useCallback(() => {
     const projectsWithoutMoods = [];
     
     activeTasks.forEach(task => {
-      if (task.milestones && task.milestones.length > 0) {
-        let hasMoodEntries = false;
-        
-        // Check if any milestone has mood entries
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              if (entry.mood) {
-                hasMoodEntries = true;
-              }
-            });
+      let hasMoodEntries = false;
+      let totalJournalEntries = 0;
+      
+      // Check if project has mood entries (proje bazlı sistem)
+      if (task.journalEntries) {
+        totalJournalEntries = task.journalEntries.length;
+        task.journalEntries.forEach(entry => {
+          if (entry.mood) {
+            hasMoodEntries = true;
           }
         });
+      }
+      
+      // If no mood entries, add to encouragement list
+      if (!hasMoodEntries) {
+        // AI-powered motivation message generation based on project characteristics
+        const generateMotivationMessage = (project, projectTotalEntries) => {
+          const projectTitle = project.title.toLowerCase();
+          const milestoneCount = project.milestones ? project.milestones.length : 0;
+          const totalEntries = projectTotalEntries;
+          
+          // Analyze project characteristics for personalized messaging
+          if (projectTitle.includes('learn') || projectTitle.includes('study') || projectTitle.includes('öğren')) {
+            return t('learningJourneyMotivation');
+          } else if (projectTitle.includes('work') || projectTitle.includes('çalış') || projectTitle.includes('iş')) {
+            return t('workProjectMotivation');
+          } else if (projectTitle.includes('health') || projectTitle.includes('sağlık') || projectTitle.includes('fitness')) {
+            return t('healthProjectMotivation');
+          } else if (projectTitle.includes('creative') || projectTitle.includes('yaratıcı') || projectTitle.includes('art')) {
+            return t('creativeProjectMotivation');
+          } else if (projectTitle.includes('personal') || projectTitle.includes('kişisel') || projectTitle.includes('self')) {
+            return t('personalGrowthMotivation');
+          } else if (milestoneCount > 5) {
+            return t('complexProjectMotivation');
+          } else if (milestoneCount <= 2) {
+            return t('simpleProjectMotivation');
+          } else if (totalEntries > 0) {
+            return t('continueJournalingMotivation');
+          } else {
+            // Default motivational messages based on project ID for consistency
+            const defaultMessages = [
+              t('startYourEmotionalJourney'),
+              t('captureYourFeelings'),
+              t('documentYourProgress'),
+              t('shareYourThoughts'),
+              t('expressYourEmotions'),
+              t('recordYourExperience'),
+              t('tellYourStory'),
+              t('reflectOnYourJourney')
+            ];
+            return defaultMessages[project.id % defaultMessages.length];
+          }
+        };
         
-        // If no mood entries, add to encouragement list
-        if (!hasMoodEntries) {
-          projectsWithoutMoods.push({
-            projectId: task.id,
-            projectTitle: task.title,
-            milestoneCount: task.milestones.length,
-            totalEntries: task.milestones.reduce((total, milestone) => 
-              total + (milestone.journalEntries ? milestone.journalEntries.length : 0), 0)
-          });
-        }
+        const motivationMessage = generateMotivationMessage(task, totalJournalEntries);
+        
+        projectsWithoutMoods.push({
+          projectId: task.id,
+          projectTitle: task.title,
+          milestoneCount: task.milestones ? task.milestones.length : 0,
+          totalEntries: totalJournalEntries,
+          motivationMessage: motivationMessage
+        });
       }
     });
     
@@ -531,7 +431,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
       if (projectMoodCorrelation) {
         insights.push({
           type: 'correlation',
-          title: 'Project Impact',
+          title: t('projectImpact'),
           message: projectMoodCorrelation.message,
           icon: projectMoodCorrelation.icon,
           color: projectMoodCorrelation.color
@@ -547,56 +447,56 @@ const EmotionalJournalScreen = ({ navigation }) => {
       // Recommendation based on dominant mood
       const moodRecommendations = {
         happy: [
-          'Keep doing what makes you happy! Consider sharing your positive energy with others.',
-          'Your happiness is contagious! Use this positive momentum to tackle new challenges.',
-          'This joy is well-deserved. Consider setting new goals to maintain this positive energy.'
+          t('keepDoingHappy'),
+          t('happinessContagious'),
+          t('joyWellDeserved')
         ],
         excited: [
-          'Channel this excitement into new projects and opportunities!',
-          'Your enthusiasm is powerful - use it to inspire others around you.',
-          'This energy is perfect for taking on bigger challenges and goals.'
+          t('channelExcitement'),
+          t('enthusiasmPowerful'),
+          t('energyPerfect')
         ],
         tired: [
-          'Your body is asking for rest. Consider taking a break or reducing your workload.',
-          'Prioritize self-care and ensure you\'re getting enough sleep and relaxation.',
-          'This tiredness might indicate you need to reassess your work-life balance.'
+          t('bodyAskingRest'),
+          t('prioritizeSelfCare'),
+          t('reassessWorkLife')
         ],
         sad: [
-          'It\'s okay to feel this way. Consider talking to someone you trust or seeking support.',
-          'This sadness might be temporary. Focus on small, positive activities each day.',
-          'Consider what might be causing this sadness and take steps to address it.'
+          t('okayToFeel'),
+          t('sadnessTemporary'),
+          t('considerCausingSadness')
         ],
         anxious: [
-          'Anxiety is manageable. Try deep breathing exercises or mindfulness practices.',
-          'Consider breaking down overwhelming tasks into smaller, manageable steps.',
-          'Your anxiety might be telling you something important - listen to it with compassion.'
+          t('anxietyManageable'),
+          t('breakDownTasks'),
+          t('listenAnxiety')
         ],
         frustrated: [
-          'Frustration often signals growth. You\'re pushing your boundaries - that\'s positive!',
-          'Try to identify what\'s causing the frustration and address it systematically.',
-          'This feeling might indicate you need to change your approach or seek help.'
+          t('frustrationSignalsGrowth'),
+          t('identifyFrustration'),
+          t('changeApproach')
         ],
         calm: [
-          'Your calmness is a superpower! Use this peaceful energy to make wise decisions.',
-          'This tranquility is perfect for reflection and planning your next steps.',
-          'Your serenity is valuable - consider how to maintain this peaceful state.'
+          t('calmnessSuperpower'),
+          t('tranquilityPerfect'),
+          t('serenityValuable')
         ],
         motivated: [
-          'Your motivation is strong! Use this drive to tackle your most important goals.',
-          'This determination is your competitive advantage - leverage it fully.',
-          'Your motivation is inspiring - consider how to sustain this energy long-term.'
+          t('motivationStrong'),
+          t('determinationAdvantage'),
+          t('motivationInspiring')
         ]
       };
       
       const moodRecs = moodRecommendations[dominantMood] || [
-        'Continue tracking your emotions to better understand your patterns.',
-        'Consider setting small, achievable goals to maintain your progress.',
-        'Your emotional awareness is growing - keep up the great work!'
+        t('continueTracking'),
+        t('setSmallGoals'),
+        t('emotionalAwareness')
       ];
       
       recommendations.push({
         type: 'mood-based',
-        title: 'Personalized Recommendation',
+        title: t('personalizedRecommendation'),
         message: moodRecs[Math.floor(Math.random() * moodRecs.length)],
         icon: 'lightbulb',
         color: '#FF9800'
@@ -607,8 +507,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
     if (last7Days.length < 3) {
       recommendations.push({
         type: 'activity',
-        title: 'Journal More',
-        message: 'Try to write in your journal more frequently to get better insights into your emotional patterns.',
+        title: t('journalMore'),
+        message: t('journalMoreMessage'),
         icon: 'edit',
         color: '#2196F3'
       });
@@ -617,8 +517,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
     if (sortedMoods.length < 3) {
       recommendations.push({
         type: 'diversity',
-        title: 'Emotional Diversity',
-        message: 'Consider exploring different activities to experience a wider range of emotions.',
+        title: t('emotionalDiversity'),
+        message: t('emotionalDiversityMessage'),
         icon: 'explore',
         color: '#4CAF50'
       });
@@ -627,22 +527,27 @@ const EmotionalJournalScreen = ({ navigation }) => {
     return { insights, recommendations };
   }, [allMoodData, moodTrend, getMoodInfo, getSolidMoodColor, getTrendIcon, getTrendColor]);
 
-  // Project mood correlation analysis
+  // Project mood correlation analysis (Yeni proje bazlı sistem)
   const getProjectMoodCorrelation = useCallback(() => {
     const projectMoods = {};
     
-    // Analyze mood patterns by project
-    activeTasks.forEach(task => {
-      if (task.milestones) {
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              if (entry.mood) {
-                if (!projectMoods[task.title]) {
-                  projectMoods[task.title] = [];
-                }
-                projectMoods[task.title].push(entry.mood);
-              }
+    // Analyze mood patterns by project (sadece proje bazlı sistem)
+    [...activeTasks, ...completedTasks].forEach(task => {
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          if (entry.mood) {
+            if (!projectMoods[task.id]) {
+              projectMoods[task.id] = {
+                projectTitle: task.title,
+                moods: []
+              };
+            }
+            
+            const moodInfo = getMoodInfo(entry.mood);
+            projectMoods[task.id].moods.push({
+              mood: entry.mood,
+              moodInfo,
+              date: new Date(entry.createdAt)
             });
           }
         });
@@ -654,10 +559,12 @@ const EmotionalJournalScreen = ({ navigation }) => {
     let strongestMood = null;
     let maxCount = 0;
     
-    Object.entries(projectMoods).forEach(([projectName, moods]) => {
+    Object.entries(projectMoods).forEach(([projectName, projectData]) => {
+      if (!projectData || !projectData.moods) return;
+      
       const moodCounts = {};
-      moods.forEach(mood => {
-        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+      projectData.moods.forEach(mood => {
+        moodCounts[mood.mood] = (moodCounts[mood.mood] || 0) + 1;
       });
       
       const sortedMoods = Object.entries(moodCounts)
@@ -665,7 +572,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
       
       if (sortedMoods.length > 0 && sortedMoods[0][1] > maxCount) {
         maxCount = sortedMoods[0][1];
-        strongestProject = projectName;
+        strongestProject = projectData.projectTitle;
         strongestMood = sortedMoods[0][0];
       }
     });
@@ -673,46 +580,42 @@ const EmotionalJournalScreen = ({ navigation }) => {
     if (strongestProject && strongestMood) {
       const moodInfo = getMoodInfo(strongestMood);
       return {
-        message: `Your "${strongestProject}" project has the strongest emotional impact on you.`,
+        message: t('projectStrongestImpact', { project: strongestProject }),
         icon: 'trending-up',
         color: getSolidMoodColor(moodInfo.color)
       };
     }
     
     return null;
-  }, [activeTasks, getMoodInfo, getSolidMoodColor]);
+  }, [activeTasks, completedTasks, getMoodInfo, getSolidMoodColor]);
 
 
-  // Get completed projects emotional progress analysis
+  // Get completed projects emotional progress analysis (Sadece tamamlanmış projeler)
   const getCompletedProjectEmotionalProgress = useCallback(() => {
     const projectProgress = [];
     
     completedTasks.forEach(task => {
-      if (task.milestones && task.milestones.length > 0) {
-        const projectMoods = [];
-        const moodCounts = {};
-        
-        // Collect all moods from this completed project
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              if (entry.mood) {
-                const moodInfo = getMoodInfo(entry.mood);
-                projectMoods.push({
-                  mood: entry.mood,
-                  moodInfo,
-                  date: new Date(entry.createdAt)
-                });
-                
-                // Count each mood
-                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-              }
+      const projectMoods = [];
+      const moodCounts = {};
+      
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          if (entry.mood) {
+            const moodInfo = getMoodInfo(entry.mood);
+            projectMoods.push({
+              mood: entry.mood,
+              moodInfo,
+              date: new Date(entry.createdAt)
             });
+            
+            // Count each mood
+            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
           }
         });
-        
-        // Only show completed projects that have actual mood entries
-        if (projectMoods.length > 0) {
+      }
+      
+      // Only show completed projects that have actual mood entries
+      if (projectMoods.length > 0) {
           // Find the most frequent mood in the entire project
           const sortedMoods = Object.entries(moodCounts)
             .sort(([,a], [,b]) => b - a);
@@ -748,128 +651,128 @@ const EmotionalJournalScreen = ({ navigation }) => {
           switch (dominantMoodInfo?.key) {
             // Positive moods - past tense
             case 'happy':
-              progressMessage = 'This project was a joyful and fulfilling experience for you!';
+              progressMessage = t('completedProjectHappy');
               progressIcon = 'sentiment-satisfied';
               break;
             case 'excited':
-              progressMessage = 'This project filled you with excitement and energy throughout!';
+              progressMessage = t('completedProjectExcited');
               progressIcon = 'celebration';
               break;
             case 'grateful':
-              progressMessage = 'This project made you feel grateful and appreciative!';
+              progressMessage = t('completedProjectGrateful');
               progressIcon = 'favorite';
               break;
             case 'hopeful':
-              progressMessage = 'This project filled you with hope and optimism!';
+              progressMessage = t('completedProjectHopeful');
               progressIcon = 'wb-sunny';
               break;
             case 'proud':
-              progressMessage = 'This project made you feel proud of your achievements!';
+              progressMessage = t('completedProjectProud');
               progressIcon = 'emoji-events';
               break;
             case 'relieved':
-              progressMessage = 'This project brought you relief and peace of mind!';
+              progressMessage = t('completedProjectRelieved');
               progressIcon = 'spa';
               break;
             case 'motivated':
-              progressMessage = 'This project kept you highly motivated and driven!';
+              progressMessage = t('completedProjectMotivated');
               progressIcon = 'trending-up';
               break;
             case 'peaceful':
-              progressMessage = 'This project brought you inner peace and tranquility!';
+              progressMessage = t('completedProjectPeaceful');
               progressIcon = 'spa';
               break;
             case 'content':
-              progressMessage = 'This project made you feel content and satisfied!';
+              progressMessage = t('completedProjectContent');
               progressIcon = 'sentiment-satisfied';
               break;
             case 'confident':
-              progressMessage = 'This project boosted your confidence and self-belief!';
+              progressMessage = t('completedProjectConfident');
               progressIcon = 'self-improvement';
               break;
             
             // Negative moods - past tense
             case 'sad':
-              progressMessage = 'This project was challenging and made you feel downhearted';
+              progressMessage = t('completedProjectSad');
               progressIcon = 'sentiment-dissatisfied';
               break;
             case 'angry':
-              progressMessage = 'This project was frustrating and angering for you';
+              progressMessage = t('completedProjectAngry');
               progressIcon = 'mood-bad';
               break;
             case 'tired':
-              progressMessage = 'This project was exhausting and drained your energy';
+              progressMessage = t('completedProjectTired');
               progressIcon = 'bedtime';
               break;
             case 'frustrated':
-              progressMessage = 'This project proved to be frustrating for you';
+              progressMessage = t('completedProjectFrustrated');
               progressIcon = 'psychology';
               break;
             case 'anxious':
-              progressMessage = 'This project caused you anxiety and worry';
+              progressMessage = t('completedProjectAnxious');
               progressIcon = 'warning';
               break;
             case 'overwhelmed':
-              progressMessage = 'This project felt overwhelming and too much to handle';
+              progressMessage = t('completedProjectOverwhelmed');
               progressIcon = 'psychology';
               break;
             case 'lonely':
-              progressMessage = 'This project made you feel isolated and alone';
+              progressMessage = t('completedProjectLonely');
               progressIcon = 'person-off';
               break;
             case 'confused':
-              progressMessage = 'This project was confusing and unclear to you';
+              progressMessage = t('completedProjectConfused');
               progressIcon = 'help';
               break;
             case 'disappointed':
-              progressMessage = 'This project was disappointing and didn\'t meet your expectations';
+              progressMessage = t('completedProjectDisappointed');
               progressIcon = 'sentiment-dissatisfied';
               break;
             case 'worried':
-              progressMessage = 'This project caused you worry and concern';
+              progressMessage = t('completedProjectWorried');
               progressIcon = 'psychology';
               break;
             case 'bored':
-              progressMessage = 'This project felt boring and unengaging to you';
+              progressMessage = t('completedProjectBored');
               progressIcon = 'sentiment-neutral';
               break;
             case 'stressed':
-              progressMessage = 'This project stressed you out and caused tension';
+              progressMessage = t('completedProjectStressed');
               progressIcon = 'psychology';
               break;
             case 'exhausted':
-              progressMessage = 'This project left you feeling completely exhausted';
+              progressMessage = t('completedProjectExhausted');
               progressIcon = 'bedtime';
               break;
             
             // Neutral moods - past tense
             case 'calm':
-              progressMessage = 'This project was a calm and peaceful experience for you';
+              progressMessage = t('completedProjectCalm');
               progressIcon = 'spa';
               break;
             case 'curious':
-              progressMessage = 'This project sparked your curiosity and kept you interested';
+              progressMessage = t('completedProjectCurious');
               progressIcon = 'explore';
               break;
             case 'nostalgic':
-              progressMessage = 'This project brought back fond memories and nostalgia';
+              progressMessage = t('completedProjectNostalgic');
               progressIcon = 'history';
               break;
             case 'surprised':
-              progressMessage = 'This project continued to surprise and intrigue you';
+              progressMessage = t('completedProjectSurprised');
               progressIcon = 'surprise';
               break;
             case 'focused':
-              progressMessage = 'This project kept you focused and concentrated';
+              progressMessage = t('completedProjectFocused');
               progressIcon = 'center-focus-strong';
               break;
             case 'neutral':
-              progressMessage = 'This project progressed at a steady, neutral pace';
+              progressMessage = t('completedProjectNeutral');
               progressIcon = 'trending-flat';
               break;
             
             default:
-              progressMessage = 'This project was completed successfully';
+              progressMessage = t('completedProjectDefault');
               progressIcon = 'check-circle';
           }
           
@@ -891,38 +794,33 @@ const EmotionalJournalScreen = ({ navigation }) => {
             motivationSentence,
             isCompleted: true
           });
-        }
       }
     });
     
     return projectProgress.sort((a, b) => b.moodCount - a.moodCount);
   }, [completedTasks, getMoodInfo, generateMotivationSentence]);
 
-  // Project emotional progress analysis - Mood-based evaluation
+  // Project emotional progress analysis - Mood-based evaluation (Sadece aktif projeler)
   const getProjectEmotionalProgress = useCallback(() => {
     const projectProgress = [];
     
     activeTasks.forEach(task => {
-      if (task.milestones && task.milestones.length > 0) {
+      if (task.journalEntries && task.journalEntries.length > 0) {
         const projectMoods = [];
         const moodCounts = {};
         
-        // Collect all moods from this project
-        task.milestones.forEach(milestone => {
-          if (milestone.journalEntries) {
-            milestone.journalEntries.forEach(entry => {
-              if (entry.mood) {
-                const moodInfo = getMoodInfo(entry.mood);
-                projectMoods.push({
-                  mood: entry.mood,
-                  moodInfo,
-                  date: new Date(entry.createdAt)
-                });
-                
-                // Count each mood
-                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-              }
+        // Collect all moods from this project (proje bazlı sistem)
+        task.journalEntries.forEach(entry => {
+          if (entry.mood) {
+            const moodInfo = getMoodInfo(entry.mood);
+            projectMoods.push({
+              mood: entry.mood,
+              moodInfo,
+              date: new Date(entry.createdAt)
             });
+            
+            // Count each mood
+            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
           }
         });
         
@@ -963,128 +861,128 @@ const EmotionalJournalScreen = ({ navigation }) => {
           switch (dominantMoodInfo?.key) {
             // Positive moods
             case 'happy':
-              progressMessage = 'This project is a joyful experience for you!';
+              progressMessage = t('projectHappy');
               progressIcon = 'sentiment-satisfied';
               break;
             case 'excited':
-              progressMessage = 'This project fills you with excitement and energy!';
+              progressMessage = t('projectExcited');
               progressIcon = 'celebration';
               break;
             case 'grateful':
-              progressMessage = 'This project makes you feel grateful and appreciative!';
+              progressMessage = t('projectGrateful');
               progressIcon = 'favorite';
               break;
             case 'hopeful':
-              progressMessage = 'This project fills you with hope and optimism!';
+              progressMessage = t('projectHopeful');
               progressIcon = 'wb-sunny';
               break;
             case 'proud':
-              progressMessage = 'This project makes you feel proud of your achievements!';
+              progressMessage = t('projectProud');
               progressIcon = 'emoji-events';
               break;
             case 'relieved':
-              progressMessage = 'This project brings you relief and peace of mind!';
+              progressMessage = t('projectRelieved');
               progressIcon = 'spa';
               break;
             case 'motivated':
-              progressMessage = 'This project keeps you highly motivated and driven!';
+              progressMessage = t('projectMotivated');
               progressIcon = 'trending-up';
               break;
             case 'peaceful':
-              progressMessage = 'This project brings you inner peace and tranquility!';
+              progressMessage = t('projectPeaceful');
               progressIcon = 'spa';
               break;
             case 'content':
-              progressMessage = 'This project makes you feel content and satisfied!';
+              progressMessage = t('projectContent');
               progressIcon = 'sentiment-satisfied';
               break;
             case 'confident':
-              progressMessage = 'This project boosts your confidence and self-belief!';
+              progressMessage = t('projectConfident');
               progressIcon = 'self-improvement';
               break;
             
             // Negative moods
             case 'sad':
-              progressMessage = 'This project is making you feel sad and downhearted';
+              progressMessage = t('projectSad');
               progressIcon = 'sentiment-dissatisfied';
               break;
             case 'angry':
-              progressMessage = 'This project is frustrating and angering you';
+              progressMessage = t('projectAngry');
               progressIcon = 'mood-bad';
               break;
             case 'tired':
-              progressMessage = 'This project is exhausting and draining your energy';
+              progressMessage = t('projectTired');
               progressIcon = 'bedtime';
               break;
             case 'frustrated':
-              progressMessage = 'This project is proving to be frustrating for you';
+              progressMessage = t('projectFrustrated');
               progressIcon = 'psychology';
               break;
             case 'anxious':
-              progressMessage = 'This project is causing you anxiety and worry';
+              progressMessage = t('projectAnxious');
               progressIcon = 'warning';
               break;
             case 'overwhelmed':
-              progressMessage = 'This project feels overwhelming and too much to handle';
+              progressMessage = t('projectOverwhelmed');
               progressIcon = 'psychology';
               break;
             case 'lonely':
-              progressMessage = 'This project makes you feel isolated and alone';
+              progressMessage = t('projectLonely');
               progressIcon = 'person-off';
               break;
             case 'confused':
-              progressMessage = 'This project is confusing and unclear to you';
+              progressMessage = t('projectConfused');
               progressIcon = 'help';
               break;
             case 'disappointed':
-              progressMessage = 'This project is disappointing and not meeting your expectations';
+              progressMessage = t('projectDisappointed');
               progressIcon = 'sentiment-dissatisfied';
               break;
             case 'worried':
-              progressMessage = 'This project is causing you worry and concern';
+              progressMessage = t('projectWorried');
               progressIcon = 'psychology';
               break;
             case 'bored':
-              progressMessage = 'This project feels boring and unengaging to you';
+              progressMessage = t('projectBored');
               progressIcon = 'sentiment-neutral';
               break;
             case 'stressed':
-              progressMessage = 'This project is stressing you out and causing tension';
+              progressMessage = t('projectStressed');
               progressIcon = 'psychology';
               break;
             case 'exhausted':
-              progressMessage = 'This project is leaving you feeling completely exhausted';
+              progressMessage = t('projectExhausted');
               progressIcon = 'bedtime';
               break;
             
             // Neutral moods
             case 'calm':
-              progressMessage = 'This project is a calm and peaceful experience for you';
+              progressMessage = t('projectCalm');
               progressIcon = 'spa';
               break;
             case 'curious':
-              progressMessage = 'This project sparks your curiosity and keeps you interested';
+              progressMessage = t('projectCurious');
               progressIcon = 'explore';
               break;
             case 'nostalgic':
-              progressMessage = 'This project brings back fond memories and nostalgia';
+              progressMessage = t('projectNostalgic');
               progressIcon = 'history';
               break;
             case 'surprised':
-              progressMessage = 'This project continues to surprise and intrigue you';
+              progressMessage = t('projectSurprised');
               progressIcon = 'surprise';
               break;
             case 'focused':
-              progressMessage = 'This project keeps you focused and concentrated';
+              progressMessage = t('projectFocused');
               progressIcon = 'center-focus-strong';
               break;
             case 'neutral':
-              progressMessage = 'This project is progressing at a steady, neutral pace';
+              progressMessage = t('projectNeutral');
               progressIcon = 'trending-flat';
               break;
             
             default:
-              progressMessage = 'This project is progressing steadily';
+              progressMessage = t('projectDefault');
               progressIcon = 'trending-flat';
           }
           
@@ -1122,11 +1020,11 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
   const getTrendText = useCallback(() => {
     switch (moodTrend) {
-      case 'improving': return 'Your mood is improving!';
-      case 'declining': return 'Your mood seems to be declining';
-      default: return 'Your mood is stable';
+      case 'improving': return t('moodImproving');
+      case 'declining': return t('moodDeclining');
+      default: return t('moodStable');
     }
-  }, [moodTrend]);
+  }, [moodTrend, t]);
 
   // Günün mood'una göre gradient renkleri hesapla
   const getMoodGradientColors = useCallback(() => {
@@ -1257,10 +1155,22 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
         {/* Overview Stats - Compact and balanced */}
         <View style={styles.statsContainer}>
-          <Text style={[
-            styles.sectionTitle,
-            { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-          ]}>Overview</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[
+              styles.sectionTitle,
+              { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+            ]}>{t('journeyOverview')}</Text>
+            <View style={[
+              styles.progressFlowIndicator,
+              { backgroundColor: theme.name === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.1)' }
+            ]}>
+              <MaterialIcons 
+                name="analytics" 
+                size={18} 
+                color={theme.name === 'dark' ? '#1976D2' : '#1976D2'} 
+              />
+            </View>
+          </View>
           <View style={[
             styles.overviewCard, 
             { 
@@ -1342,10 +1252,22 @@ const EmotionalJournalScreen = ({ navigation }) => {
           {/* Mood Trend */}
           {moodTrend && (
             <View style={styles.trendContainer}>
-              <Text style={[
-                styles.sectionTitle,
-                { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-              ]}>Mood Trend</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={[
+                  styles.sectionTitle,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                ]}>{t('moodTrend')}</Text>
+                <View style={[
+                  styles.progressFlowIndicator,
+                  { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.1)' }
+                ]}>
+                  <MaterialIcons 
+                    name="trending-up" 
+                    size={18} 
+                    color={theme.name === 'dark' ? '#34C759' : '#34C759'} 
+                  />
+                </View>
+              </View>
               <View style={[
                 styles.trendCard,
                 { 
@@ -1367,11 +1289,12 @@ const EmotionalJournalScreen = ({ navigation }) => {
                   styles.trendSubtext,
                   { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
                 ]}>
-                  Based on your last 7 days of mood entries
+                  {t('basedOnLast7Days')}
                 </Text>
               </View>
             </View>
           )}
+
 
            {/* Project Emotional Progress - Dynamic Flow Design */}
            {getProjectEmotionalProgress().length > 0 && (
@@ -1380,7 +1303,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                  <Text style={[
                    styles.sectionTitle,
                    { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-                 ]}>Project Progress</Text>
+                 ]}>{t('projectProgress')}</Text>
                  <View style={[
                    styles.progressFlowIndicator,
                    { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.1)' : 'rgba(142, 125, 190, 0.1)' }
@@ -1428,7 +1351,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                                <Text style={[
                                  styles.flowStatusText,
                                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[600] }
-                               ]}>{project.moodCount} entries</Text>
+                               ]}>{project.moodCount} {t('entries')}</Text>
                              </View>
                            </View>
                            <View style={[styles.flowProgressCircle, { borderColor: project.progressColor }]}>
@@ -1457,10 +1380,22 @@ const EmotionalJournalScreen = ({ navigation }) => {
            {/* Projects Without Mood Entries - Encouragement */}
            {getProjectsWithoutMoods().length > 0 && (
              <View style={styles.topMoodsContainer}>
-               <Text style={[
-                 styles.sectionTitle,
-                 { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-               ]}>Start Your Emotional Journey</Text>
+               <View style={styles.sectionHeader}>
+                 <Text style={[
+                   styles.sectionTitle,
+                   { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                 ]}>{t('transformProjectsIntoEmotionalExperience')}</Text>
+                 <View style={[
+                   styles.progressFlowIndicator,
+                   { backgroundColor: theme.name === 'dark' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 152, 0, 0.1)' }
+                 ]}>
+                   <MaterialIcons 
+                     name="edit" 
+                     size={18} 
+                     color={theme.name === 'dark' ? '#FF9800' : '#FF9800'} 
+                   />
+                 </View>
+               </View>
                <View style={[
                  styles.moodsList,
                  { 
@@ -1485,8 +1420,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
                          { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
                        ]}>
                          {project.totalEntries > 0 
-                           ? `You have ${project.totalEntries} journal entries - add mood tags to track your emotional journey!`
-                           : `You have ${project.milestoneCount} milestones - start writing journal entries with mood tags!`
+                           ? t('youHaveJournalEntries', { count: project.totalEntries })
+                           : t('startWritingJournal')
                          }
                        </Text>
                        <Text style={[
@@ -1494,8 +1429,8 @@ const EmotionalJournalScreen = ({ navigation }) => {
                          { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
                        ]}>
                          {project.totalEntries > 0 
-                           ? "Your thoughts are valuable! Adding mood tags will help you understand your emotional patterns and growth."
-                           : "Every journey begins with a single step. Start documenting your progress and feelings today!"
+                           ? t('thoughtsValuable')
+                           : project.motivationMessage
                          }
                        </Text>
                      </View>
@@ -1508,10 +1443,22 @@ const EmotionalJournalScreen = ({ navigation }) => {
            {/* Completed Projects Emotional Journey */}
            {getCompletedProjectEmotionalProgress().length > 0 && (
              <View style={styles.topMoodsContainer}>
-               <Text style={[
-                 styles.sectionTitle,
-                 { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-               ]}>Completed Projects Emotional Journey</Text>
+               <View style={styles.sectionHeader}>
+                 <Text style={[
+                   styles.sectionTitle,
+                   { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                 ]}>{t('completedProjectsJourney')}</Text>
+                 <View style={[
+                   styles.progressFlowIndicator,
+                   { backgroundColor: theme.name === 'dark' ? 'rgba(156, 39, 176, 0.1)' : 'rgba(156, 39, 176, 0.1)' }
+                 ]}>
+                   <MaterialIcons 
+                     name="check-circle" 
+                     size={18} 
+                     color={theme.name === 'dark' ? '#9C27B0' : '#9C27B0'} 
+                   />
+                 </View>
+               </View>
                <View style={[
                  styles.moodsList,
                  { 
@@ -1546,19 +1493,126 @@ const EmotionalJournalScreen = ({ navigation }) => {
              </View>
            )}
 
+          {/* Activity Timeline */}
+          <View style={styles.timelineContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={[
+                styles.sectionTitle,
+                { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+              ]}>{t('activityTimeline')}</Text>
+              <View style={[
+                styles.progressFlowIndicator,
+                { backgroundColor: theme.name === 'dark' ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.1)' }
+              ]}>
+                <MaterialIcons 
+                  name="schedule" 
+                  size={18} 
+                  color={theme.name === 'dark' ? '#2196F3' : '#2196F3'} 
+                />
+              </View>
+            </View>
+            
+            <View style={styles.timelineStats}>
+              <View style={[
+                styles.timelineStat, 
+                { 
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                  borderLeftWidth: 3,
+                  borderLeftColor: theme.colors.primary,
+                  shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
+                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.08,
+                  shadowRadius: theme.name === 'dark' ? 8 : 4,
+                  elevation: theme.name === 'dark' ? 4 : 2,
+                }
+              ]}>
+                <View style={styles.timelineStatContent}>
+                  <View style={[styles.timelineIcon, { backgroundColor: theme.colors.primary + '15' }]}>
+                    <Ionicons name="calendar" size={14} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.timelineStatText}>
+                    <Text style={[styles.timelineStatNumber, { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }]}>
+                      {timelineAnalysis.totalActivityDays}
+                    </Text>
+                    <Text style={[styles.timelineStatLabel, { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }]}>
+                      {t('activeDays')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={[
+                styles.timelineStat, 
+                { 
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                  borderLeftWidth: 3,
+                  borderLeftColor: COLORS.SUCCESS,
+                  shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
+                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.08,
+                  shadowRadius: theme.name === 'dark' ? 8 : 4,
+                  elevation: theme.name === 'dark' ? 4 : 2,
+                }
+              ]}>
+                <View style={styles.timelineStatContent}>
+                  <View style={[styles.timelineIcon, { backgroundColor: COLORS.SUCCESS + '15' }]}>
+                    <Ionicons name="trending-up" size={14} color={COLORS.SUCCESS} />
+                  </View>
+                  <View style={styles.timelineStatText}>
+                    <Text style={[styles.timelineStatNumber, { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }]}>
+                      {Math.round(timelineAnalysis.averageDailyActivity * 10) / 10}
+                    </Text>
+                    <Text style={[styles.timelineStatLabel, { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }]}>
+                      {t('avgDailyActivity')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
 
+          {/* Mood Calendar */}
+          <View style={styles.moodCalendarContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={[
+                styles.sectionTitle,
+                { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+              ]}>{t('moodCalendar')}</Text>
+              <View style={[
+                styles.progressFlowIndicator,
+                { backgroundColor: theme.name === 'dark' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.1)' }
+              ]}>
+                <MaterialIcons 
+                  name="calendar-today" 
+                  size={18} 
+                  color={theme.name === 'dark' ? '#4CAF50' : '#4CAF50'} 
+                />
+              </View>
+            </View>
+            <MoodCalendar />
+          </View>
 
           {/* Minimal Recommendations */}
           {(() => {
             const { recommendations } = getInsightsAndRecommendations();
             return recommendations.length > 0 && (
               <View style={styles.minimalRecommendationsContainer}>
-                <Text style={[
-                  styles.minimalRecommendationsTitle,
-                  { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
-                ]}>💡 Quick Tips</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={[
+                    styles.sectionTitle,
+                    { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                  ]}>{t('quickTips')}</Text>
+                  <View style={[
+                    styles.progressFlowIndicator,
+                    { backgroundColor: theme.name === 'dark' ? 'rgba(255, 193, 7, 0.1)' : 'rgba(255, 193, 7, 0.1)' }
+                  ]}>
+                    <MaterialIcons 
+                      name="lightbulb" 
+                      size={18} 
+                      color={theme.name === 'dark' ? '#FFC107' : '#FFC107'} 
+                    />
+                  </View>
+                </View>
                 <View style={styles.minimalRecommendationsList}>
-                  {recommendations.slice(0, 2).map((rec, index) => (
+                  {recommendations.slice(0, 1).map((rec, index) => (
                     <View key={index} style={[
                       styles.minimalRecommendationItem,
                       {
@@ -1728,14 +1782,52 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
     color: '#8E8E93',
   },
+  timelineContainer: {
+    marginTop: 40,
+  },
+  timelineStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: SPACING.MD,
+  },
+  timelineStat: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: BORDER_RADIUS.SM,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+    flex: 1,
+    marginHorizontal: 6,
+  },
+  timelineIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  timelineStatNumber: {
+    fontSize: 16,
+    fontFamily: FONTS.BOLD,
+    marginBottom: 2,
+  },
+  timelineStatLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.REGULAR,
+    textAlign: 'center',
+  },
   topMoodsContainer: {
-    marginTop: SPACING.LG,
+    marginTop: 40,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SPACING.MD,
+    marginBottom: 4,
     paddingHorizontal: SPACING.LG,
   },
   progressFlowIndicator: {
@@ -1994,18 +2086,16 @@ const styles = StyleSheet.create({
      color: '#666',
      lineHeight: 18,
    },
-   minimalRecommendationsContainer: {
-     marginTop: 20,
-     marginBottom: 40,
-     paddingHorizontal: SPACING.LG,
-   },
-   minimalRecommendationsTitle: {
-     fontSize: 16,
-     fontFamily: 'Poppins_600SemiBold',
-     color: '#333',
-     marginBottom: 12,
-     textAlign: 'center',
-   },
+  moodCalendarContainer: {
+    marginTop: 40,
+    marginBottom: 20,
+    paddingHorizontal: 0,
+  },
+  minimalRecommendationsContainer: {
+    marginTop: 40,
+    marginBottom: 40,
+    paddingHorizontal: SPACING.LG,
+  },
    minimalRecommendationsList: {
      gap: 8,
    },

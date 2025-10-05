@@ -121,6 +121,11 @@ export default function FlashCalendar({
             markedDates={getMarkedDates()}
             markingType={"period"}
             minDate={minDate ? toDateKey(minDate) : undefined}
+            firstDay={1}
+            monthFormat={'MMMM yyyy'}
+            hideExtraDays={true}
+            disableMonthChange={false}
+            enableSwipeMonths={true}
             theme={{
               backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#f9f7fc',
               calendarBackground: theme.name === 'dark' ? '#2C2C2E' : '#f9f7fc',

@@ -77,6 +77,7 @@ export default function AddProjectScreen({ visible, onClose }) {
   const handleCalendarConfirm = ({ startDate: sISO, endDate: eISO }) => {
     const s = new Date(sISO);
     const e = new Date(eISO);
+    
     if (newTitle.trim() !== "") {
       addTask({
         title: newTitle.trim(),

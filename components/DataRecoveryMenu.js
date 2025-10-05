@@ -16,7 +16,8 @@ export default function DataRecoveryMenu({
   onClose, 
   onRecoverData, 
   onCreateBackup,
-  onLanguageSettings 
+  onLanguageSettings,
+  onNotificationSettings
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -70,6 +71,12 @@ export default function DataRecoveryMenu({
     onClose?.();
   }, [onLanguageSettings, onClose]);
 
+  const handleNotificationSettings = useCallback(() => {
+    onNotificationSettings?.();
+    onClose?.();
+  }, [onNotificationSettings, onClose]);
+
+
   if (!visible) return null;
 
   return (
@@ -110,6 +117,32 @@ export default function DataRecoveryMenu({
                 styles.itemText,
                 { color: theme.name === 'dark' ? '#FFFFFF' : '#2c3e50' }
               ]}>{t('language')}</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Notification Settings */}
+          <TouchableOpacity
+            style={[
+              styles.item,
+              {
+                backgroundColor: 'transparent',
+              }
+            ]}
+            onPress={handleNotificationSettings}
+            accessible={true}
+            accessibilityLabel="Notification settings"
+            accessibilityRole="button"
+          >
+            <View style={styles.itemContent}>
+              <Ionicons 
+                name="notifications-outline" 
+                size={20} 
+                color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} 
+              />
+              <Text style={[
+                styles.itemText,
+                { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
+              ]}>{t('notifications')}</Text>
             </View>
           </TouchableOpacity>
 

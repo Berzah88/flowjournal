@@ -1,12 +1,13 @@
+// services/NotificationService.js
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Bildirim davranışını yapılandır
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -15,772 +16,679 @@ Notifications.setNotificationHandler({
 class NotificationService {
   constructor() {
     this.isInitialized = false;
-    this.expoPushToken = null;
+    this.notificationListener = null;
+    this.responseListener = null;
+    this.scheduledNotifications = new Map(); // Zamanlanmış bildirimleri takip et
+    
+    // Bildirim türleri ve zamanları
+    this.NOTIFICATION_TYPES = {
+      DAILY_REMINDER: {
+        id: 'daily-reminder',
+        channelId: 'daily-reminder-channel',
+        hour: 20,
+        minute: 0,
+        title: '📝 Günlük Yazma Zamanı!',
+        body: 'Bugün nasıl geçti? Duygularını ve deneyimlerini kaydetmek için günlüğünü yaz.',
+        color: '#4CAF50'
+      },
+      MILESTONE_END: {
+        id: 'milestone-end',
+        channelId: 'milestone-reminder-channel',
+        hour: 12,
+        minute: 15,
+        title: '🚀 Milestone Son Günü!',
+        body: 'Milestone son günü bildirimi',
+        color: '#2196F3'
+      },
+      PROJECT_END: {
+        id: 'project-end',
+        channelId: 'project-reminder-channel',
+        hour: 10,
+        minute: 0,
+        title: '🎯 Proje Bitiş Tarihi!',
+        body: 'Proje bitiş tarihi bildirimi',
+        color: '#FF9800'
+      }
+    };
   }
 
   // Servisi başlat
   async initialize() {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {
+      console.log('🔔 NotificationService zaten başlatılmış');
+      return;
+    }
 
     try {
-      // Bildirim izni iste
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') {
-        console.log('Bildirim izni verilmedi');
+      console.log('🔔 NotificationService başlatılıyor...');
+      
+      // Development build kontrolü kaldırıldı - production build için
+      
+      // Bildirim izinlerini kontrol et ve al
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        console.warn('⚠️ Bildirim izni verilmedi');
         return false;
       }
-
-      // Push token al (gerçek cihaz için)
-      if (Device.isDevice) {
-        this.expoPushToken = await Notifications.getExpoPushTokenAsync({
-          projectId: '8cb30275-61a8-4b87-a711-ed6c7a0b69c2', // app.json'dan
-        });
-        console.log('Expo Push Token:', this.expoPushToken.data);
-      } else {
-        console.log('Simülatörde push token alınamaz');
-      }
-
-      // Android için notification channel oluştur
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#8E7DBE',
-        });
-
-        await Notifications.setNotificationChannelAsync('journal-reminders', {
-          name: 'Journal Reminders',
-          description: 'Günlük yazma hatırlatıcıları',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#8E7DBE',
-        });
-
-        await Notifications.setNotificationChannelAsync('deadline-warnings', {
-          name: 'Deadline Warnings',
-          description: 'Proje ve milestone deadline uyarıları',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 500, 250, 500],
-          lightColor: '#FF4444',
-        });
-      }
-
+      
+      // Android notification channel oluştur
+      await this.createNotificationChannels();
+      
+      // Bildirim dinleyicilerini kur
+      this.setupNotificationListeners();
+      
       this.isInitialized = true;
-      console.log('NotificationService başlatıldı');
+      console.log('✅ NotificationService başarıyla başlatıldı');
       return true;
     } catch (error) {
-      console.error('NotificationService başlatma hatası:', error);
+      console.error('❌ NotificationService başlatma hatası:', error);
+      throw error;
+    }
+  }
+
+  // Android notification channel oluştur
+  async createNotificationChannels() {
+    try {
+      console.log('📱 Android notification channel\'ları oluşturuluyor...');
+      
+      // Günlük hatırlatıcı kanalı
+      await Notifications.setNotificationChannelAsync('daily-reminder-channel', {
+        name: 'Günlük Hatırlatıcı',
+        description: 'Günlük yazma hatırlatıcıları',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#4CAF50',
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: true,
+      });
+
+      // Milestone bildirim kanalı
+      await Notifications.setNotificationChannelAsync('milestone-reminder-channel', {
+        name: 'Milestone Hatırlatıcıları',
+        description: 'Milestone son günü hatırlatıcıları',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#2196F3',
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: true,
+      });
+
+      // Proje bildirim kanalı
+      await Notifications.setNotificationChannelAsync('project-reminder-channel', {
+        name: 'Proje Hatırlatıcıları',
+        description: 'Proje bitiş tarihi ve milestone hatırlatıcıları',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF9800',
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: true,
+      });
+
+      console.log('✅ Notification channel\'ları oluşturuldu');
+    } catch (error) {
+      console.error('❌ Notification channel oluşturma hatası:', error);
+    }
+  }
+
+  // Bildirim izinlerini iste
+  async requestPermissions() {
+    if (!Device.isDevice) {
+      console.warn('⚠️ Bildirimler sadece fiziksel cihazlarda çalışır');
+      return false;
+    }
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.warn('⚠️ Bildirim izni verilmedi');
+      return false;
+    }
+
+    console.log('✅ Bildirim izni verildi');
+    return true;
+  }
+
+  // Bildirim dinleyicilerini kur
+  setupNotificationListeners() {
+    // Bildirim geldiğinde
+    this.notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('📨 Bildirim alındı:', notification);
+    });
+
+    // Bildirime tıklandığında
+    this.responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('👆 Bildirime tıklandı:', response);
+      // Burada günlük ekranına yönlendirme yapılabilir
+    });
+  }
+
+  // Günlük bildirim zamanlaması (20:00)
+  async scheduleDailyReminder() {
+    try {
+      console.log('📝 Günlük hatırlatıcı ayarlanıyor...');
+      
+      // Development build kontrolü kaldırıldı
+      
+      // Önceki günlük bildirimleri iptal et
+      await this.cancelNotificationByType('daily-reminder');
+
+      const notificationType = this.NOTIFICATION_TYPES.DAILY_REMINDER;
+      
+      // Basit ve güvenli tarih hesaplama
+      const now = new Date();
+      console.log(`🕐 Şu anki zaman: ${now.toISOString()}`);
+      console.log(`⏰ Hedef saat: ${notificationType.hour}:${notificationType.minute.toString().padStart(2, '0')}`);
+      
+      // Şu anki saat ve dakikayı al
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const isTimePassed = currentHour > notificationType.hour || 
+                          (currentHour === notificationType.hour && currentMinute >= notificationType.minute);
+      
+      console.log(`🔍 Zaman geçmiş mi? ${isTimePassed} (Şu an: ${currentHour}:${currentMinute.toString().padStart(2, '0')})`);
+      
+      // Hedef tarihi oluştur
+      const targetDate = new Date(now);
+      if (isTimePassed) {
+        // Yarın için planla
+        targetDate.setDate(targetDate.getDate() + 1);
+        console.log(`📅 Yarın için planlanıyor`);
+      } else {
+        console.log(`📅 Bugün için planlanıyor`);
+      }
+      
+      targetDate.setHours(notificationType.hour, notificationType.minute, 0, 0);
+      console.log(`⏰ Hedef tarih: ${targetDate.toISOString()}`);
+
+      // Development build'de repeats: true ile date trigger sorun yaratıyor
+      // Bu yüzden hour/minute trigger kullanıyoruz
+      const trigger = {
+        hour: notificationType.hour,
+        minute: notificationType.minute,
+        repeats: true, // Her gün tekrarla
+        channelId: notificationType.channelId,
+      };
+      
+      console.log(`🔧 Trigger detayları:`, {
+        hour: notificationType.hour,
+        minute: notificationType.minute,
+        repeats: true,
+        channelId: notificationType.channelId,
+        nextNotification: `Her gün ${notificationType.hour}:${notificationType.minute.toString().padStart(2, '0')}`
+      });
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notificationType.title,
+          body: notificationType.body,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          categoryIdentifier: 'daily-reminder',
+          data: {
+            type: 'daily-reminder',
+            scheduledTime: `${notificationType.hour}:${notificationType.minute.toString().padStart(2, '0')}`
+          }
+        },
+        trigger,
+      });
+
+      // Bildirim ID'sini kaydet
+      this.scheduledNotifications.set('daily-reminder', notificationId);
+
+      // Ayarları kaydet
+      await AsyncStorage.setItem('dailyReminderSettings', JSON.stringify({
+        enabled: true,
+        hour: notificationType.hour,
+        minute: notificationType.minute,
+        scheduledAt: new Date().toISOString(),
+        notificationId: notificationId
+      }));
+
+      console.log(`✅ Günlük bildirim ${notificationType.hour}:${notificationType.minute.toString().padStart(2, '0')} saatine ayarlandı (ID: ${notificationId})`);
+      return true;
+    } catch (error) {
+      console.error('❌ Günlük bildirim zamanlama hatası:', error);
       return false;
     }
   }
 
-  // Tüm bildirimleri temizle
-  async clearAllNotifications() {
+  // Proje bitiş tarihi bildirimi (10:00)
+  async scheduleProjectEndDateNotification(projectId, projectTitle, endDate) {
     try {
+      console.log(`🎯 Proje bildirimi ayarlanıyor: "${projectTitle}"`);
+      
+      // Development build kontrolü kaldırıldı
+      
+      // End date'i güvenli şekilde parse et
+      let endDateObj;
+      try {
+        endDateObj = new Date(endDate);
+        if (isNaN(endDateObj.getTime())) {
+          console.log(`❌ Geçersiz tarih formatı: ${endDate}`);
+          return false;
+        }
+      } catch (error) {
+        console.log(`❌ Tarih parse hatası: ${endDate}`, error);
+        return false;
+      }
+      
+      // Şu anki zamanı al
+      const now = new Date();
+      
+      console.log(`📅 End Date: ${endDate} -> ${endDateObj.toISOString()}`);
+      console.log(`🕐 Şu anki zaman: ${now.toISOString()}`);
+      console.log(`⏰ End Date <= Now: ${endDateObj <= now}`);
+      
+      // Eğer bitiş tarihi geçmişse bildirim planlama
+      if (endDateObj <= now) {
+        console.log(`❌ Proje "${projectTitle}" bitiş tarihi geçmiş, bildirim planlanmıyor`);
+        return false;
+      }
+
+      const notificationType = this.NOTIFICATION_TYPES.PROJECT_END;
+      
+      // Bildirim zamanını ayarla (bitiş tarihi günü saat 10:00)
+      const notificationTime = new Date(endDateObj);
+      notificationTime.setHours(notificationType.hour, notificationType.minute, 0, 0);
+      
+      console.log(`⏰ Bildirim zamanı: ${notificationTime.toISOString()}`);
+
+      const trigger = {
+        date: notificationTime,
+        repeats: false, // Tek seferlik
+        channelId: notificationType.channelId,
+      };
+      
+      console.log(`🔧 Proje trigger detayları:`, {
+        date: notificationTime.toISOString(),
+        repeats: false,
+        channelId: notificationType.channelId,
+        timeUntilNotification: Math.round((notificationTime.getTime() - now.getTime()) / 1000 / 60 / 60 / 24) + ' gün'
+      });
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notificationType.title,
+          body: `"${projectTitle}" projesinin bitiş tarihi bugün! Son kontrolleri yapmayı unutma.`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          categoryIdentifier: 'project-end-date',
+          data: {
+            type: 'project-end-date',
+            projectId: projectId,
+            projectTitle: projectTitle,
+            endDate: endDate
+          }
+        },
+        trigger,
+      });
+
+      // Bildirim ID'sini kaydet
+      this.scheduledNotifications.set(`project-end-${projectId}`, notificationId);
+
+      // Proje bildirim ayarlarını kaydet
+      const projectNotifications = await this.getProjectNotifications();
+      projectNotifications[projectId] = {
+        type: 'project-end-date',
+        notificationId: notificationId,
+        scheduledAt: new Date().toISOString(),
+        projectTitle: projectTitle,
+        endDate: endDate
+      };
+      await AsyncStorage.setItem('projectNotifications', JSON.stringify(projectNotifications));
+
+      console.log(`✅ Proje bitiş tarihi bildirimi planlandı: "${projectTitle}" - ${endDateObj.toDateString()} ${notificationType.hour}:${notificationType.minute.toString().padStart(2, '0')} (ID: ${notificationId})`);
+      return true;
+    } catch (error) {
+      console.error('❌ Proje bitiş tarihi bildirim zamanlama hatası:', error);
+      return false;
+    }
+  }
+
+  // Milestone son günü bildirimi (12:15)
+  async scheduleMilestoneEndDateNotification(milestoneId, milestoneTitle, projectTitle, endDate) {
+    try {
+      console.log(`🚀 Milestone bildirimi ayarlanıyor: "${milestoneTitle}"`);
+      
+      // Development build kontrolü kaldırıldı
+      
+      // End date'i güvenli şekilde parse et
+      let endDateObj;
+      try {
+        endDateObj = new Date(endDate);
+        if (isNaN(endDateObj.getTime())) {
+          console.log(`❌ Geçersiz tarih formatı: ${endDate}`);
+          return false;
+        }
+      } catch (error) {
+        console.log(`❌ Tarih parse hatası: ${endDate}`, error);
+        return false;
+      }
+      
+      // Şu anki zamanı al
+      const now = new Date();
+      
+      console.log(`📅 End Date: ${endDate} -> ${endDateObj.toISOString()}`);
+      console.log(`🕐 Şu anki zaman: ${now.toISOString()}`);
+      console.log(`⏰ End Date <= Now: ${endDateObj <= now}`);
+      
+      // Eğer bitiş tarihi geçmişse bildirim planlama
+      if (endDateObj <= now) {
+        console.log(`❌ Milestone "${milestoneTitle}" bitiş tarihi geçmiş, bildirim planlanmıyor`);
+        return false;
+      }
+
+      const notificationType = this.NOTIFICATION_TYPES.MILESTONE_END;
+      
+      // Bildirim zamanını ayarla (bitiş tarihi günü saat 12:15)
+      const notificationTime = new Date(endDateObj);
+      notificationTime.setHours(notificationType.hour, notificationType.minute, 0, 0);
+      
+      console.log(`⏰ Bildirim zamanı: ${notificationTime.toISOString()}`);
+
+      const trigger = {
+        date: notificationTime,
+        repeats: false, // Tek seferlik
+        channelId: notificationType.channelId,
+      };
+      
+      console.log(`🔧 Milestone trigger detayları:`, {
+        date: notificationTime.toISOString(),
+        repeats: false,
+        channelId: notificationType.channelId,
+        timeUntilNotification: Math.round((notificationTime.getTime() - now.getTime()) / 1000 / 60 / 60 / 24) + ' gün'
+      });
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notificationType.title,
+          body: `"${milestoneTitle}" milestone'ının son günü bugün! "${projectTitle}" projesi için son hazırlıkları tamamla.`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          categoryIdentifier: 'milestone-end-date',
+          data: {
+            type: 'milestone-end-date',
+            milestoneId: milestoneId,
+            milestoneTitle: milestoneTitle,
+            projectTitle: projectTitle,
+            endDate: endDate
+          }
+        },
+        trigger,
+      });
+
+      // Bildirim ID'sini kaydet
+      this.scheduledNotifications.set(`milestone-end-${milestoneId}`, notificationId);
+
+      // Milestone bildirim ayarlarını kaydet
+      const milestoneNotifications = await this.getMilestoneNotifications();
+      milestoneNotifications[milestoneId] = {
+        type: 'milestone-end-date',
+        notificationId: notificationId,
+        scheduledAt: new Date().toISOString(),
+        milestoneTitle: milestoneTitle,
+        projectTitle: projectTitle,
+        endDate: endDate
+      };
+      await AsyncStorage.setItem('milestoneNotifications', JSON.stringify(milestoneNotifications));
+
+      console.log(`✅ Milestone son günü bildirimi planlandı: "${milestoneTitle}" - ${endDateObj.toDateString()} ${notificationType.hour}:${notificationType.minute.toString().padStart(2, '0')} (ID: ${notificationId})`);
+      return true;
+    } catch (error) {
+      console.error('❌ Milestone son günü bildirim zamanlama hatası:', error);
+      return false;
+    }
+  }
+
+  // Tüm bildirimleri iptal et
+  async cancelAllNotifications() {
+    try {
+      console.log('🗑️ Tüm bildirimler iptal ediliyor...');
       await Notifications.cancelAllScheduledNotificationsAsync();
-      console.log('Tüm bildirimler temizlendi');
-    } catch (error) {
-      console.error('Bildirimleri temizleme hatası:', error);
-    }
-  }
-
-  // Belirli bir bildirimi iptal et
-  async cancelNotification(notificationId) {
-    try {
-      await Notifications.cancelScheduledNotificationAsync(notificationId);
-      console.log(`Bildirim iptal edildi: ${notificationId}`);
-    } catch (error) {
-      console.error('Bildirim iptal etme hatası:', error);
-    }
-  }
-
-  // Bildirim ID'sini kaydet
-  async saveNotificationId(type, id, data = {}) {
-    try {
-      const key = `notification_${type}_${id}`;
-      await AsyncStorage.setItem(key, JSON.stringify({
-        notificationId: id,
-        data,
-        createdAt: new Date().toISOString()
-      }));
-    } catch (error) {
-      console.error('Bildirim ID kaydetme hatası:', error);
-    }
-  }
-
-  // Bildirim ID'sini sil
-  async removeNotificationId(type, id) {
-    try {
-      const key = `notification_${type}_${id}`;
-      await AsyncStorage.removeItem(key);
-    } catch (error) {
-      console.error('Bildirim ID silme hatası:', error);
-    }
-  }
-
-  // ==================== JOURNAL REMINDERS ====================
-
-  // Günlük yazma hatırlatıcısı planla
-  async scheduleJournalReminder(time = '20:00') {
-    try {
-      const [hours, minutes] = time.split(':').map(Number);
+      this.scheduledNotifications.clear();
       
-      // Mevcut journal reminder'ı iptal et
-      await this.cancelJournalReminder();
-
-      const trigger = {
-        hour: hours,
-        minute: minutes,
-        repeats: true,
-      };
-
-      // Motivasyonel mesajlar
-      const motivationalMessages = [
-        'How about recording your experiences and emotions today?',
-        'How was your day? Share your thoughts!',
-        'What made you happy today?',
-        'Time for journaling! Record your story.',
-        'Did you learn anything new today?',
-        'Perfect time to record your feelings and thoughts!',
-        'Summarize your day and save it for future you.',
-        'What moments made you smile today?'
-      ];
-
-      const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Journal Time!',
-          body: randomMessage,
-          data: { 
-            type: 'journal_reminder',
-            action: 'open_journal',
-            category: 'journal'
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-          vibrate: [0, 250, 250, 250],
-          lightColor: '#8E7DBE',
-          sticky: false,
-          autoDismiss: true,
-          // Custom color for journal notifications
-          ...(Platform.OS === 'android' && { 
-            color: '#8E7DBE'
-          }),
-        },
-        trigger,
-      });
-
-      await this.saveNotificationId('journal_reminder', notificationId, { time });
-      console.log(`Journal reminder planlandı: ${time} (ID: ${notificationId})`);
-      return notificationId;
+      // AsyncStorage'dan da temizle
+      await AsyncStorage.removeItem('dailyReminderSettings');
+      await AsyncStorage.removeItem('projectNotifications');
+      await AsyncStorage.removeItem('milestoneNotifications');
+      
+      console.log('✅ Tüm zamanlanmış bildirimler iptal edildi');
     } catch (error) {
-      console.error('Journal reminder planlama hatası:', error);
-      return null;
+      console.error('❌ Bildirim iptal etme hatası:', error);
     }
   }
 
-  // Journal reminder'ı iptal et
-  async cancelJournalReminder() {
+  // Belirli tipte bildirimleri iptal et
+  async cancelNotificationByType(type) {
     try {
-      const key = 'notification_journal_reminder_*';
-      const keys = await AsyncStorage.getAllKeys();
-      const journalKeys = keys.filter(k => k.startsWith('notification_journal_reminder_'));
-      
-      for (const key of journalKeys) {
-        const data = await AsyncStorage.getItem(key);
-        if (data) {
-          const { notificationId } = JSON.parse(data);
-          await this.cancelNotification(notificationId);
-          await AsyncStorage.removeItem(key);
-        }
+      const notificationId = this.scheduledNotifications.get(type);
+      if (notificationId) {
+        await Notifications.cancelScheduledNotificationAsync(notificationId);
+        this.scheduledNotifications.delete(type);
+        console.log(`✅ ${type} bildirimi iptal edildi (ID: ${notificationId})`);
       }
     } catch (error) {
-      console.error('Journal reminder iptal etme hatası:', error);
+      console.error(`❌ ${type} bildirim iptal etme hatası:`, error);
     }
   }
 
-  // ==================== DEADLINE WARNINGS ====================
-
-  // Proje deadline uyarısı planla
-  async scheduleProjectDeadlineWarning(projectId, projectTitle, deadlineDate, daysBefore = 3) {
+  // Proje bildirimini iptal et
+  async cancelProjectNotification(projectId) {
     try {
-      const deadline = new Date(deadlineDate);
-      const warningDate = new Date(deadline);
-      warningDate.setDate(deadline.getDate() - daysBefore);
-
-      const now = new Date();
-      
-      // Minimum 1 saat gecikme ekle (anında bildirim önleme)
-      const minimumDelay = new Date(now.getTime() + (60 * 60 * 1000)); // 1 saat sonra
-      
-      console.log('Notification Debug:', {
-        projectTitle,
-        deadline: deadline.toISOString(),
-        warningDate: warningDate.toISOString(),
-        now: now.toISOString(),
-        minimumDelay: minimumDelay.toISOString(),
-        daysBefore,
-        isWarningDateInPast: warningDate <= now,
-        isWarningDateTooSoon: warningDate <= minimumDelay
-      });
-
-      // Geçmiş tarihse veya çok yakın tarihse planlama
-      if (warningDate <= minimumDelay) {
-        console.log('Deadline uyarısı çok yakın tarih için planlanamaz (minimum 1 saat gecikme gerekli)');
-        return null;
+      const notificationId = this.scheduledNotifications.get(`project-end-${projectId}`);
+      if (notificationId) {
+        await Notifications.cancelScheduledNotificationAsync(notificationId);
+        this.scheduledNotifications.delete(`project-end-${projectId}`);
+        
+        // AsyncStorage'dan da kaldır
+        const projectNotifications = await this.getProjectNotifications();
+        delete projectNotifications[projectId];
+        await AsyncStorage.setItem('projectNotifications', JSON.stringify(projectNotifications));
+        
+        console.log(`✅ Proje ${projectId} bildirimi iptal edildi (ID: ${notificationId})`);
       }
+    } catch (error) {
+      console.error(`❌ Proje ${projectId} bildirim iptal etme hatası:`, error);
+    }
+  }
 
-      const trigger = {
-        date: warningDate,
-      };
+  // Milestone bildirimini iptal et
+  async cancelMilestoneNotification(milestoneId) {
+    try {
+      const notificationId = this.scheduledNotifications.get(`milestone-end-${milestoneId}`);
+      if (notificationId) {
+        await Notifications.cancelScheduledNotificationAsync(notificationId);
+        this.scheduledNotifications.delete(`milestone-end-${milestoneId}`);
+        
+        // AsyncStorage'dan da kaldır
+        const milestoneNotifications = await this.getMilestoneNotifications();
+        delete milestoneNotifications[milestoneId];
+        await AsyncStorage.setItem('milestoneNotifications', JSON.stringify(milestoneNotifications));
+        
+        console.log(`✅ Milestone ${milestoneId} bildirimi iptal edildi (ID: ${notificationId})`);
+      }
+    } catch (error) {
+      console.error(`❌ Milestone ${milestoneId} bildirim iptal etme hatası:`, error);
+    }
+  }
 
-      // Deadline mesajları
-      let title, body;
-      if (daysBefore === 3) {
-        title = 'Project Deadline Approaching!';
-        body = `"${projectTitle}" project ends in 3 days. You still have time!`;
-      } else if (daysBefore === 1) {
-        title = 'Last Day!';
-        body = `"${projectTitle}" project ends tomorrow! Time for final touches.`;
+  // Proje bildirimlerini al
+  async getProjectNotifications() {
+    try {
+      const notifications = await AsyncStorage.getItem('projectNotifications');
+      return notifications ? JSON.parse(notifications) : {};
+    } catch (error) {
+      console.error('❌ Proje bildirimleri alma hatası:', error);
+      return {};
+    }
+  }
+
+  // Milestone bildirimlerini al
+  async getMilestoneNotifications() {
+    try {
+      const notifications = await AsyncStorage.getItem('milestoneNotifications');
+      return notifications ? JSON.parse(notifications) : {};
+    } catch (error) {
+      console.error('❌ Milestone bildirimleri alma hatası:', error);
+      return {};
+    }
+  }
+
+  // Bildirim ayarlarını al
+  async getReminderSettings() {
+    try {
+      const settings = await AsyncStorage.getItem('dailyReminderSettings');
+      return settings ? JSON.parse(settings) : { enabled: false, hour: 20, minute: 0 };
+    } catch (error) {
+      console.error('❌ Bildirim ayarları alma hatası:', error);
+      return { enabled: false, hour: 20, minute: 0 };
+    }
+  }
+
+  // Bildirim ayarlarını güncelle
+  async updateReminderSettings(enabled, hour = 20, minute = 0) {
+    try {
+      if (enabled) {
+        await this.scheduleDailyReminder();
       } else {
-        title = 'Deadline Warning';
-        body = `"${projectTitle}" project ends in ${daysBefore} days!`;
+        await this.cancelNotificationByType('daily-reminder');
+        await AsyncStorage.setItem('dailyReminderSettings', JSON.stringify({
+          enabled: false,
+          hour: hour,
+          minute: minute,
+          disabledAt: new Date().toISOString()
+        }));
       }
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title,
-          body,
-          data: { 
-            type: 'project_deadline_warning',
-            projectId,
-            projectTitle,
-            deadlineDate,
-            daysBefore,
-            action: 'open_project',
-            category: 'deadline'
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          vibrate: [0, 500, 250, 500],
-          lightColor: '#FF4444',
-          sticky: false,
-          autoDismiss: true,
-          // Custom color for deadline notifications
-          ...(Platform.OS === 'android' && { 
-            color: '#FF4444'
-          }),
-        },
-        trigger,
-      });
-
-      await this.saveNotificationId('project_deadline', notificationId, {
-        projectId,
-        projectTitle,
-        deadlineDate,
-        daysBefore
-      });
-
-      console.log(`Proje deadline uyarısı planlandı: ${projectTitle} (${daysBefore} gün önce)`);
-      return notificationId;
+      return true;
     } catch (error) {
-      console.error('Proje deadline uyarısı planlama hatası:', error);
-      return null;
+      console.error('❌ Bildirim ayarları güncelleme hatası:', error);
+      return false;
     }
   }
 
-  // Proje deadline uyarısını iptal et
-  async cancelProjectDeadlineWarning(projectId) {
+  // Zamanlanmış bildirimleri kontrol et
+  async getScheduledNotifications() {
     try {
-      const key = `notification_project_deadline_${projectId}`;
-      const data = await AsyncStorage.getItem(key);
-      
-      if (data) {
-        const { notificationId } = JSON.parse(data);
-        await this.cancelNotification(notificationId);
-        await AsyncStorage.removeItem(key);
-        console.log(`Proje deadline uyarısı iptal edildi: ${projectId}`);
-      }
+      const notifications = await Notifications.getAllScheduledNotificationsAsync();
+      return notifications;
     } catch (error) {
-      console.error('Proje deadline uyarısı iptal etme hatası:', error);
+      console.error('❌ Zamanlanmış bildirimleri alma hatası:', error);
+      return [];
     }
   }
 
-  // ==================== MILESTONE REMINDERS ====================
-
-  // Milestone deadline hatırlatıcısı planla
-  async scheduleMilestoneReminder(milestoneId, milestoneTitle, projectTitle, deadlineDate, daysBefore = 1) {
+  // Test bildirimi gönder
+  async sendTestNotification() {
     try {
-      // Check if notification already exists for this milestone
-      const existingKey = `notification_milestone_reminder_${milestoneId}`;
-      const existingData = await AsyncStorage.getItem(existingKey);
+      console.log('🧪 Test bildirimi gönderiliyor...');
       
-      if (existingData) {
-        console.log('🔔 DEBUG: Notification already exists for milestone', milestoneId);
-        return null; // Don't schedule duplicate notification
-      }
-
-      const deadline = new Date(deadlineDate);
-      const reminderDate = new Date(deadline);
-      reminderDate.setDate(deadline.getDate() - daysBefore);
-
-      const now = new Date();
+      // Development build kontrolü kaldırıldı
       
-      // Minimum 1 saat gecikme ekle (anında bildirim önleme)
-      const minimumDelay = new Date(now.getTime() + (60 * 60 * 1000)); // 1 saat sonra
-
-      console.log('🔔 DEBUG: scheduleMilestoneReminder called', {
-        milestoneId,
-        milestoneTitle,
-        projectTitle,
-        deadlineDate,
-        deadline: deadline.toISOString(),
-        reminderDate: reminderDate.toISOString(),
-        now: now.toISOString(),
-        minimumDelay: minimumDelay.toISOString(),
-        daysBefore,
-        isReminderInPast: reminderDate <= now,
-        isReminderTooSoon: reminderDate <= minimumDelay
-      });
-
-      // Geçmiş tarihse veya çok yakın tarihse planlama
-      if (reminderDate <= minimumDelay) {
-        console.log('❌ Milestone hatırlatıcısı çok yakın tarih için planlanamaz (minimum 1 saat gecikme gerekli)');
-        return null;
-      }
-
-      const trigger = {
-        date: reminderDate,
-      };
-
-      // Milestone mesajları - sadece son gün için
-      const milestoneMessages = [
-        `"${milestoneTitle}" milestone ends tomorrow!`,
-        `Last day for "${milestoneTitle}" milestone.`,
-        `"${milestoneTitle}" deadline is tomorrow!`,
-        `Final day for "${milestoneTitle}" milestone!`,
-        `"${milestoneTitle}" milestone deadline tomorrow!`
-      ];
-
-      const randomMessage = milestoneMessages[Math.floor(Math.random() * milestoneMessages.length)];
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
+      // 5 saniye sonra test bildirimi gönder
+      const testDate = new Date();
+      testDate.setSeconds(testDate.getSeconds() + 5);
+      
+      console.log(`⏰ Test bildirimi zamanı: ${testDate.toISOString()}`);
+      
+      await Notifications.scheduleNotificationAsync({
         content: {
-          title: `Milestone Reminder`,
-          body: randomMessage,
-          data: { 
-            type: 'milestone_reminder',
-            milestoneId,
-            milestoneTitle,
-            projectTitle,
-            deadlineDate,
-            daysBefore,
-            action: 'open_milestone',
-            category: 'milestone'
-          },
+          title: "🧪 Test Bildirimi",
+          body: "Bildirim sistemi çalışıyor! 5 saniye sonra geldi.",
           sound: true,
           priority: Notifications.AndroidNotificationPriority.HIGH,
-          vibrate: [0, 300, 200, 300],
-          lightColor: '#4A90E2',
-          sticky: false,
-          autoDismiss: true,
-          // Custom color for milestone notifications
-          ...(Platform.OS === 'android' && { 
-            color: '#4A90E2'
-          }),
         },
-        trigger,
+        trigger: { date: testDate },
       });
-
-      await this.saveNotificationId('milestone_reminder', notificationId, {
-        milestoneId,
-        milestoneTitle,
-        projectTitle,
-        deadlineDate,
-        daysBefore
-      });
-
-      console.log(`Milestone hatırlatıcısı planlandı: ${milestoneTitle} (${daysBefore} gün önce)`);
-      return notificationId;
+      console.log('✅ Test bildirimi 5 saniye sonra gelecek');
+      return true;
     } catch (error) {
-      console.error('Milestone hatırlatıcısı planlama hatası:', error);
-      return null;
+      console.error('❌ Test bildirimi gönderme hatası:', error);
+      return false;
     }
   }
 
-  // Milestone hatırlatıcısını iptal et
-  async cancelMilestoneReminder(milestoneId) {
+  // Tüm projeler için bildirimleri planla
+  async scheduleAllProjectNotifications(tasks) {
     try {
-      const key = `notification_milestone_reminder_${milestoneId}`;
-      const data = await AsyncStorage.getItem(key);
+      console.log('📋 Tüm proje bildirimleri planlanıyor...');
       
-      if (data) {
-        const { notificationId } = JSON.parse(data);
-        await this.cancelNotification(notificationId);
-        await AsyncStorage.removeItem(key);
-        console.log(`Milestone hatırlatıcısı iptal edildi: ${milestoneId}`);
-      }
-    } catch (error) {
-      console.error('Milestone hatırlatıcısı iptal etme hatası:', error);
-    }
-  }
-
-  // ==================== BULK OPERATIONS ====================
-
-  // Tüm projeler için deadline uyarıları planla
-  async scheduleAllProjectDeadlines(projects) {
-    try {
-      for (const project of projects) {
-        if (!project.done && project.endDate) {
-          // 3 gün önce uyarı
-          await this.scheduleProjectDeadlineWarning(
-            project.id,
-            project.title,
-            project.endDate,
-            3
-          );
-          
-          // 1 gün önce uyarı
-          await this.scheduleProjectDeadlineWarning(
-            project.id,
-            project.title,
-            project.endDate,
-            1
-          );
+      for (const task of tasks) {
+        if (!task.done && task.endDate) {
+          await this.scheduleProjectEndDateNotification(task.id, task.title, task.endDate);
         }
-      }
-    } catch (error) {
-      console.error('Tüm proje deadline uyarıları planlama hatası:', error);
-    }
-  }
-
-  // Tüm milestone'lar için hatırlatıcılar planla
-  async scheduleAllMilestoneReminders(projects) {
-    try {
-      for (const project of projects) {
-        if (!project.done && project.milestones) {
-          for (const milestone of project.milestones) {
+        
+        // Milestone'lar için de bildirim planla
+        if (task.milestones && task.milestones.length > 0) {
+          for (const milestone of task.milestones) {
             if (!milestone.completed && milestone.endDate) {
-              await this.scheduleMilestoneReminder(
-                milestone.id,
-                milestone.title,
-                project.title,
-                milestone.endDate,
-                1
+              await this.scheduleMilestoneEndDateNotification(
+                milestone.id, 
+                milestone.title, 
+                task.title, 
+                milestone.endDate
               );
             }
           }
         }
       }
-    } catch (error) {
-      console.error('Tüm milestone hatırlatıcıları planlama hatası:', error);
-    }
-  }
-
-  // ==================== SPECIAL NOTIFICATIONS ====================
-
-  // Başarı kutlaması bildirimi
-  async scheduleSuccessCelebration(type, title, message) {
-    try {
-      const celebrationMessages = {
-        project_completed: [
-          'Awesome! You successfully completed your project!',
-          'Congratulations! Another project completed!',
-          'Amazing! You finished your project!',
-          'Bravo! You completed it successfully!'
-        ],
-        milestone_completed: [
-          'Milestone completed! Keep going!',
-          'Great! Another milestone done!',
-          'Super! You completed your milestone!',
-          'Strong! Keep it up!'
-        ],
-        journal_streak: [
-          'Your journaling streak continues!',
-          'Great! Your consistency is amazing!',
-          'Your journaling habit is super!',
-          'You are really determined!'
-        ]
-      };
-
-      const messages = celebrationMessages[type] || ['Congratulations!'];
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: randomMessage,
-          body: message,
-          data: { 
-            type: 'success_celebration',
-            celebrationType: type,
-            action: 'view_achievement',
-            category: 'celebration'
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-          vibrate: [0, 200, 100, 200, 100, 200],
-          lightColor: '#4CAF50',
-          sticky: false,
-          autoDismiss: true,
-          // Custom color for success celebration notifications
-          ...(Platform.OS === 'android' && { 
-            color: '#4CAF50'
-          }),
-        },
-        trigger: { seconds: 60 }, // 1 dakika gecikme ile gönder
-      });
-
-      console.log(`Başarı kutlaması gönderildi: ${type}`);
-      return notificationId;
-    } catch (error) {
-      console.error('Başarı kutlaması gönderme hatası:', error);
-      return null;
-    }
-  }
-
-  // ==================== PROGRESS FEEDBACK NOTIFICATIONS ====================
-
-  // Proje ilerlemesi geri bildirim bildirimi
-  async scheduleProgressFeedbackNotification(projectId, projectTitle, currentMilestone, progressPercentage) {
-    try {
-      const feedbackMessages = [
-        {
-          title: 'How is Your Project Progress?',
-          body: `You've made ${progressPercentage}% progress on "${projectTitle}". How is it going?`
-        },
-        {
-          title: 'Feedback Time!',
-          body: `You're at "${currentMilestone}" stage in "${projectTitle}". How do you feel?`
-        },
-        {
-          title: 'Project Status Check',
-          body: `How is "${projectTitle}" going? Are you facing any challenges?`
-        },
-        {
-          title: 'Progress Evaluation',
-          body: `Great progress on "${projectTitle}"! How is it going?`
-        },
-        {
-          title: 'Project Update',
-          body: `You're at "${currentMilestone}" stage in "${projectTitle}". Would you like to give feedback?`
-        }
-      ];
-
-      const randomMessage = feedbackMessages[Math.floor(Math.random() * feedbackMessages.length)];
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: randomMessage.title,
-          body: randomMessage.body,
-          data: { 
-            type: 'progress_feedback',
-            projectId,
-            projectTitle,
-            currentMilestone,
-            progressPercentage,
-            action: 'open_project_feedback',
-            category: 'feedback'
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.DEFAULT,
-          vibrate: [0, 200, 100, 200],
-          lightColor: '#8E7DBE',
-          sticky: false,
-          autoDismiss: true,
-          // Custom color for progress feedback notifications
-          ...(Platform.OS === 'android' && { 
-            color: '#8E7DBE'
-          }),
-        },
-        trigger: { seconds: 60 }, // 1 dakika gecikme ile gönder
-      });
-
-      console.log(`Progress feedback bildirimi gönderildi: ${projectTitle}`);
-      return notificationId;
-    } catch (error) {
-      console.error('Progress feedback bildirimi gönderme hatası:', error);
-      return null;
-    }
-  }
-
-  // Tüm aktif projeler için progress feedback planla
-  async scheduleAllProgressFeedbacks(tasks) {
-    try {
-      const settings = await this.loadNotificationSettings();
-      if (!settings.progressFeedbackEnabled) return;
-
-      const activeProjects = tasks.filter(task => !task.done && task.milestones && task.milestones.length > 0);
       
-      for (const project of activeProjects) {
-        const completedMilestones = project.milestones.filter(ms => ms.completed).length;
-        const totalMilestones = project.milestones.length;
-        const progressPercentage = Math.round((completedMilestones / totalMilestones) * 100);
-        
-        // Sadece %10'dan fazla ilerleme varsa bildirim gönder
-        if (progressPercentage >= 10) {
-          const currentMilestone = project.milestones.find(ms => !ms.completed)?.title || 'Son aşama';
-          
-          // Random zamanlama (1-7 gün arası)
-          const randomDays = Math.floor(Math.random() * 7) + 1;
-          const randomHours = Math.floor(Math.random() * 12) + 9; // 9-21 arası
-          const randomMinutes = Math.floor(Math.random() * 60);
-          
-          const triggerDate = new Date();
-          triggerDate.setDate(triggerDate.getDate() + randomDays);
-          triggerDate.setHours(randomHours, randomMinutes, 0, 0);
-
-          const notificationId = await Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'How is Your Project Progress?',
-              body: `You've made ${progressPercentage}% progress on "${project.title}". How is it going?`,
-              data: { 
-                type: 'progress_feedback',
-                projectId: project.id,
-                projectTitle: project.title,
-                currentMilestone,
-                progressPercentage,
-                action: 'open_project_feedback',
-                category: 'feedback'
-              },
-              sound: true,
-              priority: Notifications.AndroidNotificationPriority.DEFAULT,
-              vibrate: [0, 200, 100, 200],
-              lightColor: '#8E7DBE',
-              sticky: false,
-              autoDismiss: true,
-              // Custom color for progress feedback notifications
-              ...(Platform.OS === 'android' && { 
-                color: '#8E7DBE'
-              }),
-            },
-            trigger: { date: triggerDate },
-          });
-
-          await this.saveNotificationId('progress_feedback', notificationId, {
-            projectId: project.id,
-            projectTitle: project.title,
-            progressPercentage,
-            scheduledDate: triggerDate.toISOString()
-          });
-
-          console.log(`Progress feedback planlandı: ${project.title} (${randomDays} gün sonra)`);
-        }
-      }
+      console.log('✅ Tüm proje bildirimleri planlandı');
+      return true;
     } catch (error) {
-      console.error('Progress feedback planlama hatası:', error);
+      console.error('❌ Tüm proje bildirimleri planlama hatası:', error);
+      return false;
     }
   }
 
-  // Progress feedback bildirimini iptal et
-  async cancelProgressFeedbackNotification(projectId) {
-    const existingNotifications = this.notificationIds['progress_feedback'] || {};
-    for (const id in existingNotifications) {
-      if (existingNotifications[id].projectId === projectId) {
-        await this.cancelNotification('progress_feedback', id);
-      }
-    }
-  }
-
-  // Motivasyon mesajı
-  async scheduleMotivationalMessage() {
+  // Bildirim durumunu kontrol et
+  async getNotificationStatus() {
     try {
-      const motivationalMessages = [
-        {
-          title: 'Motivation Time!',
-          body: 'You can achieve great things today too!'
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const dailySettings = await this.getReminderSettings();
+      const projectNotifications = await this.getProjectNotifications();
+      const milestoneNotifications = await this.getMilestoneNotifications();
+      
+      return {
+        totalScheduled: scheduledNotifications.length,
+        dailyReminder: {
+          enabled: dailySettings.enabled,
+          time: dailySettings.enabled ? `${dailySettings.hour}:${dailySettings.minute.toString().padStart(2, '0')}` : null
         },
-        {
-          title: 'You are Amazing!',
-          body: 'You are getting better every day!'
-        },
-        {
-          title: 'Focus on Your Goals!',
-          body: 'Keep working for your big dreams!'
-        },
-        {
-          title: 'You are Making Progress!',
-          body: 'Every step brings you closer to your goal!'
-        },
-        {
-          title: 'You are on the Path to Success!',
-          body: 'Your consistency will lead you to success!'
-        }
-      ];
-
-      const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: randomMessage.title,
-          body: randomMessage.body,
-          data: { 
-            type: 'motivational_message',
-            action: 'open_app',
-            category: 'motivation'
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.DEFAULT,
-          vibrate: [0, 150, 100, 150],
-          lightColor: '#8E7DBE',
-          sticky: false,
-          autoDismiss: true,
-          // Custom color for motivational notifications
-          ...(Platform.OS === 'android' && { 
-            color: '#8E7DBE'
-          }),
-        },
-        trigger: { seconds: 60 }, // 1 dakika gecikme ile gönder
-      });
-
-      console.log('Motivasyon mesajı gönderildi');
-      return notificationId;
+        projectNotifications: Object.keys(projectNotifications).length,
+        milestoneNotifications: Object.keys(milestoneNotifications).length,
+        scheduledNotifications: scheduledNotifications.map(n => ({
+          id: n.identifier,
+          content: n.content,
+          trigger: n.trigger
+        }))
+      };
     } catch (error) {
-      console.error('Motivasyon mesajı gönderme hatası:', error);
+      console.error('❌ Bildirim durumu alma hatası:', error);
       return null;
     }
   }
 
-  // ==================== SETTINGS ====================
-
-  // Bildirim ayarlarını kaydet
-  async saveNotificationSettings(settings) {
-    try {
-      await AsyncStorage.setItem('notification_settings', JSON.stringify(settings));
-    } catch (error) {
-      console.error('Bildirim ayarları kaydetme hatası:', error);
+  // Servisi temizle
+  cleanup() {
+    if (this.notificationListener) {
+      Notifications.removeNotificationSubscription(this.notificationListener);
     }
-  }
-
-  // Bildirim ayarlarını yükle
-  async loadNotificationSettings() {
-    try {
-      const settings = await AsyncStorage.getItem('notification_settings');
-      return settings ? JSON.parse(settings) : {
-        journalReminderEnabled: false, // Günlük hatırlatıcıyı kapat
-        journalReminderTime: '20:00',
-        deadlineWarningsEnabled: false, // Proje deadline uyarılarını kapat
-        milestoneRemindersEnabled: true, // Sadece milestone hatırlatıcıları açık
-      };
-    } catch (error) {
-      console.error('Bildirim ayarları yükleme hatası:', error);
-      return {
-        journalReminderEnabled: false, // Günlük hatırlatıcıyı kapat
-        journalReminderTime: '20:00',
-        deadlineWarningsEnabled: false, // Proje deadline uyarılarını kapat
-        milestoneRemindersEnabled: true, // Sadece milestone hatırlatıcıları açık
-        progressFeedbackEnabled: false, // Progress feedback'i kapat
-        progressFeedbackFrequency: 'weekly', // daily, weekly, biweekly
-      };
+    if (this.responseListener) {
+      Notifications.removeNotificationSubscription(this.responseListener);
     }
+    this.isInitialized = false;
   }
 }
 

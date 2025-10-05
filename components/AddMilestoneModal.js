@@ -126,17 +126,6 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     const finalStartDateFixed = fixTimezone(finalStartDate);
     const finalEndDateFixed = fixTimezone(finalEndDate);
 
-    console.log('📅 DEBUG: AddMilestoneModal milestone data', {
-      title: title.trim(),
-      originalStartDate: startDate?.toISOString(),
-      originalEndDate: endDate?.toISOString(),
-      selectedDate: selectedDate.toISOString(),
-      finalStartDate: finalStartDate.toISOString(),
-      finalEndDate: finalEndDate.toISOString(),
-      finalStartDateFixed: finalStartDateFixed.toISOString(),
-      finalEndDateFixed: finalEndDateFixed.toISOString(),
-      isEditing: !!editingMilestone
-    });
 
     const milestoneData = {
       ...(editingMilestone && { id: editingMilestone.id }), // Only provide ID in edit mode
@@ -162,7 +151,8 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
   };
 
   const formatMonthYear = (date) => {
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const locale = t('language') === 'tr' ? 'tr-TR' : 'en-US';
+    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   };
 
   const navigateMonth = (direction) => {

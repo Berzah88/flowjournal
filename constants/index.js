@@ -127,7 +127,7 @@ export const MILESTONE_COLORS = [
   "#C7D9DD", // Soft gri mavi
 ];
 
-// Mood seçenekleri
+// Mood seçenekleri - Bu artık kullanılmıyor, Journal.js'de getBasicMoods kullanılıyor
 export const MOODS = [
   {
     key: "happy",
@@ -148,7 +148,7 @@ export const MOODS = [
     color: "#FFCDD2",
   },
   {
-    key: "Natural",
+    key: "natural",
     label: "Natural",
     icon: "sentiment-dissatisfied",
     color: "#CFD8DC",

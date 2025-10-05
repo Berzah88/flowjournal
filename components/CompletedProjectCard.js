@@ -14,7 +14,8 @@ const CompletedProjectCard = memo(({
   milestones = [], 
   onPress,
   style,
-  compact = false // Grid view için compact mode
+  compact = false, // Grid view için compact mode
+  task = null // Task prop'u eklendi
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -22,10 +23,10 @@ const CompletedProjectCard = memo(({
   const milestoneStats = useMemo(() => {
     const total = milestones.length;
     const completed = milestones.filter(m => m.completed).length;
-    const journalEntries = milestones.reduce((acc, m) => acc + (m.journalEntries?.length || 0), 0);
+    const journalEntries = task?.journalEntries?.length || 0; // Project-based journal entries
     
     return { total, completed, journalEntries };
-  }, [milestones]);
+  }, [milestones, task?.journalEntries]);
 
   // Tarih formatı
   const formatDate = (dateString) => {
@@ -54,23 +55,38 @@ const CompletedProjectCard = memo(({
 
   return (
     <Pressable 
-      style={[styles.container, style]} 
+      style={({ pressed }) => [
+        styles.container, 
+        style,
+        {
+          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+          borderColor: theme.name === 'dark' ? '#000000' : 'rgba(0, 0, 0, 0.03)',
+          borderWidth: theme.name === 'dark' ? 1.5 : 0.5,
+          shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
+          shadowRadius: theme.name === 'dark' ? 12 : 8,
+          elevation: theme.name === 'dark' ? 8 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        }
+      ]} 
       onPress={onPress}
       android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
     >
-      <LinearGradient
-        colors={['#FFFFFF', '#F8F9FA']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={2}>
+            <Text style={[
+              styles.title,
+              { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+            ]} numberOfLines={2}>
               {title}
             </Text>
-            <View style={styles.completedBadge}>
+            <View style={[
+              styles.completedBadge,
+              {
+                backgroundColor: theme.name === 'dark' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)',
+              }
+            ]}>
               <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
               <Text style={styles.completedText}>{t('completed')}</Text>
             </View>
@@ -80,60 +96,114 @@ const CompletedProjectCard = memo(({
         {/* Date Range */}
         <View style={styles.dateContainer}>
           <View style={styles.dateItem}>
-            <Ionicons name="calendar-outline" size={14} color="#8E8E93" />
-            <Text style={styles.dateText}>
+            <Ionicons 
+              name="calendar-outline" 
+              size={14} 
+              color={theme.name === 'dark' ? '#8E8E93' : '#8E8E93'} 
+            />
+            <Text style={[
+              styles.dateText,
+              { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+            ]}>
               {formatDate(startDate)} - {formatDate(endDate)}
             </Text>
           </View>
-          <View style={styles.durationBadge}>
+          <View style={[
+            styles.durationBadge,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(74, 144, 226, 0.2)' : 'rgba(74, 144, 226, 0.1)',
+            }
+          ]}>
             <Text style={styles.durationText}>{projectDuration}</Text>
           </View>
         </View>
 
         {/* Statistics */}
         {!compact && (
-          <View style={styles.statsContainer}>
+          <View style={[
+            styles.statsContainer,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+            }
+          ]}>
             <View style={styles.statItem}>
               <Ionicons name="flag" size={16} color="#FF9800" />
-              <Text style={styles.statNumber}>{milestoneStats.total}</Text>
-              <Text style={styles.statLabel}>Milestone</Text>
+              <Text style={[
+                styles.statNumber,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>{milestoneStats.total}</Text>
+              <Text style={[
+                styles.statLabel,
+                { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+              ]}>Milestone</Text>
             </View>
             
             <View style={styles.statItem}>
               <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-              <Text style={styles.statNumber}>{milestoneStats.completed}</Text>
-              <Text style={styles.statLabel}>Tamamlandı</Text>
+              <Text style={[
+                styles.statNumber,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>{milestoneStats.completed}</Text>
+              <Text style={[
+                styles.statLabel,
+                { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+              ]}>Tamamlandı</Text>
             </View>
             
             <View style={styles.statItem}>
               <Ionicons name="journal" size={16} color="#2196F3" />
-              <Text style={styles.statNumber}>{milestoneStats.journalEntries}</Text>
-              <Text style={styles.statLabel}>Günlük</Text>
+              <Text style={[
+                styles.statNumber,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>{milestoneStats.journalEntries}</Text>
+              <Text style={[
+                styles.statLabel,
+                { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+              ]}>Günlük</Text>
             </View>
           </View>
         )}
 
         {/* Compact Statistics for Grid View */}
         {compact && (
-          <View style={styles.compactStatsContainer}>
+          <View style={[
+            styles.compactStatsContainer,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+            }
+          ]}>
             <View style={styles.compactStatItem}>
               <Ionicons name="flag" size={12} color="#FF9800" />
-              <Text style={styles.compactStatText}>{milestoneStats.total}</Text>
+              <Text style={[
+                styles.compactStatText,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>{milestoneStats.total}</Text>
             </View>
             <View style={styles.compactStatItem}>
               <Ionicons name="checkmark-circle" size={12} color="#4CAF50" />
-              <Text style={styles.compactStatText}>{milestoneStats.completed}</Text>
+              <Text style={[
+                styles.compactStatText,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>{milestoneStats.completed}</Text>
             </View>
             <View style={styles.compactStatItem}>
               <Ionicons name="journal" size={12} color="#2196F3" />
-              <Text style={styles.compactStatText}>{milestoneStats.journalEntries}</Text>
+              <Text style={[
+                styles.compactStatText,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>{milestoneStats.journalEntries}</Text>
             </View>
           </View>
         )}
 
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
+          <View style={[
+            styles.progressBar,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+            }
+          ]}>
             <View 
               style={[
                 styles.progressFill, 
@@ -141,20 +211,35 @@ const CompletedProjectCard = memo(({
               ]} 
             />
           </View>
-          <Text style={styles.progressText}>
+          <Text style={[
+            styles.progressText,
+            { color: theme.name === 'dark' ? '#4CAF50' : '#4CAF50' }
+          ]}>
             %{milestoneStats.total > 0 ? Math.round((milestoneStats.completed / milestoneStats.total) * 100) : 0} tamamlandı
           </Text>
         </View>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={[
+          styles.footer,
+          {
+            borderTopColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)',
+          }
+        ]}>
           <View style={styles.footerLeft}>
             <Ionicons name="trophy" size={14} color="#FFD700" />
-            <Text style={styles.footerText}>Başarıyla tamamlandı</Text>
+            <Text style={[
+              styles.footerText,
+              { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
+            ]}>Başarıyla tamamlandı</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+          <Ionicons 
+            name="chevron-forward" 
+            size={16} 
+            color={theme.name === 'dark' ? '#8E8E93' : '#C7C7CC'} 
+          />
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 });
@@ -167,23 +252,15 @@ CompletedProjectCard.propTypes = {
   onPress: PropTypes.func,
   style: PropTypes.object,
   compact: PropTypes.bool,
+  task: PropTypes.object,
 };
 
 const styles = StyleSheet.create({
   container: {
     borderRadius: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  gradient: {
-    borderRadius: 16,
     padding: 20,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
+    shadowOffset: { width: 0, height: 2 },
   },
   header: {
     marginBottom: 16,
