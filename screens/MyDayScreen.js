@@ -65,7 +65,7 @@ const MyDayScreen = memo(function MyDayScreen({
     // Project-based journal system - open journal for the entire project
     const projectData = {
       id: 'project-journal',
-      title: 'Project Journal',
+      title: t('projectJournal'),
       taskId: project.id,
       projectTitle: project.title || '',
       isProjectBased: true
@@ -601,7 +601,7 @@ const MyDayScreen = memo(function MyDayScreen({
                             // Open journal with specific entry
                             const projectData = {
                               id: 'project-journal',
-                              title: 'Project Journal',
+                              title: t('projectJournal'),
                               taskId: project.id,
                               projectTitle: project.title || '',
                               isProjectBased: true,
@@ -716,7 +716,7 @@ const MyDayScreen = memo(function MyDayScreen({
                   onPress={() => {
                     const projectData = {
                       id: 'project-journal',
-                      title: 'Project Journal',
+                      title: t('projectJournal'),
                       taskId: project.id,
                       projectTitle: project.title || '',
                       isProjectBased: true

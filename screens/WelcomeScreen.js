@@ -105,7 +105,7 @@ export default function WelcomeScreen({ navigation }) {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <Image
-              source={require("../assets/Logo.png")}
+              source={require("../assets/logo-yeni.png")}
               style={styles.logo}
               resizeMode="contain"
             />

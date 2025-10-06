@@ -17,6 +17,23 @@ export default function MoodCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const tasks = useTasks();
   
+  // Arka plan rengine göre kontrast renk hesapla
+  const getContrastColor = (backgroundColor) => {
+    if (!backgroundColor) return theme.name === 'dark' ? '#FFFFFF' : '#000000';
+    
+    // Hex rengi RGB'ye çevir
+    const hex = backgroundColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Luminance hesapla
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Kontrast renk döndür
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  };
+  
   // Collect all journal entries from all tasks
   const getAllJournalEntries = () => {
     const allEntries = [];
@@ -149,7 +166,14 @@ export default function MoodCalendar() {
           key={day}
           style={[
             styles.calendarDay,
-            isToday && styles.todayDay,
+            isToday && [
+              styles.todayDay,
+              { 
+                backgroundColor: theme.name === 'dark' 
+                  ? 'rgba(255, 59, 48, 0.3)' // Karanlık modda kırmızı
+                  : theme.colors.primary + '20' // Açık modda tema rengi
+              }
+            ],
             moodData && !isToday && styles.moodDay,
             projectData && [
               styles.projectDay
@@ -160,7 +184,14 @@ export default function MoodCalendar() {
           <Text style={[
             styles.dayText,
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
-            isToday && styles.todayText,
+            isToday && [
+              styles.todayText,
+              { 
+                color: theme.name === 'dark' 
+                  ? '#FF3B30' // Karanlık modda kırmızı
+                  : theme.colors.primary // Açık modda tema rengi
+              }
+            ],
             projectData && !isToday && [
               styles.projectText,
               { 
@@ -184,12 +215,16 @@ export default function MoodCalendar() {
           {moodData && (
             <View style={[
               styles.moodIndicator,
-              { backgroundColor: moodData.moodColor || '#4A90E2' }
+              { 
+                backgroundColor: moodData.moodColor || theme.colors.primary,
+                borderColor: theme.name === 'dark' ? '#2C2C2E' : '#E0E0E0',
+                borderWidth: 1
+              }
             ]}>
               <MaterialIcons 
                 name={getValidIconName(moodData.moodIcon || 'sentiment-neutral')} 
-                size={14} 
-                color="#FFFFFF" 
+                size={16} 
+                color={getContrastColor(moodData.moodColor || theme.colors.primary)}
               />
             </View>
           )}
@@ -311,7 +346,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   todayDay: {
-    backgroundColor: 'rgba(233, 30, 99, 0.2)',
     borderRadius: 8,
   },
   todayDayWithMood: {
@@ -332,21 +366,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
   },
   todayText: {
-    color: '#E91E63',
     fontFamily: 'Poppins_600SemiBold',
   },
   moodIndicator: {
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 2,
   },

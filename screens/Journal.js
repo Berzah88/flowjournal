@@ -716,7 +716,7 @@ export default function Journal({
       <Animated.View style={[dynamicStyles.modalContainer, modalStyle]}>
         <LinearGradient
           colors={theme.name === 'dark' 
-            ? ['#1A1A1A', theme.colors.gray[50], theme.colors.gray[100]] 
+            ? ['#2A2A2A', '#2A2A2A', '#2A2A2A'] 
             : ['#f8f9fa', '#ffffff', '#f1f3f4']}
           style={styles.gradientBackground}
           start={{ x: 0, y: 0 }}
@@ -905,8 +905,8 @@ export default function Journal({
                   styles.moodPicker, 
                   { 
                     bottom: keyboardHeight ? keyboardHeight + 90 : 106,
-                    backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#ffffff',
-                    borderColor: theme.name === 'dark' ? '#2C2C2E' : '#e0e0e0',
+                    backgroundColor: theme.name === 'dark' ? '#2A2A2A' : '#ffffff',
+                    borderColor: theme.name === 'dark' ? '#3A3A3A' : '#e0e0e0',
                     shadowColor: theme.name === 'dark' ? '#000000' : '#000',
                     shadowOpacity: theme.name === 'dark' ? 0.5 : 0.12,
                     shadowRadius: theme.name === 'dark' ? 15 : 12,
@@ -977,8 +977,8 @@ export default function Journal({
             { 
               bottom: fromActiveProject ? (keyboardHeight || 0) + 20 : (keyboardHeight || 0), 
               marginBottom: 15,
-              backgroundColor: theme.name === 'dark' ? theme.colors.gray[200] : 'rgba(248, 249, 250, 0.95)',
-              borderTopColor: theme.name === 'dark' ? theme.colors.gray[300] : 'rgba(0,0,0,0.1)',
+              backgroundColor: theme.name === 'dark' ? '#2A2A2A' : 'rgba(248, 249, 250, 0.95)',
+              borderTopColor: theme.name === 'dark' ? '#3A3A3A' : 'rgba(0,0,0,0.1)',
             }
           ]}>
             {buttons.map((btn, i) => (
@@ -987,8 +987,8 @@ export default function Journal({
                 style={[
                   styles.button,
                   {
-                    backgroundColor: theme.name === 'dark' ? theme.colors.gray[100] : '#ffffff',
-                    borderColor: theme.name === 'dark' ? theme.colors.gray[200] : '#e0e0e0',
+                    backgroundColor: theme.name === 'dark' ? '#3A3A3A' : '#ffffff',
+                    borderColor: theme.name === 'dark' ? '#4A4A4A' : '#e0e0e0',
                     shadowColor: theme.name === 'dark' ? theme.colors.gray[50] : '#000',
                     shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
                     shadowRadius: theme.name === 'dark' ? 12 : 6,

@@ -11,7 +11,6 @@ const translations = {
     'addProject': 'Add Project',
     'settings': 'Settings',
     'data': 'Data',
-    'notifications': 'Notifications',
     'theme': 'Theme',
     'language': 'Language',
     'createBackup': 'Create Backup',
@@ -172,7 +171,10 @@ const translations = {
     'noActiveProjectOnSelectedDate': 'No active project on selected date.\nWould you like to create a new project?',
     
     // Completed Projects
+    'projectJournal': 'Project Journal',
     'projectJournals': 'Project Journals',
+    'projectJourney': 'Project Journey',
+    'startDocumentingProjectJourney': 'Start documenting your project journey',
     'noJournals': 'No Journals',
     'noJournalEntries': 'This project has no journal entries',
     'noCompletedProjects': 'No Completed Projects',
@@ -183,17 +185,6 @@ const translations = {
     // Add Milestone Modal
     'enterMilestoneTitle': 'Enter milestone title...',
     
-    // Notification Settings
-    'dailyReminderTime': 'Daily Reminder Time',
-    'journalReminder': 'Journal Reminder',
-    'dailyJournalReminder': 'Daily journal writing reminder',
-    'reminderTime': 'Reminder Time',
-    'notificationInfo': 'About Notifications',
-    'notificationInfoDescription': 'You will receive daily reminders to write in your journal at the selected time. Notifications are sent in your current language.',
-    'enterReminderTime': 'Enter the time when the reminder should be sent (HH:MM format):',
-    'enterValidTimeFormat': 'Enter a valid time format (HH:MM)',
-    'selectReminderTime': 'Select the time when you want to receive daily journal reminders',
-    'settingsUpdateError': 'Failed to update settings. Please try again.',
     'resetAIFeedback': 'Reset AI Feedback',
     'resetAIFeedbackDescription': 'This will reset the AI feedback system and allow it to show again on next app start. Continue?',
     'reset': 'Reset',
@@ -232,7 +223,6 @@ const translations = {
     'natural': 'Natural',
     'neutral': 'Neutral',
     
-    // Notifications
     'journalTime': 'Journal Time!',
     'howAboutRecording': 'How about recording your experiences and emotions today?',
     'howWasYourDay': 'How was your day? Share your thoughts!',
@@ -662,7 +652,6 @@ const translations = {
     'addProject': 'Proje Ekle',
     'settings': 'Ayarlar',
     'data': 'Veri',
-    'notifications': 'Bildirimler',
     'theme': 'Tema',
     'language': 'Dil',
     'createBackup': 'Yedek Oluştur',
@@ -823,7 +812,10 @@ const translations = {
     'noActiveProjectOnSelectedDate': 'Seçilen tarihte aktif proje yok.\nYeni bir proje oluşturmak ister misiniz?',
     
     // Completed Projects
+    'projectJournal': 'Proje Günlüğü',
     'projectJournals': 'Proje Günlükleri',
+    'projectJourney': 'Proje Yolculuğu',
+    'startDocumentingProjectJourney': 'Proje yolculuğunu belgelemeye başla',
     'noJournals': 'Günlük Yok',
     'noJournalEntries': 'Bu projenin günlük girişi yok',
     'noCompletedProjects': 'Tamamlanan Proje Yok',
@@ -834,17 +826,6 @@ const translations = {
     // Add Milestone Modal
     'enterMilestoneTitle': 'Kilometre taşı başlığını girin...',
     
-    // Notification Settings
-    'dailyReminderTime': 'Günlük Hatırlatıcı Saati',
-    'enterReminderTime': 'Hatırlatıcının gönderileceği saati girin (HH:MM formatında):',
-    'enterValidTimeFormat': 'Geçerli bir saat formatı girin (HH:MM)',
-    'journalReminder': 'Günlük Hatırlatıcısı',
-    'dailyJournalReminder': 'Günlük yazma hatırlatıcısı',
-    'reminderTime': 'Hatırlatıcı Saati',
-    'notificationInfo': 'Bildirimler Hakkında',
-    'notificationInfoDescription': 'Seçilen saatte günlük yazma hatırlatıcıları alacaksınız. Bildirimler mevcut dilinizde gönderilir.',
-    'selectReminderTime': 'Günlük günlük hatırlatıcıları almak istediğiniz saati seçin',
-    'settingsUpdateError': 'Ayarlar güncellenemedi. Lütfen tekrar deneyin.',
     'resetAIFeedback': 'AI Geri Bildirimini Sıfırla',
     'resetAIFeedbackDescription': 'Bu, AI geri bildirim sistemini sıfırlayacak ve bir sonraki uygulama başlatıldığında tekrar göstermesine izin verecek. Devam edilsin mi?',
     'reset': 'Sıfırla',
@@ -883,7 +864,6 @@ const translations = {
     'natural': 'Doğal',
     'neutral': 'Nötr',
     
-    // Notifications
     'journalTime': 'Günlük Zamanı!',
     'howAboutRecording': 'Bugünkü deneyimlerini ve duygularını kaydetmeye ne dersin?',
     'howWasYourDay': 'Günün nasıldı? Düşüncelerini paylaş!',
@@ -924,7 +904,7 @@ const translations = {
     'complexProjectMotivation': 'Karmaşık projeler zengin duygusal deneyimler yaratır. Bu hisleri fark edilmeden bırakma!',
     'simpleProjectMotivation': 'Basit projeler bile duygusal derinliğe sahiptir. Küçük zaferlerdeki sevinci yakala!',
     'continueJournalingMotivation': 'Yolculuğunu belgelemeye başladın. Duygusal içgörülerle momentumu sürdür!',
-    'completedProjectsJourney': 'Tamamlanan Projeler Yolculuğu',
+    'completedProjectsJourney': 'Tamamlanan Projeler',
     'quickTips': 'Hızlı İpuçları',
     'emotionalJournal': 'Mood Tracker',
     'moodAnalysis': 'Mood Analizi',

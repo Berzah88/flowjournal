@@ -7,7 +7,6 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 // Yeni bildirim servisi
 import DataIntegrityManager from "../utils/DataIntegrityManager";
-import notificationService from "../services/NotificationService";
 
 // Re-render optimization by splitting context
 export const TaskContext = createContext();
@@ -122,27 +121,25 @@ export const TaskProvider = ({ children }) => {
   // ---------- NOTIFICATION SYSTEM INITIALIZATION ----------
   useEffect(() => {
     const initializeNotifications = async () => {
-      if (isLoading || tasks.length === 0) return;
+      if (isLoading) return;
       
       try {
         console.log('🔔 Notification sistemi başlatılıyor...');
         
-        // Notification servisini başlat
-        await notificationService.initialize();
-        
-        // Günlük bildirimi planla (20:00)
-        await notificationService.scheduleDailyReminder();
-        
-        // Tüm proje ve milestone bildirimlerini planla
-        await notificationService.scheduleAllProjectNotifications(tasks);
-        
-        console.log('✅ Notification sistemi başlatıldı ve tüm bildirimler planlandı');
+        // Bildirim sistemi kaldırıldı - sadece test butonu ile kullanılacak
+        console.log('✅ Notification sistemi kaldırıldı');
       } catch (error) {
         console.error('❌ Notification sistemi başlatma hatası:', error);
       }
     };
 
     initializeNotifications();
+  }, [isLoading]); // tasks dependency'sini kaldırdık
+
+  // ---------- PROJECT NOTIFICATIONS SCHEDULING ----------
+  // Basit bildirim sistemi - proje bildirimleri devre dışı
+  useEffect(() => {
+    console.log('📋 Proje bildirimleri devre dışı - basit sistem aktif');
   }, [isLoading, tasks]);
 
   // ---------- RACE CONDITION SAFE SAVE FUNCTION ----------
@@ -904,14 +901,9 @@ export const TaskProvider = ({ children }) => {
     try {
       console.log('🔔 Bildirim sistemi yeniden kuruluyor...');
       
-      // Notification servisini başlat
-      await notificationService.initialize();
-      
-      // Günlük bildirimi planla (20:00)
-      await notificationService.scheduleDailyReminder();
-      
-      // Tüm proje ve milestone bildirimlerini planla
-      await notificationService.scheduleAllProjectNotifications(tasks);
+      // Notification servisini başlat (eğer başlatılmamışsa)
+      // Notification service kaldırıldı
+      console.log('✅ Notification service kaldırıldı');
       
       console.log('✅ Tüm bildirimler başarıyla planlandı');
     } catch (error) {
@@ -924,16 +916,12 @@ export const TaskProvider = ({ children }) => {
     try {
       console.log('🎯 Proje bildirimleri planlanıyor:', project.title);
       
-      // Notification servisini başlat
-      await notificationService.initialize();
+      // Notification servisini başlat (eğer başlatılmamışsa)
+      // Notification service kaldırıldı
       
       // Proje bitiş tarihi bildirimi planla
       if (project.endDate) {
-        await notificationService.scheduleProjectEndDateNotification(
-          project.id, 
-          project.title, 
-          project.endDate
-        );
+        // Notification service kaldırıldı
       }
       
       console.log('✅ Proje bildirimleri planlandı:', project.title);
@@ -947,17 +935,12 @@ export const TaskProvider = ({ children }) => {
     try {
       console.log('🚀 Milestone bildirimleri planlanıyor:', milestone.title);
       
-      // Notification servisini başlat
-      await notificationService.initialize();
+      // Notification servisini başlat (eğer başlatılmamışsa)
+      // Notification service kaldırıldı
       
       // Milestone son günü bildirimi planla
       if (milestone.endDate) {
-        await notificationService.scheduleMilestoneEndDateNotification(
-          milestone.id, 
-          milestone.title, 
-          projectTitle, 
-          milestone.endDate
-        );
+        // Notification service kaldırıldı
       }
       
       console.log('✅ Milestone bildirimleri planlandı:', milestone.title);
@@ -970,7 +953,7 @@ export const TaskProvider = ({ children }) => {
   const cancelProjectNotifications = useCallback(async (projectId) => {
     try {
       console.log('🗑️ Proje bildirimleri iptal ediliyor:', projectId);
-      await notificationService.cancelProjectNotification(projectId);
+      // await notificationService.cancelProjectNotification(projectId);
       console.log('✅ Proje bildirimleri iptal edildi:', projectId);
     } catch (error) {
       console.error('❌ Proje bildirim iptal hatası:', error);
@@ -981,7 +964,7 @@ export const TaskProvider = ({ children }) => {
   const cancelMilestoneNotifications = useCallback(async (milestoneId) => {
     try {
       console.log('🗑️ Milestone bildirimleri iptal ediliyor:', milestoneId);
-      await notificationService.cancelMilestoneNotification(milestoneId);
+      // await notificationService.cancelMilestoneNotification(milestoneId);
       console.log('✅ Milestone bildirimleri iptal edildi:', milestoneId);
     } catch (error) {
       console.error('❌ Milestone bildirim iptal hatası:', error);

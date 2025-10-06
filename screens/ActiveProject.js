@@ -286,7 +286,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
       // Creating new journal entry - create a dummy milestone for project-based journal
       const dummyMilestone = {
         id: 'project-journal',
-        title: 'Project Journal',
+        title: t('projectJournal'),
         taskId: currentTask?.id,
         isProjectBased: true
       };

@@ -2,38 +2,32 @@
   "expo": {
     "name": "Flow Journal",
     "slug": "WITApp-FCM",
-    "version": "7.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon2.png",
+    "icon": "./assets/logo-yeni.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/Logo.png",
+      "image": "./assets/logo-yeni.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
+      "icon": "./assets/logo-yeni.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "App needs your location to save it in journal entries.",
         "NSPhotoLibraryUsageDescription": "App needs access to your photos to attach images to journal entries."
       }
     },
-    "notification": {
-      "icon": "./assets/icon2.png",
-      "color": "#4CAF50",
-      "iosDisplayInForeground": true,
-      "androidMode": "default",
-      "androidCollapsedTitle": "Flow Journal"
-    },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon2.png",
+        "foregroundImage": "./assets/logo-yeni.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.witapp.fcm",
-      "versionCode": 7,
+      "versionCode": 8,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -47,24 +41,24 @@
       ]
     },
     "web": {
-      "favicon": "./assets/Logo.png"
+      "favicon": "./assets/logo-yeni.png"
     },
     "plugins": [
       "expo-font",
       "expo-asset",
       "expo-maps",
       [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon2.png",
-          "color": "#4CAF50",
-          "sounds": []
-        }
-      ],
-      [
         "expo-background-fetch",
         {
           "backgroundFetchInterval": 15
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/logo-yeni.png",
+          "color": "#ffffff",
+          "defaultChannel": "default"
         }
       ]
     ],

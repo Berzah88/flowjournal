@@ -38,6 +38,7 @@ import ActiveProject from "./ActiveProject";
 import Journal from "./Journal";
 import LoadingSpinner from "../components/LoadingSpinner";
 import DataRecoveryMenu from "../components/DataRecoveryMenu";
+import NotificationMenu from "../components/NotificationMenu";
 import MyDayScreen from "./MyDayScreen";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 import ThemeToggle from "../components/ThemeToggle";
@@ -45,7 +46,8 @@ import MoodStatement from "../components/MoodStatement";
 import Motive from "../components/Motive";
 import ProjectAnalyzer from "../utils/ProjectAnalyzer";
 import LanguageSettings from "../components/LanguageSettings";
-import NotificationSettings from "../components/NotificationSettings";
+import notificationService from "../services/NotificationService";
+import fcmService from "../services/FCMService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -75,8 +77,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [addVisible, setAddVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [dataRecoveryMenuVisible, setDataRecoveryMenuVisible] = useState(false);
+  const [notificationMenuVisible, setNotificationMenuVisible] = useState(false);
   const [languageSettingsVisible, setLanguageSettingsVisible] = useState(false);
-  const [notificationSettingsVisible, setNotificationSettingsVisible] = useState(false);
   const [mainMenuVisible, setMainMenuVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
@@ -123,13 +125,14 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const openDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(true), []);
   const closeDataRecoveryMenu = useCallback(() => setDataRecoveryMenuVisible(false), []);
   
+  // Notification menu handlers
+  const openNotificationMenu = useCallback(() => setNotificationMenuVisible(true), []);
+  const closeNotificationMenu = useCallback(() => setNotificationMenuVisible(false), []);
+  
   // Language settings handlers
   const openLanguageSettings = useCallback(() => setLanguageSettingsVisible(true), []);
   const closeLanguageSettings = useCallback(() => setLanguageSettingsVisible(false), []);
 
-  // Notification settings handlers
-  const openNotificationSettings = useCallback(() => setNotificationSettingsVisible(true), []);
-  const closeNotificationSettings = useCallback(() => setNotificationSettingsVisible(false), []);
 
   const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
 
@@ -428,7 +431,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         // Project-based journal system - open journal for the entire project
         const projectData = {
           id: 'project-journal',
-          title: 'Project Journal',
+          title: t('projectJournal'),
           taskId: item.id,
           projectTitle: item.title,
           isProjectBased: true
@@ -498,8 +501,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               <View style={styles.logoContainer}>
                 <Image 
                   source={theme.name === 'dark' 
-                    ? require('../assets/icon2.png') 
-                    : require('../assets/Logo.png')
+                    ? require('../assets/logo-yeni.png') 
+                    : require('../assets/logo-yeni.png')
                   } 
                   style={styles.logoImage}
                   resizeMode="contain"
@@ -545,6 +548,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
       {/* Status Tabs - Swipe alanı dışında */}
       <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
+
 
       <View style={styles.viewport}>
         <Animated.View
@@ -661,6 +665,23 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
 
 
+              {/* Notifications */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMainMenuVisible(false);
+                  setNotificationMenuVisible(true);
+                }}
+                accessible={true}
+                accessibilityLabel="Notification settings"
+                accessibilityRole="button"
+              >
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="notifications-outline" size={20} color={theme.colors.secondary} />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Bildirimler</Text>
+                </View>
+              </TouchableOpacity>
+
               {/* Settings & Data */}
               <TouchableOpacity
                 style={styles.menuItem}
@@ -739,7 +760,12 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           alert(result.message);
         }}
         onLanguageSettings={openLanguageSettings}
-        onNotificationSettings={openNotificationSettings}
+      />
+
+      {/* Notification Menu */}
+      <NotificationMenu
+        visible={notificationMenuVisible}
+        onClose={closeNotificationMenu}
       />
 
       {/* Language Settings Modal */}
@@ -751,13 +777,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         }}
       />
 
-      {/* Notification Settings Modal */}
-      <NotificationSettings 
-        visible={notificationSettingsVisible}
-        onClose={closeNotificationSettings}
-      />
 
-      {/* Daily Analysis Notification */}
+      {/* Daily Analysis */}
       {dailyAnalysisVisible && dailyAnalysis && (
         <Motive
           visible={dailyAnalysisVisible}
@@ -769,7 +790,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         />
       )}
 
-      {/* AI Feedback Notification */}
+      {/* AI Feedback */}
       {welcomePopupVisible && (
         <Motive
           visible={welcomePopupVisible}
@@ -947,6 +968,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1001,
+  },
+  testButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  testButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 

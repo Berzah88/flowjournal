@@ -114,7 +114,7 @@ export default function ProjectJourney({
             styles.headerTitle,
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
           ]}>
-            Project Journey
+            {t('projectJourney')}
           </Text>
           <TouchableOpacity
             style={[
@@ -154,7 +154,7 @@ export default function ProjectJourney({
             styles.emptySubtitle,
             { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
           ]}>
-            Start documenting your project journey
+            {t('startDocumentingProjectJourney')}
           </Text>
           <TouchableOpacity
             style={[
