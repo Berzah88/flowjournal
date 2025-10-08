@@ -192,6 +192,12 @@ class FCMService {
       console.log('🔥 Foreground handler kaydediliyor...');
       
       globalThis.__fcmForegroundHandler = async (remoteMessage) => {
+        // Boş veya geçersiz mesajları filtrele
+        if (!remoteMessage || !remoteMessage.notification || remoteMessage.sentTime === 0) {
+          console.log('⏭️ Geçersiz mesaj atlandı (boş veya sentTime=0)');
+          return;
+        }
+
         // Strong duplicate guard (before logging)
         if (!this.shouldProcessMessage(remoteMessage, 5000)) {
           console.log('⏭️ Duplicate mesaj atlandı');

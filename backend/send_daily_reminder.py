@@ -67,7 +67,6 @@ def send_daily_reminder():
                 priority='high',
                 notification=messaging.AndroidNotification(
                     sound='default',
-                    notification_priority='PRIORITY_HIGH',
                     channel_id='daily-journal-reminder',
                 )
             )
