@@ -259,6 +259,47 @@ def check_project_deadlines():
             'error': str(e)
         }), 500
 
+@app.route('/trigger-project-deadline-reminder', methods=['GET'])
+def trigger_project_deadline_reminder():
+    """Proje son günü hatırlatıcısını tetikle"""
+    if not verify_secret_key():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        logger.info('🎯 Proje son günü hatırlatıcısı tetikleniyor...')
+        
+        # send_project_deadline_reminder.py script'ini çalıştır
+        result = subprocess.run([
+            'python3', 
+            os.path.join(os.path.dirname(__file__), 'send_project_deadline_reminder.py')
+        ], capture_output=True, text=True, cwd=os.path.dirname(__file__))
+        
+        if result.returncode == 0:
+            logger.info('✅ Proje son günü hatırlatıcısı başarılı')
+            return jsonify({
+                'message': 'Project deadline reminder sent successfully',
+                'output': result.stdout,
+                'success': True,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            logger.error(f'❌ Proje son günü hatırlatıcısı başarısız: {result.stderr}')
+            return jsonify({
+                'message': 'Project deadline reminder failed',
+                'error': result.stderr,
+                'success': False,
+                'timestamp': datetime.now().isoformat()
+            }), 500
+            
+    except Exception as e:
+        logger.error(f'❌ Proje son günü hatırlatıcısı hatası: {e}')
+        return jsonify({
+            'message': 'Project deadline reminder error',
+            'error': str(e),
+            'success': False,
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
 @app.route('/trigger-project-deadline', methods=['POST'])
 def trigger_project_deadline():
     """Proje bitiş tarihi hatırlatması gönder (Token bazlı)"""

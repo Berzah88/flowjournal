@@ -21,6 +21,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import GlobalErrorHandler from './utils/GlobalErrorHandler';
 import fcmService from './services/FCMService';
 import firestoreService from './services/FirestoreService';
+import projectDeadlineService from './services/ProjectDeadlineService';
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import firebase from '@react-native-firebase/app';
 import * as Notifications from 'expo-notifications';
@@ -161,6 +162,13 @@ export default function App() {
             if (subscribed) {
               console.log('✅ Daily reminders topic\'ine subscribe olundu!');
               console.log('✅ Bildirimler PythonAnywhere + FCM ile gelecek');
+              
+              // Proje son günü aboneliğini kontrol et
+              try {
+                await projectDeadlineService.dailyDeadlineCheck();
+              } catch (deadlineError) {
+                console.error('❌ Proje son günü kontrolü hatası:', deadlineError);
+              }
             }
           }
         } catch (firebaseError) {

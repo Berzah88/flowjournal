@@ -8,6 +8,7 @@ import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 // Yeni bildirim servisi
 import DataIntegrityManager from "../utils/DataIntegrityManager";
 import firestoreService from "../services/FirestoreService";
+import projectDeadlineService from "../services/ProjectDeadlineService";
 
 // Re-render optimization by splitting context
 export const TaskContext = createContext();
@@ -278,6 +279,13 @@ export const TaskProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Firestore: Proje kaydetme hatası:', error);
     }
+
+    // Proje son günü aboneliğini kontrol et
+    try {
+      await projectDeadlineService.checkAndUpdateDeadlineSubscription();
+    } catch (error) {
+      console.error('❌ Proje son günü abonelik kontrolü hatası:', error);
+    }
     
     // Bildirim planlama scheduleAllNotifications tarafından yapılacak
     // scheduleProjectNotifications(taskWithId); // Çifte bildirim sorunu - kaldırıldı
@@ -299,6 +307,13 @@ export const TaskProvider = ({ children }) => {
     
     // Proje silindiğinde bildirimleri iptal et
     cancelProjectNotifications(id);
+
+    // Proje son günü aboneliğini kontrol et
+    try {
+      await projectDeadlineService.checkAndUpdateDeadlineSubscription();
+    } catch (error) {
+      console.error('❌ Proje son günü abonelik kontrolü hatası:', error);
+    }
   }, [tasks, cancelProjectNotifications]);
 
   const completeTask = useCallback(async (id) => {
@@ -308,14 +323,21 @@ export const TaskProvider = ({ children }) => {
       prev.map((task) => (task.id === id ? { ...task, done: true } : task))
     );
     
-    // Firestore'da projeyi tamamlandı olarak güncelle
-    if (taskToComplete) {
-      try {
-        await firestoreService.updateProject(taskToComplete.title, { status: 'completed' });
-      } catch (error) {
-        console.error('❌ Firestore: Proje tamamlama hatası:', error);
+      // Firestore'da projeyi tamamlandı olarak güncelle
+      if (taskToComplete) {
+        try {
+          await firestoreService.updateProject(taskToComplete.title, { status: 'completed' });
+        } catch (error) {
+          console.error('❌ Firestore: Proje tamamlama hatası:', error);
+        }
       }
-    }
+
+      // Proje son günü aboneliğini kontrol et
+      try {
+        await projectDeadlineService.checkAndUpdateDeadlineSubscription();
+      } catch (error) {
+        console.error('❌ Proje son günü abonelik kontrolü hatası:', error);
+      }
   }, [tasks]);
 
   const updateTask = useCallback(async (id, updates) => {
