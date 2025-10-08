@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Secret key - ⚠️ BUNU DEĞİŞTİR!
-SECRET_KEY = os.environ.get('NOTIFICATION_SECRET_KEY', 'CHANGE_THIS_SECRET_KEY_123')
+# Secret key - mberzah için özel
+SECRET_KEY = os.environ.get('NOTIFICATION_SECRET_KEY', 'mB7zH9kL3pQ8vW2nR5tX4jY1cF6gD0sA9uM3eK7hN2wP5qZ8')
 
 # Firebase başlatma flag
 firebase_initialized = False
@@ -46,9 +46,8 @@ def initialize_firebase():
         return True
     
     try:
-        # serviceAccountKey.json path'i
-        # ⚠️ KULLANICI_ADIN'i değiştir!
-        cred_path = '/home/KULLANICI_ADIN/mysite/serviceAccountKey.json'
+        # serviceAccountKey.json path'i - mberzah için
+        cred_path = '/home/mberzah/mysite/serviceAccountKey.json'
         
         if not os.path.exists(cred_path):
             logger.error(f'serviceAccountKey.json bulunamadı: {cred_path}')
