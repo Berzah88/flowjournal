@@ -142,7 +142,7 @@ def check_project_deadlines():
             logger.error('❌ Firebase başlatılamadı!')
             return False
         
-        logger.info('🔍 Proje deadline'ları kontrol ediliyor...')
+        logger.info('🔍 Proje deadline kontrolleri yapılıyor...')
         logger.info(f'📅 Bugün: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}')
         
         # Firestore client
