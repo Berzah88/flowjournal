@@ -79,9 +79,10 @@ def index():
     return jsonify({
         'status': 'active',
         'service': 'Flow Journal Notification API',
-        'version': '1.0.0',
+        'version': '1.1.0',
         'endpoints': [
             '/trigger-daily-reminder',
+            '/check-project-deadlines',
             '/trigger-milestone-reminder',
             '/trigger-project-deadline',
             '/health'
@@ -204,6 +205,55 @@ def trigger_milestone_reminder():
         
     except Exception as e:
         logger.error(f'❌ Milestone hatırlatma hatası: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/check-project-deadlines', methods=['GET', 'POST'])
+def check_project_deadlines():
+    """Tüm kullanıcıların proje deadline'larını kontrol et ve bildirim gönder"""
+    
+    # Secret key kontrolü
+    if not verify_secret_key(request):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    # Firebase'i başlat
+    if not initialize_firebase():
+        return jsonify({'error': 'Firebase initialization failed'}), 500
+    
+    try:
+        logger.info('🔍 Proje deadline kontrolleri başlıyor...')
+        
+        # check_project_deadlines script'ini çalıştır
+        import subprocess
+        
+        result = subprocess.run(
+            ['python3', '/home/mberzah/mysite/check_project_deadlines.py'],
+            capture_output=True,
+            text=True,
+            timeout=120  # 2 dakika timeout
+        )
+        
+        logger.info(f'Script output: {result.stdout}')
+        
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': 'Project deadlines checked successfully',
+                'output': result.stdout,
+                'timestamp': datetime.now().isoformat()
+            }), 200
+        else:
+            logger.error(f'Script error: {result.stderr}')
+            return jsonify({
+                'success': False,
+                'error': 'Script execution failed',
+                'output': result.stderr
+            }), 500
+        
+    except Exception as e:
+        logger.error(f'❌ Deadline check hatası: {str(e)}')
         return jsonify({
             'success': False,
             'error': str(e)
