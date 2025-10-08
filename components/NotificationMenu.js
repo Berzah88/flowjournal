@@ -160,41 +160,6 @@ export default function NotificationMenu({
             />
           </View>
 
-          {/* Debug/Test Actions */}
-          <View style={styles.debugSection}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-              🔧 FCM Debug
-            </Text>
-
-            {/* Show FCM Token */}
-            <TouchableOpacity 
-              style={[styles.debugButton, { backgroundColor: theme.colors.secondary + '15' }]}
-              onPress={async () => {
-                try {
-                  const token = await fcmService.getFCMToken();
-                  const subscriptionStatus = await AsyncStorage.getItem('fcm_daily_reminders_subscribed');
-                  
-                  console.log('🔥 FCM Token:', token);
-                  console.log('📖 Daily Reminders Subscription:', subscriptionStatus);
-                  
-                  Alert.alert(
-                    '🔥 FCM Bilgileri',
-                    `Token: ${token?.substring(0, 40)}...\n\nDaily Reminders Topic: ${subscriptionStatus === 'true' ? 'ABONE ✅' : 'ABONE DEĞİL ❌'}\n\nFull token konsol loglarına yazıldı.`,
-                    [{ text: 'Tamam' }]
-                  );
-                } catch (error) {
-                  console.error('❌ FCM token hatası:', error);
-                  Alert.alert('❌ Hata', error.message);
-                }
-              }}
-            >
-              <Ionicons name="key-outline" size={18} color={theme.colors.secondary} />
-              <Text style={[styles.debugButtonText, { color: theme.colors.secondary }]}>
-                FCM Token & Topic Durumu
-              </Text>
-            </TouchableOpacity>
-
-          </View>
 
         </View>
 
@@ -282,29 +247,5 @@ const styles = StyleSheet.create({
   menuItemSubtitle: {
     fontSize: 13,
     opacity: 0.7,
-  },
-  debugSection: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-    opacity: 0.7,
-  },
-  debugButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  debugButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
 });

@@ -25,7 +25,7 @@ def main():
         logger.info('=' * 60)
         
         # Firebase Admin SDK başlat
-        cred_path = '/home/mberzah/serviceAccountKey.json'
+        cred_path = '/home/mberzah/mysite/serviceAccountKey.json'
         if not os.path.exists(cred_path):
             logger.error(f'❌ Service account key bulunamadı: {cred_path}')
             return False
@@ -50,12 +50,12 @@ def main():
                 title='🎯 Proje Son Günü!',
                 body='Bugün projenizin son günü! Son düzenlemelerinizi yapın ve proje yolculuğunuz hakkında günlüğünüze yazın. Başarılar! 🚀'
             ),
-            topic='project_deadlines',
+            topic='Last_day',
             android=messaging.AndroidConfig(
                 priority='high',
                 notification=messaging.AndroidNotification(
                     sound='default',
-                    channel_id='project_deadlines'
+                    channel_id='Last_day'
                 )
             )
         )

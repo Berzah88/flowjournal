@@ -23,6 +23,7 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 import os
 import sys
+import subprocess
 from datetime import datetime
 import logging
 
@@ -65,10 +66,11 @@ def initialize_firebase():
         logger.error(f'❌ Firebase başlatma hatası: {str(e)}')
         return False
 
-def verify_secret_key(request):
+def verify_secret_key():
     """Secret key doğrulama"""
-    key = request.args.get('key') or request.headers.get('X-API-Key')
-    if key != SECRET_KEY:
+    key = request.args.get('secret') or request.args.get('key') or request.headers.get('X-API-Key')
+    expected_key = 'py_mberzah_fcm_secret_2025_secure_key_a7b9c4d8e2f1'
+    if key != expected_key:
         logger.warning(f'⚠️ Unauthorized request from {request.remote_addr}')
         return False
     return True
@@ -79,12 +81,13 @@ def index():
     return jsonify({
         'status': 'active',
         'service': 'Flow Journal Notification API',
-        'version': '1.1.0',
+        'version': '1.2.0',
         'endpoints': [
             '/trigger-daily-reminder',
             '/check-project-deadlines',
             '/trigger-milestone-reminder',
             '/trigger-project-deadline',
+            '/trigger-project-deadline-reminder',
             '/health'
         ]
     })
@@ -103,7 +106,7 @@ def trigger_daily_reminder():
     """Günlük hatırlatma gönder (Topic bazlı)"""
     
     # Secret key kontrolü
-    if not verify_secret_key(request):
+    if not verify_secret_key():
         return jsonify({'error': 'Unauthorized', 'message': 'Invalid API key'}), 401
     
     # Firebase'i başlat
@@ -153,7 +156,7 @@ def trigger_milestone_reminder():
     """Milestone hatırlatması gönder (Token bazlı)"""
     
     # Secret key kontrolü
-    if not verify_secret_key(request):
+    if not verify_secret_key():
         return jsonify({'error': 'Unauthorized'}), 401
     
     # Firebase'i başlat
@@ -215,7 +218,7 @@ def check_project_deadlines():
     """Tüm kullanıcıların proje deadline'larını kontrol et ve bildirim gönder"""
     
     # Secret key kontrolü
-    if not verify_secret_key(request):
+    if not verify_secret_key():
         return jsonify({'error': 'Unauthorized'}), 401
     
     # Firebase'i başlat
@@ -305,7 +308,7 @@ def trigger_project_deadline():
     """Proje bitiş tarihi hatırlatması gönder (Token bazlı)"""
     
     # Secret key kontrolü
-    if not verify_secret_key(request):
+    if not verify_secret_key():
         return jsonify({'error': 'Unauthorized'}), 401
     
     # Firebase'i başlat
