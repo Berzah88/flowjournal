@@ -7,6 +7,7 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import { useContextPerformanceMonitor } from "../hooks/usePerformanceMonitor";
 // Yeni bildirim servisi
 import DataIntegrityManager from "../utils/DataIntegrityManager";
+import firestoreService from "../services/FirestoreService";
 
 // Re-render optimization by splitting context
 export const TaskContext = createContext();
@@ -267,32 +268,74 @@ export const TaskProvider = ({ children }) => {
   }, [tasks, isLoading, saveTasks]);
 
   // -------- TASK CRUD --------
-  const addTask = useCallback((newTask) => {
+  const addTask = useCallback(async (newTask) => {
     const taskWithId = { ...newTask, id: Date.now(), done: false, milestones: [] };
     setTasks((prev) => [...prev, taskWithId]);
+    
+    // Firestore'a projeyi kaydet
+    try {
+      await firestoreService.saveProject(taskWithId);
+    } catch (error) {
+      console.error('❌ Firestore: Proje kaydetme hatası:', error);
+    }
     
     // Bildirim planlama scheduleAllNotifications tarafından yapılacak
     // scheduleProjectNotifications(taskWithId); // Çifte bildirim sorunu - kaldırıldı
   }, []);
 
-  const deleteTask = useCallback((id) => {
+  const deleteTask = useCallback(async (id) => {
+    const taskToDelete = tasks.find(task => task.id === id);
+    
     setTasks((prev) => prev.filter((task) => task.id !== id));
+    
+    // Firestore'dan projeyi sil
+    if (taskToDelete) {
+      try {
+        await firestoreService.deleteProject(taskToDelete.title);
+      } catch (error) {
+        console.error('❌ Firestore: Proje silme hatası:', error);
+      }
+    }
     
     // Proje silindiğinde bildirimleri iptal et
     cancelProjectNotifications(id);
-  }, [cancelProjectNotifications]);
+  }, [tasks, cancelProjectNotifications]);
 
-  const completeTask = useCallback((id) => {
+  const completeTask = useCallback(async (id) => {
+    const taskToComplete = tasks.find(task => task.id === id);
+    
     setTasks((prev) =>
       prev.map((task) => (task.id === id ? { ...task, done: true } : task))
     );
-  }, []);
+    
+    // Firestore'da projeyi tamamlandı olarak güncelle
+    if (taskToComplete) {
+      try {
+        await firestoreService.updateProject(taskToComplete.title, { status: 'completed' });
+      } catch (error) {
+        console.error('❌ Firestore: Proje tamamlama hatası:', error);
+      }
+    }
+  }, [tasks]);
 
-  const updateTask = useCallback((id, updates) => {
+  const updateTask = useCallback(async (id, updates) => {
+    const taskToUpdate = tasks.find(task => task.id === id);
+    
     setTasks((prev) =>
       prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
     );
-  }, []);
+    
+    // Firestore'da projeyi güncelle
+    if (taskToUpdate && updates.endDate) {
+      try {
+        await firestoreService.updateProject(taskToUpdate.title, { 
+          deadline: new Date(updates.endDate) 
+        });
+      } catch (error) {
+        console.error('❌ Firestore: Proje güncelleme hatası:', error);
+      }
+    }
+  }, [tasks]);
 
   // Helper function to check if project end date should be updated
   const shouldUpdateProjectEndDate = useCallback((milestones, currentEndDate) => {

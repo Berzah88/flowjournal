@@ -20,6 +20,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalErrorHandler from './utils/GlobalErrorHandler';
 import fcmService from './services/FCMService';
+import firestoreService from './services/FirestoreService';
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import firebase from '@react-native-firebase/app';
 import * as Notifications from 'expo-notifications';
@@ -146,7 +147,13 @@ export default function App() {
 
           if (fcmInitialized) {
             // FCM token'ı al
-            await fcmService.getToken();
+            const fcmToken = await fcmService.getToken();
+            
+            // Firestore servisini başlat
+            await firestoreService.setCurrentUserId('test-user');
+            if (fcmToken) {
+              await firestoreService.setFCMToken(fcmToken);
+            }
             
             // Otomatik olarak daily reminders topic'ine subscribe ol
             console.log('📖 Daily reminders topic\'ine subscribe olunuyor...');
