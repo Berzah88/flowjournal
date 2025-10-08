@@ -12,6 +12,7 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
+import { Video } from 'expo-av';
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
@@ -53,6 +54,8 @@ const JournalDetailScreen = ({
   // Fullscreen Media Viewer States
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [videoRef, setVideoRef] = useState(null);
 
   // Animation Values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -94,9 +97,13 @@ const JournalDetailScreen = ({
     
     // Tüm medyaları topla (tüm entries'lerden)
     const allImages = [];
+    const allVideos = [];
     filteredEntries.forEach(entry => {
       if (entry.images && entry.images.length > 0) {
         allImages.push(...entry.images);
+      }
+      if (entry.videos && entry.videos.length > 0) {
+        allVideos.push(...entry.videos);
       }
     });
     
@@ -129,7 +136,8 @@ const JournalDetailScreen = ({
       textEntries: filteredEntries, // Sadece o güne ait journal entries
       task: task, // Task bilgisini de ekle
       // Güncel medya, konum ve mood verilerini güncelle
-      images: allImages, // Tüm medyaları birleştir
+      images: allImages, // Tüm resimleri birleştir
+      videos: allVideos, // Tüm videoları birleştir
       location: latestEntry?.location || initialMediaData.location,
       mood: moodObj, // Doğru mood objesi
     };
@@ -315,19 +323,36 @@ const JournalDetailScreen = ({
 
   // Media list preparation - useMemo ile hesapla
   const mediaList = useMemo(() => {
+    const media = [];
+    
+    // Add images
     if (selectedMediaData.images && selectedMediaData.images.length > 0) {
-      return selectedMediaData.images.map(imageUri => ({
+      media.push(...selectedMediaData.images.map(imageUri => ({
         uri: imageUri,
+        type: 'image',
         timestamp: new Date().toISOString() // Fallback timestamp
-      }));
+      })));
     }
-    return [];
-  }, [selectedMediaData.images]);
+    
+    // Add videos
+    if (selectedMediaData.videos && selectedMediaData.videos.length > 0) {
+      media.push(...selectedMediaData.videos.map(videoUri => ({
+        uri: videoUri,
+        type: 'video',
+        timestamp: new Date().toISOString() // Fallback timestamp
+      })));
+    }
+    
+    return media;
+  }, [selectedMediaData.images, selectedMediaData.videos]);
 
   // Fullscreen viewer functions
   const openFullscreen = (imageIndex) => {
     setSelectedImageIndex(imageIndex);
     setFullscreenVisible(true);
+    
+    // Reset video state when opening
+    setIsVideoPlaying(false);
     
     // Fullscreen entrance animation - no oscillation
     fullscreenScale.value = withTiming(1, { duration: 300 });
@@ -335,10 +360,28 @@ const JournalDetailScreen = ({
   };
 
   const closeFullscreen = () => {
+    // Stop video if playing
+    if (isVideoPlaying && videoRef) {
+      videoRef.pauseAsync();
+      setIsVideoPlaying(false);
+    }
+    
     fullscreenScale.value = withTiming(0, { duration: 200 });
     fullscreenOpacity.value = withTiming(0, { duration: 200 }, () => {
       runOnJS(setFullscreenVisible)(false);
     });
+  };
+
+  const toggleVideoPlayback = async () => {
+    if (!videoRef) return;
+    
+    if (isVideoPlaying) {
+      await videoRef.pauseAsync();
+      setIsVideoPlaying(false);
+    } else {
+      await videoRef.playAsync();
+      setIsVideoPlaying(true);
+    }
   };
 
   // Fullscreen gesture handlers
@@ -373,7 +416,13 @@ const JournalDetailScreen = ({
   const renderMediaGrid = (mediaData) => {
     // selectedMediaData'dan medyaları al
     const images = mediaData.images || [];
-    const previews = images.map((uri) => ({ type: "image", content: uri }));
+    const videos = mediaData.videos || [];
+    
+    // Combine images and videos
+    const previews = [
+      ...images.map((uri) => ({ type: "image", content: uri })),
+      ...videos.map((uri) => ({ type: "video", content: uri }))
+    ];
 
     if (!previews || previews.length === 0) return null;
 
@@ -409,6 +458,26 @@ const JournalDetailScreen = ({
             <Image source={{ uri: item.content }} style={styles.mediaImage} resizeMode="cover" />
             <View style={styles.mediaOverlay}>
               <MaterialIcons name="zoom-in" size={24} color="rgba(255,255,255,0.9)" />
+            </View>
+          </TouchableOpacity>
+        );
+      }
+      if (item.type === "video") {
+        // Find the global index of this video in mediaList
+        const globalIndex = mediaList.findIndex(media => media.uri === item.content);
+        
+        return (
+          <TouchableOpacity 
+            key={key} 
+            style={styles.mediaItem}
+            onPress={() => globalIndex >= 0 && openFullscreen(globalIndex)}
+            activeOpacity={0.9}
+          >
+            <Image source={{ uri: item.content }} style={styles.mediaImage} resizeMode="cover" />
+            <View style={styles.mediaOverlay}>
+              <View style={styles.videoPlayButton}>
+                <Ionicons name="play" size={24} color="#FFFFFF" />
+              </View>
             </View>
           </TouchableOpacity>
         );
@@ -687,7 +756,8 @@ const JournalDetailScreen = ({
           <View style={styles.content}>
             {/* Media Section - Fixed */}
             <View style={styles.mediaSection}>
-              {selectedMediaData.images && selectedMediaData.images.length > 0 ? (
+              {(selectedMediaData.images && selectedMediaData.images.length > 0) || 
+               (selectedMediaData.videos && selectedMediaData.videos.length > 0) ? (
                 renderMediaGrid(selectedMediaData)
               ) : (
                 <View style={[
@@ -820,29 +890,65 @@ const JournalDetailScreen = ({
               </View>
             )}
 
-            {/* Main image */}
-            <ScrollView
-              style={styles.fullscreenScrollView}
-              contentContainerStyle={styles.fullscreenScrollContent}
-              maximumZoomScale={3}
-              minimumZoomScale={1}
-              showsHorizontalScrollIndicator={false}
-              showsVerticalScrollIndicator={false}
-            >
-              <Image
-                source={{ uri: mediaList[selectedImageIndex]?.uri }}
-                style={styles.fullscreenImage}
-                resizeMode="contain"
-              />
-            </ScrollView>
+            {/* Main media - Image or Video */}
+            {mediaList[selectedImageIndex]?.type === 'video' ? (
+              <View style={styles.fullscreenVideoContainer}>
+                <Video
+                  ref={setVideoRef}
+                  source={{ uri: mediaList[selectedImageIndex]?.uri }}
+                  style={styles.fullscreenVideo}
+                  resizeMode="contain"
+                  shouldPlay={false}
+                  isLooping={false}
+                  onPlaybackStatusUpdate={(status) => {
+                    if (status.didJustFinish) {
+                      setIsVideoPlaying(false);
+                    }
+                  }}
+                />
+                {/* Video Play/Pause Button */}
+                <TouchableOpacity
+                  style={styles.videoPlayPauseButton}
+                  onPress={toggleVideoPlayback}
+                >
+                  <Ionicons 
+                    name={isVideoPlaying ? "pause" : "play"} 
+                    size={40} 
+                    color="#FFFFFF" 
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.fullscreenScrollView}
+                contentContainerStyle={styles.fullscreenScrollContent}
+                maximumZoomScale={3}
+                minimumZoomScale={1}
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
+              >
+                <Image
+                  source={{ uri: mediaList[selectedImageIndex]?.uri }}
+                  style={styles.fullscreenImage}
+                  resizeMode="contain"
+                />
+              </ScrollView>
+            )}
 
-            {/* Navigation arrows for multiple images */}
+            {/* Navigation arrows for multiple media */}
             {mediaList.length > 1 && (
               <>
                 {selectedImageIndex > 0 && (
                   <TouchableOpacity
                     style={[styles.navArrow, styles.leftArrow]}
-                    onPress={() => setSelectedImageIndex(prev => prev - 1)}
+                    onPress={() => {
+                      // Stop current video if playing
+                      if (isVideoPlaying && videoRef) {
+                        videoRef.pauseAsync();
+                        setIsVideoPlaying(false);
+                      }
+                      setSelectedImageIndex(prev => prev - 1);
+                    }}
                   >
                     <MaterialIcons name="chevron-left" size={30} color="#FFFFFF" />
                   </TouchableOpacity>
@@ -850,7 +956,14 @@ const JournalDetailScreen = ({
                 {selectedImageIndex < mediaList.length - 1 && (
                   <TouchableOpacity
                     style={[styles.navArrow, styles.rightArrow]}
-                    onPress={() => setSelectedImageIndex(prev => prev + 1)}
+                    onPress={() => {
+                      // Stop current video if playing
+                      if (isVideoPlaying && videoRef) {
+                        videoRef.pauseAsync();
+                        setIsVideoPlaying(false);
+                      }
+                      setSelectedImageIndex(prev => prev + 1);
+                    }}
                   >
                     <MaterialIcons name="chevron-right" size={30} color="#FFFFFF" />
                   </TouchableOpacity>
@@ -1159,6 +1272,20 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
 
+  videoPlayButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+
   mapWrapper: {
     flex: 1,
     borderRadius: 12,
@@ -1223,6 +1350,65 @@ const styles = StyleSheet.create({
   fullscreenImage: {
     width: width,
     height: height * 0.8,
+  },
+
+  fullscreenVideoContainer: {
+    flex: 1,
+    width: width,
+    height: height * 0.8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  fullscreenVideo: {
+    width: width,
+    height: height * 0.8,
+  },
+
+  videoPlayPauseButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -30 }, { translateY: -30 }],
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+
+  videoIndicatorOverlay: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 1000,
+  },
+
+  videoIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+
+  videoIndicatorText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 4,
   },
 
   navArrow: {

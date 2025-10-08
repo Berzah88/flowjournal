@@ -23,6 +23,18 @@ import notificationService from './services/NotificationService';
 import fcmService from './services/FCMService';
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import firebase from '@react-native-firebase/app';
+import * as Notifications from 'expo-notifications';
+
+// Expo Notifications yapılandırması
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    // shouldShowAlert is deprecated in SDK 52+. Use banner/list flags instead
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 const Stack = createNativeStackNavigator();
 
@@ -102,13 +114,23 @@ export default function App() {
         
         GlobalErrorHandler.init();
 
-        // Firebase'i google-services.json ile başlat
+        // Firebase'i gerçek config ile başlat
         try {
           if (!firebase.apps.length) {
-            console.log('🔥 Firebase google-services.json ile başlatılıyor...');
-            // google-services.json otomatik olarak yüklenecek
-            // Manuel config gerekmez
-            console.log('✅ Firebase google-services.json ile başlatıldı');
+            console.log('🔥 Firebase gerçek config ile başlatılıyor...');
+            // google-services.json'dan alınan gerçek config
+            const firebaseConfig = {
+              apiKey: "AIzaSyB0OqpZFtS57VqyJk4Mgw5MZj0hM4nInWU",
+              authDomain: "flowjournal-731f7.firebaseapp.com",
+              projectId: "flowjournal-731f7", 
+              storageBucket: "flowjournal-731f7.firebasestorage.app",
+              messagingSenderId: "601452542639",
+              appId: "1:601452542639:android:53caff94d5e5660e6b725a",
+              databaseURL: "https://flowjournal-731f7-default-rtdb.firebaseio.com/"
+            };
+            
+            await firebase.initializeApp(firebaseConfig);
+            console.log('✅ Firebase gerçek config ile başlatıldı');
           } else {
             console.log('🔥 Firebase zaten başlatılmış');
           }
@@ -118,35 +140,18 @@ export default function App() {
           
           // FCM servisini başlat
           console.log('🔥 FCM servisi başlatılıyor...');
-          const fcmInitialized = await fcmService.init({
-            onNotificationReceived: notification => {
-              console.log('📱 FCM bildirim alındı:', notification);
-            },
-            onNotificationResponse: response => {
-              console.log('📱 FCM bildirim response:', response);
-            },
-          });
+          const fcmInitialized = await fcmService.init();
 
           if (fcmInitialized) {
             // FCM token'ı al
-            const token = await fcmService.getToken();
-            console.log('🔥 FCM TOKEN:', token ? token.substring(0, 20) + '...' : 'null');
-          } else {
-            console.log('❌ FCM servisi başlatılamadı');
+            await fcmService.getToken();
           }
         } catch (firebaseError) {
           console.log('🔥 Firebase başlatma hatası:', firebaseError.message);
           console.log('📱 Expo Notifications fallback aktif');
           
           // Fallback: Expo Notifications
-          await notificationService.init({
-            onNotificationReceived: notification => {
-              console.log('📱 Bildirim alındı:', notification);
-            },
-            onNotificationResponse: response => {
-              console.log('📱 Bildirim response:', response);
-            },
-          });
+          await notificationService.init();
         }
 
         // FCM topic sistemi kullanılıyor - local günlük bildirim gerekmez

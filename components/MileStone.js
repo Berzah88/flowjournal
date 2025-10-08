@@ -25,6 +25,8 @@ function MileStone({
   onOpenJournal,
   navigation,
   currentTask = null, // Project bilgilerini almak için
+  onStartDrag,
+  isDragging = false,
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -32,6 +34,88 @@ function MileStone({
   // usePerformanceMonitor('MileStone');
   
   if (!milestone) return null;
+
+  // Safely convert various color formats to rgba(r,g,b,a)
+  const toRgba = useCallback((color, alpha = 1) => {
+    try {
+      if (!color) return `rgba(0,0,0,${alpha})`;
+      // #RRGGBB or #RGB
+      let c = color.trim();
+      if (c[0] === '#') {
+        if (c.length === 4) {
+          const r = parseInt(c[1] + c[1], 16);
+          const g = parseInt(c[2] + c[2], 16);
+          const b = parseInt(c[3] + c[3], 16);
+          return `rgba(${r},${g},${b},${alpha})`;
+        }
+        if (c.length === 7) {
+          const r = parseInt(c.slice(1, 3), 16);
+          const g = parseInt(c.slice(3, 5), 16);
+          const b = parseInt(c.slice(5, 7), 16);
+          return `rgba(${r},${g},${b},${alpha})`;
+        }
+        // #AARRGGBB
+        if (c.length === 9) {
+          const a = parseInt(c.slice(1, 3), 16) / 255;
+          const r = parseInt(c.slice(3, 5), 16);
+          const g = parseInt(c.slice(5, 7), 16);
+          const b = parseInt(c.slice(7, 9), 16);
+          const outA = Math.max(0, Math.min(1, a * alpha));
+          return `rgba(${r},${g},${b},${outA})`;
+        }
+      }
+      // rgb/rgba
+      if (c.startsWith('rgb')) {
+        const nums = c.replace(/rgba?\(/, '').replace(/\)/, '').split(',').map(x => parseFloat(x.trim()));
+        const [r, g, b, a = 1] = nums;
+        const outA = Math.max(0, Math.min(1, a * alpha));
+        return `rgba(${r|0},${g|0},${b|0},${outA})`;
+      }
+      // named colors – let RN resolve but wrap as rgba by fallback
+      return color;
+    } catch (e) {
+      return `rgba(0,0,0,${alpha})`;
+    }
+  }, []);
+
+  // Force a specific alpha without multiplying any existing alpha
+  const setAlpha = useCallback((color, alpha = 1) => {
+    try {
+      if (!color) return `rgba(0,0,0,${alpha})`;
+      let c = color.trim();
+      if (c[0] === '#') {
+        if (c.length === 4) {
+          const r = parseInt(c[1] + c[1], 16);
+          const g = parseInt(c[2] + c[2], 16);
+          const b = parseInt(c[3] + c[3], 16);
+          return `rgba(${r},${g},${b},${alpha})`;
+        }
+        if (c.length === 7) {
+          const r = parseInt(c.slice(1, 3), 16);
+          const g = parseInt(c.slice(3, 5), 16);
+          const b = parseInt(c.slice(5, 7), 16);
+          return `rgba(${r},${g},${b},${alpha})`;
+        }
+        // #AARRGGBB → ignore AA and use provided alpha
+        if (c.length === 9) {
+          const r = parseInt(c.slice(3, 5), 16);
+          const g = parseInt(c.slice(5, 7), 16);
+          const b = parseInt(c.slice(7, 9), 16);
+          return `rgba(${r},${g},${b},${alpha})`;
+        }
+      }
+      if (c.startsWith('rgb')) {
+        const nums = c.replace(/rgba?\(/, '').replace(/\)/, '').split(',').map(x => parseFloat(x.trim()));
+        const [r, g, b] = nums; // ignore incoming alpha
+        return `rgba(${r|0},${g|0},${b|0},${alpha})`;
+      }
+      return color;
+    } catch (e) {
+      return `rgba(0,0,0,${alpha})`;
+    }
+  }, []);
+
+  // Using solid, fully opaque borders for milestone icon frames
 
   // Ensure milestone has required properties - useMemo to prevent infinite loop
   const safeMilestone = useMemo(() => ({
@@ -238,7 +322,8 @@ function MileStone({
               styles.milestoneItemClickable,
               {
                 backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
-                transform: [{ scale: pressed && !editable ? 0.96 : 1 }],
+                // Remove transforms/opacity changes during drag to avoid visual jitter
+                opacity: 1,
               }
             ]}
             disabled={editable}
@@ -262,12 +347,34 @@ function MileStone({
             onLongPress={handleLongPress}
             delayLongPress={500}
           >
-            <View style={styles.iconContainer}>
-              <Ionicons 
-                name="ellipse" 
-                size={18} 
-                color={isCompleted ? "#555" : iconBgColor} 
-              />
+            <View style={[
+              styles.iconContainer,
+              {
+                shadowColor: 'transparent', // avoid multi-row cumulative shadow weight
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0,
+                shadowRadius: 0,
+                elevation: 0,
+              }
+            ]}>
+              <View style={[
+                styles.iconFrame,
+                {
+                  borderColor: isCompleted ? '#555' : iconBgColor,
+                }
+              ]}>
+                <Pressable
+                  onLongPress={onStartDrag}
+                  delayLongPress={120}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons 
+                    name="ellipse" 
+                    size={10} 
+                    color={isCompleted ? "#555" : iconBgColor} 
+                  />
+                </Pressable>
+              </View>
             </View>
             <View style={styles.milestoneContent}>
               {editable ? (
@@ -451,7 +558,27 @@ function MileStone({
   );
 }
 
-export default MileStone;
+// Memoize to avoid re-rendering unaffected items during/after drag-and-drop
+function areMilestonePropsEqual(prevProps, nextProps) {
+  const prev = prevProps;
+  const next = nextProps;
+  const prevMs = prev.milestone || {};
+  const nextMs = next.milestone || {};
+  // Compare key fields that affect rendering
+  const sameCore = (
+    prevMs.id === nextMs.id &&
+    prevMs.title === nextMs.title &&
+    prevMs.startDate === nextMs.startDate &&
+    prevMs.endDate === nextMs.endDate &&
+    prev.isLatest === next.isLatest &&
+    prev.isCompleted === next.isCompleted &&
+    prev.isDragging === next.isDragging &&
+    (prev.currentTask?.id || null) === (next.currentTask?.id || null)
+  );
+  return sameCore;
+}
+
+export default memo(MileStone, areMilestonePropsEqual);
 
 const styles = StyleSheet.create({
   container: {
@@ -465,13 +592,32 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 16,
-    minHeight: 40,
+    height: 56,
     justifyContent: 'flex-start',
   },
   iconContainer: {
     width: 30,
     alignItems: "center",
     justifyContent: "center",
+  },
+  iconGlowContainer: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    padding: 0,
+  },
+  iconFrame: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    backgroundColor: 'transparent',
   },
   milestoneContent: {
     flex: 1,

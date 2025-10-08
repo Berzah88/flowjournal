@@ -1,10 +1,13 @@
 // components/ActiveProjectMilestones.js
-import React, { memo, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { memo, useEffect, useMemo, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, UIManager, InteractionManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import MileStone from './MileStone';
+import CompletedMilestonesList from './CompletedMilestonesList';
+import DraggableFlatList from 'react-native-draggable-flatlist';
+import { useTaskActions } from '../hooks/useTaskContext';
 
 function ActiveProjectMilestones({
   currentTask,
@@ -25,14 +28,43 @@ function ActiveProjectMilestones({
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  // isLatest değerlerini hesapla - NO MEMOIZATION
-  const activeMilestonesWithLatest = activeMilestones.map((milestone, index) => ({
-    ...milestone,
-    taskId: currentTask.id,
-    isLatest: index === activeMilestones.length - 1,
-    title: milestone.title || '',
-    id: milestone.id || `active-${index}`
-  }));
+  const { updateTask } = useTaskActions();
+  // Debug flags
+  const SHOULD_PERSIST_AFTER_DROP = false; // set true after verifying jitter source
+
+  // Stable cell renderer to avoid re-renders of unaffected rows
+  const StableCell = useCallback(({ children, ...rest }) => (
+    <View {...rest}>{children}</View>
+  ), []);
+
+  // Local reorderable state for active milestones
+  const [activeList, setActiveList] = useState([]);
+  const [isDraggingAny, setIsDraggingAny] = useState(false);
+  const lastOrderRef = React.useRef([]);
+  const heightsRef = React.useRef({});
+  const [draggingId, setDraggingId] = useState(null);
+
+  // Enable LayoutAnimation on Android for smoother drops
+  useEffect(() => {
+    try {
+      if (Platform.OS === 'android' && UIManager?.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    // Map without isLatest; compute it at render-time to avoid post-drop mismatches
+    const mapped = activeMilestones.map((milestone, index) => ({
+      ...milestone,
+      taskId: currentTask.id,
+      title: milestone.title || '',
+      id: milestone.id || `active-${index}`
+    }));
+    setActiveList(mapped);
+    lastOrderRef.current = mapped.map(m => m.id);
+  }, [activeMilestones, currentTask?.id, refreshKey]);
+  const activeMilestonesWithLatest = activeList;
 
   const completedMilestonesWithLatest = completedMilestones.map((milestone, index) => ({
     ...milestone,
@@ -41,6 +73,52 @@ function ActiveProjectMilestones({
     title: milestone.title || '',
     id: milestone.id || `completed-${index}`
   }));
+
+  const handleDragEnd = useCallback(({ data, from, to }) => {
+    // Compute new active order ids
+    const reorderedIds = data.map(m => m.id);
+    const prevIds = lastOrderRef.current;
+
+    // Skip updates if order didn't actually change to prevent jitter
+    const isSameOrder = prevIds.length === reorderedIds.length && prevIds.every((id, i) => id === reorderedIds[i]);
+
+    // Let the current frame finish
+    requestAnimationFrame(() => setIsDraggingAny(false));
+
+    if (!isSameOrder) {
+      // Preserve referential equality for unchanged items to reduce re-renders
+      const idToOriginal = new Map(activeList.map(ms => [ms.id, ms]));
+      const rebuilt = reorderedIds.map(id => idToOriginal.get(id) || data.find(m => m.id === id) || { id });
+      // Defer list update to next frame to avoid layout thrash
+      requestAnimationFrame(() => {
+        setActiveList(rebuilt);
+        lastOrderRef.current = reorderedIds;
+      });
+
+      // Persist new order after a short debounce to avoid interrupting settle
+      try {
+        const completedIds = completedMilestonesWithLatest.map(m => m.id);
+        const idToMs = new Map();
+        [...allMilestones].forEach(ms => idToMs.set(ms.id, ms));
+        const newMilestones = [
+          ...reorderedIds.map(id => idToMs.get(id)).filter(Boolean),
+          ...completedIds.map(id => idToMs.get(id)).filter(Boolean),
+        ];
+        if (SHOULD_PERSIST_AFTER_DROP && updateTask && currentTask?.id) {
+          InteractionManager.runAfterInteractions(() => {
+            setTimeout(() => {
+              requestAnimationFrame(() => {
+                updateTask(currentTask.id, { milestones: newMilestones });
+              });
+            }, 700);
+          });
+        }
+      } catch (e) {
+        // noop fallback
+      }
+    }
+
+  }, [activeList, allMilestones, completedMilestonesWithLatest, updateTask, currentTask?.id]);
 
   return (
     <View style={[
@@ -83,69 +161,98 @@ function ActiveProjectMilestones({
       )}
       
       {allMilestones.length > 0 && (
-        <ScrollView 
-          style={{ flex: 1 }} 
-          contentContainerStyle={{ paddingBottom: 4 }}
-          showsVerticalScrollIndicator={true}
-          bounces={true}
-          scrollEnabled={true}
-        >
-          {/* Active Milestones */}
-          {activeMilestonesWithLatest.map((milestone, index) => (
-            <MileStone
-              key={`${milestone.id}-${refreshKey}`}
-              milestone={milestone}
-              isLatest={milestone.isLatest}
-              onUpdate={(milestoneData) => {
-                onUpdateMilestone(currentTask.id, milestone.id, milestoneData);
-              }}
-              onComplete={() => onCompleteMilestone(currentTask.id, milestone.id)}
-              onDelete={() => onDeleteMilestone(currentTask.id, milestone.id)}
-              onOpenDetail={() => onOpenMilestoneDetail({ 
-                ...milestone, 
-                isLatest: index === activeMilestones.length - 1, 
-                taskId: currentTask.id 
-              })}
-              onOpenEditor={(ms) => onOpenJournalEditor(ms)}
-              isCompleted={false}
-              onEditToggle={(milestone) => {
-                onEditToggle(milestone);
-              }}
-              onOpenJournal={onOpenJournal}
-              navigation={navigation}
-              currentTask={currentTask}
-            />
-          ))}
-
-          {/* Completed Milestones Section */}
-          {completedMilestones.length > 0 && (
-            <View style={{ marginTop: 20 }}>
-              <Text style={[
-                styles.completedHeader,
-                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-              ]}>{t('completedMilestones')}</Text>
-              {completedMilestonesWithLatest.map((ms) => (
+        <>
+          {/* Active Milestones - Draggable */}
+          <DraggableFlatList
+            containerStyle={{ flexGrow: 0 }}
+            contentContainerStyle={{ paddingBottom: 4 }}
+            data={activeMilestonesWithLatest}
+            keyExtractor={(item) => `${item.id}`}
+            CellRendererComponent={StableCell}
+            activationDistance={14}
+            animationConfig={{
+              // Snap into place immediately on drop (no visible settle)
+              damping: 50,
+              mass: 1,
+              stiffness: 500,
+              overshootClamping: true,
+              restDisplacementThreshold: 2.0,
+              restSpeedThreshold: 2.0,
+            }}
+            dragItemOverflow
+            autoscrollThreshold={9999}
+            autoscrollSpeed={0}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            removeClippedSubviews
+            windowSize={7}
+            getItemLayout={(data, index) => ({ length: 56, offset: 56 * index, index })}
+            scrollEnabled={!isDraggingAny}
+            onDragBegin={(index) => {
+              setIsDraggingAny(true);
+              try {
+                const id = activeMilestonesWithLatest?.[index]?.id;
+                setDraggingId(id || null);
+              } catch { setDraggingId(null); }
+            }}
+            renderPlaceholder={() => (
+              <View pointerEvents="none" style={{
+                height: 56,
+                borderRadius: 16,
+                marginTop: 8,
+                marginHorizontal: 28,
+                backgroundColor: 'transparent'
+              }} />
+            )}
+            onDragEnd={(args) => { setDraggingId(null); handleDragEnd(args); }}
+            renderItem={React.useCallback(({ item, drag, isActive }) => (
+              <View
+                renderToHardwareTextureAndroid={true}
+                shouldRasterizeIOS={true}
+                collapsable={false}
+              >
                 <MileStone
-                  key={`${ms.id}-${refreshKey}`}
-                  milestone={ms}
-                  isLatest={ms.isLatest}
-                  isCompleted={true}
-                  onOpenDetail={() => onOpenMilestoneDetail({ 
-                    ...ms, 
-                    isLatest: false, 
-                    taskId: currentTask.id 
-                  })}
+                  milestone={item}
+                  onUpdate={(milestoneData) => {
+                    onUpdateMilestone(currentTask.id, item.id, milestoneData);
+                  }}
+                  onComplete={() => onCompleteMilestone(currentTask.id, item.id)}
+                  onDelete={() => onDeleteMilestone(currentTask.id, item.id)}
+                  onOpenDetail={() => onOpenMilestoneDetail({ ...item, isLatest: false, taskId: currentTask.id })}
                   onOpenEditor={(ms) => onOpenJournalEditor(ms)}
-                  onDelete={() => onDeleteMilestone(currentTask.id, ms.id)}
-                  onSetActive={() => onSetActiveMilestone(currentTask.id, ms.id)}
+                  isCompleted={false}
+                  onEditToggle={(ms) => {
+                    onEditToggle(ms);
+                  }}
                   onOpenJournal={onOpenJournal}
                   navigation={navigation}
                   currentTask={currentTask}
+                  // Drag handle: start drag when icon pressed (handled inside MileStone via new prop)
+                  onStartDrag={drag}
+                  isDragging={isActive}
                 />
-              ))}
-            </View>
-          )}
-        </ScrollView>
+              </View>
+            ), [currentTask?.id, navigation, onOpenJournal, onOpenMilestoneDetail, onOpenJournalEditor, onCompleteMilestone, onDeleteMilestone, onUpdateMilestone, onEditToggle])}
+          />
+
+          {/* Completed Milestones Section (decoupled list, always mounted) */}
+          <View>
+            <CompletedMilestonesList
+              completedMilestones={completedMilestonesWithLatest}
+              refreshKey={refreshKey}
+              theme={theme}
+              t={t}
+              currentTask={currentTask}
+              onOpenMilestoneDetail={onOpenMilestoneDetail}
+              onOpenJournalEditor={onOpenJournalEditor}
+              onDeleteMilestone={onDeleteMilestone}
+              onSetActiveMilestone={onSetActiveMilestone}
+              onOpenJournal={onOpenJournal}
+              navigation={navigation}
+              styles={styles}
+            />
+          </View>
+        </>
       )}
     </View>
   );

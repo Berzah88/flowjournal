@@ -2,6 +2,7 @@
 import messaging from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 
 const STORAGE_KEYS = {
   FCM_TOKEN: 'fcmToken',
@@ -13,6 +14,59 @@ class FCMService {
     this.fcmToken = null;
     this.onNotificationReceived = null;
     this.onNotificationResponse = null;
+    this.isInitialized = false;
+    this.foregroundUnsubscribe = null;
+    this.notificationOpenedUnsubscribe = null;
+    this.backgroundHandlerRegistered = false;
+    // Persist across fast refresh
+    if (!globalThis.__fcmHandledMessageIds) {
+      globalThis.__fcmHandledMessageIds = new Set();
+    }
+    if (!globalThis.__fcmOnMessageRegistered) {
+      globalThis.__fcmOnMessageRegistered = false;
+    }
+    if (!globalThis.__fcmOnNotificationOpenedRegistered) {
+      globalThis.__fcmOnNotificationOpenedRegistered = false;
+    }
+    if (!globalThis.__fcmBackgroundHandlerRegistered) {
+      globalThis.__fcmBackgroundHandlerRegistered = false;
+    }
+    if (!globalThis.__fcmRecentMessageKeys) {
+      globalThis.__fcmRecentMessageKeys = new Map(); // key -> timestamp
+    }
+  }
+
+  // Create a stable key for deduplication
+  getMessageKey(remoteMessage) {
+    const id = remoteMessage?.messageId || remoteMessage?.messageIdString || '';
+    const title = remoteMessage?.notification?.title || remoteMessage?.data?.title || '';
+    const body = remoteMessage?.notification?.body || remoteMessage?.data?.body || '';
+    const sent = String(remoteMessage?.sentTime || '');
+    return id || `${title}|${body}|${sent}`;
+  }
+
+  // Decide whether to process message, with TTL to avoid burst duplicates
+  shouldProcessMessage(remoteMessage, ttlMs = 10000) {
+    try {
+      const key = this.getMessageKey(remoteMessage);
+      if (!key) return true;
+      const now = Date.now();
+      const last = globalThis.__fcmRecentMessageKeys.get(key);
+      if (last && now - last < ttlMs) {
+        return false;
+      }
+      globalThis.__fcmRecentMessageKeys.set(key, now);
+      // Cleanup occasionally
+      if (globalThis.__fcmRecentMessageKeys.size > 200) {
+        const cutoff = now - ttlMs;
+        for (const [k, t] of globalThis.__fcmRecentMessageKeys.entries()) {
+          if (t < cutoff) globalThis.__fcmRecentMessageKeys.delete(k);
+        }
+      }
+      return true;
+    } catch {
+      return true;
+    }
   }
 
   // FCM servisini başlat
@@ -21,20 +75,38 @@ class FCMService {
       this.onNotificationReceived = onNotificationReceived;
       this.onNotificationResponse = onNotificationResponse;
 
-      // Firebase'in hazır olmasını bekle
-      await this.waitForFirebase();
-      
-      // FCM token al
-      await this.getFCMToken();
-      
-      // Background message handler
-      this.setupBackgroundMessageHandler();
-      
-      // Foreground message handler
-      this.setupForegroundMessageHandler();
-      
-      // Notification response handler
-      this.setupNotificationResponseHandler();
+      if (this.isInitialized) {
+        console.log('ℹ️ FCMService zaten başlatılmış, yeniden başlatma atlandı');
+        return true;
+      }
+
+      // Re-entrancy guard: prevent parallel init from double-registering listeners
+      if (this._initializingPromise) {
+        await this._initializingPromise;
+        return true;
+      }
+
+      this._initializingPromise = (async () => {
+        // Firebase'in hazır olmasını bekle
+        await this.waitForFirebase();
+        
+        // FCM token al
+        await this.getFCMToken();
+        
+        // Background message handler
+        this.setupBackgroundMessageHandler();
+        
+        // Foreground message handler
+        this.setupForegroundMessageHandler();
+        
+        // Notification response handler
+        this.setupNotificationResponseHandler();
+
+        this.isInitialized = true;
+      })();
+
+      await this._initializingPromise;
+      this._initializingPromise = null;
 
       return true;
     } catch (error) {
@@ -102,31 +174,97 @@ class FCMService {
 
   // Background message handler
   setupBackgroundMessageHandler() {
+    if (this.backgroundHandlerRegistered || globalThis.__fcmBackgroundHandlerRegistered) {
+      return;
+    }
+
     messaging().setBackgroundMessageHandler(async remoteMessage => {
-      // Background'da bildirim göster
-      if (remoteMessage.notification) {
-        // Background bildirim işlendi
+      // Strong duplicate guard (before logging)
+      if (!this.shouldProcessMessage(remoteMessage)) {
+        return;
       }
+
+      console.log('📱 FCM background bildirim alındı:', remoteMessage);
+      
+      // ÖNEMLİ: Notification payload içeren mesajları Android zaten gösterir.
+      // Background'da ASLA local bildirim gösterme - sistem zaten gösteriyor!
+      console.log('ℹ️ Background mesaj - sistem tarafından gösterilecek');
     });
+
+    this.backgroundHandlerRegistered = true;
+    globalThis.__fcmBackgroundHandlerRegistered = true;
   }
 
   // Foreground message handler
   setupForegroundMessageHandler() {
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      if (typeof this.onNotificationReceived === 'function') {
-        try {
-          this.onNotificationReceived(remoteMessage);
-        } catch (e) {
-          console.warn('Foreground message handler hatası:', e);
-        }
-      }
-    });
+    if (globalThis.__fcmOnMessageRegistered) {
+      console.log('ℹ️ Foreground handler zaten kayıtlı, atlıyorum');
+      return this.foregroundUnsubscribe;
+    }
 
-    return unsubscribe;
+    // Global handler wrapper - sadece bir kez kayıt ol
+    if (!globalThis.__fcmForegroundHandler) {
+      console.log('🔥 Foreground handler kaydediliyor...');
+      
+      globalThis.__fcmForegroundHandler = async (remoteMessage) => {
+        // Strong duplicate guard (before logging)
+        if (!this.shouldProcessMessage(remoteMessage, 5000)) {
+          console.log('⏭️ Duplicate mesaj atlandı');
+          return;
+        }
+
+        console.log('📱 FCM foreground bildirim alındı:', remoteMessage);
+        
+        // ÖNEMLİ: Sadece uygulama GERÇEKTEN foreground'dayken local bildirim göster
+        const appState = AppState.currentState;
+        console.log('📊 App durumu:', appState);
+        
+        if (appState === 'active' && remoteMessage.notification) {
+          // Sadece uygulama aktifken local bildirim göster
+          try {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: remoteMessage.notification.title || 'Bildirim',
+                body: remoteMessage.notification.body || '',
+                data: remoteMessage.data || {},
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+              },
+              trigger: null, // Hemen göster
+            });
+            
+            console.log('✅ Local bildirim gösterildi');
+          } catch (error) {
+            console.error('❌ Local bildirim hatası:', error);
+          }
+        } else if (appState !== 'active') {
+          console.log('ℹ️ App arka planda - local bildirim gösterilmedi (sistem gösterecek)');
+        }
+        
+        if (typeof this.onNotificationReceived === 'function') {
+          try {
+            this.onNotificationReceived(remoteMessage);
+          } catch (e) {
+            console.warn('Foreground message handler hatası:', e);
+          }
+        }
+      };
+
+      const unsubscribe = messaging().onMessage(globalThis.__fcmForegroundHandler);
+      this.foregroundUnsubscribe = unsubscribe;
+      console.log('✅ Foreground handler kaydedildi');
+    }
+
+    globalThis.__fcmOnMessageRegistered = true;
+    return this.foregroundUnsubscribe;
   }
 
   // Notification response handler
   setupNotificationResponseHandler() {
+    if (globalThis.__fcmOnNotificationOpenedRegistered) {
+      return this.notificationOpenedUnsubscribe;
+    }
+
     const unsubscribe = messaging().onNotificationOpenedApp(remoteMessage => {
       if (typeof this.onNotificationResponse === 'function') {
         try {
@@ -137,6 +275,8 @@ class FCMService {
       }
     });
 
+    this.notificationOpenedUnsubscribe = unsubscribe;
+    globalThis.__fcmOnNotificationOpenedRegistered = true;
     return unsubscribe;
   }
 
@@ -252,7 +392,10 @@ class FCMService {
   }
 }
 
-const fcmService = new FCMService();
-export default fcmService;
+// Global singleton export (persists across fast refresh)
+if (!globalThis.__fcmServiceInstance) {
+  globalThis.__fcmServiceInstance = new FCMService();
+}
+export default globalThis.__fcmServiceInstance;
 
 

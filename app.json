@@ -60,7 +60,8 @@
           "color": "#ffffff",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-video"
     ],
     "owner": "mberzah88",
     "extra": {

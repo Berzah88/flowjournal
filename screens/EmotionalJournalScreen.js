@@ -106,7 +106,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
     return moodEntries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [activeTasks, completedTasks]);
 
-  // Mood istatistikleri
+  // Mood istatistikleri - Genişletilmiş
   const moodStats = useMemo(() => {
     const stats = {};
     const moodCounts = {};
@@ -144,15 +144,30 @@ const EmotionalJournalScreen = ({ navigation }) => {
       return entryDate >= monthAgo;
     });
     
+    // Proje istatistikleri
+    const activeProjects = activeTasks.length;
+    const completedProjects = completedTasks.length;
+    
+    // Günlük girişi yapılan gün sayısı
+    const uniqueDays = new Set();
+    allMoodData.forEach(entry => {
+      const date = new Date(entry.createdAt).toDateString();
+      uniqueDays.add(date);
+    });
+    
     return {
       totalEntries: allMoodData.length,
       topMoods: sortedMoods,
       last7Days: last7Days.length,
       last30Days: last30Days.length,
       totalWords: totalWords,
-      moodCounts
+      moodCounts,
+      // Yeni istatistikler
+      activeProjects,
+      completedProjects,
+      journalDays: uniqueDays.size,
     };
-  }, [allMoodData]);
+  }, [allMoodData, activeTasks, completedTasks]);
 
   // Mood trend analizi
   const moodTrend = useMemo(() => {
@@ -1026,11 +1041,11 @@ const EmotionalJournalScreen = ({ navigation }) => {
     }
   }, [moodTrend, t]);
 
-  // Günün mood'una göre gradient renkleri hesapla
+  // Günün mood'una göre gradient renkleri hesapla - Karanlık tema optimize edildi
   const getMoodGradientColors = useCallback(() => {
     if (!todayDominantMood) {
       return theme.name === 'dark' 
-        ? ['#1C1C1E', '#1A1A1A', '#000000'] 
+        ? ['#050505', '#0F0F0F', '#1A1A1A', '#2A2A2A'] // Daha koyu karanlık geçiş
         : ['#FAFAFA', '#F5F3FF', '#EDE9FE'];
     }
     
@@ -1042,12 +1057,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
     const b = parseInt(hex.substr(4, 2), 16);
     
     if (theme.name === 'dark') {
-      // Karanlık tema: mood renginden soft siyah tonlara geçiş
+      // Karanlık tema: mood renginden deep dark tonlara geçiş - daha koyu
+      const deepBlack = '#050505';
+      const darkerBlack = '#0F0F0F';
       const softBlack = '#1A1A1A';
-      const darkMoodColor = `rgba(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)}, 0.15)`;
-      const moodColor = `rgba(${r}, ${g}, ${b}, 0.25)`;
+      const moodAccent = `rgba(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)}, 0.08)`;
+      const moodHighlight = `rgba(${r}, ${g}, ${b}, 0.05)`;
       
-      return [softBlack, darkMoodColor, moodColor];
+      return [deepBlack, darkerBlack, softBlack, moodAccent, moodHighlight];
     } else {
       // Açık tema: mood renginden beyaza geçiş (mevcut mantık)
       const lightColor = `rgba(${r}, ${g}, ${b}, 0.08)`;
@@ -1073,12 +1090,13 @@ const EmotionalJournalScreen = ({ navigation }) => {
               style={[
                 styles.backButton,
                 {
-                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : COLORS.WHITE,
-                  borderColor: theme.name === 'dark' ? '#000000' : COLORS.GRAY[200],
+                  backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : COLORS.WHITE,
+                  borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : COLORS.GRAY[200],
                   shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
-                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
-                  shadowRadius: theme.name === 'dark' ? 12 : 4,
-                  elevation: theme.name === 'dark' ? 8 : ELEVATION.SM,
+                  shadowOpacity: theme.name === 'dark' ? 0.4 : 0.1,
+                  shadowRadius: theme.name === 'dark' ? 16 : 4,
+                  elevation: theme.name === 'dark' ? 12 : ELEVATION.SM,
+                  borderWidth: theme.name === 'dark' ? 1 : 1,
                 }
               ]}
             >
@@ -1131,12 +1149,13 @@ const EmotionalJournalScreen = ({ navigation }) => {
             style={[
               styles.backButton,
               {
-                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : COLORS.WHITE,
-                borderColor: theme.name === 'dark' ? '#000000' : COLORS.GRAY[200],
+                backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : COLORS.WHITE,
+                borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : COLORS.GRAY[200],
                 shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
-                shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
-                shadowRadius: theme.name === 'dark' ? 12 : 4,
-                elevation: theme.name === 'dark' ? 8 : ELEVATION.SM,
+                shadowOpacity: theme.name === 'dark' ? 0.4 : 0.1,
+                shadowRadius: theme.name === 'dark' ? 16 : 4,
+                elevation: theme.name === 'dark' ? 12 : ELEVATION.SM,
+                borderWidth: theme.name === 'dark' ? 1 : 1,
               }
             ]}
           >
@@ -1175,14 +1194,46 @@ const EmotionalJournalScreen = ({ navigation }) => {
             styles.overviewCard, 
             { 
               borderLeftColor: getSolidMoodColor(todayDominantMood?.color) || COLORS.PRIMARY,
-              backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
+              backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
               shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
-              shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
-              shadowRadius: theme.name === 'dark' ? 12 : 8,
-              elevation: theme.name === 'dark' ? 8 : ELEVATION.MD,
+              shadowOpacity: theme.name === 'dark' ? 0.4 : 0.1,
+              shadowRadius: theme.name === 'dark' ? 16 : 8,
+              elevation: theme.name === 'dark' ? 12 : ELEVATION.MD,
+              borderWidth: theme.name === 'dark' ? 1 : 0,
+              borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
             }
           ]}>
             <View style={styles.overviewGrid}>
+              {/* Active Projects */}
+              <View style={styles.overviewItem}>
+                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(33, 150, 243, 0.1)' }]}>
+                  <Ionicons name="play-circle-outline" size={16} color="#2196F3" />
+                </View>
+                <Text style={[
+                  styles.overviewNumber,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                ]}>{moodStats.activeProjects}</Text>
+                <Text style={[
+                  styles.overviewLabel,
+                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
+                ]}>{t('activeProjects')}</Text>
+              </View>
+
+              {/* Completed Projects */}
+              <View style={styles.overviewItem}>
+                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color="#4CAF50" />
+                </View>
+                <Text style={[
+                  styles.overviewNumber,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
+                ]}>{moodStats.completedProjects}</Text>
+                <Text style={[
+                  styles.overviewLabel,
+                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
+                ]}>{t('completedProjects')}</Text>
+              </View>
+
               {/* Total Entries */}
               <View style={styles.overviewItem}>
                 <View style={[styles.overviewIcon, { backgroundColor: 'rgba(25, 118, 210, 0.1)' }]}>
@@ -1196,36 +1247,6 @@ const EmotionalJournalScreen = ({ navigation }) => {
                   styles.overviewLabel,
                   { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
                 ]}>{t('entries')}</Text>
-              </View>
-
-              {/* Last 7 Days */}
-              <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(142, 125, 190, 0.1)' }]}>
-                  <Ionicons name="calendar-outline" size={16} color="#8E7DBE" />
-                </View>
-                <Text style={[
-                  styles.overviewNumber,
-                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-                ]}>{moodStats.last7Days}</Text>
-                <Text style={[
-                  styles.overviewLabel,
-                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
-                ]}>{t('thisWeek')}</Text>
-              </View>
-
-              {/* Last 30 Days */}
-              <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
-                  <Ionicons name="calendar" size={16} color="#4CAF50" />
-                </View>
-                <Text style={[
-                  styles.overviewNumber,
-                  { color: theme.name === 'dark' ? '#FFFFFF' : COLORS.GRAY[800] }
-                ]}>{moodStats.last30Days}</Text>
-                <Text style={[
-                  styles.overviewLabel,
-                  { color: theme.name === 'dark' ? '#8E8E93' : COLORS.GRAY[500] }
-                ]}>{t('thisMonth')}</Text>
               </View>
 
               {/* Words Written */}
@@ -1272,11 +1293,13 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 styles.trendCard,
                 { 
                   borderLeftColor: getTrendColor(),
-                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                  backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : '#FFFFFF',
                   shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
-                  shadowRadius: theme.name === 'dark' ? 12 : 8,
-                  elevation: theme.name === 'dark' ? 8 : 3,
+                  shadowOpacity: theme.name === 'dark' ? 0.4 : 0.1,
+                  shadowRadius: theme.name === 'dark' ? 16 : 8,
+                  elevation: theme.name === 'dark' ? 12 : 3,
+                  borderWidth: theme.name === 'dark' ? 1 : 0,
+                  borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                 }
               ]}>
                 <View style={styles.trendHeader}>
@@ -1330,11 +1353,13 @@ const EmotionalJournalScreen = ({ navigation }) => {
                          styles.flowItem, 
                          { 
                            borderLeftColor: project.progressColor,
-                           backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
+                           backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                            shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
-                           shadowOpacity: theme.name === 'dark' ? 0.3 : 0.08,
-                           shadowRadius: theme.name === 'dark' ? 12 : 8,
-                           elevation: theme.name === 'dark' ? 8 : ELEVATION.SM,
+                           shadowOpacity: theme.name === 'dark' ? 0.4 : 0.08,
+                           shadowRadius: theme.name === 'dark' ? 16 : 8,
+                           elevation: theme.name === 'dark' ? 12 : ELEVATION.SM,
+                           borderWidth: theme.name === 'dark' ? 1 : 0,
+                           borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                          }
                        ]}>
                          <View style={styles.flowHeader}>
@@ -1368,7 +1393,6 @@ const EmotionalJournalScreen = ({ navigation }) => {
                            ]} numberOfLines={2}>{project.progressMessage}</Text>
                          </View>
                          
-                         <View style={[styles.flowBottomBar, { backgroundColor: project.progressColor + '20' }]} />
                        </View>
                      </View>
                    </View>
@@ -1516,13 +1540,15 @@ const EmotionalJournalScreen = ({ navigation }) => {
               <View style={[
                 styles.timelineStat, 
                 { 
-                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                  backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : '#FFFFFF',
                   borderLeftWidth: 3,
                   borderLeftColor: theme.colors.primary,
                   shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
-                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.08,
-                  shadowRadius: theme.name === 'dark' ? 8 : 4,
-                  elevation: theme.name === 'dark' ? 4 : 2,
+                  shadowOpacity: theme.name === 'dark' ? 0.4 : 0.08,
+                  shadowRadius: theme.name === 'dark' ? 12 : 4,
+                  elevation: theme.name === 'dark' ? 8 : 2,
+                  borderWidth: theme.name === 'dark' ? 1 : 0,
+                  borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                 }
               ]}>
                 <View style={styles.timelineStatContent}>
@@ -1543,13 +1569,15 @@ const EmotionalJournalScreen = ({ navigation }) => {
               <View style={[
                 styles.timelineStat, 
                 { 
-                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                  backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : '#FFFFFF',
                   borderLeftWidth: 3,
                   borderLeftColor: COLORS.SUCCESS,
                   shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
-                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.08,
-                  shadowRadius: theme.name === 'dark' ? 8 : 4,
-                  elevation: theme.name === 'dark' ? 4 : 2,
+                  shadowOpacity: theme.name === 'dark' ? 0.4 : 0.08,
+                  shadowRadius: theme.name === 'dark' ? 12 : 4,
+                  elevation: theme.name === 'dark' ? 8 : 2,
+                  borderWidth: theme.name === 'dark' ? 1 : 0,
+                  borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                 }
               ]}>
                 <View style={styles.timelineStatContent}>
@@ -1616,8 +1644,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
                     <View key={index} style={[
                       styles.minimalRecommendationItem,
                       {
-                        backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.6)',
+                        backgroundColor: theme.name === 'dark' ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.6)',
                         borderLeftColor: theme.name === 'dark' ? '#FF6B6B' : '#FF9800',
+                        borderWidth: theme.name === 'dark' ? 1 : 0,
+                        borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                        shadowColor: theme.name === 'dark' ? '#000000' : 'transparent',
+                        shadowOpacity: theme.name === 'dark' ? 0.3 : 0,
+                        shadowRadius: theme.name === 'dark' ? 8 : 0,
+                        elevation: theme.name === 'dark' ? 4 : 0,
                       }
                     ]}>
                       <Text style={[
@@ -1709,7 +1743,7 @@ const styles = StyleSheet.create({
   overviewCard: {
     borderRadius: BORDER_RADIUS.LG,
     borderLeftWidth: 4,
-    paddingVertical: SPACING.MD,
+    paddingVertical: SPACING.SM, // was MD
     paddingHorizontal: SPACING.MD,
     marginBottom: 0,
     marginHorizontal: SPACING.XL,
@@ -1722,27 +1756,29 @@ const styles = StyleSheet.create({
   },
   overviewGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   overviewItem: {
-    flex: 1,
+    width: '25%', // 4 sütun için
     alignItems: 'center',
     paddingHorizontal: SPACING.XS,
+    paddingVertical: SPACING.XS, // was SM
   },
   overviewIcon: {
-    width: 32,
-    height: 32,
+    width: 28, // was 32
+    height: 28, // was 32
     borderRadius: BORDER_RADIUS.FULL,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2, // was 4
   },
   overviewNumber: {
-    fontSize: 14,
+    fontSize: 13, // was 14
     fontFamily: FONTS.BOLD,
     color: COLORS.GRAY[800],
-    marginBottom: 1,
+    marginBottom: 0, // was 1
     textAlign: 'center',
   },
   overviewLabel: {
@@ -1750,7 +1786,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.MEDIUM,
     color: COLORS.GRAY[500],
     textAlign: 'center',
-    lineHeight: 10,
+    lineHeight: 9, // was 10
   },
   trendContainer: {
     marginTop: 24,

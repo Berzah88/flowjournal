@@ -154,6 +154,8 @@ export default function NotificationMenu({
           </View>
 
         </View>
+
+
       </Animated.View>
     </View>
   );
