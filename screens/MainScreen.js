@@ -594,6 +594,9 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               keyExtractor={keyExtractor}
               contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
               renderItem={renderActiveItem}
+              extraData={`${refreshKey}-${activeTasks.map(t => 
+                `${t.id}-${t.milestones?.map(m => `${m.id}:${m.parentId || 'none'}`).join(',')}`
+              ).join('|')}`}
               ListEmptyComponent={
                 <View style={styles.emptyStateContainer}>
                   <Text style={styles.emptyStateIcon}>📋</Text>
@@ -709,10 +712,24 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
       <AddProjectScreen visible={addVisible} onClose={() => setAddVisible(false)} />
 
-      {selectedCard && <ActiveProject selectedCard={selectedCard} onClose={closeCard} navigation={navigation} />}
+      {selectedCard && <ActiveProject 
+        selectedCard={selectedCard} 
+        onClose={() => {
+          closeCard();
+          setRefreshKey(prev => prev + 1); // Force refresh after attach/detach operations
+        }} 
+        navigation={navigation} 
+      />}
       
       {/* MyDay modals */}
-      {myDaySelectedCard && <ActiveProject selectedCard={myDaySelectedCard} onClose={() => setMyDaySelectedCard(null)} navigation={navigation} />}
+      {myDaySelectedCard && <ActiveProject 
+        selectedCard={myDaySelectedCard} 
+        onClose={() => {
+          setMyDaySelectedCard(null);
+          setRefreshKey(prev => prev + 1); // Force refresh after attach/detach operations
+        }} 
+        navigation={navigation} 
+      />}
       
       {myDaySelectedMilestone && <Journal 
         visible={!!myDaySelectedMilestone} 
@@ -745,6 +762,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
             setMyDaySelectedProjectForMilestone(null);
           }
         }}
+        existingMilestones={myDaySelectedProjectForMilestone?.milestones || []}
       />
 
       {/* Data Recovery Menu */}

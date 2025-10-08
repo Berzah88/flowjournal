@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Alert, Pressable, Keyboard } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Alert, Pressable, Keyboard, Easing } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialIcons } from "@expo/vector-icons";
 import FlashCalendar from "./FlashCalendar";
@@ -27,6 +27,15 @@ function MileStone({
   currentTask = null, // Project bilgilerini almak için
   onStartDrag,
   isDragging = false,
+  isAttachMode = false, // Attach mode aktif mi
+  isSelectableForAttach = false, // Bu milestone seçilebilir mi
+  onStartAttachMode, // Attach mode başlat
+  onSelectForAttach, // Attach için seç
+  onDetachMilestone, // Milestone'u parent'ından ayır
+  attachModeSourceId = null, // Attach mode'u başlatan milestone ID
+  allMilestones = [], // Tüm milestone'lar (child sayısı için)
+  isCollapsed = false, // Collapse/expand state
+  onToggleCollapse, // Collapse/expand handler
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -34,6 +43,29 @@ function MileStone({
   // usePerformanceMonitor('MileStone');
   
   if (!milestone) return null;
+
+  // Format date to "Mar. 13" format (for end date)
+  const formatShortDate = useCallback((dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      const months = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
+      return `${months[date.getMonth()]} ${date.getDate()}`;
+    } catch (e) {
+      return '';
+    }
+  }, []);
+
+  // Format date to day number only (for start date in calendar icon)
+  const formatDayOnly = useCallback((dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return `${date.getDate()}`;
+    } catch (e) {
+      return '';
+    }
+  }, []);
 
   // Safely convert various color formats to rgba(r,g,b,a)
   const toRgba = useCallback((color, alpha = 1) => {
@@ -141,6 +173,12 @@ function MileStone({
 
   const inputRef = useRef(null);
   const deleteAnimation = useRef(new Animated.Value(0)).current;
+  
+  // Smooth attach/detach animation - initialize later after calculating shouldShowAsChild
+  const childIndentAnim = useRef(new Animated.Value(0)).current;
+  
+  // Smooth collapse/expand animation for children
+  const collapseAnim = useRef(new Animated.Value(1)).current; // 1 = visible, 0 = hidden
 
   // Update local state when milestone prop changes
   useEffect(() => {
@@ -274,6 +312,34 @@ function MileStone({
   // Günlük kartları için gerekli fonksiyonlar - Project-based system
   const entries = []; // Milestone-based journal entries removed
 
+  // Pre-create project data for journal opening (performance optimization)
+  const projectData = useMemo(() => ({
+    id: 'project-journal',
+    title: 'Project Journal',
+    taskId: milestone.taskId,
+    projectTitle: milestone.projectTitle || currentTask?.title || 'Project',
+    isProjectBased: true
+  }), [milestone.taskId, milestone.projectTitle, currentTask?.title]);
+
+  // Optimized press handler
+  const handlePress = useCallback(() => {
+    // Attach mode aktifken normal press işlemlerini engelle
+    if (isAttachMode) {
+      if (isSelectableForAttach && onSelectForAttach) {
+        onSelectForAttach();
+      }
+      return;
+    }
+    
+    if (!editable && !showDeleteOption) {
+      if (onOpenJournal) {
+        onOpenJournal(projectData);
+      } else if (onOpenDetail) {
+        onOpenDetail();
+      }
+    }
+  }, [editable, showDeleteOption, onOpenJournal, onOpenDetail, projectData, isAttachMode, isSelectableForAttach, onSelectForAttach]);
+
   // Günlükleri tarihlere göre gruplandır
   const groupEntriesByDate = useCallback((entries) => {
     const groups = {};
@@ -308,6 +374,62 @@ function MileStone({
 
   const groupedEntries = useMemo(() => groupEntriesByDate(entries), [entries, groupEntriesByDate]);
 
+  // Calculate children info for this milestone
+  const childMilestones = useMemo(() => {
+    if (!milestone?.id || !Array.isArray(allMilestones)) return [];
+    return allMilestones.filter(m => m?.parentId === milestone.id);
+  }, [allMilestones, milestone?.id]);
+  
+  const hasChildren = childMilestones.length > 0;
+  const completedChildren = childMilestones.filter(m => m?.completed).length;
+  const progressPercentage = hasChildren 
+    ? Math.round((completedChildren / childMilestones.length) * 100) 
+    : 0;
+
+  // Check if this milestone should be shown as child
+  // Show as child if:
+  // 1. Already has a parent
+  // 2. Or this is the milestone that started attach mode (will become child)
+  const shouldShowAsChild = milestone.parentId || (isAttachMode && milestone.id === attachModeSourceId);
+
+  // Initialize animation value on first render
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      childIndentAnim.setValue(shouldShowAsChild ? 1 : 0);
+      // Initialize collapse animation for children
+      if (milestone.parentId) {
+        collapseAnim.setValue(isCollapsed ? 0 : 1);
+      }
+      isFirstRender.current = false;
+    }
+  }, []);
+
+  // Animate child indent when attach/detach
+  useEffect(() => {
+    if (!isFirstRender.current) {
+      Animated.spring(childIndentAnim, {
+        toValue: shouldShowAsChild ? 1 : 0,
+        useNativeDriver: false,
+        tension: 40,
+        friction: 8,
+      }).start();
+    }
+  }, [shouldShowAsChild, childIndentAnim]);
+
+  // Animate collapse/expand for child visibility
+  useEffect(() => {
+    // Only animate if this is a child milestone
+    if (milestone.parentId) {
+      Animated.timing(collapseAnim, {
+        toValue: isCollapsed ? 0 : 1,
+        duration: 300,
+        useNativeDriver: false,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Smooth easing curve
+      }).start();
+    }
+  }, [isCollapsed, milestone.parentId, collapseAnim]);
+
   return (
     <>
       <Pressable onPress={() => {
@@ -316,65 +438,158 @@ function MileStone({
           setEditable(false);
         }
       }}>
-        <View style={styles.container}>
+        <Animated.View style={[
+          styles.container,
+          {
+            // Eşit sol/sağ margin için
+            marginLeft: childIndentAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [20, 48], // Parent: 20px, Child: 20 + 28 = 48px
+            }),
+            marginRight: 20, // Sol ile eşit
+            // Smooth collapse animation for child milestones
+            ...(milestone.parentId && {
+              opacity: collapseAnim,
+              transform: [
+                {
+                  scaleY: collapseAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.3, 1], // Start from 30% for smoother effect
+                  })
+                },
+                {
+                  translateY: collapseAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-10, 0], // Slide effect
+                  })
+                }
+              ],
+              maxHeight: collapseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 500], // Smooth height transition
+              }),
+            }),
+          }
+        ]}>
           <Pressable
             style={({ pressed }) => [
               styles.milestoneItemClickable,
+              hasChildren && styles.parentMilestoneClickable,
               {
                 backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
                 // Remove transforms/opacity changes during drag to avoid visual jitter
                 opacity: 1,
+              },
+              isAttachMode && isSelectableForAttach && {
+                borderWidth: 2,
+                borderColor: '#FF9800',
+                borderStyle: 'dashed',
+              },
+              isAttachMode && !isSelectableForAttach && {
+                opacity: 0.4,
               }
             ]}
-            disabled={editable}
-            onPress={() => {
-              if (!editable && !showDeleteOption) {
-                if (onOpenJournal) {
-                  // Project-based journal system - open journal for the entire project
-                  const projectData = {
-                    id: 'project-journal',
-                    title: 'Project Journal',
-                    taskId: milestone.taskId,
-                    projectTitle: milestone.projectTitle || 'Project',
-                    isProjectBased: true
-                  };
-                  onOpenJournal(projectData);
-                } else if (onOpenDetail) {
-                  onOpenDetail();
-                }
-              }
-            }}
-            onLongPress={handleLongPress}
+            disabled={editable || (isAttachMode && !isSelectableForAttach)}
+            onPress={handlePress}
+            onLongPress={!isAttachMode ? handleLongPress : undefined}
             delayLongPress={500}
           >
             <View style={[
               styles.iconContainer,
+              hasChildren && styles.parentIconContainer,
               {
-                shadowColor: 'transparent', // avoid multi-row cumulative shadow weight
+                shadowColor: 'transparent',
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0,
                 shadowRadius: 0,
                 elevation: 0,
               }
             ]}>
-              <View style={[
-                styles.iconFrame,
-                {
-                  borderColor: isCompleted ? '#555' : iconBgColor,
-                }
-              ]}>
-                <Pressable
-                  onLongPress={onStartDrag}
-                  delayLongPress={120}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons 
-                    name="ellipse" 
-                    size={10} 
-                    color={isCompleted ? "#555" : iconBgColor} 
-                  />
-                </Pressable>
-              </View>
+              {hasChildren ? (
+                // Parent milestone icon - Calendar with dates
+                <View style={styles.parentIconWrapper}>
+                  {/* Large calendar icon with dates inside */}
+                  <View style={styles.parentCalendarFrame}>
+                    <MaterialIcons 
+                      name="calendar-today" 
+                      size={44} 
+                      color={isCompleted ? "#555" : iconBgColor}
+                      style={styles.largeCalendarIcon}
+                    />
+                    <View style={styles.datesInsideCalendar}>
+                      {/* Start date inside calendar - Day only */}
+                      <Text style={[
+                        styles.startDateText,
+                        { color: theme.name === 'dark' ? '#FFFFFF' : '#000000' }
+                      ]}>
+                        {formatDayOnly(milestone.startDate)}
+                      </Text>
+                      
+                      {/* End date inside calendar - Below start date */}
+                      <Text style={[
+                        styles.endDateText,
+                        { color: theme.name === 'dark' ? '#8E8E93' : '#666' }
+                      ]}>
+                        {formatShortDate(milestone.endDate)}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {/* Badge and collapse button row */}
+                  {!editable && (
+                    <View style={styles.badgeCollapseRow}>
+                      {/* Child counter badge */}
+                      <View style={[
+                        styles.childBadgeInline,
+                        { 
+                          backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.1)',
+                          borderColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.4)' : 'rgba(0, 122, 255, 0.3)'
+                        }
+                      ]}>
+                        <Ionicons name="link" size={8} color="#007AFF" />
+                        <Text style={styles.childBadgeTextSmall}>
+                          {completedChildren}/{childMilestones.length}
+                        </Text>
+                      </View>
+                      
+                      {/* Collapse/Expand button */}
+                      <TouchableOpacity 
+                        onPress={() => onToggleCollapse?.(milestone.id)}
+                        style={styles.collapseButtonInline}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons 
+                          name={isCollapsed ? "chevron-forward" : "chevron-down"} 
+                          size={12} 
+                          color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                // Child milestone icon - Simple dot
+                <>
+                  <View style={[
+                    styles.iconFrame,
+                    {
+                      borderColor: isCompleted ? '#555' : iconBgColor,
+                    }
+                  ]}>
+                    <Pressable
+                      onLongPress={onStartDrag}
+                      delayLongPress={120}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons 
+                        name="ellipse" 
+                        size={10} 
+                        color={isCompleted ? "#555" : iconBgColor} 
+                      />
+                    </Pressable>
+                  </View>
+                </>
+              )}
             </View>
             <View style={styles.milestoneContent}>
               {editable ? (
@@ -391,14 +606,22 @@ function MileStone({
                   multiline={true}
                 />
               ) : (
-                <Text style={[
-                  styles.milestoneText, 
-                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
-                  isCompleted && styles.completedText
-                ]}>{title || ''}</Text>
+                <View style={styles.titleRow}>
+                  <Text 
+                    style={[
+                      styles.milestoneText, 
+                      { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
+                      isCompleted && styles.completedText
+                    ]}
+                    numberOfLines={3}
+                    ellipsizeMode="tail"
+                  >
+                    {title || ''}
+                  </Text>
+                </View>
               )}
               
-              {/* Date info - only show if not editable or if milestone has dates */}
+              {/* Date info - NO progress bar */}
               {(!editable || (startDate && endDate)) && (
                 <View style={styles.dateRowContainer}>
                   <Pressable
@@ -424,13 +647,12 @@ function MileStone({
                     ]}>{getDaysText() || ''}</Text>
                     {editable && <Ionicons name="chevron-down" size={14} color={theme.name === 'dark' ? '#8E8E93' : '#555'} />}
                   </Pressable>
-
                 </View>
               )}
             </View>
 
             {/* Edit Button - Top Right Corner */}
-            {!editable && !isCompleted && (
+            {!editable && !isCompleted && !isAttachMode && (
               <Pressable
                 style={({ pressed }) => [
                   styles.editButton,
@@ -475,7 +697,7 @@ function MileStone({
             style={[
               styles.actionButtonsContainer,
               {
-                backgroundColor: theme.name === 'dark' ? 'rgba(44, 44, 46, 0.95)' : 'rgba(248, 249, 250, 0.95)',
+                backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
                 opacity: deleteAnimation,
                 transform: [
                   {
@@ -488,7 +710,38 @@ function MileStone({
               },
             ]}
           >
-            {/* Complete/Reopen Button - LEFT */}
+            {/* Attach/Detach Button - LEFT */}
+            {milestone.parentId ? (
+              // Detach button for child milestones
+              <TouchableOpacity
+                style={[styles.themeButton, styles.detachButtonTheme]}
+                onPress={() => {
+                  hideDeleteOptionWithAnimation();
+                  onDetachMilestone?.();
+                }}
+              >
+                <View style={styles.buttonIconContainer}>
+                  <Ionicons name="unlink" size={16} color="#FF5722" />
+                </View>
+                <Text style={styles.themeButtonText}>{t('detach') || 'Detach'}</Text>
+              </TouchableOpacity>
+            ) : (
+              // Attach button for parent milestones
+              <TouchableOpacity
+                style={[styles.themeButton, styles.attachButtonTheme]}
+                onPress={() => {
+                  hideDeleteOptionWithAnimation();
+                  onStartAttachMode?.();
+                }}
+              >
+                <View style={styles.buttonIconContainer}>
+                  <Ionicons name="link" size={16} color="#FF9800" />
+                </View>
+                <Text style={styles.themeButtonText}>{t('attach') || 'Attach'}</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Complete/Reopen Button - MIDDLE */}
             {!isCompleted ? (
               <TouchableOpacity
                 style={[styles.themeButton, styles.completeButtonTheme]}
@@ -498,7 +751,7 @@ function MileStone({
                 }}
               >
                 <View style={styles.buttonIconContainer}>
-                  <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                  <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                 </View>
                 <Text style={styles.themeButtonText}>Complete</Text>
               </TouchableOpacity>
@@ -506,12 +759,26 @@ function MileStone({
               <TouchableOpacity
                 style={[styles.themeButton, styles.activeButtonTheme]}
                 onPress={() => {
+                  // SAFETY CHECK: If this is a child, check if parent is completed
+                  if (milestone.parentId && allMilestones) {
+                    const parent = allMilestones.find(ms => ms.id === milestone.parentId);
+                    if (parent?.completed) {
+                      Alert.alert(
+                        t('cannotReopenChild') || 'Cannot Reopen',
+                        t('parentMustBeActiveFirst') || `Parent milestone "${parent.title}" is completed. Please reopen the parent first.`,
+                        [{ text: t('ok') || 'OK', style: 'default' }]
+                      );
+                      hideDeleteOptionWithAnimation();
+                      return;
+                    }
+                  }
+                  
                   hideDeleteOptionWithAnimation();
                   onSetActive?.();
                 }}
               >
                 <View style={styles.buttonIconContainer}>
-                  <Ionicons name="play-circle" size={20} color="#2196F3" />
+                  <Ionicons name="play-circle" size={16} color="#2196F3" />
                 </View>
                 <Text style={styles.themeButtonText}>Reopen</Text>
               </TouchableOpacity>
@@ -523,7 +790,7 @@ function MileStone({
               onPress={handleDelete}
             >
               <View style={styles.buttonIconContainer}>
-                <Ionicons name="trash" size={20} color="#FF3B30" />
+                <Ionicons name="trash" size={16} color="#FF3B30" />
               </View>
               <Text style={styles.themeButtonText}>Delete</Text>
             </TouchableOpacity>
@@ -543,7 +810,7 @@ function MileStone({
             </TouchableOpacity>
           </Animated.View>
         )}
-        </View>
+        </Animated.View>
       </Pressable>
     
       <FlashCalendar
@@ -564,15 +831,26 @@ function areMilestonePropsEqual(prevProps, nextProps) {
   const next = nextProps;
   const prevMs = prev.milestone || {};
   const nextMs = next.milestone || {};
+  
+  // Check if children count changed for this milestone
+  const prevChildren = (prev.allMilestones || []).filter(m => m?.parentId === prevMs.id);
+  const nextChildren = (next.allMilestones || []).filter(m => m?.parentId === nextMs.id);
+  
   // Compare key fields that affect rendering
   const sameCore = (
     prevMs.id === nextMs.id &&
     prevMs.title === nextMs.title &&
     prevMs.startDate === nextMs.startDate &&
     prevMs.endDate === nextMs.endDate &&
+    prevMs.parentId === nextMs.parentId &&
     prev.isLatest === next.isLatest &&
     prev.isCompleted === next.isCompleted &&
     prev.isDragging === next.isDragging &&
+    prev.isAttachMode === next.isAttachMode &&
+    prev.isSelectableForAttach === next.isSelectableForAttach &&
+    prev.attachModeSourceId === next.attachModeSourceId &&
+    prev.isCollapsed === next.isCollapsed &&
+    prevChildren.length === nextChildren.length && // Children count changed
     (prev.currentTask?.id || null) === (next.currentTask?.id || null)
   );
   return sameCore;
@@ -582,23 +860,93 @@ export default memo(MileStone, areMilestonePropsEqual);
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8, // 16'dan 8'e düşürüldü
-    marginBottom: 0, // 10'dan 0'a düşürüldü
-    marginHorizontal: 28,
+    marginTop: 8,
+    marginBottom: 0,
+    overflow: 'hidden', // Prevent content overflow during animation
+    // marginLeft and marginRight are handled inline for equal spacing
   },
   milestoneItemClickable: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
+    alignItems: "flex-start",
+    paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 16,
-    height: 56,
+    minHeight: 52,
     justifyContent: 'flex-start',
+  },
+  parentMilestoneClickable: {
+    paddingVertical: 12, // Reduced vertical space for parent
+    minHeight: 60,
   },
   iconContainer: {
     width: 30,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    marginTop: 2,
+    flexDirection: 'column',
+    gap: 4,
+  },
+  parentIconContainer: {
+    width: 70, // Wider for larger icon
+    marginTop: 0,
+  },
+  parentIconWrapper: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  parentCalendarFrame: {
+    width: 50,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  largeCalendarIcon: {
+    position: 'absolute',
+  },
+  datesInsideCalendar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 3,
+    gap: 0,
+  },
+  startDateText: {
+    fontSize: 11,
+    fontFamily: FONTS.BOLD,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    lineHeight: 11,
+    marginTop: 4,
+  },
+  endDateText: {
+    fontSize: 7,
+    fontFamily: FONTS.MEDIUM,
+    letterSpacing: -0.2,
+    textAlign: 'center',
+    lineHeight: 8,
+    marginTop: 1,
+  },
+  badgeCollapseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  childBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 2,
+  },
+  collapseButtonInline: {
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: 'rgba(142, 142, 147, 0.1)',
   },
   iconGlowContainer: {
     width: 22,
@@ -624,12 +972,27 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     marginLeft: 8,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  childBadgeTextSmall: {
+    fontSize: 8,
+    fontFamily: FONTS.MEDIUM,
+    color: '#007AFF',
+    letterSpacing: -0.2,
+  },
   milestoneText: {
     fontFamily: FONTS.MEDIUM,
-    fontSize: 14,
-    lineHeight: 20,
-    letterSpacing: -0.1,
-    paddingRight: 50, // Edit tuşu için boşluk
+    fontSize: 13,
+    lineHeight: 18,
+    letterSpacing: -0.2,
+    paddingRight: 54, // Edit tuşu için boşluk
+    flexWrap: 'wrap',
+    flexShrink: 1,
+    flex: 1,
   },
   completedText: {
     color: "#888", // Daha soluk renk completed milestone'lar için
@@ -647,10 +1010,10 @@ const styles = StyleSheet.create({
   },
   timerIcon: { marginRight: 4 },
   daysText: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Poppins_400Regular",
     marginRight: 4,
-    lineHeight: 16,
+    lineHeight: 14,
   },
   completeBtn: {
     marginLeft: 12,
@@ -731,31 +1094,31 @@ const styles = StyleSheet.create({
   },
   createButton: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    top: 10,
+    right: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 5,
   },
   createButtonText: {
     fontFamily: "Poppins_600SemiBold",
-    fontSize: 12,
+    fontSize: 11,
     color: "#545454",
   },
   editButton: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    top: 10,
+    right: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 5,
   },
   editButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Poppins_600SemiBold",
   },
   // Günlük kartları container
@@ -786,25 +1149,32 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 60, // Sadece milestone header yüksekliği
+    bottom: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(248, 249, 250, 0.95)",
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     zIndex: 1000,
+    flexWrap: "nowrap",
   },
   themeButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 10,
-    marginHorizontal: 6,
-    minWidth: 80,
+    marginHorizontal: 4,
+    maxWidth: 100,
+  },
+  attachButtonTheme: {
+    backgroundColor: "#FFF3E0",
+    borderWidth: 1,
+    borderColor: "#FF9800",
   },
   completeButtonTheme: {
     backgroundColor: "#E8F5E8",
@@ -821,14 +1191,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FF3B30",
   },
+  detachButtonTheme: {
+    backgroundColor: "#FBE9E7",
+    borderWidth: 1,
+    borderColor: "#FF5722",
+  },
   buttonIconContainer: {
-    marginRight: 6,
+    marginRight: 4,
   },
   themeButtonText: {
-    fontSize: 13,
+    fontSize: 10,
     fontFamily: "Poppins_600SemiBold",
     color: "#1D1D1F",
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
   elegantCloseButton: {
     position: "absolute",
@@ -853,6 +1228,7 @@ MileStone.propTypes = {
     startDate: PropTypes.string,
     endDate: PropTypes.string,
     initialized: PropTypes.bool,
+    parentId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   onUpdate: PropTypes.func,
   onComplete: PropTypes.func,
@@ -864,7 +1240,16 @@ MileStone.propTypes = {
   onEditToggle: PropTypes.func,
   onOpenJournal: PropTypes.func,
   navigation: PropTypes.object,
-  currentTask: PropTypes.object, // Project bilgileri için
+  currentTask: PropTypes.object,
+  isAttachMode: PropTypes.bool,
+  isSelectableForAttach: PropTypes.bool,
+  onStartAttachMode: PropTypes.func,
+  onSelectForAttach: PropTypes.func,
+  onDetachMilestone: PropTypes.func,
+  attachModeSourceId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  allMilestones: PropTypes.array,
+  isCollapsed: PropTypes.bool,
+  onToggleCollapse: PropTypes.func,
 };
 
 MileStone.defaultProps = {
@@ -879,5 +1264,14 @@ MileStone.defaultProps = {
   onOpenJournal: null,
   navigation: null,
   currentTask: null,
+  isAttachMode: false,
+  isSelectableForAttach: false,
+  onStartAttachMode: null,
+  onSelectForAttach: null,
+  onDetachMilestone: null,
+  attachModeSourceId: null,
+  allMilestones: [],
+  isCollapsed: false,
+  onToggleCollapse: null,
 };
 

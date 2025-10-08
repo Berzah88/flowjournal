@@ -132,8 +132,7 @@ const MoodStatement = ({
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
           ]}>
             {todayMoodData.dominantMood ? 
-              t(`todayMood${todayMoodData.dominantMood.key.charAt(0).toUpperCase() + todayMoodData.dominantMood.key.slice(1)}`) || 
-              t('todayYouFeel') + ' ' + t(todayMoodData.dominantMood.key) :
+              `${t('todayYourMoodIs')} ${t(todayMoodData.dominantMood.key) || todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}${t('like') ? ' ' + t('like') : ''}` :
               t('howAreYouFeelingToday')
             }
           </Text>
@@ -148,7 +147,7 @@ const MoodStatement = ({
           ]}>
             {todayMoodData.totalEntries > 0 ? 
               t('viewMoreDetails') :
-              t('clickMilestoneStartWriting')
+              t('startJournalingToday') || 'Bugünü kaydetmeye başlayın'
             }
           </Text>
         </View>

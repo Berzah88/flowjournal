@@ -56,9 +56,7 @@ const MoodTags = memo(({ project, theme }) => {
             style={[
               styles.moodTag, 
               { 
-                backgroundColor: theme.name === 'dark' 
-                  ? backgroundColor + 'CC' // Add transparency for dark mode
-                  : backgroundColor,
+                backgroundColor: backgroundColor, // Same color for both themes
                 borderColor: theme.name === 'dark' 
                   ? 'rgba(255, 255, 255, 0.2)' 
                   : 'rgba(0, 0, 0, 0.1)',
@@ -313,41 +311,74 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
       {/* Milestones Listesi - Sadece active projeler için göster */}
       {!completed && activeMilestones.length > 0 && (
         <View style={styles.milestoneList}>
-          {activeMilestones.map((ms, index) => {
-            return (
-              <View key={ms.id}>
-                <View 
-                  style={[
-                    styles.milestoneItemClickable,
-                    {
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 122, 255, 0.04)',
-                      borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
-                      borderWidth: theme.name === 'dark' ? 0.5 : 0,
-                    },
-                    completed && styles.completedMilestoneItem,
-                  ]}
-                >
-                  <View style={styles.iconContainer}>
-                    <Ionicons 
-                      name={ms.completed ? "checkmark-circle" : "ellipse"} 
-                      size={18} 
-                      color={ms.completed ? "#636366" : getMilestoneColor(ms)} 
-                    />
-                  </View>
-                  <View style={styles.milestoneContent}>
-                    <Text style={[
-                      styles.milestoneText, 
-                      { color: theme.name === 'dark' ? '#FFFFFF' : theme.colors.text },
-                      completed ? styles.completedMilestoneText : {},
-                      ms.completed ? { opacity: 0.9 } : {}
-                    ]}>
-                      {ms.title || t('untitled')}
-                    </Text>
+          {(() => {
+            // Organize milestones hierarchically
+            const organized = [];
+            const childrenMap = {};
+            
+            // Group children by parent
+            activeMilestones.forEach(ms => {
+              if (ms.parentId) {
+                if (!childrenMap[ms.parentId]) {
+                  childrenMap[ms.parentId] = [];
+                }
+                childrenMap[ms.parentId].push(ms);
+              }
+            });
+            
+            // Add parents and their children
+            activeMilestones.forEach(ms => {
+              if (!ms.parentId) {
+                organized.push(ms);
+                // Add children right after parent
+                if (childrenMap[ms.id]) {
+                  organized.push(...childrenMap[ms.id]);
+                }
+              }
+            });
+            
+            return organized.map((ms, index) => {
+              const isChild = !!ms.parentId;
+              const children = activeMilestones.filter(m => m.parentId === ms.id);
+              const hasChildren = children.length > 0;
+              const completedChildren = children.filter(m => m.completed).length;
+              
+              return (
+                <View key={ms.id}>
+                  <View 
+                    style={[
+                      styles.milestoneItemClickable,
+                      {
+                        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 122, 255, 0.04)',
+                        borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
+                        borderWidth: theme.name === 'dark' ? 0.5 : 0,
+                        marginLeft: isChild ? 20 : 0, // Indent for children
+                      },
+                      completed && styles.completedMilestoneItem,
+                    ]}
+                  >
+                    <View style={styles.iconContainer}>
+                      <Ionicons 
+                        name={ms.completed ? "checkmark-circle" : "ellipse"} 
+                        size={18} 
+                        color={ms.completed ? "#636366" : getMilestoneColor(ms)} 
+                      />
+                    </View>
+                    <View style={styles.milestoneContent}>
+                      <Text style={[
+                        styles.milestoneText, 
+                        { color: theme.name === 'dark' ? '#FFFFFF' : theme.colors.text },
+                        completed ? styles.completedMilestoneText : {},
+                        ms.completed ? { opacity: 0.9 } : {}
+                      ]}>
+                        {ms.title || t('untitled')}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            });
+          })()}
         </View>
       )}
     </Pressable>
@@ -360,6 +391,42 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
       prevProps.endDate !== nextProps.endDate ||
       prevProps.completed !== nextProps.completed) {
     return false; // Re-render needed
+  }
+  
+  // Check task object - important for detecting parentId changes
+  const prevTask = prevProps.task;
+  const nextTask = nextProps.task;
+  
+  if (prevTask && nextTask) {
+    const prevTaskMilestones = prevTask.milestones || [];
+    const nextTaskMilestones = nextTask.milestones || [];
+    
+    if (prevTaskMilestones.length !== nextTaskMilestones.length) {
+      return false; // Re-render needed
+    }
+    
+    // Create ID-based map to check parentId changes (order-independent)
+    const prevParentIdMap = {};
+    const nextParentIdMap = {};
+    
+    prevTaskMilestones.forEach(ms => {
+      if (ms && ms.id) {
+        prevParentIdMap[ms.id] = ms.parentId;
+      }
+    });
+    
+    nextTaskMilestones.forEach(ms => {
+      if (ms && ms.id) {
+        nextParentIdMap[ms.id] = ms.parentId;
+      }
+    });
+    
+    // Check if any milestone's parentId changed
+    for (const id in prevParentIdMap) {
+      if (prevParentIdMap[id] !== nextParentIdMap[id]) {
+        return false; // Re-render needed - parentId changed!
+      }
+    }
   }
   
   // Check milestones length (fast)
@@ -377,10 +444,11 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
     
     if (!prev || !next) return false;
     
-    // Check basic milestone properties
+    // Check basic milestone properties including parentId
     if (prev.id !== next.id ||
         prev.title !== next.title ||
-        prev.completed !== next.completed) {
+        prev.completed !== next.completed ||
+        prev.parentId !== next.parentId) {
       return false; // Re-render needed
     }
     

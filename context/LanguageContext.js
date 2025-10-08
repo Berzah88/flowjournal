@@ -64,6 +64,12 @@ const translations = {
     'deleteMilestoneConfirm': 'Delete milestone?',
     'journey': 'Journey',
     'moodCalendar': 'Mood Calendar',
+    'attach': 'Attach',
+    'detach': 'Detach',
+    'selectParentMilestone': 'Select Parent Milestone',
+    'noAvailableMilestones': 'No available milestones',
+    'cannotReopenChild': 'Cannot Reopen',
+    'parentMustBeActiveFirst': 'Parent milestone is completed. Please reopen the parent first.',
     
     // Welcome Screen
     'appName': 'Flow Journal',
@@ -111,8 +117,11 @@ const translations = {
     
     // Mood Statement
     'todayYouFeel': 'Today you feel',
+    'todayYourMoodIs': "Today you're feeling",
+    'like': '',
     'viewMoreDetails': 'View more details',
     'clickMilestoneStartWriting': 'Click on a Milestone right away and start writing your journal',
+    'startJournalingToday': 'Start journaling today',
     
     // Project Analyzer
     'projectAnalyzer': 'Project Analyzer',
@@ -709,6 +718,12 @@ const translations = {
     'deleteMilestoneConfirm': 'Görevi silmek istiyor musunuz?',
     'journey': 'Günlük',
     'moodCalendar': 'Mood Takvimi',
+    'attach': 'İlişkilendir',
+    'detach': 'İlişkiyi Kaldır',
+    'selectParentMilestone': 'Ana Görev Seçin',
+    'noAvailableMilestones': 'Uygun görev yok',
+    'cannotReopenChild': 'Yeniden Açılamaz',
+    'parentMustBeActiveFirst': 'Ana görev tamamlanmış durumda. Lütfen önce ana görevi yeniden açın.',
     
     // Welcome Screen
     'appName': 'Flow Journal',
@@ -756,8 +771,11 @@ const translations = {
     
     // Mood Statement
     'todayYouFeel': 'Bugün',
+    'todayYourMoodIs': 'Bugün moodunuz biraz',
+    'like': 'gibi',
     'viewMoreDetails': 'Daha fazla detay görüntüle',
     'clickMilestoneStartWriting': 'Hemen bir Kilometre Taşına tıklayın ve günlüğünüzü yazmaya başlayın',
+    'startJournalingToday': 'Bugünü kaydetmeye başlayın',
     
     // Project Analyzer
     'projectAnalyzer': 'Proje Analizörü',

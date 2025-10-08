@@ -74,7 +74,11 @@ function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator 
         initialRouteName={initialRoute}
-        screenOptions={{ headerShown: false }}
+        screenOptions={{ 
+          headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 320,
+        }}
       >
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Tutorial" component={TutorialScreen} />

@@ -13,6 +13,7 @@ import {
   ScrollView,
   Image,
   BackHandler,
+  Alert,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -207,7 +208,7 @@ export default function Journal({
       }
     }
     return null;
-  }, [locationData]);
+  }, [locationData, currentLocation]);
   
   // Location text'i güncelle
   useEffect(() => {
@@ -216,7 +217,8 @@ export default function Journal({
     } else {
       setLocationText(null);
     }
-  }, [locationData, currentLocation, getLocationText]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationData, currentLocation]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
@@ -506,10 +508,23 @@ export default function Journal({
   const pickLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      
       if (status !== "granted") {
+        Alert.alert(
+          t('permissionRequired') || 'Permission Required',
+          t('locationPermissionMessage') || 'Location permission is required to add your location to the journal.',
+          [{ text: t('ok') || 'OK' }]
+        );
         return;
       }
-      const loc = await Location.getCurrentPositionAsync({});
+      
+      // Optimized location request - faster response with reasonable accuracy
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced, // Faster than high accuracy
+        maximumAge: 10000, // Accept cached location up to 10 seconds old
+        timeout: 5000, // 5 second timeout instead of default 15
+      });
+      
       // Location'ı hem currentLocation state'ine hem de previews'e ekle
       setCurrentLocation(loc);
       
@@ -520,7 +535,12 @@ export default function Journal({
         return [...filteredPreviews, { type: "map", content: loc }];
       });
     } catch (error) {
-      // User'a error gösterme - sessizce logla
+      console.error('Error in pickLocation:', error);
+      Alert.alert(
+        t('error') || 'Error',
+        t('locationError') || 'Could not get your location. Please try again.',
+        [{ text: t('ok') || 'OK' }]
+      );
     }
   };
 
@@ -716,11 +736,11 @@ export default function Journal({
       <Animated.View style={[dynamicStyles.modalContainer, modalStyle]}>
         <LinearGradient
           colors={theme.name === 'dark' 
-            ? ['#1A1A1A', theme.colors.gray[50], theme.colors.gray[100]] 
-            : ['#f8f9fa', '#ffffff', '#f1f3f4']}
+            ? ['#1C1C1E', '#1A1A1C', '#18181A'] 
+            : ['#FFFFFF', '#F8F9FA', '#F0F2F5']}
           style={styles.gradientBackground}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          end={{ x: 0, y: 1 }}
         >
           <GestureDetector gesture={panGesture}>
             <View style={styles.topSpacer} />
@@ -744,11 +764,9 @@ export default function Journal({
                   <View style={[
                     styles.moodTag, 
                     { 
-                      backgroundColor: theme.name === 'dark' 
-                        ? (selectedMood.color || "transparent") + 'CC' // Add transparency for dark mode
-                        : selectedMood.color || "transparent",
+                      backgroundColor: selectedMood.color || "transparent", // Same color for both themes
                       borderColor: theme.name === 'dark' 
-                        ? 'rgba(255, 255, 255, 0.3)' 
+                        ? 'rgba(255, 255, 255, 0.15)' 
                         : 'rgba(0, 0, 0, 0.1)'
                     }
                   ]}>
@@ -815,11 +833,9 @@ export default function Journal({
                       style={[
                         styles.moodTag,
                         { 
-                          backgroundColor: theme.name === 'dark' 
-                            ? (suggestedMood?.color || '#4A90E2') + 'CC' // Add transparency for dark mode
-                            : suggestedMood?.color || '#4A90E2',
+                          backgroundColor: suggestedMood?.color || '#4A90E2', // Same color for both themes
                           borderColor: theme.name === 'dark' 
-                            ? 'rgba(255, 255, 255, 0.3)' 
+                            ? 'rgba(255, 255, 255, 0.15)' 
                             : 'rgba(0, 0, 0, 0.1)',
                           borderWidth: 1,
                           zIndex: 15,
@@ -878,13 +894,13 @@ export default function Journal({
                    height: Math.max(150, (modalHeight - (keyboardHeight || 0)) * 0.5), // 50% of available space (50% margin bottom)
                   minHeight: 150,
                   backgroundColor: 'transparent',
-                  color: theme.name === 'dark' ? theme.colors.gray[400] : '#1d1d1f',
+                  color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
                 }
               ]}
               placeholder={(milestone?.title ? milestone.title + ": " : "") + t('writeYourThoughts')}
               multiline
               underlineColorAndroid="transparent"
-              placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
+              placeholderTextColor={theme.name === 'dark' ? '#6E6E73' : '#999'}
               textAlignVertical="top"
               editable={true}
                scrollEnabled={true}
@@ -905,12 +921,12 @@ export default function Journal({
                   styles.moodPicker, 
                   { 
                     bottom: keyboardHeight ? keyboardHeight + 90 : 106,
-                    backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#ffffff',
-                    borderColor: theme.name === 'dark' ? '#2C2C2E' : '#e0e0e0',
+                    backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
+                    borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
                     shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-                    shadowOpacity: theme.name === 'dark' ? 0.5 : 0.12,
-                    shadowRadius: theme.name === 'dark' ? 15 : 12,
-                    elevation: theme.name === 'dark' ? 15 : 10,
+                    shadowOpacity: theme.name === 'dark' ? 0.6 : 0.1,
+                    shadowRadius: theme.name === 'dark' ? 20 : 12,
+                    elevation: theme.name === 'dark' ? 20 : 8,
                   }
                 ]}
                 onStartShouldSetResponder={() => true}
@@ -945,11 +961,9 @@ export default function Journal({
                       <View style={[
                         styles.moodIconWrap, 
                         { 
-                          backgroundColor: theme.name === 'dark' 
-                            ? m.color + 'CC' // Add transparency for dark mode
-                            : m.color,
+                          backgroundColor: m.color, // Same color for both themes
                           borderColor: theme.name === 'dark' 
-                            ? 'rgba(255, 255, 255, 0.2)' 
+                            ? 'rgba(255, 255, 255, 0.15)' 
                             : 'rgba(0, 0, 0, 0.1)',
                           borderWidth: 1
                         }
@@ -977,8 +991,8 @@ export default function Journal({
             { 
               bottom: fromActiveProject ? (keyboardHeight || 0) + 20 : (keyboardHeight || 0), 
               marginBottom: 15,
-              backgroundColor: theme.name === 'dark' ? theme.colors.gray[200] : 'rgba(248, 249, 250, 0.95)',
-              borderTopColor: theme.name === 'dark' ? theme.colors.gray[300] : 'rgba(0,0,0,0.1)',
+              backgroundColor: theme.name === 'dark' ? 'rgba(44, 44, 46, 0.95)' : 'rgba(248, 249, 250, 0.95)',
+              borderTopColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             }
           ]}>
             {buttons.map((btn, i) => (
@@ -987,12 +1001,12 @@ export default function Journal({
                 style={[
                   styles.button,
                   {
-                    backgroundColor: theme.name === 'dark' ? theme.colors.gray[100] : '#ffffff',
-                    borderColor: theme.name === 'dark' ? theme.colors.gray[200] : '#e0e0e0',
-                    shadowColor: theme.name === 'dark' ? theme.colors.gray[50] : '#000',
-                    shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
-                    shadowRadius: theme.name === 'dark' ? 12 : 6,
-                    elevation: theme.name === 'dark' ? 8 : 4,
+                    backgroundColor: theme.name === 'dark' ? '#3A3A3C' : '#FFFFFF',
+                    borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+                    shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                    shadowOpacity: theme.name === 'dark' ? 0.4 : 0.08,
+                    shadowRadius: theme.name === 'dark' ? 15 : 8,
+                    elevation: theme.name === 'dark' ? 12 : 4,
                   }
                 ]}
                 activeOpacity={0.85}

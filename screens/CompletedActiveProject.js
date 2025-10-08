@@ -430,6 +430,7 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
             }} 
             onSave={handleSaveMilestone}
             editingMilestone={editingMilestone}
+            existingMilestones={allMilestones}
           />
         </View>
         </LinearGradient>

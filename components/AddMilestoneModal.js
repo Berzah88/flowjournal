@@ -27,7 +27,7 @@ import { useLanguage } from "../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
-export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null }) {
+export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null, existingMilestones = [] }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const [title, setTitle] = useState("");
@@ -201,6 +201,33 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     setIsSelectingRange(true);
   };
 
+  // Check if a date is part of any existing milestone (excluding the one being edited)
+  const isDateInMilestone = (date) => {
+    if (!existingMilestones || existingMilestones.length === 0) return false;
+    
+    return existingMilestones.some(milestone => {
+      // Skip the milestone being edited
+      if (editingMilestone && milestone.id === editingMilestone.id) return false;
+      
+      if (!milestone.startDate || !milestone.endDate) return false;
+      
+      const milestoneStart = new Date(milestone.startDate);
+      const milestoneEnd = new Date(milestone.endDate);
+      
+      // Set to start of day for comparison
+      milestoneStart.setHours(0, 0, 0, 0);
+      milestoneEnd.setHours(0, 0, 0, 0);
+      const checkDate = new Date(date);
+      checkDate.setHours(0, 0, 0, 0);
+      
+      const dateTime = checkDate.getTime();
+      const startTime = milestoneStart.getTime();
+      const endTime = milestoneEnd.getTime();
+      
+      return dateTime >= startTime && dateTime <= endTime;
+    });
+  };
+
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(currentMonth);
     const firstDay = getFirstDayOfMonth(currentMonth);
@@ -219,6 +246,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
       const isStartDate = startDate && isSameDay(dayDate, startDate);
       const isEndDate = endDate && isSameDay(dayDate, endDate);
       const isInRange = isDateInRange(dayDate, startDate, endDate);
+      const isInExistingMilestone = isDateInMilestone(dayDate);
       
       days.push(
         <TouchableOpacity
@@ -229,7 +257,11 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
             isToday && !isSelected && !isInRange && styles.todayDay,
             isStartDate && styles.rangeStartDay,
             isEndDate && styles.rangeEndDay,
-            isInRange && !isStartDate && !isEndDate && styles.rangeDay
+            isInRange && !isStartDate && !isEndDate && styles.rangeDay,
+            isInExistingMilestone && !isInRange && !isStartDate && !isEndDate && {
+              backgroundColor: theme.name === 'dark' ? '#3A3A3C' : '#5AC8FA',
+              borderRadius: 16,
+            }
           ]}
           onPress={() => handleDayPress(dayDate)}
           onLongPress={() => handleDayLongPress(dayDate)}
@@ -240,7 +272,12 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
             isSelected && !startDate && !endDate && styles.selectedDayText,
             isToday && !isSelected && !isInRange && styles.todayDayText,
             (isStartDate || isEndDate) && styles.rangeEndDayText,
-            isInRange && !isStartDate && !isEndDate && styles.rangeDayText
+            isInRange && !isStartDate && !isEndDate && styles.rangeDayText,
+            isInExistingMilestone && !isInRange && !isStartDate && !isEndDate && {
+              color: '#FFFFFF',
+              fontFamily: FONTS.SEMIBOLD,
+              fontSize: 13,
+            }
           ]}>
             {day}
           </Text>
@@ -627,4 +664,5 @@ const styles = StyleSheet.create({
     color: '#5AC8FA', // Soft Apple mavi
     fontFamily: FONTS.MEDIUM,
   },
+  // Note: existingMilestoneDay and existingMilestoneDayText are now inline for theme support
 });

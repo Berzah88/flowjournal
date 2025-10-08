@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Anim
 import { Ionicons } from "@expo/vector-icons";
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import EditModal from "../components/EditModal";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
@@ -27,6 +28,7 @@ const { width, height } = Dimensions.get("window");
 export default function ActiveProject({ selectedCard, onClose, setMainActiveTab, navigation }) {
   const tasks = useTasks();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const {
     deleteTask,
     completeTask,
@@ -36,6 +38,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     setActiveMilestone,
     deleteMilestone,
     updateTask,
+    attachMilestone,
+    detachMilestone,
   } = useTaskActions();
 
   const [menuVisible, setMenuVisible] = useState(false);
@@ -55,6 +59,9 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   // Horizontal tab switching animations (like MainScreen)
   const panX = useRef(new Animated.Value(0)).current;
   const offsetRef = useRef(0);
+  
+  // Use ref for isModalOpen to avoid closure issues in PanResponder
+  const isModalOpenRef = useRef(false);
 
   // Reset editing milestone when modal closes
   useEffect(() => {
@@ -100,15 +107,21 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   
   
 
-  // Get current task - NO MEMOIZATION to ensure updates
-  const currentTask = tasks.find((t) => t.id === selectedCard?.id) || selectedCard;
+  // Memoize current task for performance
+  const currentTask = useMemo(() => 
+    tasks.find((t) => t.id === selectedCard?.id) || selectedCard,
+    [tasks, selectedCard?.id]
+  );
   
   if (!currentTask) return null;
 
   const isCompleted = currentTask?.done;
-  const start = currentTask?.startDate ? new Date(currentTask.startDate) : null;
-  const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
   const isModalOpen = !!(editVisible || selectedMilestone || selectedJournalMilestone || addMilestoneModalVisible);
+  
+  // Update ref when modal state changes
+  useEffect(() => {
+    isModalOpenRef.current = isModalOpen;
+  }, [isModalOpen]);
 
 
 
@@ -116,6 +129,12 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
   const dragY = useSharedValue(0);
+  const isModalOpenShared = useSharedValue(false);
+  
+  // Update shared value when modal state changes
+  useEffect(() => {
+    isModalOpenShared.value = isModalOpen;
+  }, [isModalOpen, isModalOpenShared]);
   
   // Cleanup refs for memory leak prevention
   const animationCleanupRef = useRef([]);
@@ -125,7 +144,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => {
         // only start when horizontal movement dominant and no modals open
-        return !isModalOpen && Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
+        return !isModalOpenRef.current && Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
       },
       onPanResponderGrant: () => {
         // prepare to track delta relative to committed offset
@@ -170,6 +189,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   ).current;
 
   useEffect(() => {
+    // Smooth opening animation like Journal screen
     translateY.value = withTiming(0, { duration: 320 });
     scale.value = withTiming(1, { duration: 320 });
     opacity.value = withTiming(1, { duration: 320 });
@@ -267,6 +287,15 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     setAddMilestoneModalVisible(true);
   }, []);
 
+  // Pre-create dummy milestone for better performance
+  const dummyMilestone = useMemo(() => ({
+    id: 'project-journal',
+    title: t('projectJournal'),
+    taskId: currentTask?.id,
+    projectTitle: currentTask?.title,
+    isProjectBased: true
+  }), [currentTask?.id, currentTask?.title, t]);
+
   const handleOpenJournal = useCallback((milestoneOrEntry) => {
     if (milestoneOrEntry) {
       // Check if it's a journal entry (has text, createdAt, etc.) or a milestone
@@ -283,16 +312,10 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
         setSelectedJournalMilestone(milestoneData);
       }
     } else {
-      // Creating new journal entry - create a dummy milestone for project-based journal
-      const dummyMilestone = {
-        id: 'project-journal',
-        title: t('projectJournal'),
-        taskId: currentTask?.id,
-        isProjectBased: true
-      };
+      // Creating new journal entry - use pre-created dummy milestone
       setSelectedJournalMilestone(dummyMilestone);
     }
-  }, [currentTask]);
+  }, [currentTask?.id, currentTask?.title, dummyMilestone]);
 
   const handleSaveMilestone = useCallback((milestoneData) => {
     if (!currentTask?.id) return;
@@ -351,14 +374,13 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
 
 
   const panGesture = Gesture.Pan()
-    .enabled(!isModalOpen)
     .onUpdate((e) => {
-      if (!isModalOpen && e.translationY > 0 && e.y <= 120) {
+      if (!isModalOpenShared.value && e.translationY > 0 && e.y <= 120) {
         dragY.value = e.translationY;
       }
     })
     .onEnd((e) => {
-      if (isModalOpen) {
+      if (isModalOpenShared.value) {
         dragY.value = withTiming(0, { duration: 150 });
         return;
       }
@@ -372,7 +394,10 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value + dragY.value }, { scale: scale.value }],
+    transform: [
+      { translateY: translateY.value + dragY.value },
+      { scale: scale.value }
+    ],
     opacity: opacity.value,
   }));
 
@@ -388,11 +413,47 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     animateToTab(newTab);
   }, [activeTab, animateToTab]);
 
-  // Milestone calculations - NO MEMOIZATION to ensure updates
-  const allMilestones = [...(currentTask?.milestones || [])].sort((a, b) => a.id - b.id);
+  // Memoize milestone calculations for performance
+  const allMilestones = useMemo(() => 
+    [...(currentTask?.milestones || [])].sort((a, b) => a.id - b.id),
+    [currentTask?.milestones, refreshKey]
+  );
   
-  const completedMilestones = allMilestones.filter((m) => m.completed);
-  const activeMilestones = allMilestones.filter((m) => !m.completed);
+  const completedMilestones = useMemo(() => {
+    // Completed section: 
+    // 1. Completed parent milestones (standalone)
+    // 2. Children whose parent is completed
+    return allMilestones.filter((m) => {
+      // Standalone milestone that is completed
+      if (!m.parentId && m.completed) return true;
+      
+      // Child milestone whose parent is completed
+      if (m.parentId) {
+        const parent = allMilestones.find(p => p.id === m.parentId);
+        return parent?.completed || false;
+      }
+      
+      return false;
+    });
+  }, [allMilestones]);
+  
+  const activeMilestones = useMemo(() => {
+    // Active section:
+    // 1. Active parent milestones (standalone)
+    // 2. All children whose parent is active (even if child is completed - shown in grey)
+    return allMilestones.filter((m) => {
+      // Standalone milestone that is active
+      if (!m.parentId && !m.completed) return true;
+      
+      // Child milestone whose parent is active
+      if (m.parentId) {
+        const parent = allMilestones.find(p => p.id === m.parentId);
+        return parent && !parent.completed;
+      }
+      
+      return false;
+    });
+  }, [allMilestones]);
 
   return (
     <AnimatedReanimated.View style={[
@@ -470,6 +531,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                   }}
                   onAddMilestone={handleAddMilestone}
                   onOpenJournal={handleOpenJournal}
+                  onAttachMilestone={attachMilestone}
                   navigation={navigation}
                   refreshKey={refreshKey}
                 />
@@ -481,8 +543,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                   currentTask={currentTask}
                   onOpenJournal={handleOpenJournal}
                   navigation={navigation}
-                  availableMilestones={allMilestones} // AI analizi için milestone'ları geç
-                  refreshKey={refreshKey} // Refresh trigger
+                  availableMilestones={allMilestones}
+                  refreshKey={refreshKey}
                 />
               </View>
             </Animated.View>
@@ -522,6 +584,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 }} 
                 onSave={handleSaveMilestone}
                 editingMilestone={editingMilestone}
+                existingMilestones={allMilestones}
               />
           
         </View>

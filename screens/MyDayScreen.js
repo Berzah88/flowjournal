@@ -506,54 +506,112 @@ const MyDayScreen = memo(function MyDayScreen({
                 ]}>{t('milestone')}</Text>
               </TouchableOpacity>
               
-              {project.milestones && (project.milestones.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length > 0 || project.milestones.some(m => completingMilestones.has(`${project.id}-${m.id}`))) && (
+              {project.milestones && project.milestones.length > 0 && (
                 <View style={styles.milestonesList}>
-                  {project.milestones.filter(m => (!m.completed && isMilestoneActiveToday(m, selectedDate)) || completingMilestones.has(`${project.id}-${m.id}`)).map((milestone, index) => {
-                    const milestoneKey = `${project.id}-${milestone.id}`;
-                    const isCompleting = completingMilestones.has(milestoneKey);
-                    const isOverdue = isMilestoneOverdue(milestone, selectedDate);
-                    const isLastDay = isMilestoneLastDay(milestone, selectedDate);
-                    
-                    return (
-                    <TouchableOpacity 
-                      key={milestone.id || index}
-                      style={styles.milestoneItem}
-                      onPress={() => openMilestone(milestone, project)}
-                      onLongPress={() => {
-                        if (!milestone.completed) {
-                          handleMilestoneComplete(milestone, project);
+                  {(() => {
+                    // NEW FILTERING LOGIC: Show active milestones with parent-child hierarchy
+                    const filteredMilestones = project.milestones.filter(m => {
+                      // Always show if completing
+                      if (completingMilestones.has(`${project.id}-${m.id}`)) return true;
+                      
+                      // Don't show completed milestones
+                      if (m.completed) return false;
+                      
+                      // If milestone is a child
+                      if (m.parentId) {
+                        const parent = project.milestones.find(p => p.id === m.parentId);
+                        // Show child only if parent is active
+                        if (parent && !parent.completed) {
+                          return isMilestoneActiveToday(m, selectedDate);
                         }
-                      }}
-                      activeOpacity={0.7}
-                      delayLongPress={500}
-                    >
-                      <View style={styles.milestoneInfo}>
-                        <Ionicons 
-                          name="ellipse" 
-                          size={18} 
-                          color={getMilestoneColor(milestone, theme.name)} 
-                        />
-                        <View style={styles.milestoneContent}>
-                          <View style={styles.milestoneTextContainer}>
-                            <Text style={[
-                              styles.milestoneText,
-                              {
-                                color: theme.name === 'dark' ? '#FFFFFF' : '#1976D2',
-                              },
-                              milestone.completed && styles.completedMilestoneText,
-                              isCompleting && styles.completingMilestoneText,
-                              isOverdue && styles.overdueMilestoneText,
-                              isLastDay && styles.lastDayMilestoneText
-                            ]}>
-                              {milestone.title || ''}
-                            </Text>
+                        // Don't show child if parent is completed
+                        return false;
+                      }
+                      
+                      // If milestone is a parent or standalone
+                      // Show if active and within date range
+                      return isMilestoneActiveToday(m, selectedDate);
+                    });
+                    
+                    // Organize hierarchically
+                    const organized = [];
+                    const childrenMap = {};
+                    
+                    // Group children by parent
+                    filteredMilestones.forEach(ms => {
+                      if (ms.parentId) {
+                        if (!childrenMap[ms.parentId]) {
+                          childrenMap[ms.parentId] = [];
+                        }
+                        childrenMap[ms.parentId].push(ms);
+                      }
+                    });
+                    
+                    // Add parents and their children in hierarchical order
+                    filteredMilestones.forEach(ms => {
+                      if (!ms.parentId) {
+                        organized.push(ms);
+                        // Add children right after parent
+                        if (childrenMap[ms.id]) {
+                          organized.push(...childrenMap[ms.id]);
+                        }
+                      }
+                    });
+                    
+                    return organized.map((milestone, index) => {
+                      const milestoneKey = `${project.id}-${milestone.id}`;
+                      const isCompleting = completingMilestones.has(milestoneKey);
+                      const isOverdue = isMilestoneOverdue(milestone, selectedDate);
+                      const isLastDay = isMilestoneLastDay(milestone, selectedDate);
+                      const isChild = !!milestone.parentId;
+                      const children = project.milestones.filter(m => m.parentId === milestone.id);
+                      const hasChildren = children.length > 0;
+                      const completedChildren = children.filter(m => m.completed).length;
+                      
+                      return (
+                      <TouchableOpacity 
+                        key={milestone.id || index}
+                        style={[
+                          styles.milestoneItem,
+                          { marginLeft: isChild ? 20 : 0 }
+                        ]}
+                        onPress={() => openMilestone(milestone, project)}
+                        onLongPress={() => {
+                          if (!milestone.completed) {
+                            handleMilestoneComplete(milestone, project);
+                          }
+                        }}
+                        activeOpacity={0.7}
+                        delayLongPress={500}
+                      >
+                        <View style={styles.milestoneInfo}>
+                          <Ionicons 
+                            name="ellipse" 
+                            size={18} 
+                            color={getMilestoneColor(milestone, theme.name)} 
+                          />
+                          <View style={styles.milestoneContent}>
+                            <View style={styles.milestoneTextContainer}>
+                              <Text style={[
+                                styles.milestoneText,
+                                {
+                                  color: theme.name === 'dark' ? '#FFFFFF' : '#1976D2',
+                                },
+                                milestone.completed && styles.completedMilestoneText,
+                                isCompleting && styles.completingMilestoneText,
+                                isOverdue && styles.overdueMilestoneText,
+                                isLastDay && styles.lastDayMilestoneText
+                              ]}>
+                                {milestone.title || ''}
+                              </Text>
+                            </View>
+                            {/* Mood stickers removed */}
                           </View>
-                          {/* Mood stickers removed */}
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                    );
-                  })}
+                      </TouchableOpacity>
+                      );
+                    });
+                  })()}
                 </View>
               )}
 

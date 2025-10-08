@@ -1,13 +1,11 @@
 // components/ActiveProjectMilestones.js
-import React, { memo, useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, UIManager, InteractionManager } from 'react-native';
+import React, { memo, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import MileStone from './MileStone';
 import CompletedMilestonesList from './CompletedMilestonesList';
-import DraggableFlatList from 'react-native-draggable-flatlist';
-import { useTaskActions } from '../hooks/useTaskContext';
 
 function ActiveProjectMilestones({
   currentTask,
@@ -23,102 +21,99 @@ function ActiveProjectMilestones({
   onEditToggle,
   onAddMilestone,
   onOpenJournal,
+  onAttachMilestone,
   navigation,
   refreshKey
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  const { updateTask } = useTaskActions();
-  // Debug flags
-  const SHOULD_PERSIST_AFTER_DROP = false; // set true after verifying jitter source
+  
+  // Attach mode state
+  const [attachMode, setAttachMode] = useState(null); // null veya { milestoneId: string }
+  
+  // Collapse/expand state
+  const [collapsedMilestones, setCollapsedMilestones] = useState(new Set());
 
-  // Stable cell renderer to avoid re-renders of unaffected rows
-  const StableCell = useCallback(({ children, ...rest }) => (
-    <View {...rest}>{children}</View>
-  ), []);
-
-  // Local reorderable state for active milestones
-  const [activeList, setActiveList] = useState([]);
-  const [isDraggingAny, setIsDraggingAny] = useState(false);
-  const lastOrderRef = React.useRef([]);
-  const heightsRef = React.useRef({});
-  const [draggingId, setDraggingId] = useState(null);
-
-  // Enable LayoutAnimation on Android for smoother drops
-  useEffect(() => {
-    try {
-      if (Platform.OS === 'android' && UIManager?.setLayoutAnimationEnabledExperimental) {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    // Map without isLatest; compute it at render-time to avoid post-drop mismatches
-    const mapped = activeMilestones.map((milestone, index) => ({
+  // Prepare active milestones data with hierarchy
+  const activeMilestonesWithLatest = useMemo(() => {
+    const milestones = activeMilestones.map((milestone, index) => ({
       ...milestone,
       taskId: currentTask.id,
       title: milestone.title || '',
       id: milestone.id || `active-${index}`
     }));
-    setActiveList(mapped);
-    lastOrderRef.current = mapped.map(m => m.id);
-  }, [activeMilestones, currentTask?.id, refreshKey]);
-  const activeMilestonesWithLatest = activeList;
-
-  const completedMilestonesWithLatest = completedMilestones.map((milestone, index) => ({
-    ...milestone,
-    taskId: currentTask.id,
-    isLatest: index === completedMilestones.length - 1,
-    title: milestone.title || '',
-    id: milestone.id || `completed-${index}`
-  }));
-
-  const handleDragEnd = useCallback(({ data, from, to }) => {
-    // Compute new active order ids
-    const reorderedIds = data.map(m => m.id);
-    const prevIds = lastOrderRef.current;
-
-    // Skip updates if order didn't actually change to prevent jitter
-    const isSameOrder = prevIds.length === reorderedIds.length && prevIds.every((id, i) => id === reorderedIds[i]);
-
-    // Let the current frame finish
-    requestAnimationFrame(() => setIsDraggingAny(false));
-
-    if (!isSameOrder) {
-      // Preserve referential equality for unchanged items to reduce re-renders
-      const idToOriginal = new Map(activeList.map(ms => [ms.id, ms]));
-      const rebuilt = reorderedIds.map(id => idToOriginal.get(id) || data.find(m => m.id === id) || { id });
-      // Defer list update to next frame to avoid layout thrash
-      requestAnimationFrame(() => {
-        setActiveList(rebuilt);
-        lastOrderRef.current = reorderedIds;
-      });
-
-      // Persist new order after a short debounce to avoid interrupting settle
-      try {
-        const completedIds = completedMilestonesWithLatest.map(m => m.id);
-        const idToMs = new Map();
-        [...allMilestones].forEach(ms => idToMs.set(ms.id, ms));
-        const newMilestones = [
-          ...reorderedIds.map(id => idToMs.get(id)).filter(Boolean),
-          ...completedIds.map(id => idToMs.get(id)).filter(Boolean),
-        ];
-        if (SHOULD_PERSIST_AFTER_DROP && updateTask && currentTask?.id) {
-          InteractionManager.runAfterInteractions(() => {
-            setTimeout(() => {
-              requestAnimationFrame(() => {
-                updateTask(currentTask.id, { milestones: newMilestones });
-              });
-            }, 700);
-          });
+    
+    // Organize milestones hierarchically (parent -> children)
+    const organized = [];
+    const childrenMap = {};
+    
+    // Group children by parent
+    milestones.forEach(ms => {
+      if (ms.parentId) {
+        if (!childrenMap[ms.parentId]) {
+          childrenMap[ms.parentId] = [];
         }
-      } catch (e) {
-        // noop fallback
+        childrenMap[ms.parentId].push(ms);
       }
-    }
+    });
+    
+    // Add parents and their children
+    milestones.forEach(ms => {
+      if (!ms.parentId) {
+        organized.push(ms);
+        // Add children right after parent
+        if (childrenMap[ms.id]) {
+          organized.push(...childrenMap[ms.id]);
+        }
+      }
+    });
+    
+    return organized;
+  }, [activeMilestones, currentTask?.id, attachMode, refreshKey]);
 
-  }, [activeList, allMilestones, completedMilestonesWithLatest, updateTask, currentTask?.id]);
+  // Prepare completed milestones data
+  const completedMilestonesWithLatest = useMemo(() => 
+    completedMilestones.map((milestone, index) => ({
+      ...milestone,
+      taskId: currentTask.id,
+      isLatest: index === completedMilestones.length - 1,
+      title: milestone.title || '',
+      id: milestone.id || `completed-${index}`
+    }))
+  , [completedMilestones, currentTask?.id, attachMode]);
+
+  // Attach mode handlers
+  const handleStartAttachMode = (milestoneId) => {
+    setAttachMode({ milestoneId });
+  };
+
+  const handleSelectForAttach = (parentId) => {
+    if (attachMode) {
+      onAttachMilestone(currentTask.id, attachMode.milestoneId, parentId);
+      setAttachMode(null);
+    }
+  };
+
+  const handleCancelAttachMode = () => {
+    setAttachMode(null);
+  };
+
+  const handleDetachMilestone = (milestoneId) => {
+    onAttachMilestone(currentTask.id, milestoneId, null); // null = detach
+  };
+
+  // Collapse/expand handlers
+  const handleToggleCollapse = (milestoneId) => {
+    setCollapsedMilestones(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(milestoneId)) {
+        newSet.delete(milestoneId);
+      } else {
+        newSet.add(milestoneId);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <View style={[
@@ -131,22 +126,49 @@ function ActiveProjectMilestones({
       <View style={[
         styles.modernMilestoneHeader,
         {
-          backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248, 251, 255, 0.5)',
-          borderBottomColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)',
+          backgroundColor: attachMode
+            ? theme.name === 'dark' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)'
+            : theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248, 251, 255, 0.5)',
+          borderBottomColor: attachMode
+            ? '#FF9800'
+            : theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)',
         }
       ]}>
         <View style={styles.milestoneHeaderContent}>
-          <Text style={[
-            styles.modernMilestoneTitle,
-            { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-          ]}>{t('milestones')}</Text>
-          <TouchableOpacity 
-            style={styles.minimalAddButton}
-            onPress={onAddMilestone}
-            activeOpacity={0.6}
-          >
-            <Ionicons name="add" size={16} color={theme.name === 'dark' ? '#FFFFFF' : '#007AFF'} />
-          </TouchableOpacity>
+          {attachMode ? (
+            <>
+              <View style={styles.attachModeIndicator}>
+                <Ionicons name="link" size={18} color="#FF9800" />
+                <Text style={[
+                  styles.attachModeText,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+                ]}>
+                  {t('selectParentMilestone') || 'Select parent milestone'}
+                </Text>
+              </View>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { backgroundColor: theme.name === 'dark' ? '#3A3A3C' : '#E5E5EA' }]}
+                onPress={handleCancelAttachMode}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="close" size={16} color={theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F'} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={[
+                styles.modernMilestoneTitle,
+                { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+              ]}>{t('milestones')}</Text>
+              <TouchableOpacity 
+                style={styles.minimalAddButton}
+                onPress={onAddMilestone}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="add" size={16} color={theme.name === 'dark' ? '#FFFFFF' : '#007AFF'} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 
@@ -161,109 +183,94 @@ function ActiveProjectMilestones({
       )}
       
       {allMilestones.length > 0 && (
-        <>
-          {/* Active Milestones - Draggable */}
-          <DraggableFlatList
-            containerStyle={{ flexGrow: 0 }}
-            contentContainerStyle={{ paddingBottom: 4 }}
-            data={activeMilestonesWithLatest}
-            keyExtractor={(item) => `${item.id}`}
-            CellRendererComponent={StableCell}
-            activationDistance={14}
-            animationConfig={{
-              // Snap into place immediately on drop (no visible settle)
-              damping: 50,
-              mass: 1,
-              stiffness: 500,
-              overshootClamping: true,
-              restDisplacementThreshold: 2.0,
-              restSpeedThreshold: 2.0,
-            }}
-            dragItemOverflow
-            autoscrollThreshold={9999}
-            autoscrollSpeed={0}
-            initialNumToRender={8}
-            maxToRenderPerBatch={8}
-            removeClippedSubviews
-            windowSize={7}
-            getItemLayout={(data, index) => ({ length: 56, offset: 56 * index, index })}
-            scrollEnabled={!isDraggingAny}
-            onDragBegin={(index) => {
-              setIsDraggingAny(true);
-              try {
-                const id = activeMilestonesWithLatest?.[index]?.id;
-                setDraggingId(id || null);
-              } catch { setDraggingId(null); }
-            }}
-            renderPlaceholder={() => (
-              <View pointerEvents="none" style={{
-                height: 56,
-                borderRadius: 16,
-                marginTop: 8,
-                marginHorizontal: 28,
-                backgroundColor: 'transparent'
-              }} />
-            )}
-            onDragEnd={(args) => { setDraggingId(null); handleDragEnd(args); }}
-            renderItem={React.useCallback(({ item, drag, isActive }) => (
-              <View
-                renderToHardwareTextureAndroid={true}
-                shouldRasterizeIOS={true}
-                collapsable={false}
-              >
-                <MileStone
-                  milestone={item}
-                  onUpdate={(milestoneData) => {
-                    onUpdateMilestone(currentTask.id, item.id, milestoneData);
-                  }}
-                  onComplete={() => onCompleteMilestone(currentTask.id, item.id)}
-                  onDelete={() => onDeleteMilestone(currentTask.id, item.id)}
-                  onOpenDetail={() => onOpenMilestoneDetail({ ...item, isLatest: false, taskId: currentTask.id })}
-                  onOpenEditor={(ms) => onOpenJournalEditor(ms)}
-                  isCompleted={false}
-                  onEditToggle={(ms) => {
-                    onEditToggle(ms);
-                  }}
-                  onOpenJournal={onOpenJournal}
-                  navigation={navigation}
-                  currentTask={currentTask}
-                  // Drag handle: start drag when icon pressed (handled inside MileStone via new prop)
-                  onStartDrag={drag}
-                  isDragging={isActive}
-                />
-              </View>
-            ), [currentTask?.id, navigation, onOpenJournal, onOpenMilestoneDetail, onOpenJournalEditor, onCompleteMilestone, onDeleteMilestone, onUpdateMilestone, onEditToggle])}
-          />
+        <ScrollView 
+          style={{ flex: 1 }}
+          contentContainerStyle={{ 
+            paddingBottom: 20,
+            paddingHorizontal: 0, // Centered alignment
+            alignItems: 'stretch', // Full width items
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Active Milestones */}
+          {activeMilestonesWithLatest.map((item) => {
+            const isSelectableForAttach = attachMode && 
+              item.id !== attachMode.milestoneId && 
+              !item.completed && 
+              !item.parentId; // Can't attach to child milestones
+            
+            // Check if this child's parent is collapsed
+            const isParentCollapsed = item.parentId && collapsedMilestones.has(item.parentId);
+            
+            return (
+              <MileStone
+                key={item.id}
+                milestone={item}
+                onUpdate={(milestoneData) => {
+                  onUpdateMilestone(currentTask.id, item.id, milestoneData);
+                }}
+                onComplete={() => onCompleteMilestone(currentTask.id, item.id)}
+                onDelete={() => onDeleteMilestone(currentTask.id, item.id)}
+                onSetActive={() => onSetActiveMilestone(currentTask.id, item.id)}
+                onOpenDetail={() => onOpenMilestoneDetail({ ...item, isLatest: false, taskId: currentTask.id })}
+                onOpenEditor={(ms) => onOpenJournalEditor(ms)}
+                isCompleted={item.completed}
+                onEditToggle={(ms) => {
+                  onEditToggle(ms);
+                }}
+                onOpenJournal={onOpenJournal}
+                navigation={navigation}
+                currentTask={currentTask}
+                isAttachMode={!!attachMode}
+                isSelectableForAttach={isSelectableForAttach}
+                attachModeSourceId={attachMode?.milestoneId}
+                allMilestones={allMilestones}
+                isCollapsed={isParentCollapsed}
+                onToggleCollapse={handleToggleCollapse}
+                onStartAttachMode={() => handleStartAttachMode(item.id)}
+                onSelectForAttach={() => handleSelectForAttach(item.id)}
+                onDetachMilestone={() => handleDetachMilestone(item.id)}
+              />
+            );
+          })}
 
-          {/* Completed Milestones Section (decoupled list, always mounted) */}
-          <View>
-            <CompletedMilestonesList
-              completedMilestones={completedMilestonesWithLatest}
-              refreshKey={refreshKey}
-              theme={theme}
-              t={t}
-              currentTask={currentTask}
-              onOpenMilestoneDetail={onOpenMilestoneDetail}
-              onOpenJournalEditor={onOpenJournalEditor}
-              onDeleteMilestone={onDeleteMilestone}
-              onSetActiveMilestone={onSetActiveMilestone}
-              onOpenJournal={onOpenJournal}
-              navigation={navigation}
-              styles={styles}
-            />
-          </View>
-        </>
+          {/* Completed Milestones */}
+          <CompletedMilestonesList
+            completedMilestones={completedMilestonesWithLatest}
+            refreshKey={refreshKey}
+            theme={theme}
+            t={t}
+            currentTask={currentTask}
+            onOpenMilestoneDetail={onOpenMilestoneDetail}
+            onOpenJournalEditor={onOpenJournalEditor}
+            onDeleteMilestone={onDeleteMilestone}
+            onSetActiveMilestone={onSetActiveMilestone}
+            onOpenJournal={onOpenJournal}
+            onAttachMilestone={onAttachMilestone}
+            allMilestones={allMilestones}
+            navigation={navigation}
+            styles={styles}
+            isAttachMode={!!attachMode}
+            attachModeSourceId={attachMode?.milestoneId}
+            collapsedMilestones={collapsedMilestones}
+            onToggleCollapse={handleToggleCollapse}
+            onStartAttachMode={handleStartAttachMode}
+            onSelectForAttach={handleSelectForAttach}
+            onDetachMilestone={handleDetachMilestone}
+          />
+        </ScrollView>
       )}
     </View>
   );
 }
 
-export default ActiveProjectMilestones;
+export default memo(ActiveProjectMilestones);
 
 const styles = StyleSheet.create({
   // Modern Milestones Container
   modernMilestonesContainer: {
     flex: 1,
+    paddingHorizontal: 0, // Remove horizontal padding for centering
   },
   modernMilestoneHeader: {
     borderBottomWidth: 1,
@@ -338,5 +345,22 @@ const styles = StyleSheet.create({
     color: "#1D1D1F",
     marginHorizontal: 24,
     letterSpacing: -0.3,
+  },
+  attachModeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  attachModeText: {
+    fontSize: 14,
+    fontFamily: "Poppins_600SemiBold",
+    letterSpacing: -0.3,
+  },
+  cancelButton: {
+    borderRadius: 14,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

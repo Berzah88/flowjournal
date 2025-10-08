@@ -9,7 +9,7 @@ import { getValidIconName } from '../utils/AIMoodPredictor';
 
 const { width } = Dimensions.get("window");
 const CELL_SIZE = 40; // Fixed size for all cells
-const CELL_HEIGHT = 50; // Taller cells
+const CELL_HEIGHT = 52; // Taller cells for better mood indicator visibility
 
 export default function MoodCalendar() {
   const { theme } = useTheme();
@@ -217,13 +217,13 @@ export default function MoodCalendar() {
               styles.moodIndicator,
               { 
                 backgroundColor: moodData.moodColor || theme.colors.primary,
-                borderColor: theme.name === 'dark' ? '#2C2C2E' : '#E0E0E0',
-                borderWidth: 1
+                borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                borderWidth: 1.2
               }
             ]}>
               <MaterialIcons 
                 name={getValidIconName(moodData.moodIcon || 'sentiment-neutral')} 
-                size={16} 
+                size={12} 
                 color={getContrastColor(moodData.moodColor || theme.colors.primary)}
               />
             </View>
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 2,
     elevation: 2,
   },

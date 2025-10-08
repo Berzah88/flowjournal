@@ -263,8 +263,8 @@ const JournalCard = memo(function JournalCard({
       }
     });
     
-    // Minimum güven skoru (0.3)
-    return bestScore >= 0.3 ? { milestone: bestMatch, confidence: Math.min(bestScore, 1) } : null;
+    // Minimum güven skoru (0.6) - Düşük confidence'ta otomatik seçim yapma
+    return bestScore >= 0.6 ? { milestone: bestMatch, confidence: Math.min(bestScore, 1) } : null;
   }, [dayGroup.allEntries]);
 
   // Bu günlük kayıtları için en uygun milestone'ı bul

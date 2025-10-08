@@ -353,6 +353,10 @@ export const TaskProvider = ({ children }) => {
         
         console.log('TaskContext: Found task to update', { taskId, milestonesCount: task.milestones?.length });
         
+        // Find the milestone being updated to check if it's a child
+        const milestoneBeingUpdated = task.milestones.find(ms => ms.id === msId);
+        const parentId = milestoneBeingUpdated?.parentId;
+        
         // Update the milestone
         const updatedMilestones = task.milestones.map((ms) => {
           if (ms.id === msId) {
@@ -365,12 +369,39 @@ export const TaskProvider = ({ children }) => {
           return ms;
         });
         
+        // Auto-adjust parent's end date if this is a child and its date changed
+        const extendedMilestones = updatedMilestones.map((ms) => {
+          if (ms.id === parentId && parentId !== null) {
+            // Find all ACTIVE children of this parent (exclude completed)
+            const activeChildren = updatedMilestones.filter(
+              m => m.parentId === ms.id && !m.completed
+            );
+            
+            if (activeChildren.length > 0) {
+              // Find the latest end date among ACTIVE children
+              const latestChildEndDate = activeChildren.reduce((latest, child) => {
+                const childEndDate = new Date(child.endDate);
+                return childEndDate > latest ? childEndDate : latest;
+              }, new Date(ms.endDate));
+              
+              const currentParentEndDate = new Date(ms.endDate);
+              
+              // Adjust parent's end date to match latest active child
+              if (latestChildEndDate.getTime() !== currentParentEndDate.getTime()) {
+                console.log(`📅 Auto-adjusting parent "${ms.title}" end date to ${latestChildEndDate.toISOString()}`);
+                return { ...ms, endDate: latestChildEndDate.toISOString() };
+              }
+            }
+          }
+          return ms;
+        });
+        
         // Check if project end date should be updated
-        const newEndDate = shouldUpdateProjectEndDate(updatedMilestones, task.endDate);
+        const newEndDate = shouldUpdateProjectEndDate(extendedMilestones, task.endDate);
         
         const updatedTask = {
           ...task,
-          milestones: updatedMilestones,
+          milestones: extendedMilestones,
           ...(newEndDate && { endDate: newEndDate }),
         };
         
@@ -457,31 +488,140 @@ export const TaskProvider = ({ children }) => {
 
   const completeMilestone = useCallback((taskId, msId) => {
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              milestones: task.milestones.map((ms) =>
-                ms.id === msId ? { ...ms, completed: true } : ms
-              ),
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        // Find the milestone being completed
+        const milestoneBeingCompleted = task.milestones.find(ms => ms.id === msId);
+        const parentId = milestoneBeingCompleted?.parentId;
+        const isParent = task.milestones.some(m => m.parentId === msId);
+        
+        // If completing a parent, complete all its children too
+        let updatedMilestones;
+        if (isParent) {
+          console.log(`✅ Completing parent "${milestoneBeingCompleted?.title}" and all its children`);
+          updatedMilestones = task.milestones.map((ms) => {
+            // Complete the parent
+            if (ms.id === msId) return { ...ms, completed: true };
+            // Complete all children of this parent
+            if (ms.parentId === msId) return { ...ms, completed: true };
+            return ms;
+          });
+        } else {
+          // Normal completion (child or standalone)
+          updatedMilestones = task.milestones.map((ms) =>
+            ms.id === msId ? { ...ms, completed: true } : ms
+          );
+        }
+        
+        // If this was a child, adjust parent's end date based on remaining active children
+        const milestonesAfterDateAdjustment = updatedMilestones.map((ms) => {
+          if (ms.id === parentId && parentId !== null) {
+            // Find remaining ACTIVE children of this parent (exclude completed)
+            const activeChildren = updatedMilestones.filter(
+              m => m.parentId === ms.id && !m.completed
+            );
+            
+            if (activeChildren.length > 0) {
+              // Find the latest end date among remaining ACTIVE children
+              const latestChildEndDate = activeChildren.reduce((latest, child) => {
+                const childEndDate = new Date(child.endDate);
+                return childEndDate > latest ? childEndDate : latest;
+              }, new Date(0));
+              
+              const currentParentEndDate = new Date(ms.endDate);
+              
+              // Adjust parent's end date to match latest active child
+              if (latestChildEndDate.getTime() > 0 && latestChildEndDate.getTime() !== currentParentEndDate.getTime()) {
+                console.log(`📅 Adjusting parent "${ms.title}" end date to ${latestChildEndDate.toISOString()} after child completion`);
+                return { ...ms, endDate: latestChildEndDate.toISOString() };
+              }
             }
-          : task
-      )
+          }
+          return ms;
+        });
+        
+        // NO auto-complete for parent - parent is independent from children
+        // Children don't affect parent's completion status
+        
+        return {
+          ...task,
+          milestones: milestonesAfterDateAdjustment,
+        };
+      })
     );
   }, []);
 
   const setActiveMilestone = useCallback((taskId, msId) => {
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              milestones: task.milestones.map((ms) =>
-                ms.id === msId ? { ...ms, completed: false } : ms
-              ),
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        // Find the milestone being reopened to check if it's a child
+        const milestoneBeingReopened = task.milestones.find(ms => ms.id === msId);
+        const parentId = milestoneBeingReopened?.parentId;
+        const isParent = task.milestones.some(m => m.parentId === msId);
+        
+        // SAFETY CHECK: If this is a child milestone, check if parent is completed
+        if (parentId) {
+          const parent = task.milestones.find(ms => ms.id === parentId);
+          if (parent?.completed) {
+            console.warn(`⚠️ Cannot reopen child "${milestoneBeingReopened?.title}" because parent "${parent.title}" is completed. Reopen parent first.`);
+            return task; // Don't make any changes
+          }
+        }
+        
+        // If reopening a parent, reopen all its children too
+        let updatedMilestones;
+        if (isParent) {
+          console.log(`🔄 Reopening parent "${milestoneBeingReopened?.title}" and all its children`);
+          
+          updatedMilestones = task.milestones.map((ms) => {
+            // Reopen the parent
+            if (ms.id === msId) return { ...ms, completed: false };
+            // Reopen all children of this parent
+            if (ms.parentId === msId) return { ...ms, completed: false };
+            return ms;
+          });
+        } else {
+          // Normal reopen (child or standalone)
+          updatedMilestones = task.milestones.map((ms) =>
+            ms.id === msId ? { ...ms, completed: false } : ms
+          );
+        }
+        
+        // If this was a child, adjust parent's end date based on active children
+        const milestonesAfterDateAdjustment = updatedMilestones.map((ms) => {
+          if (ms.id === parentId && parentId !== null) {
+            // Find all ACTIVE children of this parent (exclude completed)
+            const activeChildren = updatedMilestones.filter(
+              m => m.parentId === ms.id && !m.completed
+            );
+            
+            if (activeChildren.length > 0) {
+              // Find the latest end date among ACTIVE children
+              const latestChildEndDate = activeChildren.reduce((latest, child) => {
+                const childEndDate = new Date(child.endDate);
+                return childEndDate > latest ? childEndDate : latest;
+              }, new Date(0));
+              
+              const currentParentEndDate = new Date(ms.endDate);
+              
+              // Adjust parent's end date to match latest active child
+              if (latestChildEndDate.getTime() > 0 && latestChildEndDate.getTime() !== currentParentEndDate.getTime()) {
+                console.log(`📅 Adjusting parent "${ms.title}" end date to ${latestChildEndDate.toISOString()} after child reopen`);
+                return { ...ms, endDate: latestChildEndDate.toISOString() };
+              }
             }
-          : task
-      )
+          }
+          return ms;
+        });
+        
+        return {
+          ...task,
+          milestones: milestonesAfterDateAdjustment,
+        };
+      })
     );
   }, []);
 
@@ -500,6 +640,108 @@ export const TaskProvider = ({ children }) => {
             }
           : task
       )
+    );
+  }, []);
+
+  // -------- MILESTONE ATTACH/DETACH --------
+  const attachMilestone = useCallback((taskId, milestoneId, parentMilestoneId) => {
+    setTasks((prev) =>
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        // Update child's parentId
+        const updatedMilestones = task.milestones.map((ms) =>
+          ms.id === milestoneId
+            ? { ...ms, parentId: parentMilestoneId }
+            : ms
+        );
+        
+        // Auto-adjust parent's end date based on ACTIVE children only
+        const extendedMilestones = updatedMilestones.map((ms) => {
+          if (ms.id === parentMilestoneId && parentMilestoneId !== null) {
+            // Find all ACTIVE children of this parent (exclude completed)
+            const activeChildren = updatedMilestones.filter(
+              m => m.parentId === ms.id && !m.completed
+            );
+            
+            if (activeChildren.length > 0) {
+              // Find the latest end date among ACTIVE children
+              const latestChildEndDate = activeChildren.reduce((latest, child) => {
+                const childEndDate = new Date(child.endDate);
+                return childEndDate > latest ? childEndDate : latest;
+              }, new Date(ms.endDate));
+              
+              const currentParentEndDate = new Date(ms.endDate);
+              
+              // Adjust parent's end date to match latest active child
+              if (latestChildEndDate.getTime() !== currentParentEndDate.getTime()) {
+                console.log(`📅 Adjusting parent "${ms.title}" end date from ${ms.endDate} to ${latestChildEndDate.toISOString()}`);
+                return { ...ms, endDate: latestChildEndDate.toISOString() };
+              }
+            }
+          }
+          return ms;
+        });
+        
+        return {
+          ...task,
+          milestones: extendedMilestones,
+        };
+      })
+    );
+  }, []);
+
+  const detachMilestone = useCallback((taskId, milestoneId) => {
+    setTasks((prev) =>
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        // Find the parent before detaching
+        const childMilestone = task.milestones.find(ms => ms.id === milestoneId);
+        const oldParentId = childMilestone?.parentId;
+        
+        // Detach child
+        const updatedMilestones = task.milestones.map((ms) =>
+          ms.id === milestoneId
+            ? { ...ms, parentId: null }
+            : ms
+        );
+        
+        // Recalculate parent's end date based on remaining ACTIVE children only
+        const recalculatedMilestones = updatedMilestones.map((ms) => {
+          if (ms.id === oldParentId && oldParentId !== null) {
+            // Find remaining ACTIVE children of this parent (exclude completed)
+            const remainingActiveChildren = updatedMilestones.filter(
+              m => m.parentId === ms.id && !m.completed
+            );
+            
+            if (remainingActiveChildren.length > 0) {
+              // Find the latest end date among remaining ACTIVE children
+              const latestChildEndDate = remainingActiveChildren.reduce((latest, child) => {
+                const childEndDate = new Date(child.endDate);
+                return childEndDate > latest ? childEndDate : latest;
+              }, new Date(0));
+              
+              const currentParentEndDate = new Date(ms.endDate);
+              
+              // Update parent's end date to match latest active child
+              if (latestChildEndDate.getTime() !== currentParentEndDate.getTime()) {
+                console.log(`📅 Adjusting parent "${ms.title}" end date from ${ms.endDate} to ${latestChildEndDate.toISOString()}`);
+                return { ...ms, endDate: latestChildEndDate.toISOString() };
+              }
+            } else {
+              // No more active children - parent keeps its own date
+              console.log(`📅 Parent "${ms.title}" has no more active children after detach`);
+            }
+          }
+          return ms;
+        });
+        
+        return {
+          ...task,
+          milestones: recalculatedMilestones,
+        };
+      })
     );
   }, []);
 
@@ -1011,6 +1253,8 @@ export const TaskProvider = ({ children }) => {
     completeMilestone,
     setActiveMilestone,
     reorderMilestones,
+    attachMilestone,
+    detachMilestone,
     addJournalEntry,
     updateJournalEntry,
     deleteJournalEntry,
@@ -1046,6 +1290,8 @@ export const TaskProvider = ({ children }) => {
     completeMilestone,
     setActiveMilestone,
     reorderMilestones,
+    attachMilestone,
+    detachMilestone,
     addJournalEntry,
     updateJournalEntry,
     deleteJournalEntry,
