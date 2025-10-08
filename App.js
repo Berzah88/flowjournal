@@ -149,6 +149,22 @@ export default function App() {
           if (fcmInitialized) {
             // FCM token'ı al
             await fcmService.getToken();
+            
+            // Otomatik olarak daily reminders topic'ine subscribe ol
+            console.log('📖 Daily reminders topic\'ine subscribe olunuyor...');
+            const subscribed = await fcmService.subscribeToDailyReminders();
+            if (subscribed) {
+              console.log('✅ Daily reminders topic\'ine subscribe olundu!');
+            }
+            
+            // Client-side daily reminder planla (fallback/backup sistem)
+            console.log('📅 Client-side günlük hatırlatma planlanıyor...');
+            try {
+              await notificationService.scheduleDailyReminder(19, 0);
+              console.log('✅ Günlük hatırlatma başarıyla planlandı!');
+            } catch (error) {
+              console.error('❌ Günlük hatırlatma planlanamadı:', error);
+            }
           }
         } catch (firebaseError) {
           console.log('🔥 Firebase başlatma hatası:', firebaseError.message);

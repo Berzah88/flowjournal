@@ -138,6 +138,93 @@ exports.checkProjectDeadlines = onSchedule({
 });
 
 /**
+ * Her gün saat 19:00'da çalışan scheduled function
+ * 'daily_reminders' topic'ine günlük hatırlatma mesajı gönderir
+ */
+exports.sendDailyReminders = onSchedule({
+  schedule: "0 16 * * *", // Her gün saat 19:00 Türkiye saati (UTC 16:00)
+  timeZone: "Europe/Istanbul",
+  memory: "256MiB",
+  timeoutSeconds: 60,
+}, async (event) => {
+  try {
+    logger.info("📖 Günlük hatırlatma mesajı gönderiliyor...");
+
+    // 'daily_reminders' topic'ine mesaj gönder
+    const message = {
+      notification: {
+        title: "📖 Günlük Hatırlatma",
+        body: "Bugün neler hissettin? Günlüğüne birkaç satır ekle 💭",
+      },
+      data: {
+        type: "daily_reminder",
+        timestamp: Date.now().toString(),
+        source: "firebase_function",
+      },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "daily-journal-reminder",
+          sound: "default",
+          priority: "high",
+          clickAction: "FLUTTER_NOTIFICATION_CLICK",
+        },
+      },
+      topic: "daily_reminders", // Tüm subscribe olan cihazlara gönder
+    };
+
+    const response = await messaging.send(message);
+    logger.info(`✅ Günlük hatırlatma gönderildi! Message ID: ${response}`);
+
+    return {success: true, messageId: response, timestamp: Date.now()};
+  } catch (error) {
+    logger.error("❌ Günlük hatırlatma hatası:", error);
+    throw error;
+  }
+});
+
+/**
+ * Test endpoint - manuel olarak günlük hatırlatma göndermek için
+ */
+exports.sendDailyRemindersTest = onRequest(async (req, res) => {
+  try {
+    logger.info("🧪 Test günlük hatırlatma gönderiliyor...");
+
+    const message = {
+      notification: {
+        title: "🧪 Test Günlük Hatırlatma",
+        body: "Bu bir test bildirimidir - Firebase Function çalışıyor!",
+      },
+      data: {
+        type: "daily_reminder_test",
+        timestamp: Date.now().toString(),
+      },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "daily-journal-reminder",
+          sound: "default",
+          priority: "high",
+        },
+      },
+      topic: "daily_reminders",
+    };
+
+    const response = await messaging.send(message);
+    logger.info(`✅ Test mesajı gönderildi: ${response}`);
+
+    res.status(200).json({
+      success: true,
+      messageId: response,
+      message: "Test bildirimi 'daily_reminders' topic'ine gönderildi!",
+    });
+  } catch (error) {
+    logger.error("❌ Test hatası:", error);
+    res.status(500).json({success: false, error: error.message});
+  }
+});
+
+/**
  * Test endpoint - manuel olarak proje kontrolü yapmak için
  */
 exports.checkProjectDeadlinesTest = onRequest(async (req, res) => {
