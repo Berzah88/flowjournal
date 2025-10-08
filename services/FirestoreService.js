@@ -1,29 +1,33 @@
 // services/FirestoreService.js
-import firestore from '@react-native-firebase/firestore';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc, deleteDoc, updateDoc, getDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class FirestoreService {
   constructor() {
-    this.db = firestore();
+    // Firestore devre dışı - Expo managed workflow uyumluluğu için
+    this.isEnabled = false;
     this.currentUserId = null;
     this.fcmToken = null;
+    
+    console.log('⚠️ Firestore: Expo managed workflow için devre dışı bırakıldı');
   }
 
   // Kullanıcı ID'sini ayarla (test için 'test-user' kullanıyoruz)
   async setCurrentUserId(userId = 'test-user') {
     this.currentUserId = userId;
-    console.log('🔥 Firestore: Kullanıcı ID ayarlandı:', userId);
+    console.log('⚠️ Firestore: Kullanıcı ID ayarlandı (devre dışı):', userId);
   }
 
   // FCM token'ı ayarla
   async setFCMToken(token) {
     this.fcmToken = token;
-    console.log('🔥 Firestore: FCM token ayarlandı');
+    console.log('⚠️ Firestore: FCM token ayarlandı (devre dışı)');
     
-    // Token'ı Firestore'a kaydet
-    if (this.currentUserId && token) {
-      await this.updateUserFCMToken(token);
-    }
+    // Token'ı Firestore'a kaydet - DEVRE DIŞI
+    // if (this.currentUserId && token) {
+    //   await this.updateUserFCMToken(token);
+    // }
   }
 
   // Kullanıcının FCM token'ını güncelle
@@ -34,9 +38,9 @@ class FirestoreService {
         return;
       }
 
-      await this.db.collection('users').doc(this.currentUserId).set({
+      await setDoc(doc(this.db, 'users', this.currentUserId), {
         fcmToken: token,
-        lastUpdated: firestore.FieldValue.serverTimestamp()
+        lastUpdated: serverTimestamp()
       }, { merge: true });
 
       console.log('✅ Firestore: FCM token kaydedildi');
@@ -47,132 +51,33 @@ class FirestoreService {
 
   // Projeyi Firestore'a kaydet
   async saveProject(project) {
-    try {
-      if (!this.currentUserId) {
-        console.warn('⚠️ Firestore: Kullanıcı ID yok');
-        return;
-      }
-
-      const projectData = {
-        name: project.title,
-        deadline: new Date(project.endDate),
-        notificationsEnabled: true,
-        status: project.done ? 'completed' : 'active',
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        updatedAt: firestore.FieldValue.serverTimestamp()
-      };
-
-      await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .doc(project.title) // Proje adını document ID olarak kullan
-        .set(projectData);
-
-      console.log('✅ Firestore: Proje kaydedildi:', project.title);
-    } catch (error) {
-      console.error('❌ Firestore: Proje kaydetme hatası:', error);
-    }
+    console.log('⚠️ Firestore: Proje kaydetme devre dışı:', project.title);
+    // Firestore devre dışı - Expo managed workflow uyumluluğu için
+    return;
   }
 
   // Projeyi Firestore'dan sil
   async deleteProject(projectTitle) {
-    try {
-      if (!this.currentUserId) {
-        console.warn('⚠️ Firestore: Kullanıcı ID yok');
-        return;
-      }
-
-      await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .doc(projectTitle)
-        .delete();
-
-      console.log('✅ Firestore: Proje silindi:', projectTitle);
-    } catch (error) {
-      console.error('❌ Firestore: Proje silme hatası:', error);
-    }
+    console.log('⚠️ Firestore: Proje silme devre dışı:', projectTitle);
+    return;
   }
 
   // Projeyi güncelle (tamamlandı/aktif durumu)
   async updateProject(projectTitle, updates) {
-    try {
-      if (!this.currentUserId) {
-        console.warn('⚠️ Firestore: Kullanıcı ID yok');
-        return;
-      }
-
-      const updateData = {
-        ...updates,
-        updatedAt: firestore.FieldValue.serverTimestamp()
-      };
-
-      await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .doc(projectTitle)
-        .update(updateData);
-
-      console.log('✅ Firestore: Proje güncellendi:', projectTitle);
-    } catch (error) {
-      console.error('❌ Firestore: Proje güncelleme hatası:', error);
-    }
+    console.log('⚠️ Firestore: Proje güncelleme devre dışı:', projectTitle);
+    return;
   }
 
   // Tüm projeleri Firestore'dan al
   async getAllProjects() {
-    try {
-      if (!this.currentUserId) {
-        console.warn('⚠️ Firestore: Kullanıcı ID yok');
-        return [];
-      }
-
-      const snapshot = await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .get();
-
-      const projects = [];
-      snapshot.forEach(doc => {
-        projects.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      console.log('✅ Firestore: Projeler alındı:', projects.length);
-      return projects;
-    } catch (error) {
-      console.error('❌ Firestore: Projeler alma hatası:', error);
-      return [];
-    }
+    console.log('⚠️ Firestore: Projeler alma devre dışı');
+    return [];
   }
 
   // Kullanıcı bilgilerini al
   async getUserInfo() {
-    try {
-      if (!this.currentUserId) {
-        console.warn('⚠️ Firestore: Kullanıcı ID yok');
-        return null;
-      }
-
-      const doc = await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .get();
-
-      if (doc.exists) {
-        return { id: doc.id, ...doc.data() };
-      }
-      return null;
-    } catch (error) {
-      console.error('❌ Firestore: Kullanıcı bilgileri alma hatası:', error);
-      return null;
-    }
+    console.log('⚠️ Firestore: Kullanıcı bilgileri alma devre dışı');
+    return null;
   }
 }
 
