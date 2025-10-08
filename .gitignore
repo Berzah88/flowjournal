@@ -38,4 +38,13 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+
+# Android build outputs (keep android source, ignore builds)
+android/app/build/
+android/build/
+*.apk
+*.aab
+
+# Dist and build artifacts
+WITApp-dist.zip
+*.zip

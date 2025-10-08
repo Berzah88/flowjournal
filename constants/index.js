@@ -127,39 +127,7 @@ export const MILESTONE_COLORS = [
   "#C7D9DD", // Soft gri mavi
 ];
 
-// Mood seçenekleri - Bu artık kullanılmıyor, Journal.js'de getBasicMoods kullanılıyor
-export const MOODS = [
-  {
-    key: "happy",
-    label: "Happy",
-    icon: "sentiment-satisfied",
-    color: "#C8E6C9",
-  },
-  {
-    key: "calm",
-    label: "Calm",
-    icon: "self-improvement",
-    color: "#D1C4E9",
-  },
-  {
-    key: "angry",
-    label: "Angry",
-    icon: "sentiment-very-dissatisfied",
-    color: "#FFCDD2",
-  },
-  {
-    key: "natural",
-    label: "Natural",
-    icon: "sentiment-dissatisfied",
-    color: "#CFD8DC",
-  },
-  {
-    key: "sick",
-    label: "Sick",
-    icon: "sick",
-    color: "#FFF9C4",
-  },
-];
+// Mood seçenekleri artık utils/AIMoodPredictor.js'de yönetiliyor
 
 // Accessibility labels
 export const ACCESSIBILITY_LABELS = {

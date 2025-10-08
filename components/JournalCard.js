@@ -5,7 +5,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 // import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
 import PropTypes from "prop-types";
 import * as Location from "expo-location";
-import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/MoodPredictor";
+import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/AIMoodPredictor";
 import { getMilestoneColor } from "../utils/milestoneColors";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";

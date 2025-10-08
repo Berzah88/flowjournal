@@ -1,7 +1,7 @@
 {
   "name": "flow-journal",
   "license": "0BSD",
-  "version": "5.0.0",
+  "version": "7.3.0",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
