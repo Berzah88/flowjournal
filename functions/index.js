@@ -142,7 +142,7 @@ exports.checkProjectDeadlines = onSchedule({
  * 'daily_reminders' topic'ine günlük hatırlatma mesajı gönderir
  */
 exports.sendDailyReminders = onSchedule({
-  schedule: "0 16 * * *", // Her gün saat 19:00 Türkiye saati (UTC 16:00)
+  schedule: "0 19 * * *", // Her gün saat 19:00 Istanbul saati
   timeZone: "Europe/Istanbul",
   memory: "256MiB",
   timeoutSeconds: 60,

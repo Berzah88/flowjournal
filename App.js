@@ -19,16 +19,14 @@ import { useHasAnyTasks, useTaskLoading } from './hooks/useTaskContext';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import GlobalErrorHandler from './utils/GlobalErrorHandler';
-import notificationService from './services/NotificationService';
 import fcmService from './services/FCMService';
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import firebase from '@react-native-firebase/app';
 import * as Notifications from 'expo-notifications';
 
-// Expo Notifications yapılandırması
+// Expo Notifications sadece FCM mesajlarını göstermek için gerekli
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    // shouldShowAlert is deprecated in SDK 52+. Use banner/list flags instead
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
@@ -142,7 +140,7 @@ export default function App() {
           // Firebase'in tamamen yüklenmesini bekle
           await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // FCM servisini başlat
+          // FCM servisini başlat (sadece FCM, local notifications YOK)
           console.log('🔥 FCM servisi başlatılıyor...');
           const fcmInitialized = await fcmService.init();
 
@@ -155,26 +153,12 @@ export default function App() {
             const subscribed = await fcmService.subscribeToDailyReminders();
             if (subscribed) {
               console.log('✅ Daily reminders topic\'ine subscribe olundu!');
-            }
-            
-            // Client-side daily reminder planla (fallback/backup sistem)
-            console.log('📅 Client-side günlük hatırlatma planlanıyor...');
-            try {
-              await notificationService.scheduleDailyReminder(19, 0);
-              console.log('✅ Günlük hatırlatma başarıyla planlandı!');
-            } catch (error) {
-              console.error('❌ Günlük hatırlatma planlanamadı:', error);
+              console.log('✅ Bildirimler PythonAnywhere + FCM ile gelecek');
             }
           }
         } catch (firebaseError) {
-          console.log('🔥 Firebase başlatma hatası:', firebaseError.message);
-          console.log('📱 Expo Notifications fallback aktif');
-          
-          // Fallback: Expo Notifications
-          await notificationService.init();
+          console.error('🔥 Firebase başlatma hatası:', firebaseError.message);
         }
-
-        // FCM topic sistemi kullanılıyor - local günlük bildirim gerekmez
 
         global.forceReloadAIFeedback = () => { /* override edilecek */ };
       } catch (error) {

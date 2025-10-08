@@ -172,27 +172,12 @@ class FCMService {
     }
   }
 
-  // Background message handler
+  // Background message handler - MOVED TO index.js
+  // Background handler must be registered OUTSIDE of App component (in index.js)
   setupBackgroundMessageHandler() {
-    if (this.backgroundHandlerRegistered || globalThis.__fcmBackgroundHandlerRegistered) {
-      return;
-    }
-
-    messaging().setBackgroundMessageHandler(async remoteMessage => {
-      // Strong duplicate guard (before logging)
-      if (!this.shouldProcessMessage(remoteMessage)) {
-        return;
-      }
-
-      console.log('📱 FCM background bildirim alındı:', remoteMessage);
-      
-      // ÖNEMLİ: Notification payload içeren mesajları Android zaten gösterir.
-      // Background'da ASLA local bildirim gösterme - sistem zaten gösteriyor!
-      console.log('ℹ️ Background mesaj - sistem tarafından gösterilecek');
-    });
-
-    this.backgroundHandlerRegistered = true;
-    globalThis.__fcmBackgroundHandlerRegistered = true;
+    // Skip - background handler is now in index.js
+    console.log('ℹ️ Background handler registered in index.js (not here)');
+    return;
   }
 
   // Foreground message handler

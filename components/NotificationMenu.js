@@ -1,6 +1,6 @@
 // components/NotificationMenu.js
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Switch } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Switch, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -12,6 +12,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import fcmService from "../services/FCMService";
+import notificationService from "../services/NotificationService";
 
 export default function NotificationMenu({ 
   visible, 
@@ -72,17 +73,22 @@ export default function NotificationMenu({
     }
   }, []);
 
-  // Günlük bildirim toggle
+  // Günlük bildirim toggle (sadece FCM topic subscription)
   const handleDailyReminderToggle = useCallback(async (value) => {
     try {
       setIsLoading(true);
       
       if (value) {
-        // Subscribe to daily reminders
+        // Subscribe to daily reminders (FCM topic)
         const success = await fcmService.subscribeToDailyReminders();
         if (success) {
           setIsSubscribed(true);
           await AsyncStorage.setItem('fcm_daily_reminders_subscribed', 'true');
+          Alert.alert(
+            '✅ Başarılı',
+            'Günlük hatırlatmalara abone oldunuz!\n\nBildirimler PythonAnywhere + FCM ile gelecek.',
+            [{ text: 'Tamam' }]
+          );
         }
       } else {
         // Unsubscribe from daily reminders
@@ -94,6 +100,7 @@ export default function NotificationMenu({
       }
     } catch (error) {
       console.error('❌ Günlük bildirim toggle hatası:', error);
+      Alert.alert('❌ Hata', error.message);
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +158,42 @@ export default function NotificationMenu({
               trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
               thumbColor={isSubscribed ? '#ffffff' : theme.colors.textSecondary}
             />
+          </View>
+
+          {/* Debug/Test Actions */}
+          <View style={styles.debugSection}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+              🔧 FCM Debug
+            </Text>
+
+            {/* Show FCM Token */}
+            <TouchableOpacity 
+              style={[styles.debugButton, { backgroundColor: theme.colors.secondary + '15' }]}
+              onPress={async () => {
+                try {
+                  const token = await fcmService.getFCMToken();
+                  const subscriptionStatus = await AsyncStorage.getItem('fcm_daily_reminders_subscribed');
+                  
+                  console.log('🔥 FCM Token:', token);
+                  console.log('📖 Daily Reminders Subscription:', subscriptionStatus);
+                  
+                  Alert.alert(
+                    '🔥 FCM Bilgileri',
+                    `Token: ${token?.substring(0, 40)}...\n\nDaily Reminders Topic: ${subscriptionStatus === 'true' ? 'ABONE ✅' : 'ABONE DEĞİL ❌'}\n\nFull token konsol loglarına yazıldı.`,
+                    [{ text: 'Tamam' }]
+                  );
+                } catch (error) {
+                  console.error('❌ FCM token hatası:', error);
+                  Alert.alert('❌ Hata', error.message);
+                }
+              }}
+            >
+              <Ionicons name="key-outline" size={18} color={theme.colors.secondary} />
+              <Text style={[styles.debugButtonText, { color: theme.colors.secondary }]}>
+                FCM Token & Topic Durumu
+              </Text>
+            </TouchableOpacity>
+
           </View>
 
         </View>
@@ -239,5 +282,29 @@ const styles = StyleSheet.create({
   menuItemSubtitle: {
     fontSize: 13,
     opacity: 0.7,
+  },
+  debugSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    opacity: 0.7,
+  },
+  debugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  debugButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
