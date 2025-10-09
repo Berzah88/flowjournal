@@ -43,6 +43,7 @@
       "favicon": "./assets/logo-yeni.png"
     },
     "plugins": [
+      "@react-native-firebase/app",
       "expo-font",
       "expo-asset",
       "expo-maps",

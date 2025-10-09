@@ -22,7 +22,6 @@ import fcmService from './services/FCMService';
 import firestoreService from './services/FirestoreService';
 // import projectDeadlineService from './services/ProjectDeadlineService'; // ⚠️ KALDIRILDI - Firestore token sistemi kullanılıyor
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
-import firebase from '@react-native-firebase/app';
 import * as Notifications from 'expo-notifications';
 
 // Expo Notifications sadece FCM mesajlarını göstermek için gerekli
@@ -116,29 +115,11 @@ export default function App() {
         
         GlobalErrorHandler.init();
 
-        // Firebase'i gerçek config ile başlat
+        // Firebase kontrol et (@react-native-firebase otomatik başlar google-services.json ile)
         try {
-          if (!firebase.apps.length) {
-            console.log('🔥 Firebase gerçek config ile başlatılıyor...');
-            // google-services.json'dan alınan gerçek config
-            const firebaseConfig = {
-              apiKey: "AIzaSyB0OqpZFtS57VqyJk4Mgw5MZj0hM4nInWU",
-              authDomain: "flowjournal-731f7.firebaseapp.com",
-              projectId: "flowjournal-731f7", 
-              storageBucket: "flowjournal-731f7.firebasestorage.app",
-              messagingSenderId: "601452542639",
-              appId: "1:601452542639:android:53caff94d5e5660e6b725a",
-              databaseURL: "https://flowjournal-731f7-default-rtdb.firebaseio.com/"
-            };
-            
-            await firebase.initializeApp(firebaseConfig);
-            console.log('✅ Firebase gerçek config ile başlatıldı');
-          } else {
-            console.log('🔥 Firebase zaten başlatılmış');
-          }
-          
-          // Firebase'in tamamen yüklenmesini bekle
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log('🔥 Firebase durumu kontrol ediliyor...');
+          // app zaten default olarak başlatılmış, kontrol gerekmez
+          console.log('✅ Firebase otomatik başlatıldı (google-services.json)');
           
           // FCM servisini başlat (sadece FCM, local notifications YOK)
           console.log('🔥 FCM servisi başlatılıyor...');
