@@ -2,7 +2,7 @@
   "expo": {
     "name": "Flow Journal",
     "slug": "WITApp-FCM",
-    "version": "7.3.0",
+    "version": "8.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo-yeni.png",
     "userInterfaceStyle": "light",
@@ -27,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.witapp.fcm",
-      "versionCode": 9,
+      "versionCode": 10,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
