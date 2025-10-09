@@ -12,7 +12,7 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { Video } from 'expo-av';
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
@@ -54,7 +54,7 @@ const JournalDetailScreen = ({
   // Fullscreen Media Viewer States
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoRef = useRef(null);
 
   // Animation Values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -346,38 +346,10 @@ const JournalDetailScreen = ({
     return media;
   }, [selectedMediaData.images, selectedMediaData.videos]);
 
-  // Video player setup with expo-video (after mediaList is defined)
-  const currentVideoUri = useMemo(() => {
-    if (!mediaList || mediaList.length === 0) return null;
-    const currentMedia = mediaList[selectedImageIndex];
-    return currentMedia?.type === 'video' ? currentMedia.uri : null;
-  }, [mediaList, selectedImageIndex]);
-  
-  const player = useVideoPlayer(currentVideoUri || '', (player) => {
-    // Player setup - autoplay disabled
-    player.pause();
-  });
-  
-  // Listen to player state changes
-  useEffect(() => {
-    if (!player || !currentVideoUri) return;
-    
-    const subscription = player.addListener('playingChange', (newIsPlaying) => {
-      setIsVideoPlaying(newIsPlaying);
-    });
-    
-    return () => {
-      subscription.remove();
-    };
-  }, [player, currentVideoUri]);
-
   // Fullscreen viewer functions
   const openFullscreen = (imageIndex) => {
     setSelectedImageIndex(imageIndex);
     setFullscreenVisible(true);
-    
-    // Reset video state when opening
-    setIsVideoPlaying(false);
     
     // Fullscreen entrance animation - no oscillation
     fullscreenScale.value = withTiming(1, { duration: 300 });
@@ -385,25 +357,10 @@ const JournalDetailScreen = ({
   };
 
   const closeFullscreen = () => {
-    // Stop video if playing
-    if (isVideoPlaying && player) {
-      player.pause();
-    }
-    
     fullscreenScale.value = withTiming(0, { duration: 200 });
     fullscreenOpacity.value = withTiming(0, { duration: 200 }, () => {
       runOnJS(setFullscreenVisible)(false);
     });
-  };
-
-  const toggleVideoPlayback = () => {
-    if (!player || !currentVideoUri) return;
-    
-    if (isVideoPlaying) {
-      player.pause();
-    } else {
-      player.play();
-    }
   };
 
   // Fullscreen gesture handlers
@@ -918,23 +875,14 @@ const JournalDetailScreen = ({
             {/* Main media - Image or Video */}
             {mediaList[selectedImageIndex]?.type === 'video' ? (
               <View style={styles.fullscreenVideoContainer}>
-                <VideoView
-                  player={player}
+                <Video
+                  ref={videoRef}
+                  source={{ uri: mediaList[selectedImageIndex]?.uri }}
                   style={styles.fullscreenVideo}
-                  contentFit="contain"
-                  nativeControls={false}
+                  resizeMode="contain"
+                  useNativeControls={true}
+                  shouldPlay={false}
                 />
-                {/* Video Play/Pause Button */}
-                <TouchableOpacity
-                  style={styles.videoPlayPauseButton}
-                  onPress={toggleVideoPlayback}
-                >
-                  <Ionicons 
-                    name={isVideoPlaying ? "pause" : "play"} 
-                    size={40} 
-                    color="#FFFFFF" 
-                  />
-                </TouchableOpacity>
               </View>
             ) : (
               <ScrollView
@@ -960,10 +908,6 @@ const JournalDetailScreen = ({
                   <TouchableOpacity
                     style={[styles.navArrow, styles.leftArrow]}
                     onPress={() => {
-                      // Stop current video if playing
-                      if (isVideoPlaying && player) {
-                        player.pause();
-                      }
                       setSelectedImageIndex(prev => prev - 1);
                     }}
                   >
@@ -974,10 +918,6 @@ const JournalDetailScreen = ({
                   <TouchableOpacity
                     style={[styles.navArrow, styles.rightArrow]}
                     onPress={() => {
-                      // Stop current video if playing
-                      if (isVideoPlaying && player) {
-                        player.pause();
-                      }
                       setSelectedImageIndex(prev => prev + 1);
                     }}
                   >
