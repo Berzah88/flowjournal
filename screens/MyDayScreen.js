@@ -387,422 +387,27 @@ const MyDayScreen = memo(function MyDayScreen({
             })()}
           </View>
         ) : (
-          selectedDateActiveTasks.map((project, index) => {
-            // Instant touch animation (same as Card.js)
-            const scaleAnim = useRef(new Animated.Value(1)).current;
-            
-            return (
-              <TouchableWithoutFeedback
+          selectedDateActiveTasks.map((project, index) => (
+              <ProjectCard
                 key={project.id}
-                onPressIn={() => scaleAnim.setValue(0.97)}
-                onPressOut={() => scaleAnim.setValue(1)}
-                onPress={() => {
-                  scaleAnim.setValue(1);
-                  setSelectedCard(project);
-                }}
-              >
-                <Animated.View
-                  style={[
-                    styles.projectSummaryCard,
-                    {
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
-                      borderColor: theme.name === 'dark' ? '#000000' : '#1976D2',
-                      shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-                      shadowOpacity: theme.name === 'dark' ? 0.3 : 0.06,
-                      shadowRadius: theme.name === 'dark' ? 12 : 8,
-                      elevation: theme.name === 'dark' ? 8 : 2,
-                      marginBottom: index < selectedDateActiveTasks.length - 1 ? 20 : 0,
-                      transform: [{ scale: scaleAnim }],
-                    },
-                    project.isLastDay && {
-                      borderColor: '#8E7DBE',
-                      borderWidth: 1.5,
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F6FF',
-                    },
-                    project.isOverdue && {
-                      borderColor: '#FF4444',
-                      borderWidth: 1.5,
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF5F5',
-                    }
-                  ]}
-                >
-              <View style={styles.projectHeader}>
-                <Text style={[
-                  styles.projectTitle,
-                  {
-                    color: theme.name === 'dark' ? '#FF6B6B' : '#1B2951',
-                  },
-                  project.isLastDay && {
-                    color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
-                  },
-                  project.isOverdue && {
-                    color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
-                  }
-                ]}>
-                  {project.title || ''}
-                </Text>
-                <View style={styles.dateContainer}>
-                  <View style={[
-                    styles.projectDateRange,
-                    {
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#E3F2FD',
-                      borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
-                      borderWidth: theme.name === 'dark' ? 0.5 : 0,
-                    },
-                    project.isLastDay && {
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F0EDFF',
-                      borderColor: '#8E7DBE',
-                      borderWidth: 0.5,
-                    },
-                    project.isOverdue && {
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFE5E5',
-                      borderColor: '#FF4444',
-                      borderWidth: 0.5,
-                    }
-                  ]}>
-                    <Text style={[
-                      styles.dateText,
-                      {
-                        color: theme.name === 'dark' ? '#8E8E93' : '#1B2951',
-                      },
-                      project.isLastDay && {
-                        color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
-                      },
-                      project.isOverdue && {
-                        color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
-                      }
-                    ]}>
-                      {new Date(project.startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(project.endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
-                    </Text>
-                  </View>
-                  {project.isLastDay && (
-                    <View style={styles.lastDayBadge}>
-                      <Ionicons name="warning" size={12} color="#FFFFFF" />
-                      <Text style={styles.lastDayText}>{t('lastDay')}</Text>
-                    </View>
-                  )}
-                  {project.isOverdue && (
-                    <View style={[
-                      styles.overdueBadge,
-                      {
-                        backgroundColor: theme.name === 'dark' ? '#FF4444' : '#FF4444',
-                      }
-                    ]}>
-                      <Ionicons name="alert-circle" size={12} color="#FFFFFF" />
-                      <Text style={styles.overdueText}>
-                        {project.daysOverdue === 1 ? t('overdue1Day') : t('overdueDays', { days: project.daysOverdue })}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-              
-              {/* Milestone button under date - show for all projects */}
-              <TouchableOpacity 
-                style={[
-                  styles.minimalAddMilestoneButton,
-                  {
-                    backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(34, 139, 34, 0.1)',
-                    borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(34, 139, 34, 0.2)',
-                    borderWidth: 0.5,
-                  }
-                ]}
-                onPress={() => {
-                  setSelectedProjectForMilestone(project);
-                  setAddMilestoneModalVisible(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="add" size={14} color={theme.name === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(34, 139, 34, 0.7)'} />
-                <Text style={[
-                  styles.minimalAddMilestoneText,
-                  { color: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(34, 139, 34, 0.7)' }
-                ]}>{t('milestone')}</Text>
-              </TouchableOpacity>
-              
-              {project.milestones && project.milestones.length > 0 && (
-                <View style={styles.milestonesList}>
-                  {(() => {
-                    // NEW FILTERING LOGIC: Show active milestones with parent-child hierarchy
-                    const filteredMilestones = project.milestones.filter(m => {
-                      // Always show if completing
-                      if (completingMilestones.has(`${project.id}-${m.id}`)) return true;
-                      
-                      // Don't show completed milestones
-                      if (m.completed) return false;
-                      
-                      // If milestone is a child
-                      if (m.parentId) {
-                        const parent = project.milestones.find(p => p.id === m.parentId);
-                        // Show child only if parent is active
-                        if (parent && !parent.completed) {
-                          return isMilestoneActiveToday(m, selectedDate);
-                        }
-                        // Don't show child if parent is completed
-                        return false;
-                      }
-                      
-                      // If milestone is a parent or standalone
-                      // Show if active and within date range
-                      return isMilestoneActiveToday(m, selectedDate);
-                    });
-                    
-                    // Organize hierarchically
-                    const organized = [];
-                    const childrenMap = {};
-                    
-                    // Group children by parent
-                    filteredMilestones.forEach(ms => {
-                      if (ms.parentId) {
-                        if (!childrenMap[ms.parentId]) {
-                          childrenMap[ms.parentId] = [];
-                        }
-                        childrenMap[ms.parentId].push(ms);
-                      }
-                    });
-                    
-                    // Add parents and their children in hierarchical order
-                    filteredMilestones.forEach(ms => {
-                      if (!ms.parentId) {
-                        organized.push(ms);
-                        // Add children right after parent
-                        if (childrenMap[ms.id]) {
-                          organized.push(...childrenMap[ms.id]);
-                        }
-                      }
-                    });
-                    
-                    return organized.map((milestone, index) => {
-                      const milestoneKey = `${project.id}-${milestone.id}`;
-                      const isCompleting = completingMilestones.has(milestoneKey);
-                      const isOverdue = isMilestoneOverdue(milestone, selectedDate);
-                      const isLastDay = isMilestoneLastDay(milestone, selectedDate);
-                      const isChild = !!milestone.parentId;
-                      const children = project.milestones.filter(m => m.parentId === milestone.id);
-                      const hasChildren = children.length > 0;
-                      const completedChildren = children.filter(m => m.completed).length;
-                      
-                      return (
-                      <TouchableOpacity 
-                        key={milestone.id || index}
-                        style={[
-                          styles.milestoneItem,
-                          { marginLeft: isChild ? 20 : 0 }
-                        ]}
-                        onPress={() => openMilestone(milestone, project)}
-                        onLongPress={() => {
-                          if (!milestone.completed) {
-                            handleMilestoneComplete(milestone, project);
-                          }
-                        }}
-                        activeOpacity={0.7}
-                        delayLongPress={500}
-                      >
-                        <View style={styles.milestoneInfo}>
-                          <Ionicons 
-                            name="ellipse" 
-                            size={18} 
-                            color={getMilestoneColor(milestone, theme.name)} 
-                          />
-                          <View style={styles.milestoneContent}>
-                            <View style={styles.milestoneTextContainer}>
-                              <Text style={[
-                                styles.milestoneText,
-                                {
-                                  color: theme.name === 'dark' ? '#FFFFFF' : '#1976D2',
-                                },
-                                milestone.completed && styles.completedMilestoneText,
-                                isCompleting && styles.completingMilestoneText,
-                                isOverdue && styles.overdueMilestoneText,
-                                isLastDay && styles.lastDayMilestoneText
-                              ]}>
-                                {milestone.title || ''}
-                              </Text>
-                            </View>
-                            {/* Mood stickers removed */}
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                      );
-                    });
-                  })()}
-                </View>
-              )}
-
-              {/* Journal Preview Section */}
-              {(() => {
-                // En son eklenen 2 journal entry'yi al (tarih fark etmeksizin)
-                let recentEntries = [];
-                
-                if (project.journalEntries && Array.isArray(project.journalEntries)) {
-                  // En yeni entry'leri al (ProjectJourney mantığı)
-                  recentEntries = project.journalEntries
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                    .slice(0, 2)
-                    .map(entry => ({
-                      ...entry,
-                      milestoneTitle: entry.originalMilestoneTitle || entry.milestoneTitle || 'General Entry',
-                      milestoneColor: getMilestoneColor({ title: entry.originalMilestoneTitle || entry.milestoneTitle }, theme.name)
-                    }));
-                }
-                
-                
-                if (recentEntries.length > 0) {
-                  return (
-                    <View style={styles.journalPreviewSection}>
-                      <View style={styles.journalPreviewHeader}>
-                        <Text style={[
-                          styles.journalPreviewTitle,
-                          { color: theme.name === 'dark' ? '#FFFFFF' : '#1B2951' }
-                        ]}>
-                          {t('recentEntries')}
-                        </Text>
-                      </View>
-                      
-                      {recentEntries.map((entry, index) => (
-                        <TouchableOpacity 
-                          key={`${entry.id || index}-${entry.createdAt}`}
-                          style={[
-                            styles.journalPreviewCard,
-                            {
-                              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                              borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-                            }
-                          ]}
-                          onPress={() => {
-                            // Open journal with specific entry
-                            const projectData = {
-                              id: 'project-journal',
-                              title: t('projectJournal'),
-                              taskId: project.id,
-                              projectTitle: project.title || '',
-                              isProjectBased: true,
-                              editEntry: entry
-                            };
-                            onOpenJournal(projectData);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.journalPreviewContent}>
-                            {/* Text özeti kaldırıldı - sadece tarih ve mood gösterilecek */}
-                            
-                            <View style={styles.journalPreviewFooter}>
-                              <Text style={[
-                                styles.journalPreviewDate,
-                                { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
-                              ]}>
-                                {new Date(entry.createdAt).toLocaleDateString('tr-TR', { 
-                                  day: '2-digit', 
-                                  month: 'short' 
-                                })} • {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </Text>
-                              
-                              {/* Mood sticker - Tarih ile aynı satırda */}
-                              {entry.mood && (
-                                <View style={[
-                                  styles.moodTag,
-                                  { 
-                                    backgroundColor: entry.moodColor || '#CFD8DC',
-                                    borderColor: theme.name === 'dark' 
-                                      ? 'rgba(255, 255, 255, 0.2)' 
-                                      : 'rgba(0, 0, 0, 0.1)',
-                                  }
-                                ]}>
-                                  <MaterialIcons
-                                    name={entry.moodIcon || entry.mood || 'sentiment-neutral'}
-                                    size={10}
-                                    color={theme.name === 'dark' ? '#000000' : '#333'}
-                                  />
-                                </View>
-                              )}
-                            </View>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  );
-                }
-                return null;
-              })()}
-
-              {/* Journal Add Button and Badge - Bottom of each project card */}
-              <View style={styles.journalActionsContainer}>
-                {/* Journal Count Badge */}
-                {(() => {
-                  // Projedeki journal card sayısını say (benzersiz gün sayısı)
-                  // ProjectJourney'deki gibi currentTask.journalEntries kullan
-                  let journalCardCount = 0;
-                  
-                  if (project.journalEntries && Array.isArray(project.journalEntries)) {
-                    // Tarihleri grupla (ProjectJourney mantığı)
-                    const uniqueDates = new Set();
-                    project.journalEntries.forEach(entry => {
-                      if (entry.createdAt) {
-                        const date = new Date(entry.createdAt);
-                        const dateKey = date.toLocaleDateString('en-US', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric'
-                        });
-                        uniqueDates.add(dateKey);
-                      }
-                    });
-                    journalCardCount = uniqueDates.size;
-                  }
-                  
-                  
-                  if (journalCardCount > 0) {
-                    return (
-                      <View style={[
-                        styles.journalCountBadge,
-                        {
-                          backgroundColor: theme.name === 'dark' ? '#007AFF' : '#007AFF',
-                        }
-                      ]}>
-                        <Ionicons name="journal" size={10} color="white" />
-                        <Text style={styles.journalCountText}>{journalCardCount}</Text>
-                      </View>
-                    );
-                  }
-                  return <View style={styles.journalBadgePlaceholder} />;
-                })()}
-                
-                {/* Journal Add Button */}
-                <TouchableOpacity 
-                  style={[
-                    styles.addJournalButton,
-                    {
-                      backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.1)' : 'rgba(0, 122, 255, 0.05)',
-                      borderColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.3)' : 'rgba(0, 122, 255, 0.2)',
-                      borderWidth: 1,
-                    }
-                  ]}
-                  onPress={() => {
-                    const projectData = {
-                      id: 'project-journal',
-                      title: t('projectJournal'),
-                      taskId: project.id,
-                      projectTitle: project.title || '',
-                      isProjectBased: true
-                    };
-                    onOpenJournal(projectData);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="journal-outline" size={16} color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} />
-                  <Text style={[
-                    styles.addJournalText,
-                    { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
-                  ]}>{t('addJournal')}</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          </TouchableWithoutFeedback>
-            );
-          })
+                project={project}
+                index={index}
+                isLastProject={index >= selectedDateActiveTasks.length - 1}
+                theme={theme}
+                t={t}
+                setSelectedCard={setSelectedCard}
+                setSelectedProjectForMilestone={setSelectedProjectForMilestone}
+                setAddMilestoneModalVisible={setAddMilestoneModalVisible}
+                completingMilestones={completingMilestones}
+                selectedDate={selectedDate}
+                isMilestoneActiveToday={isMilestoneActiveToday}
+                isMilestoneOverdue={isMilestoneOverdue}
+                isMilestoneLastDay={isMilestoneLastDay}
+                openMilestone={openMilestone}
+                handleMilestoneComplete={handleMilestoneComplete}
+                onOpenJournal={onOpenJournal}
+              />
+            ))
         )}
 
         {/* Add Project Button - Always visible when there are active projects */}
@@ -832,6 +437,442 @@ const MyDayScreen = memo(function MyDayScreen({
 
       </View>
     </View>
+  );
+});
+
+// Separate ProjectCard component to avoid hook violations in map
+const ProjectCard = memo(function ProjectCard({
+  project,
+  index,
+  isLastProject,
+  theme,
+  t,
+  setSelectedCard,
+  setSelectedProjectForMilestone,
+  setAddMilestoneModalVisible,
+  completingMilestones,
+  selectedDate,
+  isMilestoneActiveToday,
+  isMilestoneOverdue,
+  isMilestoneLastDay,
+  openMilestone,
+  handleMilestoneComplete,
+  onOpenJournal,
+}) {
+  // Instant touch animation (same as Card.js)
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  return (
+    <TouchableWithoutFeedback
+      onPressIn={() => scaleAnim.setValue(0.97)}
+      onPressOut={() => scaleAnim.setValue(1)}
+      onPress={() => {
+        scaleAnim.setValue(1);
+        setSelectedCard(project);
+      }}
+    >
+      <Animated.View
+        style={[
+          styles.projectSummaryCard,
+          {
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+            borderColor: theme.name === 'dark' ? '#000000' : '#1976D2',
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.06,
+            shadowRadius: theme.name === 'dark' ? 12 : 8,
+            elevation: theme.name === 'dark' ? 8 : 2,
+            marginBottom: isLastProject ? 0 : 20,
+            transform: [{ scale: scaleAnim }],
+          },
+          project.isLastDay && {
+            borderColor: '#8E7DBE',
+            borderWidth: 1.5,
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F6FF',
+          },
+          project.isOverdue && {
+            borderColor: '#FF4444',
+            borderWidth: 1.5,
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF5F5',
+          }
+        ]}
+      >
+        <View style={styles.projectHeader}>
+          <Text style={[
+            styles.projectTitle,
+            {
+              color: theme.name === 'dark' ? '#FF6B6B' : '#1B2951',
+            },
+            project.isLastDay && {
+              color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
+            },
+            project.isOverdue && {
+              color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
+            }
+          ]}>
+            {project.title || ''}
+          </Text>
+          <View style={styles.dateContainer}>
+            <View style={[
+              styles.projectDateRange,
+              {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#E3F2FD',
+                borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
+                borderWidth: theme.name === 'dark' ? 0.5 : 0,
+              },
+              project.isLastDay && {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F0EDFF',
+                borderColor: '#8E7DBE',
+                borderWidth: 0.5,
+              },
+              project.isOverdue && {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFE5E5',
+                borderColor: '#FF4444',
+                borderWidth: 0.5,
+              }
+            ]}>
+              <Text style={[
+                styles.dateText,
+                {
+                  color: theme.name === 'dark' ? '#8E8E93' : '#1B2951',
+                },
+                project.isLastDay && {
+                  color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
+                },
+                project.isOverdue && {
+                  color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
+                }
+              ]}>
+                {new Date(project.startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(project.endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+              </Text>
+            </View>
+            {project.isLastDay && (
+              <View style={styles.lastDayBadge}>
+                <Ionicons name="warning" size={12} color="#FFFFFF" />
+                <Text style={styles.lastDayText}>{t('lastDay')}</Text>
+              </View>
+            )}
+            {project.isOverdue && (
+              <View style={[
+                styles.overdueBadge,
+                {
+                  backgroundColor: theme.name === 'dark' ? '#FF4444' : '#FF4444',
+                }
+              ]}>
+                <Ionicons name="alert-circle" size={12} color="#FFFFFF" />
+                <Text style={styles.overdueText}>
+                  {project.daysOverdue === 1 ? t('overdue1Day') : t('overdueDays', { days: project.daysOverdue })}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+        
+        {/* Milestone button under date - show for all projects */}
+        <TouchableOpacity 
+          style={[
+            styles.minimalAddMilestoneButton,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(34, 139, 34, 0.1)',
+              borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(34, 139, 34, 0.2)',
+              borderWidth: 0.5,
+            }
+          ]}
+          onPress={() => {
+            setSelectedProjectForMilestone(project);
+            setAddMilestoneModalVisible(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add" size={14} color={theme.name === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(34, 139, 34, 0.7)'} />
+          <Text style={[
+            styles.minimalAddMilestoneText,
+            { color: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(34, 139, 34, 0.7)' }
+          ]}>{t('milestone')}</Text>
+        </TouchableOpacity>
+        
+        {project.milestones && project.milestones.length > 0 && (
+          <View style={styles.milestonesList}>
+            {(() => {
+              // NEW FILTERING LOGIC: Show active milestones with parent-child hierarchy
+              const filteredMilestones = project.milestones.filter(m => {
+                // Always show if completing
+                if (completingMilestones.has(`${project.id}-${m.id}`)) return true;
+                
+                // Don't show completed milestones
+                if (m.completed) return false;
+                
+                // If milestone is a child
+                if (m.parentId) {
+                  const parent = project.milestones.find(p => p.id === m.parentId);
+                  // Show child only if parent is active
+                  if (parent && !parent.completed) {
+                    return isMilestoneActiveToday(m, selectedDate);
+                  }
+                  // Don't show child if parent is completed
+                  return false;
+                }
+                
+                // If milestone is a parent or standalone
+                // Show if active and within date range
+                return isMilestoneActiveToday(m, selectedDate);
+              });
+              
+              // Organize hierarchically
+              const organized = [];
+              const childrenMap = {};
+              
+              // Group children by parent
+              filteredMilestones.forEach(ms => {
+                if (ms.parentId) {
+                  if (!childrenMap[ms.parentId]) {
+                    childrenMap[ms.parentId] = [];
+                  }
+                  childrenMap[ms.parentId].push(ms);
+                }
+              });
+              
+              // Add parents and their children in hierarchical order
+              filteredMilestones.forEach(ms => {
+                if (!ms.parentId) {
+                  organized.push(ms);
+                  // Add children right after parent
+                  if (childrenMap[ms.id]) {
+                    organized.push(...childrenMap[ms.id]);
+                  }
+                }
+              });
+              
+              return organized.map((milestone, index) => {
+                const milestoneKey = `${project.id}-${milestone.id}`;
+                const isCompleting = completingMilestones.has(milestoneKey);
+                const isOverdue = isMilestoneOverdue(milestone, selectedDate);
+                const isLastDay = isMilestoneLastDay(milestone, selectedDate);
+                const isChild = !!milestone.parentId;
+                const children = project.milestones.filter(m => m.parentId === milestone.id);
+                const hasChildren = children.length > 0;
+                const completedChildren = children.filter(m => m.completed).length;
+                
+                return (
+                <TouchableOpacity 
+                  key={milestone.id || index}
+                  style={[
+                    styles.milestoneItem,
+                    { marginLeft: isChild ? 20 : 0 }
+                  ]}
+                  onPress={() => openMilestone(milestone, project)}
+                  onLongPress={() => {
+                    if (!milestone.completed) {
+                      handleMilestoneComplete(milestone, project);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  delayLongPress={500}
+                >
+                  <View style={styles.milestoneInfo}>
+                    <Ionicons 
+                      name="ellipse" 
+                      size={18} 
+                      color={getMilestoneColor(milestone, theme.name)} 
+                    />
+                    <View style={styles.milestoneContent}>
+                      <View style={styles.milestoneTextContainer}>
+                        <Text style={[
+                          styles.milestoneText,
+                          {
+                            color: theme.name === 'dark' ? '#FFFFFF' : '#1976D2',
+                          },
+                          milestone.completed && styles.completedMilestoneText,
+                          isCompleting && styles.completingMilestoneText,
+                          isOverdue && styles.overdueMilestoneText,
+                          isLastDay && styles.lastDayMilestoneText
+                        ]}>
+                          {milestone.title || ''}
+                        </Text>
+                      </View>
+                      {/* Mood stickers removed */}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                );
+              });
+            })()}
+          </View>
+        )}
+
+
+        {/* Journal Preview Section */}
+        {(() => {
+          // En son eklenen 2 journal entry'yi al (tarih fark etmeksizin)
+          let recentEntries = [];
+          
+          if (project.journalEntries && Array.isArray(project.journalEntries)) {
+            // En yeni entry'leri al (ProjectJourney mantığı)
+            recentEntries = project.journalEntries
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .slice(0, 2)
+              .map(entry => ({
+                ...entry,
+                milestoneTitle: entry.originalMilestoneTitle || entry.milestoneTitle || 'General Entry',
+                milestoneColor: getMilestoneColor({ title: entry.originalMilestoneTitle || entry.milestoneTitle }, theme.name)
+              }));
+          }
+          
+          
+          if (recentEntries.length > 0) {
+            return (
+              <View style={styles.journalPreviewSection}>
+                <View style={styles.journalPreviewHeader}>
+                  <Text style={[
+                    styles.journalPreviewTitle,
+                    { color: theme.name === 'dark' ? '#FFFFFF' : '#1B2951' }
+                  ]}>
+                    {t('recentEntries')}
+                  </Text>
+                </View>
+                
+                {recentEntries.map((entry, index) => (
+                  <TouchableOpacity 
+                    key={`${entry.id || index}-${entry.createdAt}`}
+                    style={[
+                      styles.journalPreviewCard,
+                      {
+                        backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                        borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                      }
+                    ]}
+                    onPress={() => {
+                      // Open journal with specific entry
+                      const projectData = {
+                        id: 'project-journal',
+                        title: t('projectJournal'),
+                        taskId: project.id,
+                        projectTitle: project.title || '',
+                        isProjectBased: true,
+                        editEntry: entry
+                      };
+                      onOpenJournal(projectData);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.journalPreviewContent}>
+                      {/* Text özeti kaldırıldı - sadece tarih ve mood gösterilecek */}
+                      
+                      <View style={styles.journalPreviewFooter}>
+                        <Text style={[
+                          styles.journalPreviewDate,
+                          { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
+                        ]}>
+                          {new Date(entry.createdAt).toLocaleDateString('tr-TR', { 
+                            day: '2-digit', 
+                            month: 'short' 
+                          })} • {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Text>
+                        
+                        {/* Mood sticker - Tarih ile aynı satırda */}
+                        {entry.mood && (
+                          <View style={[
+                            styles.moodTag,
+                            { 
+                              backgroundColor: entry.moodColor || '#CFD8DC',
+                              borderColor: theme.name === 'dark' 
+                                ? 'rgba(255, 255, 255, 0.2)' 
+                                : 'rgba(0, 0, 0, 0.1)',
+                            }
+                          ]}>
+                            <MaterialIcons
+                              name={entry.moodIcon || entry.mood || 'sentiment-neutral'}
+                              size={10}
+                              color={theme.name === 'dark' ? '#000000' : '#333'}
+                            />
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            );
+          }
+          return null;
+        })()}
+
+
+        {/* Journal Add Button and Badge - Bottom of each project card */}
+        <View style={styles.journalActionsContainer}>
+          {/* Journal Count Badge */}
+          {(() => {
+            // Projedeki journal card sayısını say (benzersiz gün sayısı)
+            // ProjectJourney'deki gibi currentTask.journalEntries kullan
+            let journalCardCount = 0;
+            
+            if (project.journalEntries && Array.isArray(project.journalEntries)) {
+              // Tarihleri grupla (ProjectJourney mantığı)
+              const uniqueDates = new Set();
+              project.journalEntries.forEach(entry => {
+                if (entry.createdAt) {
+                  const date = new Date(entry.createdAt);
+                  const dateKey = date.toLocaleDateString('en-US', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  });
+                  uniqueDates.add(dateKey);
+                }
+              });
+              journalCardCount = uniqueDates.size;
+            }
+            
+            
+            if (journalCardCount > 0) {
+              return (
+                <View style={[
+                  styles.journalCountBadge,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#007AFF' : '#007AFF',
+                  }
+                ]}>
+                  <Ionicons name="journal" size={10} color="white" />
+                  <Text style={styles.journalCountText}>{journalCardCount}</Text>
+                </View>
+              );
+            }
+            return <View style={styles.journalBadgePlaceholder} />;
+          })()}
+          
+          {/* Journal Add Button */}
+          <TouchableOpacity 
+            style={[
+              styles.addJournalButton,
+              {
+                backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.1)' : 'rgba(0, 122, 255, 0.05)',
+                borderColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.3)' : 'rgba(0, 122, 255, 0.2)',
+                borderWidth: 1,
+              }
+            ]}
+            onPress={() => {
+              const projectData = {
+                id: 'project-journal',
+                title: t('projectJournal'),
+                taskId: project.id,
+                projectTitle: project.title || '',
+                isProjectBased: true
+              };
+              onOpenJournal(projectData);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="journal-outline" size={16} color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} />
+            <Text style={[
+              styles.addJournalText,
+              { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
+            ]}>{t('addJournal')}</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </TouchableWithoutFeedback>
   );
 });
 
