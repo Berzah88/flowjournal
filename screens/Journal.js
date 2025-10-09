@@ -22,6 +22,7 @@ import Animated, {
   withTiming,
   runOnJS,
   interpolate,
+  Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -358,11 +359,20 @@ export default function Journal({
 
   useEffect(() => {
     if (visible) {
-      // Basit açılış animasyonu
-      translateY.value = withTiming(0, { duration: 320 });
-      scale.value = withTiming(1, { duration: 320 });
-      opacity.value = withTiming(1, { duration: 320 });
-      const t = setTimeout(() => inputRef.current?.focus?.(), 340);
+      // Smooth premium opening animation
+      translateY.value = withTiming(0, { 
+        duration: 500,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
+      });
+      scale.value = withTiming(1, { 
+        duration: 500,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+      });
+      opacity.value = withTiming(1, { 
+        duration: 500,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+      });
+      const t = setTimeout(() => inputRef.current?.focus?.(), 520);
       
       // State'leri reset et
       setAutoMoodApplied(false);
@@ -451,9 +461,15 @@ export default function Journal({
     setHasMedia(false);
     setHasMoodSuggestions(false);
     
-    // Animasyonu başlat
-    translateY.value = withTiming(height, { duration: 200 });
-    opacity.value = withTiming(0, { duration: 200 });
+    // Smooth closing animation
+    translateY.value = withTiming(height, { 
+      duration: 350,
+      easing: Easing.bezier(0.4, 0, 0.6, 1) // Accelerated easing
+    });
+    opacity.value = withTiming(0, { 
+      duration: 350,
+      easing: Easing.bezier(0.4, 0, 0.6, 1)
+    });
   }, [onClose]);
 
   const panGesture = Gesture.Pan()

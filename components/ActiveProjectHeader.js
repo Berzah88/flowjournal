@@ -1,11 +1,13 @@
 // components/ActiveProjectHeader.js
-import React, { useCallback, memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, memo, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated as RNAnimated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+
+const { width } = Dimensions.get("window");
 
 // Format date range as "23 Mar 2025 - 24 Mar 2025"
 const formatDateRange = (startDate, endDate) => {
@@ -33,10 +35,42 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   const start = currentTask?.startDate ? new Date(currentTask.startDate) : null;
   const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
 
+  // Animated progress: 0 = milestones, 1 = journey
+  const progress = useRef(new RNAnimated.Value(activeTab === 0 ? 0 : 1)).current;
+
+  useEffect(() => {
+    RNAnimated.spring(progress, {
+      toValue: activeTab === 0 ? 0 : 1,
+      useNativeDriver: false, // color interpolation doesn't support native driver
+      tension: 300,
+      friction: 30,
+    }).start();
+  }, [activeTab, progress]);
+
   const handleTabSwitch = useCallback((newTab) => {
     if (newTab === activeTab) return;
     onTabSwitch(newTab);
   }, [activeTab, onTabSwitch]);
+
+  // Interpolate colors for tabs
+  const milestonesColor = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: theme.name === 'dark' 
+      ? ["#FFFFFF", "#8E8E93"] 
+      : ["#1D1D1F", "#8E8E93"],
+  });
+  const journeyColor = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: theme.name === 'dark'
+      ? ["#8E8E93", "#FFFFFF"]
+      : ["#8E8E93", "#1D1D1F"],
+  });
+
+  // Sliding indicator position
+  const indicatorTranslate = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, (width - 48) / 2 - 6], // Half tab width
+  });
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -69,57 +103,45 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
             )}
           </View>
           
-          {/* Tab Switcher */}
+          {/* Tab Switcher with Animated Indicator */}
           <View style={[
             styles.tabSwitcher,
             {
-              backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 0, 0, 0.05)',
+              backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 0, 0, 0.08)',
+              borderColor: theme.name === 'dark' ? '#636366' : 'rgba(0, 0, 0, 0.04)',
             }
           ]}>
-            <TouchableOpacity 
+            {/* Sliding Indicator */}
+            <RNAnimated.View
               style={[
-                styles.tabButton, 
-                activeTab === 0 && [
-                  styles.activeTabButton,
-                  { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF' }
-                ]
-              ]} 
+                styles.indicator,
+                {
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                  shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                  shadowOpacity: theme.name === 'dark' ? 0.2 : 0.1,
+                  transform: [{ translateX: indicatorTranslate }],
+                },
+              ]}
+            />
+            
+            <TouchableOpacity 
+              style={styles.tabButton} 
               onPress={() => handleTabSwitch(0)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <Text style={[
-                styles.tabButtonText, 
-                { color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93' },
-                activeTab === 0 && {
-                  color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
-                  fontFamily: 'Poppins_600SemiBold',
-                }
-              ]}>
+              <RNAnimated.Text style={[styles.tabButtonText, { color: milestonesColor }]}>
                 {t('milestones')}
-              </Text>
+              </RNAnimated.Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[
-                styles.tabButton, 
-                activeTab === 1 && [
-                  styles.activeTabButton,
-                  { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF' }
-                ]
-              ]} 
+              style={styles.tabButton} 
               onPress={() => handleTabSwitch(1)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <Text style={[
-                styles.tabButtonText, 
-                { color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93' },
-                activeTab === 1 && {
-                  color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
-                  fontFamily: 'Poppins_600SemiBold',
-                }
-              ]}>
+              <RNAnimated.Text style={[styles.tabButtonText, { color: journeyColor }]}>
                 {t('journey')}
-              </Text>
+              </RNAnimated.Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -162,29 +184,36 @@ const styles = StyleSheet.create({
   },
   tabSwitcher: {
     flexDirection: 'row',
+    borderRadius: 16,
+    paddingHorizontal: 6,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 0.5,
+    overflow: 'hidden',
+  },
+  indicator: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    bottom: 6,
+    width: (width - 48) / 2 - 12, // half minus paddings
     borderRadius: 12,
-    padding: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeTabButton: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   tabButtonText: {
     fontSize: 14,
-    fontFamily: "Poppins_500Medium",
-  },
-  activeTabButtonText: {
+    fontFamily: "Poppins_600SemiBold",
+    letterSpacing: -0.1,
   },
   completedText: { 
     color: "#FFFFFF" 

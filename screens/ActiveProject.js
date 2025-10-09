@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -189,10 +190,19 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   ).current;
 
   useEffect(() => {
-    // Smooth opening animation like Journal screen
-    translateY.value = withTiming(0, { duration: 320 });
-    scale.value = withTiming(1, { duration: 320 });
-    opacity.value = withTiming(1, { duration: 320 });
+    // Smooth premium opening animation
+    translateY.value = withTiming(0, { 
+      duration: 500,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
+    });
+    scale.value = withTiming(1, { 
+      duration: 500,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+    });
+    opacity.value = withTiming(1, { 
+      duration: 500,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+    });
   }, []);
 
   useEffect(() => {
@@ -256,8 +266,14 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   }, [translateY, scale, opacity, dragY, panX]); // Dependencies eklendi
 
   const handleClose = useCallback(() => {
-    translateY.value = withTiming(height, { duration: 200 });
-    opacity.value = withTiming(0, { duration: 200 }, () => {
+    translateY.value = withTiming(height, { 
+      duration: 350,
+      easing: Easing.bezier(0.4, 0, 0.6, 1) // Accelerated easing
+    });
+    opacity.value = withTiming(0, { 
+      duration: 350,
+      easing: Easing.bezier(0.4, 0, 0.6, 1)
+    }, () => {
       if (onClose) runOnJS(onClose)();
     });
   }, [onClose]);
@@ -484,20 +500,43 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
         {/* Menu Button - Visible in both tabs */}
           {!isModalOpen && (
             <TouchableOpacity 
-              onPress={() => setMenuVisible((s) => !s)} 
+              onPress={async () => {
+                try {
+                  // Try Expo Haptics first - Medium for more noticeable feedback
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  console.log('✅ Expo Haptic triggered (MEDIUM)!');
+                } catch (error) {
+                  console.error('❌ Expo Haptic error:', error);
+                  // Fallback to native Vibration
+                  try {
+                    Vibration.vibrate(50); // 50ms vibration - more noticeable
+                    console.log('✅ Native Vibration triggered (STRONGER)!');
+                  } catch (vibError) {
+                    console.error('❌ Native Vibration error:', vibError);
+                  }
+                }
+                setMenuVisible((s) => !s);
+              }} 
               style={[
                 styles.menuButton,
                 {
-                  backgroundColor: 'transparent',
-                  borderRadius: 16,
+                  backgroundColor: theme.name === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.05)' 
+                    : 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: 18,
                   padding: 6,
+                  borderWidth: 1,
+                  borderColor: theme.name === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : 'rgba(0, 0, 0, 0.06)',
                 }
               ]}
+              activeOpacity={0.6}
             >
               <Ionicons 
-                name="ellipsis-horizontal" 
+                name="ellipsis-vertical" 
                 size={18} 
-                color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
+                color={theme.name === 'dark' ? '#AEAEB2' : '#8E8E93'} 
               />
             </TouchableOpacity>
           )}
@@ -617,10 +656,7 @@ const styles = StyleSheet.create({
     position: "absolute", 
     top: 12, 
     right: 20, 
-    padding: 6, 
     zIndex: 110,
-    backgroundColor: 'transparent',
-    borderRadius: 16,
   },
   tabContainer: { 
     flexDirection: "row", 

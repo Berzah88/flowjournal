@@ -169,51 +169,67 @@ const EmotionalJournalScreen = ({ navigation }) => {
     };
   }, [allMoodData, activeTasks, completedTasks]);
 
-  // Mood trend analizi
+  // Mood trend analizi - Haftalık ortalama bazında
   const moodTrend = useMemo(() => {
-    const last7Days = allMoodData.filter(entry => {
+    const now = new Date();
+    
+    // Mood kategorileri (EXTENDED_MOODS'a uygun - tam liste)
+    const positiveMoods = ['happy', 'excited', 'grateful', 'confident', 'calm', 'peaceful', 'hopeful', 'proud', 'relieved', 'motivated', 'content'];
+    const negativeMoods = ['sad', 'angry', 'anxious', 'overwhelmed', 'tired', 'frustrated', 'stressed', 'exhausted', 'worried', 'disappointed', 'lonely', 'confused', 'bored'];
+    const neutralMoods = ['neutral', 'curious', 'focused', 'nostalgic', 'surprised', 'natural'];
+    
+    // Son 7 gün (Bu hafta)
+    const last7DaysStart = new Date(now);
+    last7DaysStart.setDate(now.getDate() - 7);
+    last7DaysStart.setHours(0, 0, 0, 0);
+    
+    const thisWeekEntries = allMoodData.filter(entry => {
       const entryDate = new Date(entry.createdAt);
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return entryDate >= weekAgo;
+      return entryDate >= last7DaysStart;
     });
     
-    if (last7Days.length < 2) return null;
+    // Önceki 7 gün (Geçen hafta)
+    const previous7DaysStart = new Date(now);
+    previous7DaysStart.setDate(now.getDate() - 14);
+    previous7DaysStart.setHours(0, 0, 0, 0);
     
-    const firstHalf = last7Days.slice(0, Math.ceil(last7Days.length / 2));
-    const secondHalf = last7Days.slice(Math.ceil(last7Days.length / 2));
+    const previous7DaysEnd = new Date(last7DaysStart);
     
-    // Mood kategorileri
-    const positiveMoods = ['happy', 'excited', 'grateful', 'confident', 'calm', 'peaceful'];
-    const negativeMoods = ['sad', 'angry', 'anxious', 'overwhelmed', 'tired', 'frustrated', 'stressed', 'exhausted', 'worried', 'disappointed'];
-    const neutralMoods = ['neutral', 'curious', 'focused'];
+    const previousWeekEntries = allMoodData.filter(entry => {
+      const entryDate = new Date(entry.createdAt);
+      return entryDate >= previous7DaysStart && entryDate < previous7DaysEnd;
+    });
     
-    // İlk yarı analizi
-    const firstHalfPositive = firstHalf.filter(entry => {
-      return positiveMoods.includes(entry.mood);
-    }).length;
+    // En az 1 haftalık veri olmalı
+    if (thisWeekEntries.length === 0) return null;
     
-    const firstHalfNegative = firstHalf.filter(entry => {
-      return negativeMoods.includes(entry.mood);
-    }).length;
+    // Bu haftanın mood skoru
+    const thisWeekPositive = thisWeekEntries.filter(e => positiveMoods.includes(e.mood)).length;
+    const thisWeekNegative = thisWeekEntries.filter(e => negativeMoods.includes(e.mood)).length;
+    const thisWeekScore = thisWeekEntries.length > 0 
+      ? (thisWeekPositive - thisWeekNegative) / thisWeekEntries.length 
+      : 0;
     
-    // İkinci yarı analizi
-    const secondHalfPositive = secondHalf.filter(entry => {
-      return positiveMoods.includes(entry.mood);
-    }).length;
+    // Geçen haftanın mood skoru
+    const prevWeekPositive = previousWeekEntries.filter(e => positiveMoods.includes(e.mood)).length;
+    const prevWeekNegative = previousWeekEntries.filter(e => negativeMoods.includes(e.mood)).length;
+    const prevWeekScore = previousWeekEntries.length > 0 
+      ? (prevWeekPositive - prevWeekNegative) / previousWeekEntries.length 
+      : 0;
     
-    const secondHalfNegative = secondHalf.filter(entry => {
-      return negativeMoods.includes(entry.mood);
-    }).length;
+    // Trend belirleme: Bu hafta - Geçen hafta
+    const scoreDiff = thisWeekScore - prevWeekScore;
     
-    // Net mood skoru hesapla (pozitif - negatif)
-    const firstHalfNetScore = firstHalfPositive - firstHalfNegative;
-    const secondHalfNetScore = secondHalfPositive - secondHalfNegative;
+    // Geçen hafta verisi yoksa, bu haftanın mutlak skoruna bak
+    if (previousWeekEntries.length === 0) {
+      if (thisWeekScore > 0.3) return 'improving';
+      if (thisWeekScore < -0.3) return 'declining';
+      return 'stable';
+    }
     
-    
-    // Trend belirleme
-    if (secondHalfNetScore > firstHalfNetScore + 0.1) return 'improving';
-    if (secondHalfNetScore < firstHalfNetScore - 0.1) return 'declining';
+    // İki hafta karşılaştırması
+    if (scoreDiff > 0.2) return 'improving'; // %20'den fazla iyileşme
+    if (scoreDiff < -0.2) return 'declining'; // %20'den fazla düşüş
     return 'stable';
   }, [allMoodData]);
 
@@ -1094,7 +1110,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
               style={[
                 styles.backButton,
                 {
-                  backgroundColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.95)',
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
                   borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.08)',
                   shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
                   shadowOpacity: theme.name === 'dark' ? 0 : 0.1,
@@ -1153,7 +1169,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
             style={[
               styles.backButton,
               {
-                backgroundColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.95)',
+                backgroundColor: theme.name === 'dark' ? '#2D3748' : 'rgba(255, 255, 255, 0.95)',
                 borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.08)',
                 shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
                 shadowOpacity: theme.name === 'dark' ? 0 : 0.1,
@@ -1297,7 +1313,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                 styles.trendCard,
                 { 
                   borderLeftColor: getTrendColor(),
-                  backgroundColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.95)',
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
                   shadowColor: theme.name === 'dark' ? '#000000' : '#000',
                   shadowOpacity: theme.name === 'dark' ? 0 : 0.1,
                   shadowRadius: theme.name === 'dark' ? 0 : 10,
@@ -1357,7 +1373,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                          styles.flowItem, 
                          { 
                            borderLeftColor: project.progressColor,
-                           backgroundColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.95)',
+                           backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
                            shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
                            shadowOpacity: theme.name === 'dark' ? 0 : 0.08,
                            shadowRadius: theme.name === 'dark' ? 0 : 10,
@@ -1544,7 +1560,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
               <View style={[
                 styles.timelineStat, 
                 { 
-                  backgroundColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.95)',
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
                   borderLeftWidth: 3,
                   borderLeftColor: theme.colors.primary,
                   shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
@@ -1573,7 +1589,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
               <View style={[
                 styles.timelineStat, 
                 { 
-                  backgroundColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.95)',
+                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
                   borderLeftWidth: 3,
                   borderLeftColor: COLORS.SUCCESS,
                   shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
@@ -1648,7 +1664,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
                     <View key={index} style={[
                       styles.minimalRecommendationItem,
                       {
-                        backgroundColor: theme.name === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.7)',
+                        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.7)',
                         borderLeftColor: theme.name === 'dark' ? '#FF6B6B' : '#FF9800',
                         borderWidth: theme.name === 'dark' ? 1 : 0,
                         borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',

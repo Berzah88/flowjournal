@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Alert, Pressable, Keyboard, Easing } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Alert, Pressable, Keyboard, Easing, Vibration } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialIcons } from "@expo/vector-icons";
+import Svg, { Circle } from "react-native-svg";
+import * as Haptics from 'expo-haptics';
 import FlashCalendar from "./FlashCalendar";
 import JournalCard from "./JournalCard";
 import PropTypes from "prop-types";
@@ -44,6 +46,23 @@ function MileStone({
   
   if (!milestone) return null;
 
+  // Haptic feedback helper with fallback
+  const triggerHaptic = useCallback(async (style = Haptics.ImpactFeedbackStyle.Medium) => {
+    try {
+      await Haptics.impactAsync(style);
+      console.log('✅ Milestone Haptic:', style === Haptics.ImpactFeedbackStyle.Medium ? 'MEDIUM' : 'LIGHT');
+    } catch (error) {
+      // Fallback to native Vibration
+      try {
+        const duration = style === Haptics.ImpactFeedbackStyle.Medium ? 50 : 30;
+        Vibration.vibrate(duration);
+        console.log('✅ Milestone Vibration:', duration + 'ms');
+      } catch (vibError) {
+        console.log('Haptic feedback not available');
+      }
+    }
+  }, []);
+
   // Format date to "Mar. 13" format (for end date)
   const formatShortDate = useCallback((dateString) => {
     if (!dateString) return '';
@@ -64,6 +83,20 @@ function MileStone({
       return `${date.getDate()}`;
     } catch (e) {
       return '';
+    }
+  }, []);
+
+  // Format date for circular progress center - compact format
+  const formatCompactDate = useCallback((dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      const day = date.getDate();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[date.getMonth()];
+      return { day: day.toString(), month };
+    } catch (e) {
+      return { day: '', month: '' };
     }
   }, []);
 
@@ -179,6 +212,9 @@ function MileStone({
   
   // Smooth collapse/expand animation for children
   const collapseAnim = useRef(new Animated.Value(1)).current; // 1 = visible, 0 = hidden
+  
+  // Apple-style touch animation (scale only - no opacity for nested backgrounds)
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   // Update local state when milestone prop changes
   useEffect(() => {
@@ -219,9 +255,10 @@ function MileStone({
     // Milestone'lar için basılı tutma işlevselliğini etkinleştir
     // (sadece title'ı olan milestone'lar için - completed veya incomplete fark etmez)
     if (title && title.trim() !== "") {
+      triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
       showDeleteOptionWithAnimation();
     }
-  }, [title, showDeleteOptionWithAnimation]);
+  }, [title, showDeleteOptionWithAnimation, triggerHaptic]);
 
   const handleDelete = useCallback(() => {
     Alert.alert(
@@ -251,13 +288,15 @@ function MileStone({
 
   const handleEditToggle = useCallback(() => {
     // Open modal for editing
+    triggerHaptic();
     onEditToggle?.(milestone);
-  }, [onEditToggle, milestone]);
+  }, [onEditToggle, milestone, triggerHaptic]);
 
   const handleCreateMilestone = useCallback(() => {
     if (!title.trim()) {
       return;
     }
+    triggerHaptic();
     setEditable(false);
     onUpdate?.({
       title,
@@ -266,7 +305,7 @@ function MileStone({
     });
     // Dismiss keyboard after milestone creation
     Keyboard.dismiss();
-  }, [title, startDate, endDate, onUpdate]);
+  }, [title, startDate, endDate, onUpdate, triggerHaptic]);
 
 
   const handleCalendarConfirm = ({ startDate: sISO, endDate: eISO }) => {
@@ -321,24 +360,47 @@ function MileStone({
     isProjectBased: true
   }), [milestone.taskId, milestone.projectTitle, currentTask?.title]);
 
+  // Apple-style touch animations (scale only)
+  const handlePressIn = useCallback(() => {
+    if (editable || (isAttachMode && !isSelectableForAttach)) return;
+    
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 20,
+    }).start();
+  }, [scaleAnim, editable, isAttachMode, isSelectableForAttach]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 20,
+    }).start();
+  }, [scaleAnim]);
+
   // Optimized press handler
   const handlePress = useCallback(() => {
     // Attach mode aktifken normal press işlemlerini engelle
     if (isAttachMode) {
       if (isSelectableForAttach && onSelectForAttach) {
+        triggerHaptic(); // Uses Medium by default
         onSelectForAttach();
       }
       return;
     }
     
     if (!editable && !showDeleteOption) {
+      triggerHaptic(); // Uses Medium by default
       if (onOpenJournal) {
         onOpenJournal(projectData);
       } else if (onOpenDetail) {
         onOpenDetail();
       }
     }
-  }, [editable, showDeleteOption, onOpenJournal, onOpenDetail, projectData, isAttachMode, isSelectableForAttach, onSelectForAttach]);
+  }, [editable, showDeleteOption, onOpenJournal, onOpenDetail, projectData, isAttachMode, isSelectableForAttach, onSelectForAttach, triggerHaptic]);
 
   // Günlükleri tarihlere göre gruplandır
   const groupEntriesByDate = useCallback((entries) => {
@@ -382,9 +444,45 @@ function MileStone({
   
   const hasChildren = childMilestones.length > 0;
   const completedChildren = childMilestones.filter(m => m?.completed).length;
-  const progressPercentage = hasChildren 
-    ? Math.round((completedChildren / childMilestones.length) * 100) 
-    : 0;
+  
+  // Calculate time-based progress percentage (for parent milestones)
+  // NEW LOGIC: From earliest child start to parent end
+  const progressPercentage = useMemo(() => {
+    if (!hasChildren || !milestone.startDate || !milestone.endDate) return 0;
+    
+    try {
+      const now = new Date();
+      const parentEnd = new Date(milestone.endDate);
+      
+      // Find earliest child start date
+      let earliestChildStart = null;
+      if (childMilestones.length > 0) {
+        earliestChildStart = childMilestones.reduce((earliest, child) => {
+          const childStart = new Date(child.startDate);
+          return !earliest || childStart < earliest ? childStart : earliest;
+        }, null);
+      }
+      
+      // If no children or can't find earliest, fallback to parent start
+      const effectiveStart = earliestChildStart || new Date(milestone.startDate);
+      
+      // If not started yet (before earliest child)
+      if (now < effectiveStart) return 0;
+      
+      // If already ended or completed
+      if (now > parentEnd || milestone.completed) return 100;
+      
+      // Calculate percentage based on elapsed time from earliest child to parent end
+      const totalDuration = parentEnd - effectiveStart;
+      const elapsedDuration = now - effectiveStart;
+      const percentage = (elapsedDuration / totalDuration) * 100;
+      
+      return Math.max(0, Math.min(100, Math.round(percentage)));
+    } catch (error) {
+      console.error('Error calculating progress:', error);
+      return 0;
+    }
+  }, [hasChildren, milestone.startDate, milestone.endDate, milestone.completed, childMilestones]);
 
   // Check if this milestone should be shown as child
   // Show as child if:
@@ -450,6 +548,10 @@ function MileStone({
             // Smooth collapse animation for child milestones
             ...(milestone.parentId && {
               opacity: collapseAnim,
+              maxHeight: collapseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 500], // Smooth height transition
+              }),
               transform: [
                 {
                   scaleY: collapseAnim.interpolate({
@@ -464,36 +566,38 @@ function MileStone({
                   })
                 }
               ],
-              maxHeight: collapseAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 500], // Smooth height transition
-              }),
             }),
           }
         ]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.milestoneItemClickable,
-              hasChildren && styles.parentMilestoneClickable,
-              {
-                backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
-                // Remove transforms/opacity changes during drag to avoid visual jitter
-                opacity: 1,
-              },
-              isAttachMode && isSelectableForAttach && {
-                borderWidth: 2,
-                borderColor: '#FF9800',
-                borderStyle: 'dashed',
-              },
-              isAttachMode && !isSelectableForAttach && {
-                opacity: 0.4,
-              }
-            ]}
-            disabled={editable || (isAttachMode && !isSelectableForAttach)}
-            onPress={handlePress}
-            onLongPress={!isAttachMode ? handleLongPress : undefined}
-            delayLongPress={500}
-          >
+          <Animated.View style={[
+            {
+              // Apple-style touch animation (scale only)
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}>
+            <Pressable
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              style={[
+                styles.milestoneItemClickable,
+                hasChildren && styles.parentMilestoneClickable,
+                {
+                  backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
+                },
+                isAttachMode && isSelectableForAttach && {
+                  borderWidth: 2,
+                  borderColor: '#007AFF',
+                  borderStyle: 'dashed',
+                },
+                isAttachMode && !isSelectableForAttach && {
+                  opacity: 0.4,
+                },
+              ]}
+              disabled={editable || (isAttachMode && !isSelectableForAttach)}
+              onPress={handlePress}
+              onLongPress={!isAttachMode ? handleLongPress : undefined}
+              delayLongPress={500}
+            >
             <View style={[
               styles.iconContainer,
               hasChildren && styles.parentIconContainer,
@@ -506,55 +610,116 @@ function MileStone({
               }
             ]}>
               {hasChildren ? (
-                // Parent milestone icon - Calendar with dates
+                // Parent milestone icon - SVG Circular Progress Bar (Time-based, Two Colors)
                 <View style={styles.parentIconWrapper}>
-                  {/* Large calendar icon with dates inside */}
-                  <View style={styles.parentCalendarFrame}>
-                    <MaterialIcons 
-                      name="calendar-today" 
-                      size={44} 
-                      color={isCompleted ? "#555" : iconBgColor}
-                      style={styles.largeCalendarIcon}
-                    />
-                    <View style={styles.datesInsideCalendar}>
-                      {/* Start date inside calendar - Day only */}
-                      <Text style={[
-                        styles.startDateText,
-                        { color: theme.name === 'dark' ? '#FFFFFF' : '#000000' }
-                      ]}>
-                        {formatDayOnly(milestone.startDate)}
-                      </Text>
+                  {/* SVG Circular Progress Ring */}
+                  <View style={styles.circularProgressContainer}>
+                    <Svg width={48} height={48} viewBox="0 0 48 48">
+                      {/* Background Circle (Empty/Unfilled) - Soluk gri */}
+                      <Circle
+                        cx="24"
+                        cy="24"
+                        r="20"
+                        stroke={theme.name === 'dark' ? 'rgba(142, 142, 147, 0.25)' : 'rgba(142, 142, 147, 0.2)'}
+                        strokeWidth="4"
+                        fill="none"
+                      />
                       
-                      {/* End date inside calendar - Below start date */}
-                      <Text style={[
-                        styles.endDateText,
-                        { color: theme.name === 'dark' ? '#8E8E93' : '#666' }
-                      ]}>
-                        {formatShortDate(milestone.endDate)}
-                      </Text>
+                      {/* Progress Circle (Filled) - Milestone rengi */}
+                      <Circle
+                        cx="24"
+                        cy="24"
+                        r="20"
+                        stroke={isCompleted ? "#888" : iconBgColor}
+                        strokeWidth="4"
+                        fill="none"
+                        strokeDasharray={`${2 * Math.PI * 20}`}
+                        strokeDashoffset={`${2 * Math.PI * 20 * (1 - progressPercentage / 100)}`}
+                        strokeLinecap="round"
+                        rotation="-90"
+                        origin="24, 24"
+                      />
+                    </Svg>
+                    
+                    {/* Center Content - Date Range (Overlay) */}
+                    <View style={styles.progressCircleCenter}>
+                      {(() => {
+                        const startDateFormatted = formatCompactDate(milestone.startDate);
+                        const endDateFormatted = formatCompactDate(milestone.endDate);
+                        
+                        // Check if months are different
+                        const startDate = new Date(milestone.startDate);
+                        const endDate = new Date(milestone.endDate);
+                        const isDifferentMonth = startDate.getMonth() !== endDate.getMonth() || 
+                                                startDate.getFullYear() !== endDate.getFullYear();
+                        
+                        return (
+                          <>
+                            {/* Start Date - Day (+ Month if different) */}
+                            <View style={styles.startDateContainer}>
+                              <Text style={[
+                                styles.circleStartDayText,
+                                { color: isCompleted ? "#888" : (theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F') }
+                              ]}>
+                                {startDateFormatted.day}
+                              </Text>
+                              {isDifferentMonth && (
+                                <Text style={[
+                                  styles.circleStartMonthText,
+                                  { color: isCompleted ? "#888" : (theme.name === 'dark' ? '#AEAEB2' : '#8E8E93') }
+                                ]}>
+                                  {startDateFormatted.month}
+                                </Text>
+                              )}
+                            </View>
+                            
+                            {/* Separator */}
+                            <Text style={[
+                              styles.circleSeparator,
+                              { color: theme.name === 'dark' ? '#8E8E93' : '#AEAEB2' }
+                            ]}>
+                              ―
+                            </Text>
+                            
+                            {/* End Date - Full (Day + Month) */}
+                            <Text style={[
+                              styles.circleEndDateText,
+                              { color: isCompleted ? "#888" : (theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F') }
+                            ]}>
+                              {endDateFormatted.day} {endDateFormatted.month}
+                            </Text>
+                          </>
+                        );
+                      })()}
                     </View>
                   </View>
                   
-                  {/* Badge and collapse button row */}
+                  {/* Badge and Collapse button row */}
                   {!editable && (
                     <View style={styles.badgeCollapseRow}>
                       {/* Child counter badge */}
                       <View style={[
                         styles.childBadgeInline,
                         { 
-                          backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.2)' : 'rgba(0, 122, 255, 0.1)',
-                          borderColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.4)' : 'rgba(0, 122, 255, 0.3)'
+                          backgroundColor: theme.name === 'dark' ? toRgba(iconBgColor, 0.2) : toRgba(iconBgColor, 0.1),
+                          borderColor: theme.name === 'dark' ? toRgba(iconBgColor, 0.4) : toRgba(iconBgColor, 0.3)
                         }
                       ]}>
-                        <Ionicons name="link" size={8} color="#007AFF" />
-                        <Text style={styles.childBadgeTextSmall}>
+                        <Ionicons name="link" size={8} color={isCompleted ? "#888" : iconBgColor} />
+                        <Text style={[
+                          styles.childBadgeTextSmall,
+                          { color: isCompleted ? "#888" : iconBgColor }
+                        ]}>
                           {completedChildren}/{childMilestones.length}
                         </Text>
                       </View>
                       
                       {/* Collapse/Expand button */}
                       <TouchableOpacity 
-                        onPress={() => onToggleCollapse?.(milestone.id)}
+                        onPress={() => {
+                          triggerHaptic();
+                          onToggleCollapse?.(milestone.id);
+                        }}
                         style={styles.collapseButtonInline}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
@@ -691,8 +856,8 @@ function MileStone({
           {/* Journal Entries - Project-based system only */}
           {/* Milestone-based journal entries removed */}
 
-        {/* Animated Action Buttons - Theme Consistent */}
-        {showDeleteOption && (
+          {/* Animated Action Buttons - Theme Consistent */}
+          {showDeleteOption && (
           <Animated.View 
             style={[
               styles.actionButtonsContainer,
@@ -716,6 +881,7 @@ function MileStone({
               <TouchableOpacity
                 style={[styles.themeButton, styles.detachButtonTheme]}
                 onPress={() => {
+                  triggerHaptic();
                   hideDeleteOptionWithAnimation();
                   onDetachMilestone?.();
                 }}
@@ -730,12 +896,13 @@ function MileStone({
               <TouchableOpacity
                 style={[styles.themeButton, styles.attachButtonTheme]}
                 onPress={() => {
+                  triggerHaptic();
                   hideDeleteOptionWithAnimation();
                   onStartAttachMode?.();
                 }}
               >
                 <View style={styles.buttonIconContainer}>
-                  <Ionicons name="link" size={16} color="#FF9800" />
+                  <Ionicons name="link" size={16} color="#007AFF" />
                 </View>
                 <Text style={styles.themeButtonText}>{t('attach') || 'Attach'}</Text>
               </TouchableOpacity>
@@ -746,6 +913,7 @@ function MileStone({
               <TouchableOpacity
                 style={[styles.themeButton, styles.completeButtonTheme]}
                 onPress={() => {
+                  triggerHaptic();
                   hideDeleteOptionWithAnimation();
                   onComplete?.();
                 }}
@@ -758,11 +926,16 @@ function MileStone({
             ) : (
               <TouchableOpacity
                 style={[styles.themeButton, styles.activeButtonTheme]}
-                onPress={() => {
+                onPress={async () => {
                   // SAFETY CHECK: If this is a child, check if parent is completed
                   if (milestone.parentId && allMilestones) {
                     const parent = allMilestones.find(ms => ms.id === milestone.parentId);
                     if (parent?.completed) {
+                      try {
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                      } catch {
+                        Vibration.vibrate([0, 100, 50, 100]); // Error pattern
+                      }
                       Alert.alert(
                         t('cannotReopenChild') || 'Cannot Reopen',
                         t('parentMustBeActiveFirst') || `Parent milestone "${parent.title}" is completed. Please reopen the parent first.`,
@@ -773,6 +946,7 @@ function MileStone({
                     }
                   }
                   
+                  triggerHaptic();
                   hideDeleteOptionWithAnimation();
                   onSetActive?.();
                 }}
@@ -787,7 +961,10 @@ function MileStone({
             {/* Delete Button - RIGHT */}
             <TouchableOpacity
               style={[styles.themeButton, styles.deleteButtonTheme]}
-              onPress={handleDelete}
+              onPress={() => {
+                triggerHaptic();
+                handleDelete();
+              }}
             >
               <View style={styles.buttonIconContainer}>
                 <Ionicons name="trash" size={16} color="#FF3B30" />
@@ -804,14 +981,18 @@ function MileStone({
                   borderColor: theme.name === 'dark' ? 'rgba(142, 142, 147, 0.3)' : 'rgba(142, 142, 147, 0.2)',
                 }
               ]}
-              onPress={hideDeleteOptionWithAnimation}
+              onPress={() => {
+                triggerHaptic();
+                hideDeleteOptionWithAnimation();
+              }}
             >
               <Ionicons name="close" size={18} color={theme.name === 'dark' ? '#FFFFFF' : '#8E8E93'} />
             </TouchableOpacity>
           </Animated.View>
-        )}
+          )}
         </Animated.View>
-      </Pressable>
+      </Animated.View>
+    </Pressable>
     
       <FlashCalendar
         visible={calendarVisible}
@@ -881,8 +1062,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 30,
     alignItems: "center",
-    justifyContent: "flex-start",
-    marginTop: 2,
+    justifyContent: "center",
     flexDirection: 'column',
     gap: 4,
   },
@@ -892,40 +1072,61 @@ const styles = StyleSheet.create({
   },
   parentIconWrapper: {
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
   },
-  parentCalendarFrame: {
-    width: 50,
-    height: 52,
+  // SVG Circular Progress Bar Styles (Two Colors)
+  circularProgressContainer: {
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
-  largeCalendarIcon: {
+  progressCircleCenter: {
     position: 'absolute',
-  },
-  datesInsideCalendar: {
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 3,
     gap: 0,
   },
-  startDateText: {
-    fontSize: 11,
-    fontFamily: FONTS.BOLD,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    lineHeight: 11,
-    marginTop: 4,
+  startDateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0,
   },
-  endDateText: {
-    fontSize: 7,
+  circleStartDayText: {
+    fontSize: 12,
+    fontFamily: FONTS.BOLD,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    lineHeight: 12,
+  },
+  circleStartMonthText: {
+    fontSize: 5,
     fontFamily: FONTS.MEDIUM,
-    letterSpacing: -0.2,
-    textAlign: 'center',
-    lineHeight: 8,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+    lineHeight: 6,
     marginTop: 1,
   },
+  circleEndDateText: {
+    fontSize: 7,
+    fontFamily: FONTS.MEDIUM,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+    lineHeight: 8,
+  },
+  circleSeparator: {
+    fontSize: 6,
+    fontFamily: FONTS.REGULAR,
+    letterSpacing: 0,
+    lineHeight: 6,
+    marginVertical: 0,
+  },
+  // Badge and Collapse Button Row
   badgeCollapseRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -939,6 +1140,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     gap: 2,
+  },
+  childBadgeTextSmall: {
+    fontSize: 8,
+    fontFamily: FONTS.MEDIUM,
+    letterSpacing: -0.2,
   },
   collapseButtonInline: {
     width: 16,
@@ -978,16 +1184,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexWrap: 'wrap',
   },
-  childBadgeTextSmall: {
-    fontSize: 8,
-    fontFamily: FONTS.MEDIUM,
-    color: '#007AFF',
-    letterSpacing: -0.2,
-  },
   milestoneText: {
     fontFamily: FONTS.MEDIUM,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     letterSpacing: -0.2,
     paddingRight: 54, // Edit tuşu için boşluk
     flexWrap: 'wrap',
@@ -1172,9 +1372,9 @@ const styles = StyleSheet.create({
     maxWidth: 100,
   },
   attachButtonTheme: {
-    backgroundColor: "#FFF3E0",
+    backgroundColor: "#E3F2FD",
     borderWidth: 1,
-    borderColor: "#FF9800",
+    borderColor: "#007AFF",
   },
   completeButtonTheme: {
     backgroundColor: "#E8F5E8",

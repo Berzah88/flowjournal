@@ -127,10 +127,10 @@ function ActiveProjectMilestones({
         styles.modernMilestoneHeader,
         {
           backgroundColor: attachMode
-            ? theme.name === 'dark' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)'
+            ? theme.name === 'dark' ? 'rgba(0, 122, 255, 0.12)' : 'rgba(0, 122, 255, 0.08)'
             : theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248, 251, 255, 0.5)',
           borderBottomColor: attachMode
-            ? '#FF9800'
+            ? theme.name === 'dark' ? 'rgba(0, 122, 255, 0.3)' : 'rgba(0, 122, 255, 0.25)'
             : theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)',
         }
       ]}>
@@ -138,12 +138,12 @@ function ActiveProjectMilestones({
           {attachMode ? (
             <>
               <View style={styles.attachModeIndicator}>
-                <Ionicons name="link" size={18} color="#FF9800" />
+                <Ionicons name="link" size={18} color="#007AFF" />
                 <Text style={[
                   styles.attachModeText,
                   { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
                 ]}>
-                  {t('selectParentMilestone') || 'Select parent milestone'}
+                  {t('selectParentMilestone') || 'Ana görev seçin'}
                 </Text>
               </View>
               <TouchableOpacity 
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   attachModeText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Poppins_600SemiBold",
     letterSpacing: -0.3,
   },

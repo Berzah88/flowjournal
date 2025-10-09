@@ -1,10 +1,11 @@
-import React, { useCallback, memo, useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from "react-native";
+import React, { useCallback, memo, useMemo, useState, useRef } from "react";
+import { View, Text, StyleSheet, Pressable, Image, Dimensions, Animated, Vibration } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 // import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
 import PropTypes from "prop-types";
 import * as Location from "expo-location";
+import * as Haptics from 'expo-haptics';
 import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/AIMoodPredictor";
 import { getMilestoneColor } from "../utils/milestoneColors";
 import { useTheme } from "../context/ThemeContext";
@@ -65,6 +66,45 @@ const JournalCard = memo(function JournalCard({
   const { theme } = useTheme();
   const { t } = useLanguage();
   const [locationTexts, setLocationTexts] = useState({});
+  
+  // Apple-style touch animation (scale only - cleaner for nested backgrounds)
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Haptic feedback helper with fallback (same as MileStone)
+  const triggerHaptic = useCallback(async (style = Haptics.ImpactFeedbackStyle.Medium) => {
+    try {
+      await Haptics.impactAsync(style);
+      console.log('✅ JournalCard Haptic:', style === Haptics.ImpactFeedbackStyle.Medium ? 'MEDIUM' : 'LIGHT');
+    } catch (error) {
+      // Fallback to native Vibration
+      try {
+        const duration = style === Haptics.ImpactFeedbackStyle.Medium ? 50 : 30;
+        Vibration.vibrate(duration);
+        console.log('✅ JournalCard Vibration:', duration + 'ms');
+      } catch (vibError) {
+        console.log('Haptic feedback not available');
+      }
+    }
+  }, []);
+
+  // Apple-style touch animations (scale only)
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 20,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 20,
+    }).start();
+  }, [scaleAnim]);
 
   // Location koordinatlarını şehir/ilçe formatına çevir
   const getLocationText = useCallback(async (locationData) => {
@@ -354,37 +394,44 @@ const JournalCard = memo(function JournalCard({
   }, []);
 
   return (
-    <TouchableOpacity 
-      style={[
-        styles.dayCard,
-        {
-          // Consistent solid backgrounds
-          backgroundColor: theme.name === 'dark' 
-            ? '#2A2A2E' 
-            : '#FFFFFF',
-          borderColor: theme.name === 'dark' 
-            ? 'rgba(255, 255, 255, 0.1)' 
-            : 'rgba(0, 0, 0, 0.05)',
-          // Enhanced shadows for modern look
-          shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
-          shadowRadius: theme.name === 'dark' ? 12 : 8,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: theme.name === 'dark' ? 8 : 4,
-        }
-      ]}
-      activeOpacity={0.7}
-      onPress={() => {
-        openJournalDetail({
-          images: allMedia.filter(m => m.type === "image").map(m => m.content),
-          location: dayGroup.allEntries.find(entry => entry.location)?.location,
-          date: dayGroup.date,
-          mood: dayMoodObj,
-          textEntries: textEntries
-        });
-      }}
-      activeOpacity={0.8}
-    >
+    <Animated.View style={[
+      {
+        // Apple-style touch animation (scale only - no opacity for nested backgrounds)
+        transform: [{ scale: scaleAnim }],
+      }
+    ]}>
+      <Pressable 
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={() => {
+          triggerHaptic(); // Haptic feedback
+          openJournalDetail({
+            images: allMedia.filter(m => m.type === "image").map(m => m.content),
+            location: dayGroup.allEntries.find(entry => entry.location)?.location,
+            date: dayGroup.date,
+            mood: dayMoodObj,
+            textEntries: textEntries
+          });
+        }}
+        style={[
+          styles.dayCard,
+          {
+            // Consistent solid backgrounds
+            backgroundColor: theme.name === 'dark' 
+              ? '#2A2A2E' 
+              : '#FFFFFF',
+            borderColor: theme.name === 'dark' 
+              ? 'rgba(255, 255, 255, 0.1)' 
+              : 'rgba(0, 0, 0, 0.05)',
+            // Enhanced shadows for modern look
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
+            shadowRadius: theme.name === 'dark' ? 12 : 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: theme.name === 'dark' ? 8 : 4,
+          }
+        ]}
+      >
       {/* Milestone Etiketi - Medya olsun ya da olmasın her zaman göster */}
       {relevantMilestone && (
         <View style={[
@@ -599,7 +646,8 @@ const JournalCard = memo(function JournalCard({
           ))}
         </View>
       )}
-    </TouchableOpacity>
+      </Pressable>
+    </Animated.View>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison function for better performance
@@ -753,21 +801,21 @@ const styles = StyleSheet.create({
   milestoneTagContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
   },
   milestoneDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
   },
   milestoneTag: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: 'Poppins_600SemiBold',
-    letterSpacing: 0.3,
+    letterSpacing: -0.1,
   },
   previewWrapper: { 
     flexDirection: "row", 

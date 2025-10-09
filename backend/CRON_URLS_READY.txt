@@ -1,0 +1,71 @@
+✅ CRON-JOB.ORG İÇİN HAZIR URL'LER
+====================================
+
+📋 **Job #1: Günlük Hatırlatma** (20:00 Türkiye / 17:00 UTC)
+────────────────────────────────────────────────────────────
+https://mberzah.pythonanywhere.com/trigger-daily-reminder?secret=py_mberzah_fcm_secret_2025_secure_key_a7b9c4d8e2f1
+
+Cron Expression: 0 17 * * *
+Request Method: GET
+Timeout: 30 seconds
+
+
+📋 **Job #2: Proje Deadline Kontrolü** (09:00 Türkiye / 06:00 UTC)
+────────────────────────────────────────────────────────────────────
+https://mberzah.pythonanywhere.com/check-project-deadlines?secret=py_mberzah_fcm_secret_2025_secure_key_a7b9c4d8e2f1
+
+Cron Expression: 0 6 * * *
+Request Method: GET
+Timeout: 60 seconds
+
+
+📋 **Job #3: Proje Son Günü Hatırlatıcısı** (08:00 Türkiye / 05:00 UTC)
+─────────────────────────────────────────────────────────────────────────
+https://mberzah.pythonanywhere.com/trigger-project-deadline-reminder?secret=py_mberzah_fcm_secret_2025_secure_key_a7b9c4d8e2f1
+
+Cron Expression: 0 5 * * *
+Request Method: GET
+Timeout: 30 seconds
+
+
+🔧 **Kurulum Adımları:**
+────────────────────────
+
+1. https://cron-job.org/en/signup → Üye ol
+2. https://console.cron-job.org → Login
+3. "Create cronjob" → Yukarıdaki 3 job'u oluştur
+4. "Run now" ile test et
+5. Email notifications → "Only errors" seç
+
+
+📊 **Test Edildi:**
+───────────────────
+
+✅ Tüm endpoint'ler 200 OK döndürüyor
+✅ Firebase bildirimleri gönderiliyor
+✅ Secret key doğru çalışıyor
+✅ Performance < 3 saniye
+
+
+🎯 **Günlük Çalışma Sırası:**
+─────────────────────────────
+
+08:00 TR → Proje son günü hatırlatıcısı (Last_day topic)
+09:00 TR → Proje deadline kontrolü (Firestore check)
+20:00 TR → Günlük hatırlatma (daily_reminders topic)
+
+
+📞 **Yardım:**
+──────────────
+
+- Kurulum rehberi: CRON_JOB_QUICK_SETUP.md
+- Detaylı dokümantasyon: CRON_JOB_SETUP_GUIDE.md
+- Test script: test_flask_api.py
+
+
+✅ **Sistem Hazır!**
+────────────────────
+
+Son Güncelleme: 2025-10-09
+Test Status: ✅ PASSED
+

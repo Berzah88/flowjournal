@@ -40,8 +40,8 @@ def initialize_firebase():
         return True
     
     try:
-        # serviceAccountKey.json path'i - mberzah için
-        cred_path = '/home/mberzah/mysite/serviceAccountKey.json'
+        # serviceAccountKey.json path'i - local development için
+        cred_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
         
         if not os.path.exists(cred_path):
             logger.error(f'❌ serviceAccountKey.json bulunamadı: {cred_path}')
@@ -182,9 +182,9 @@ def check_project_deadlines():
                 project_id = project_doc.id
                 project_data = project_doc.to_dict()
                 
-                project_name = project_data.get('name', 'Projen')
-                deadline = project_data.get('deadline')
-                notifications_enabled = project_data.get('notificationsEnabled', True)
+                project_name = project_data.get('title', 'Projen')
+                deadline = project_data.get('endDate')
+                notifications_enabled = project_data.get('notificationsSent', {}).get('projectDeadlines', True)
                 
                 # Bildirimler kapalıysa atla
                 if not notifications_enabled:

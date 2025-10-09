@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar, View, Button, Text } from 'react-native';
-import WelcomeScreen from './screens/WelcomeScreen';
 import TutorialScreen from './screens/TutorialScreen';
 import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
@@ -21,7 +20,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import GlobalErrorHandler from './utils/GlobalErrorHandler';
 import fcmService from './services/FCMService';
 import firestoreService from './services/FirestoreService';
-import projectDeadlineService from './services/ProjectDeadlineService';
+// import projectDeadlineService from './services/ProjectDeadlineService'; // ⚠️ KALDIRILDI - Firestore token sistemi kullanılıyor
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import firebase from '@react-native-firebase/app';
 import * as Notifications from 'expo-notifications';
@@ -62,7 +61,7 @@ function AppNavigator() {
 
   useEffect(() => {
     if (!isLoading) {
-      setInitialRoute(hasAnyTasks ? "Main" : "Welcome");
+      setInitialRoute(hasAnyTasks ? "Main" : "Tutorial");
     }
   }, [hasAnyTasks, isLoading]);
 
@@ -80,7 +79,6 @@ function AppNavigator() {
           animationDuration: 320,
         }}
       >
-        <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Tutorial" component={TutorialScreen} />
         <Stack.Screen name="Main" component={MainScreen} />
         <Stack.Screen name="AddProject" component={AddProjectScreen} />
@@ -163,12 +161,9 @@ export default function App() {
               console.log('✅ Daily reminders topic\'ine subscribe olundu!');
               console.log('✅ Bildirimler PythonAnywhere + FCM ile gelecek');
               
-              // Proje son günü aboneliğini kontrol et
-              try {
-                await projectDeadlineService.dailyDeadlineCheck();
-              } catch (deadlineError) {
-                console.error('❌ Proje son günü kontrolü hatası:', deadlineError);
-              }
+              // ⚠️ Last_day topic sistemi KALDIRILDI
+              // Artık Firestore token-based sistem kullanılıyor
+              // Backend check_project_deadlines.py kişiselleştirilmiş bildirimler gönderiyor
             }
           }
         } catch (firebaseError) {

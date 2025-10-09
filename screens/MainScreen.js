@@ -629,6 +629,23 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               menuAnimatedStyle
             ]}>
 
+              {/* Tutorial - Test Button */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMainMenuVisible(false);
+                  navigation.navigate('Tutorial');
+                }}
+                accessible={true}
+                accessibilityLabel="View tutorial"
+                accessibilityRole="button"
+              >
+                <View style={styles.menuItemContent}>
+                  <Ionicons name="help-circle-outline" size={20} color="#8B5CF6" />
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Tutorial</Text>
+                </View>
+              </TouchableOpacity>
+
               {/* Completed Projects */}
               <TouchableOpacity
                 style={styles.menuItem}
