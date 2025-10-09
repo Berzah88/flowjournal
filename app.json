@@ -32,7 +32,6 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
         "WRITE_EXTERNAL_STORAGE",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
@@ -60,8 +59,7 @@
           "color": "#ffffff",
           "defaultChannel": "default"
         }
-      ],
-      "expo-video"
+      ]
     ],
     "owner": "mberzah88",
     "extra": {

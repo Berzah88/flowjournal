@@ -7,6 +7,11 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+# ULTRA SAFE MODE - Keep everything that might be needed
+-dontobfuscate
+-dontoptimize
+-keepattributes *
+
 # React Native
 -keep class com.facebook.react.** { *; }
 -keep class com.facebook.hermes.** { *; }
@@ -142,5 +147,7 @@
 
 # DateTimePicker
 -keep class com.reactcommunity.rndatetimepicker.** { *; }
+
+# Video libraries removed - no longer needed
 
 # Add any project specific keep options here:

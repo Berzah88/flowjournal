@@ -12,7 +12,6 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
-import { Video } from 'expo-av';
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
@@ -54,7 +53,6 @@ const JournalDetailScreen = ({
   // Fullscreen Media Viewer States
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const videoRef = useRef(null);
 
   // Animation Values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -872,34 +870,21 @@ const JournalDetailScreen = ({
               </View>
             )}
 
-            {/* Main media - Image or Video */}
-            {mediaList[selectedImageIndex]?.type === 'video' ? (
-              <View style={styles.fullscreenVideoContainer}>
-                <Video
-                  ref={videoRef}
-                  source={{ uri: mediaList[selectedImageIndex]?.uri }}
-                  style={styles.fullscreenVideo}
-                  resizeMode="contain"
-                  useNativeControls={true}
-                  shouldPlay={false}
-                />
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.fullscreenScrollView}
-                contentContainerStyle={styles.fullscreenScrollContent}
-                maximumZoomScale={3}
-                minimumZoomScale={1}
-                showsHorizontalScrollIndicator={false}
-                showsVerticalScrollIndicator={false}
-              >
-                <Image
-                  source={{ uri: mediaList[selectedImageIndex]?.uri }}
-                  style={styles.fullscreenImage}
-                  resizeMode="contain"
-                />
-              </ScrollView>
-            )}
+            {/* Main media - Image only (video support removed) */}
+            <ScrollView
+              style={styles.fullscreenScrollView}
+              contentContainerStyle={styles.fullscreenScrollContent}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+            >
+              <Image
+                source={{ uri: mediaList[selectedImageIndex]?.uri }}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
+            </ScrollView>
 
             {/* Navigation arrows for multiple media */}
             {mediaList.length > 1 && (
