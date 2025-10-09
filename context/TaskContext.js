@@ -341,12 +341,16 @@ export const TaskProvider = ({ children }) => {
       taskToComplete.journalEntries = updatedJournalEntries;
     }
     
+    const completionTime = new Date().toISOString();
+    
     setTasks((prev) =>
       prev.map((task) => {
         if (task.id === id) {
           return { 
             ...task, 
             done: true,
+            updatedAt: completionTime,
+            completedAt: completionTime,
             journalEntries: taskToComplete?.journalEntries || task.journalEntries
           };
         }
@@ -360,6 +364,8 @@ export const TaskProvider = ({ children }) => {
           await firestoreService.updateProject(taskToComplete.id, { 
             status: 'completed', 
             done: true,
+            updatedAt: completionTime,
+            completedAt: completionTime,
             journalEntries: taskToComplete.journalEntries // Etiketlenmiş journal'lar
           });
         } catch (error) {

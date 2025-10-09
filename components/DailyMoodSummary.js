@@ -19,6 +19,7 @@ const { width } = Dimensions.get('window');
 
 const DailyMoodSummary = ({ 
   activeTasks = [], 
+  completedTasks = [], // Tamamlanmış projeler de eklendi
   selectedDate,
   hasMedia = false,
   onPress = null,
@@ -34,8 +35,9 @@ const DailyMoodSummary = ({
     const todayMoods = [];
     const moodCounts = {};
     
-    // Tüm projelerdeki journal entries'leri tara
-    activeTasks.forEach(task => {
+    // Hem aktif hem tamamlanmış projelerdeki journal entries'leri tara
+    const allTasks = [...activeTasks, ...completedTasks];
+    allTasks.forEach(task => {
       if (task.journalEntries) {
         task.journalEntries.forEach(entry => {
           const entryDate = new Date(entry.createdAt);
@@ -78,7 +80,7 @@ const DailyMoodSummary = ({
       totalEntries: todayMoods.length,
       moodCounts
     };
-  }, [activeTasks, selectedDate]);
+  }, [activeTasks, completedTasks, selectedDate]);
   
   // Motivasyon mesajları
   const getMotivationMessage = () => {

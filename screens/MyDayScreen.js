@@ -6,6 +6,7 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   Animated,
   Dimensions,
@@ -14,7 +15,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useActiveTasks, useTaskActions } from "../hooks/useTaskContext";
+import { useActiveTasks, useCompletedTasks, useTaskActions } from "../hooks/useTaskContext";
 import { getMilestoneColor } from "../utils/milestoneColors";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { ANIMATION_DURATIONS } from "../constants";
@@ -43,6 +44,7 @@ const MyDayScreen = memo(function MyDayScreen({
   onOpenJournal
 }) {
   const activeTasks = useActiveTasks();
+  const completedTasks = useCompletedTasks();
   const { addMilestone, updateMilestone, completeMilestone } = useTaskActions();
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -324,6 +326,7 @@ const MyDayScreen = memo(function MyDayScreen({
         {/* Daily Mood Summary with Progress */}
         <DailyMoodSummary
           activeTasks={activeTasks}
+          completedTasks={completedTasks}
           selectedDate={selectedDate}
           navigation={navigation}
         />
@@ -384,34 +387,45 @@ const MyDayScreen = memo(function MyDayScreen({
             })()}
           </View>
         ) : (
-          selectedDateActiveTasks.map((project, index) => (
-            <TouchableOpacity 
-              key={project.id} 
-              style={[
-                styles.projectSummaryCard,
-        {
-          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
-          borderColor: theme.name === 'dark' ? '#000000' : '#1976D2',
-                  shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-                  shadowOpacity: theme.name === 'dark' ? 0.3 : 0.06,
-                  shadowRadius: theme.name === 'dark' ? 12 : 8,
-                  elevation: theme.name === 'dark' ? 8 : 2,
-                  marginBottom: index < selectedDateActiveTasks.length - 1 ? 20 : 0,
-                },
-                project.isLastDay && {
-                  borderColor: '#8E7DBE',
-                  borderWidth: 1.5,
-                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F6FF',
-                },
-                project.isOverdue && {
-                  borderColor: '#FF4444',
-                  borderWidth: 1.5,
-                  backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF5F5',
-                }
-              ]}
-              onPress={() => setSelectedCard(project)}
-              activeOpacity={0.7}
-            >
+          selectedDateActiveTasks.map((project, index) => {
+            // Instant touch animation (same as Card.js)
+            const scaleAnim = useRef(new Animated.Value(1)).current;
+            
+            return (
+              <TouchableWithoutFeedback
+                key={project.id}
+                onPressIn={() => scaleAnim.setValue(0.97)}
+                onPressOut={() => scaleAnim.setValue(1)}
+                onPress={() => {
+                  scaleAnim.setValue(1);
+                  setSelectedCard(project);
+                }}
+              >
+                <Animated.View
+                  style={[
+                    styles.projectSummaryCard,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+                      borderColor: theme.name === 'dark' ? '#000000' : '#1976D2',
+                      shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+                      shadowOpacity: theme.name === 'dark' ? 0.3 : 0.06,
+                      shadowRadius: theme.name === 'dark' ? 12 : 8,
+                      elevation: theme.name === 'dark' ? 8 : 2,
+                      marginBottom: index < selectedDateActiveTasks.length - 1 ? 20 : 0,
+                      transform: [{ scale: scaleAnim }],
+                    },
+                    project.isLastDay && {
+                      borderColor: '#8E7DBE',
+                      borderWidth: 1.5,
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F6FF',
+                    },
+                    project.isOverdue && {
+                      borderColor: '#FF4444',
+                      borderWidth: 1.5,
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF5F5',
+                    }
+                  ]}
+                >
               <View style={styles.projectHeader}>
                 <Text style={[
                   styles.projectTitle,
@@ -670,15 +684,7 @@ const MyDayScreen = memo(function MyDayScreen({
                           activeOpacity={0.7}
                         >
                           <View style={styles.journalPreviewContent}>
-                            <Text 
-                              numberOfLines={1} 
-                              style={[
-                                styles.journalPreviewText,
-                                { color: theme.name === 'dark' ? '#FFFFFF' : '#1B2951' }
-                              ]}
-                            >
-                              {entry.text || t('noText')}
-                            </Text>
+                            {/* Text özeti kaldırıldı - sadece tarih ve mood gösterilecek */}
                             
                             <View style={styles.journalPreviewFooter}>
                               <Text style={[
@@ -688,6 +694,9 @@ const MyDayScreen = memo(function MyDayScreen({
                                 {new Date(entry.createdAt).toLocaleDateString('tr-TR', { 
                                   day: '2-digit', 
                                   month: 'short' 
+                                })} • {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
                                 })}
                               </Text>
                               
@@ -790,8 +799,10 @@ const MyDayScreen = memo(function MyDayScreen({
                   ]}>{t('addJournal')}</Text>
                 </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          ))
+            </Animated.View>
+          </TouchableWithoutFeedback>
+            );
+          })
         )}
 
         {/* Add Project Button - Always visible when there are active projects */}
@@ -1118,12 +1129,7 @@ const styles = StyleSheet.create({
   journalPreviewContent: {
     flex: 1,
   },
-  journalPreviewText: {
-    fontSize: 11,
-    fontFamily: 'Poppins_400Regular',
-    lineHeight: 14,
-    marginBottom: 4,
-  },
+  // journalPreviewText kaldırıldı - artık text özeti gösterilmiyor
   journalPreviewFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',

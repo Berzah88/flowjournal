@@ -12,7 +12,7 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
-import { Video } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,7 +55,6 @@ const JournalDetailScreen = ({
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [videoRef, setVideoRef] = useState(null);
 
   // Animation Values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -347,6 +346,31 @@ const JournalDetailScreen = ({
     return media;
   }, [selectedMediaData.images, selectedMediaData.videos]);
 
+  // Video player setup with expo-video (after mediaList is defined)
+  const currentVideoUri = useMemo(() => {
+    if (!mediaList || mediaList.length === 0) return null;
+    const currentMedia = mediaList[selectedImageIndex];
+    return currentMedia?.type === 'video' ? currentMedia.uri : null;
+  }, [mediaList, selectedImageIndex]);
+  
+  const player = useVideoPlayer(currentVideoUri || '', (player) => {
+    // Player setup - autoplay disabled
+    player.pause();
+  });
+  
+  // Listen to player state changes
+  useEffect(() => {
+    if (!player || !currentVideoUri) return;
+    
+    const subscription = player.addListener('playingChange', (newIsPlaying) => {
+      setIsVideoPlaying(newIsPlaying);
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [player, currentVideoUri]);
+
   // Fullscreen viewer functions
   const openFullscreen = (imageIndex) => {
     setSelectedImageIndex(imageIndex);
@@ -362,9 +386,8 @@ const JournalDetailScreen = ({
 
   const closeFullscreen = () => {
     // Stop video if playing
-    if (isVideoPlaying && videoRef) {
-      videoRef.pauseAsync();
-      setIsVideoPlaying(false);
+    if (isVideoPlaying && player) {
+      player.pause();
     }
     
     fullscreenScale.value = withTiming(0, { duration: 200 });
@@ -373,15 +396,13 @@ const JournalDetailScreen = ({
     });
   };
 
-  const toggleVideoPlayback = async () => {
-    if (!videoRef) return;
+  const toggleVideoPlayback = () => {
+    if (!player || !currentVideoUri) return;
     
     if (isVideoPlaying) {
-      await videoRef.pauseAsync();
-      setIsVideoPlaying(false);
+      player.pause();
     } else {
-      await videoRef.playAsync();
-      setIsVideoPlaying(true);
+      player.play();
     }
   };
 
@@ -666,6 +687,7 @@ const JournalDetailScreen = ({
                     borderColor: theme.name === 'dark' 
                       ? 'rgba(255,255,255,0.15)' 
                       : 'rgba(0,0,0,0.1)',
+                    maxWidth: '95%', // Ekran genişliğinin %95'ini aşmasın ama tamamını göster
                   }
                 ]}
                 onPress={handleMilestonePress}
@@ -677,14 +699,16 @@ const JournalDetailScreen = ({
                     backgroundColor: getMilestoneColor(relevantMilestone.milestone, theme.name)
                   }
                 ]} />
-                <Text style={[
-                  styles.milestoneTagText,
-                  { 
-                    color: theme.name === 'dark' 
-                      ? '#FFFFFF' 
-                      : getMilestoneColor(relevantMilestone.milestone, theme.name)
-                  }
-                ]}>
+                <Text 
+                  style={[
+                    styles.milestoneTagText,
+                    { 
+                      color: theme.name === 'dark' 
+                        ? '#FFFFFF' 
+                        : getMilestoneColor(relevantMilestone.milestone, theme.name)
+                    }
+                  ]}
+                >
                   {relevantMilestone.milestone.title}
                 </Text>
                 <View style={[
@@ -894,18 +918,11 @@ const JournalDetailScreen = ({
             {/* Main media - Image or Video */}
             {mediaList[selectedImageIndex]?.type === 'video' ? (
               <View style={styles.fullscreenVideoContainer}>
-                <Video
-                  ref={setVideoRef}
-                  source={{ uri: mediaList[selectedImageIndex]?.uri }}
+                <VideoView
+                  player={player}
                   style={styles.fullscreenVideo}
-                  resizeMode="contain"
-                  shouldPlay={false}
-                  isLooping={false}
-                  onPlaybackStatusUpdate={(status) => {
-                    if (status.didJustFinish) {
-                      setIsVideoPlaying(false);
-                    }
-                  }}
+                  contentFit="contain"
+                  nativeControls={false}
                 />
                 {/* Video Play/Pause Button */}
                 <TouchableOpacity
@@ -944,9 +961,8 @@ const JournalDetailScreen = ({
                     style={[styles.navArrow, styles.leftArrow]}
                     onPress={() => {
                       // Stop current video if playing
-                      if (isVideoPlaying && videoRef) {
-                        videoRef.pauseAsync();
-                        setIsVideoPlaying(false);
+                      if (isVideoPlaying && player) {
+                        player.pause();
                       }
                       setSelectedImageIndex(prev => prev - 1);
                     }}
@@ -959,9 +975,8 @@ const JournalDetailScreen = ({
                     style={[styles.navArrow, styles.rightArrow]}
                     onPress={() => {
                       // Stop current video if playing
-                      if (isVideoPlaying && videoRef) {
-                        videoRef.pauseAsync();
-                        setIsVideoPlaying(false);
+                      if (isVideoPlaying && player) {
+                        player.pause();
                       }
                       setSelectedImageIndex(prev => prev + 1);
                     }}
@@ -1504,7 +1519,7 @@ const styles = StyleSheet.create({
   // Milestone Tag Styles
   milestoneTag: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "center", // Vertical olarak ortala
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -1519,6 +1534,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    alignSelf: 'flex-start', // İçeriğe göre genişlik
   },
   milestoneDot: {
     width: 12,
@@ -1533,12 +1549,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 1,
     elevation: 1,
+    flexShrink: 0, // Dot küçülmesin
   },
   milestoneTagText: {
     fontSize: 11,
     fontFamily: 'Poppins_600SemiBold',
     letterSpacing: 0.2,
     color: '#333',
+    flex: 1, // Kalan alanı kapla, wrap yapabilsin
   },
   confidenceDot: {
     width: 8,

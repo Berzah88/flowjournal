@@ -541,7 +541,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
       {/* Mood Statement - StatusTabs üstünde */}
       <MoodStatement 
-        activeTasks={activeTasks} 
+        activeTasks={activeTasks}
+        completedTasks={completedTasks}
         selectedDate={new Date()}
         onPress={() => navigation.navigate('EmotionalJournal')}
       />

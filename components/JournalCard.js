@@ -443,6 +443,7 @@ const JournalCard = memo(function JournalCard({
               ? 'rgba(255,255,255,0.15)' 
               : 'rgba(0,0,0,0.1)',
             marginBottom: 8,
+            maxWidth: '95%', // Kart genişliğini aşmasın ama tamamını göster
           }
         ]}>
           {/* Milestone renkli dot ikonu */}
@@ -452,14 +453,16 @@ const JournalCard = memo(function JournalCard({
               backgroundColor: getMilestoneColor(relevantMilestone.milestone, theme.name)
             }
           ]} />
-          <Text style={[
-            styles.milestoneTag,
-            { 
-              color: theme.name === 'dark' 
-                ? '#FFFFFF' 
-                : getMilestoneColor(relevantMilestone.milestone, theme.name)
-            }
-          ]}>
+          <Text 
+            style={[
+              styles.milestoneTag,
+              { 
+                color: theme.name === 'dark' 
+                  ? '#FFFFFF' 
+                  : getMilestoneColor(relevantMilestone.milestone, theme.name)
+              }
+            ]}
+          >
             {relevantMilestone.milestone.title}
           </Text>
         </View>
@@ -799,22 +802,25 @@ const styles = StyleSheet.create({
   // Milestone Tag Styles
   milestoneTagContainer: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "center", // Vertical olarak ortala
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
+    alignSelf: 'flex-start', // İçeriğe göre genişlik
   },
   milestoneDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     marginRight: 6,
+    flexShrink: 0, // Dot küçülmesin
   },
   milestoneTag: {
     fontSize: 11,
     fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.1,
+    flex: 1, // Kalan alanı kapla, wrap yapabilsin
   },
   previewWrapper: { 
     flexDirection: "row", 

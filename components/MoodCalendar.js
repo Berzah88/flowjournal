@@ -61,14 +61,21 @@ export default function MoodCalendar() {
       return entryDate.toDateString() === currentDate.toDateString();
     });
 
-    // Find entry with mood information
-    const moodEntry = entriesForThisDate.find(entry => entry.mood || entry.moodIcon || entry.moodColor);
+    // Find entries with mood information
+    const moodEntries = entriesForThisDate.filter(entry => entry.mood || entry.moodIcon || entry.moodColor);
     
-    if (moodEntry) {
+    if (moodEntries.length > 0) {
+      // EN SON yazılan günlüğü kullan (createdAt'e göre sırala ve en sonuncuyu al)
+      const sortedMoodEntries = moodEntries.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+      
+      const latestMoodEntry = sortedMoodEntries[0];
+      
       return {
-        mood: moodEntry.mood,
-        moodIcon: moodEntry.moodIcon,
-        moodColor: moodEntry.moodColor,
+        mood: latestMoodEntry.mood,
+        moodIcon: latestMoodEntry.moodIcon,
+        moodColor: latestMoodEntry.moodColor,
         hasEntry: true
       };
     }

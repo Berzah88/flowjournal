@@ -13,6 +13,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const MoodStatement = ({ 
   activeTasks = [], 
+  completedTasks = [],
   selectedDate,
   onPress = null
 }) => {
@@ -25,9 +26,57 @@ const MoodStatement = ({
     
     const todayMoods = [];
     const moodCounts = {};
+    let hasCompletedProjectToday = false;
     
     // Tüm projelerdeki journal entry'leri tara (project-based system)
     activeTasks.forEach(task => {
+      if (task.journalEntries) {
+        task.journalEntries.forEach(entry => {
+          const entryDate = new Date(entry.createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          
+          // Bugünkü entry'leri filtrele
+          if (entryDate.getTime() === today.getTime() && entry.mood) {
+            todayMoods.push({
+              mood: entry.mood,
+              moodIcon: entry.moodIcon,
+              moodColor: entry.moodColor,
+              text: entry.text,
+              timestamp: entry.createdAt
+            });
+            
+            // Mood sayısını artır
+            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    // Bugün tamamlanan projeleri kontrol et
+    completedTasks.forEach(task => {
+      // Proje bugün tamamlandı mı kontrol et
+      if (task.done) {
+        // Task'in updatedAt veya completedAt alanı varsa onu kullan
+        // Yoksa milestones'ların tamamlanma tarihlerini kontrol et
+        let completionDate = null;
+        
+        // updatedAt veya completedAt varsa direkt kullan
+        if (task.updatedAt) {
+          completionDate = new Date(task.updatedAt);
+        } else if (task.completedAt) {
+          completionDate = new Date(task.completedAt);
+        }
+        
+        // Eğer completionDate varsa ve bugünse, günlük sayısını artır
+        if (completionDate) {
+          completionDate.setHours(0, 0, 0, 0);
+          if (completionDate.getTime() === today.getTime()) {
+            hasCompletedProjectToday = true;
+          }
+        }
+      }
+      
+      // Ayrıca tamamlanan projelerin de journal entry'lerini kontrol et
       if (task.journalEntries) {
         task.journalEntries.forEach(entry => {
           const entryDate = new Date(entry.createdAt);
@@ -85,10 +134,11 @@ const MoodStatement = ({
     
     return {
       dominantMood,
-      totalEntries: todayMoods.length,
-      allMoods: todayMoods
+      totalEntries: todayMoods.length + (hasCompletedProjectToday ? 1 : 0),
+      allMoods: todayMoods,
+      hasCompletedProjectToday
     };
-  }, [activeTasks, selectedDate]);
+  }, [activeTasks, completedTasks, selectedDate]);
   
   // Sadece bugün için göster
   const today = new Date();
