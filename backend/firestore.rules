@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the owner of the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if request has required fields
+    function hasRequiredFields(requiredKeys) {
+      return request.resource.data.keys().hasAll(requiredKeys);
+    }
+    
+    // Check if user is admin (for backend access)
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.admin == true;
+    }
+    
+    // ========================================
+    // USERS COLLECTION
+    // ========================================
+    
+    match /users/{userId} {
+      // User profile - kullanıcı sadece kendi profilini okuyabilir/yazabilir
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+      
+      // ========================================
+      // PROJECTS SUBCOLLECTION
+      // ========================================
+      
+      match /projects/{projectId} {
+        // Read: Sadece kendi projelerini görebilir
+        allow read: if isOwner(userId) || isAdmin();
+        
+        // Create: Gerekli alanları kontrol et
+        allow create: if (isOwner(userId) || isAdmin()) && 
+                        hasRequiredFields([
+                          'id', 
+                          'title', 
+                          'startDate', 
+                          'endDate', 
+                          'status', 
+                          'done', 
+                          'createdAt'
+                        ]) &&
+                        request.resource.data.status in ['active', 'completed', 'archived'] &&
+                        request.resource.data.done is bool;
+        
+        // Update: Sadece belirli alanları güncelleyebilir
+        allow update: if (isOwner(userId) || isAdmin()) &&
+                        // Status sadece geçerli değerlere güncellenebilir
+                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+                         request.resource.data.status in ['active', 'completed', 'archived']) &&
+                        // UpdatedAt her zaman güncellenmeli
+                        request.resource.data.updatedAt is timestamp;
+        
+        // Delete: Sadece kendi projelerini silebilir
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    // ========================================
+    // DEFAULT DENY
+    // ========================================
+    
+    // Diğer tüm erişimler varsayılan olarak reddedilir
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
