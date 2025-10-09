@@ -1,5 +1,5 @@
-import React, { useMemo, memo } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import React, { useMemo, memo, useRef, useCallback } from "react";
+import { View, Text, StyleSheet, Pressable, Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import PropTypes from "prop-types";
@@ -19,6 +19,8 @@ const CompletedProjectCard = memo(({
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  
+  
   // Milestone istatistikleri
   const milestoneStats = useMemo(() => {
     const total = milestones.length;
@@ -53,25 +55,58 @@ const CompletedProjectCard = memo(({
     return `${Math.round(diffDays / 30)} ay`;
   }, [startDate, endDate]);
 
+  // Animation ref for press feedback
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // Press animation handlers
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 4,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 4,
+    }).start();
+  }, [scaleAnim]);
+
   return (
-    <Pressable 
-      style={({ pressed }) => [
-        styles.container, 
-        style,
-        {
-          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
-          borderColor: theme.name === 'dark' ? '#000000' : 'rgba(0, 0, 0, 0.03)',
-          borderWidth: theme.name === 'dark' ? 1.5 : 0.5,
-          shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
-          shadowRadius: theme.name === 'dark' ? 12 : 8,
-          elevation: theme.name === 'dark' ? 8 : 1,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        }
-      ]} 
-      onPress={onPress}
-      android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
-    >
+    <Animated.View style={[
+      {
+        // Apple-style touch animation (scale only - no haptic)
+        transform: [{ scale: scaleAnim }],
+      }
+    ]}>
+      <Pressable 
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.container, 
+          style,
+          {
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+            borderColor: theme.name === 'dark' ? '#000000' : 'rgba(0, 0, 0, 0.03)',
+            borderWidth: theme.name === 'dark' ? 1.5 : 0.5,
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
+            shadowRadius: theme.name === 'dark' ? 12 : 8,
+            elevation: theme.name === 'dark' ? 8 : 1,
+          }
+        ]} 
+        onPress={() => {
+          console.log('👆 CompletedProjectCard PRESSED (onPress):', title);
+          scaleAnim.setValue(1); // Reset immediately before opening
+          onPress?.();
+        }}
+        android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
@@ -241,6 +276,7 @@ const CompletedProjectCard = memo(({
         </View>
       </View>
     </Pressable>
+    </Animated.View>
   );
 });
 

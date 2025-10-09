@@ -259,8 +259,10 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
             isEndDate && styles.rangeEndDay,
             isInRange && !isStartDate && !isEndDate && styles.rangeDay,
             isInExistingMilestone && !isInRange && !isStartDate && !isEndDate && {
-              backgroundColor: theme.name === 'dark' ? '#3A3A3C' : '#5AC8FA',
+              backgroundColor: theme.name === 'dark' ? 'rgba(174, 174, 178, 0.3)' : 'rgba(142, 142, 147, 0.2)',
               borderRadius: 16,
+              borderWidth: 1,
+              borderColor: theme.name === 'dark' ? 'rgba(174, 174, 178, 0.5)' : 'rgba(142, 142, 147, 0.3)',
             }
           ]}
           onPress={() => handleDayPress(dayDate)}
@@ -274,8 +276,8 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
             (isStartDate || isEndDate) && styles.rangeEndDayText,
             isInRange && !isStartDate && !isEndDate && styles.rangeDayText,
             isInExistingMilestone && !isInRange && !isStartDate && !isEndDate && {
-              color: '#FFFFFF',
-              fontFamily: FONTS.SEMIBOLD,
+              color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93',
+              fontFamily: FONTS.SEMI_BOLD,
               fontSize: 13,
             }
           ]}>

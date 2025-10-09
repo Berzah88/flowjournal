@@ -360,15 +360,14 @@ function MileStone({
     isProjectBased: true
   }), [milestone.taskId, milestone.projectTitle, currentTask?.title]);
 
-  // Apple-style touch animations (scale only)
+  // Apple-style touch animations (scale only - optimized)
   const handlePressIn = useCallback(() => {
     if (editable || (isAttachMode && !isSelectableForAttach)) return;
     
-    Animated.spring(scaleAnim, {
+    Animated.timing(scaleAnim, {
       toValue: 0.96,
       useNativeDriver: true,
-      tension: 300,
-      friction: 20,
+      duration: 100, // Fast and responsive
     }).start();
   }, [scaleAnim, editable, isAttachMode, isSelectableForAttach]);
 
@@ -376,8 +375,8 @@ function MileStone({
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 300,
-      friction: 20,
+      tension: 400, // Snappier spring
+      friction: 25,
     }).start();
   }, [scaleAnim]);
 
@@ -521,7 +520,7 @@ function MileStone({
     if (milestone.parentId) {
       Animated.timing(collapseAnim, {
         toValue: isCollapsed ? 0 : 1,
-        duration: 300,
+        duration: 250,
         useNativeDriver: false,
         easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Smooth easing curve
       }).start();
@@ -542,30 +541,33 @@ function MileStone({
             // Eşit sol/sağ margin için
             marginLeft: childIndentAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [20, 48], // Parent: 20px, Child: 20 + 28 = 48px
+              outputRange: [20, 40], // Parent: 20px, Child: 40px (daha az indent)
             }),
             marginRight: 20, // Sol ile eşit
             // Smooth collapse animation for child milestones
-            ...(milestone.parentId && {
+            ...(milestone.parentId && isCollapsed && {
               opacity: collapseAnim,
-              maxHeight: collapseAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 500], // Smooth height transition
-              }),
+              maxHeight: 0,
+              overflow: 'hidden',
               transform: [
                 {
                   scaleY: collapseAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.3, 1], // Start from 30% for smoother effect
+                    outputRange: [0.3, 1],
                   })
                 },
                 {
                   translateY: collapseAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [-10, 0], // Slide effect
+                    outputRange: [-10, 0],
                   })
                 }
               ],
+            }),
+            // Expanded - no constraints
+            ...(milestone.parentId && !isCollapsed && {
+              opacity: 1,
+              // No maxHeight - fully dynamic!
             }),
           }
         ]}>
@@ -734,7 +736,7 @@ function MileStone({
                 </View>
               ) : (
                 // Child milestone icon - Simple dot
-                <>
+                <View style={styles.childIconWrapper}>
                   <View style={[
                     styles.iconFrame,
                     {
@@ -753,16 +755,17 @@ function MileStone({
                       />
                     </Pressable>
                   </View>
-                </>
+                </View>
               )}
             </View>
             <View style={styles.milestoneContent}>
               {editable ? (
                 <TextInput
                   ref={inputRef}
-                  style={styles.milestoneText}
+                  style={[styles.milestoneText, { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }]}
                   value={title}
                   placeholder={t('enterMilestoneTitle')}
+                  placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#C7C7CC'}
                   onChangeText={setTitle}
                   editable={editable}
                   onSubmitEditing={handleCreateMilestone}
@@ -778,8 +781,6 @@ function MileStone({
                       { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
                       isCompleted && styles.completedText
                     ]}
-                    numberOfLines={3}
-                    ellipsizeMode="tail"
                   >
                     {title || ''}
                   </Text>
@@ -1043,36 +1044,40 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 8,
     marginBottom: 0,
-    overflow: 'hidden', // Prevent content overflow during animation
     // marginLeft and marginRight are handled inline for equal spacing
   },
   milestoneItemClickable: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingVertical: 10,
+    paddingVertical: 14,
     paddingHorizontal: 10,
     borderRadius: 16,
-    minHeight: 52,
     justifyContent: 'flex-start',
+    // No minHeight - dynamic!
   },
   parentMilestoneClickable: {
-    paddingVertical: 12, // Reduced vertical space for parent
-    minHeight: 60,
+    paddingVertical: 12,
   },
   iconContainer: {
     width: 30,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     flexDirection: 'column',
     gap: 4,
+    paddingTop: 2, // Slight top padding for alignment
   },
   parentIconContainer: {
     width: 70, // Wider for larger icon
     marginTop: 0,
+    justifyContent: "center", // Parent icons centered
   },
   parentIconWrapper: {
     alignItems: 'center',
     gap: 4,
+  },
+  childIconWrapper: {
+    alignItems: 'center',
+    paddingTop: 0, // Child icons at top
   },
   // SVG Circular Progress Bar Styles (Two Colors)
   circularProgressContainer: {
@@ -1177,21 +1182,19 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "column",
     marginLeft: 8,
+    minWidth: 0, // Flex shrinking için gerekli
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
-    flexWrap: 'wrap',
   },
   milestoneText: {
     fontFamily: FONTS.MEDIUM,
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 18,
     letterSpacing: -0.2,
     paddingRight: 54, // Edit tuşu için boşluk
-    flexWrap: 'wrap',
-    flexShrink: 1,
     flex: 1,
   },
   completedText: {

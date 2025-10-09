@@ -90,6 +90,22 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
   const { theme } = useTheme();
   const { t } = useLanguage();
   
+  // Apple-style touch animation (instant feedback)
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    const pressInTime = performance.now();
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('⏱️ [PERFORMANCE] Card PRESS IN at:', pressInTime.toFixed(2), 'ms');
+    console.log('👆 Card:', title);
+    scaleAnim.setValue(0.97); // Instant
+  }, [scaleAnim, title]);
+
+  const handlePressOut = useCallback(() => {
+    console.log('👆 Card PRESS OUT:', title);
+    scaleAnim.setValue(1); // Instant return too (no spring delay)
+  }, [scaleAnim, title]);
+  
   // Safety check for required props
   if (!title || !startDate || !endDate) {
     return null;
@@ -161,25 +177,36 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
   const daysLeftTextStyle = [styles.daysLeftText, completed ? styles.completedDaysText : {}];
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.modernCard,
-        { 
-          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
-          borderColor: theme.name === 'dark' ? '#000000' : 'rgba(0, 0, 0, 0.03)',
-          borderWidth: theme.name === 'dark' ? 1.5 : 0.5,
-          shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-          shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
-          shadowRadius: theme.name === 'dark' ? 12 : 8,
-          elevation: theme.name === 'dark' ? 8 : 1,
-        },
-        completed && styles.modernCompletedCard,
-        {
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        }
-      ]}
-      onPress={onPress}
-    >
+    <Animated.View style={[
+      {
+        // Apple-style touch animation (scale only - no haptic)
+        transform: [{ scale: scaleAnim }],
+      }
+    ]}>
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.modernCard,
+          { 
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+            borderColor: theme.name === 'dark' ? '#000000' : 'rgba(0, 0, 0, 0.03)',
+            borderWidth: theme.name === 'dark' ? 1.5 : 0.5,
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
+            shadowRadius: theme.name === 'dark' ? 12 : 8,
+            elevation: theme.name === 'dark' ? 8 : 1,
+          },
+          completed && styles.modernCompletedCard,
+        ]}
+        onPress={() => {
+          const onPressTime = performance.now();
+          console.log('⏱️ [PERFORMANCE] Card onPress triggered at:', onPressTime.toFixed(2), 'ms');
+          console.log('👆 Card PRESSED (onPress):', title);
+          scaleAnim.setValue(1); // Reset immediately before opening
+          onPress?.();
+        }}
+      >
       {/* Modern Header */}
       <View style={styles.modernHeader}>
         <View style={styles.modernTitleSection}>
@@ -382,6 +409,7 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
         </View>
       )}
     </Pressable>
+    </Animated.View>
   );
 }, (prevProps, nextProps) => {
   // Smart comparison function - only re-render when necessary

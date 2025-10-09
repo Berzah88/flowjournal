@@ -48,6 +48,7 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
   const [editingMilestone, setEditingMilestone] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0); // For refresh after journal entry
   const [forceUpdate, setForceUpdate] = useState(0); // For force update
+  const [contentLoaded, setContentLoaded] = useState(false); // Lazy load content
 
   // Reset editing milestone when modal closes
   useEffect(() => {
@@ -106,10 +107,36 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
   const animationCleanupRef = useRef([]);
 
   useEffect(() => {
-    translateY.value = withTiming(0, { duration: 320 });
-    scale.value = withTiming(1, { duration: 320 });
-    opacity.value = withTiming(1, { duration: 320 });
-    progressAnim.value = withTiming(progress, { duration: 400 });
+    console.log('🎬 CompletedActiveProject MOUNTED');
+    console.log('   Initial values - translateY:', translateY.value, 'scale:', scale.value, 'opacity:', opacity.value);
+    
+    // Faster, snappier opening animation
+    translateY.value = withTiming(0, { 
+      duration: 300,
+      easing: Easing.out(Easing.cubic)
+    });
+    scale.value = withTiming(1, { 
+      duration: 300,
+      easing: Easing.out(Easing.cubic)
+    });
+    opacity.value = withTiming(1, { 
+      duration: 250
+    });
+    
+    console.log('   Animation started - duration: 300ms (faster!)');
+    
+    // PERFORMANCE: Load content after animation starts (immediate - no delay!)
+    setContentLoaded(true);
+    console.log('📦 Content loading enabled immediately');
+    
+    return () => {
+      console.log('🎬 CompletedActiveProject UNMOUNTED');
+    };
+  }, []); // Same as ActiveProject - mount only
+  
+  // Separate effect for progress animation
+  useEffect(() => {
+    progressAnim.value = withTiming(progress, { duration: 600 });
   }, [progress]);
 
   useEffect(() => {
@@ -138,8 +165,15 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
   }, [menuVisible, editVisible, selectedMilestone, selectedJournalMilestone]);
 
   const handleClose = useCallback(() => {
-    translateY.value = withTiming(height, { duration: 200 });
-    opacity.value = withTiming(0, { duration: 200 }, () => {
+    console.log('🚪 Closing CompletedActiveProject');
+    // Faster closing animation
+    translateY.value = withTiming(height, { 
+      duration: 250,
+      easing: Easing.in(Easing.cubic)
+    });
+    opacity.value = withTiming(0, { 
+      duration: 200
+    }, () => {
       if (onClose) runOnJS(onClose)();
     });
   }, [onClose]);
@@ -241,15 +275,18 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
     })
     .onEnd((e) => {
       if (isModalOpen) {
-        dragY.value = withTiming(0, { duration: 150 });
+        dragY.value = withTiming(0, { duration: 200 });
         return;
       }
       if (e.translationY > 150 && e.velocityY > 0) {
-        dragY.value = withTiming(height, { duration: 200 }, () => {
+        dragY.value = withTiming(height, { 
+          duration: 350,
+          easing: Easing.bezier(0.4, 0, 0.6, 1)
+        }, () => {
           runOnJS(handleClose)();
         });
       } else {
-        dragY.value = withTiming(0, { duration: 150 });
+        dragY.value = withTiming(0, { duration: 200 });
       }
     });
 
@@ -268,37 +305,15 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
   const completedMilestones = allMilestones.filter((m) => m.completed);
   const activeMilestones = allMilestones.filter((m) => !m.completed);
 
-  // Günlükleri tarihlere göre gruplandır (MileStone component'inden)
-  const groupEntriesByDate = useCallback((entries) => {
-    const groups = {};
-    entries.forEach(entry => {
-      const date = new Date(entry.createdAt);
-      const dateKey = date.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
-      
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(entry);
-    });
-    
-    return Object.keys(groups)
-      .sort((a, b) => {
-        const dateA = new Date(groups[a][0].createdAt);
-        const dateB = new Date(groups[b][0].createdAt);
-        return dateB - dateA;
-      })
-      .map(dateKey => {
-        const dayEntries = groups[dateKey];
-        return {
-          date: dateKey,
-          allEntries: dayEntries
-        };
-      });
-  }, []);
+  // PERFORMANCE: Memoize milestone list for faster rendering
+  const visibleMilestones = useMemo(() => {
+    if (!contentLoaded || !allMilestones || allMilestones.length === 0) {
+      return [];
+    }
+    // Show ALL milestones (limit removed)
+    return allMilestones;
+  }, [contentLoaded, allMilestones]);
+
 
 
   return (
@@ -345,49 +360,168 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
             scrollEventThrottle={16}
             nestedScrollEnabled={true}
           >
-            {/* Project Journals Section */}
+            {/* Project Journals Section - MILESTONE BAŞLIKLARI ALTINDA */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('projectJournals')}</Text>
               
-              {allMilestones && allMilestones.length > 0 ? (
+              {!contentLoaded ? (
+                // Loading placeholder
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Loading journals...</Text>
+                </View>
+              ) : currentTask.journalEntries && currentTask.journalEntries.length > 0 ? (
                 <View style={styles.milestonesList}>
-                  {allMilestones.map((milestone) => (
-                    <View
-                      key={milestone.id}
-                      style={styles.milestoneItem}
-                    >
-                      <View style={styles.milestoneHeader}>
-                        <View style={styles.milestoneIconContainer}>
-                        <Ionicons 
-                          name="ellipse" 
-                          size={20} 
-                          color="#8E7DBE" 
-                        />
-                        </View>
-                        <View style={styles.milestoneContent}>
-                        <Text style={styles.milestoneTitle}>
-                          {milestone.title}
-                        </Text>
-                        </View>
-                      </View>
+                  {(() => {
+                    // Grup journal'ları milestone'lara göre (kaydedilmiş etiketlere göre)
+                    const milestoneGroups = {};
+                    const ungroupedJournals = [];
+                    
+                    currentTask.journalEntries.forEach(entry => {
+                      const milestoneId = entry.originalMilestoneId;
+                      const milestoneTitle = entry.originalMilestoneTitle;
                       
-                      {/* Journal Entries - Project-based system */}
-                      {currentTask.journalEntries && currentTask.journalEntries.length > 0 && (
-                        <View style={styles.journalCardsContainer}>
-                          {groupEntriesByDate(currentTask.journalEntries).slice(0, 3).map((dayGroup) => (
-                            <JournalCard 
-                              key={dayGroup.date}
-                              dayGroup={dayGroup}
-                              navigation={navigation}
-                              taskId={currentTask.id}
-                              milestoneId={milestone?.id}
-                              isCompleted={milestone.completed}
-                            />
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  ))}
+                      if (milestoneId && milestoneTitle) {
+                        if (!milestoneGroups[milestoneId]) {
+                          milestoneGroups[milestoneId] = {
+                            id: milestoneId,
+                            title: milestoneTitle,
+                            entries: []
+                          };
+                        }
+                        milestoneGroups[milestoneId].entries.push(entry);
+                      } else {
+                        ungroupedJournals.push(entry);
+                      }
+                    });
+                    
+                    // Milestone başlıkları altında journal'ları göster
+                    return (
+                      <>
+                        {Object.values(milestoneGroups).map((milestoneGroup) => {
+                          // Bu milestone için journal'ları tarihe göre grupla
+                          const dateGroups = {};
+                          milestoneGroup.entries.forEach(entry => {
+                            const date = new Date(entry.createdAt);
+                            const dateKey = date.toLocaleDateString('en-US', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric'
+                            });
+                            
+                            if (!dateGroups[dateKey]) {
+                              dateGroups[dateKey] = [];
+                            }
+                            dateGroups[dateKey].push(entry);
+                          });
+                          
+                          const dayGroups = Object.keys(dateGroups)
+                            .sort((a, b) => {
+                              const dateA = new Date(dateGroups[a][0].createdAt);
+                              const dateB = new Date(dateGroups[b][0].createdAt);
+                              return dateB - dateA;
+                            })
+                            .map(dateKey => ({
+                              date: dateKey,
+                              allEntries: dateGroups[dateKey]
+                            }));
+                          
+                          return (
+                            <View key={milestoneGroup.id} style={styles.milestoneItem}>
+                              <View style={styles.milestoneHeader}>
+                                <View style={styles.milestoneIconContainer}>
+                                  <Ionicons 
+                                    name="ellipse" 
+                                    size={20} 
+                                    color="#8E7DBE" 
+                                  />
+                                </View>
+                                <View style={styles.milestoneContent}>
+                                  <Text style={styles.milestoneTitle}>
+                                    {milestoneGroup.title}
+                                  </Text>
+                                </View>
+                              </View>
+                              
+                              {/* Bu milestone'a ait journal'lar */}
+                              <View style={styles.journalCardsContainer}>
+                                {dayGroups.slice(0, 3).map((dayGroup) => (
+                                  <JournalCard 
+                                    key={`${milestoneGroup.id}-${dayGroup.date}`}
+                                    dayGroup={dayGroup}
+                                    navigation={navigation}
+                                    taskId={currentTask.id}
+                                    milestoneId={milestoneGroup.id}
+                                    isCompleted={isCompleted}
+                                  />
+                                ))}
+                              </View>
+                            </View>
+                          );
+                        })}
+                        
+                        {/* Etiketlenmemiş journal'lar (varsa) */}
+                        {ungroupedJournals.length > 0 && (
+                          <View style={styles.milestoneItem}>
+                            <View style={styles.milestoneHeader}>
+                              <View style={styles.milestoneIconContainer}>
+                                <Ionicons 
+                                  name="help-circle-outline" 
+                                  size={20} 
+                                  color="#8E8E93" 
+                                />
+                              </View>
+                              <View style={styles.milestoneContent}>
+                                <Text style={[styles.milestoneTitle, { color: '#8E8E93' }]}>
+                                  {t('uncategorized') || 'Uncategorized'}
+                                </Text>
+                              </View>
+                            </View>
+                            
+                            <View style={styles.journalCardsContainer}>
+                              {(() => {
+                                const dateGroups = {};
+                                ungroupedJournals.forEach(entry => {
+                                  const date = new Date(entry.createdAt);
+                                  const dateKey = date.toLocaleDateString('en-US', {
+                                    day: '2-digit',
+                                    month: 'long',
+                                    year: 'numeric'
+                                  });
+                                  
+                                  if (!dateGroups[dateKey]) {
+                                    dateGroups[dateKey] = [];
+                                  }
+                                  dateGroups[dateKey].push(entry);
+                                });
+                                
+                                return Object.keys(dateGroups)
+                                  .sort((a, b) => {
+                                    const dateA = new Date(dateGroups[a][0].createdAt);
+                                    const dateB = new Date(dateGroups[b][0].createdAt);
+                                    return dateB - dateA;
+                                  })
+                                  .map(dateKey => ({
+                                    date: dateKey,
+                                    allEntries: dateGroups[dateKey]
+                                  }))
+                                  .slice(0, 3)
+                                  .map((dayGroup) => (
+                                    <JournalCard 
+                                      key={`uncategorized-${dayGroup.date}`}
+                                      dayGroup={dayGroup}
+                                      navigation={navigation}
+                                      taskId={currentTask.id}
+                                      milestoneId={null}
+                                      isCompleted={isCompleted}
+                                    />
+                                  ));
+                              })()}
+                            </View>
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
                 </View>
               ) : (
                 <View style={styles.emptyState}>
@@ -562,6 +696,10 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     gap: 8,
   },
+  projectJournalsContainer: {
+    gap: 12,
+    marginTop: 8,
+  },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -579,5 +717,25 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     color: "#8E8E93",
     textAlign: "center",
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: "Poppins_400Regular",
+    color: "#8E8E93",
+  },
+  moreIndicator: {
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  moreText: {
+    fontSize: 13,
+    fontFamily: "Poppins_500Medium",
+    color: "#8E7DBE",
   },
 });

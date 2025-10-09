@@ -87,13 +87,12 @@ const JournalCard = memo(function JournalCard({
     }
   }, []);
 
-  // Apple-style touch animations (scale only)
+  // Apple-style touch animations (scale only - optimized)
   const handlePressIn = useCallback(() => {
-    Animated.spring(scaleAnim, {
+    Animated.timing(scaleAnim, {
       toValue: 0.96,
       useNativeDriver: true,
-      tension: 300,
-      friction: 20,
+      duration: 100, // Fast and responsive
     }).start();
   }, [scaleAnim]);
 
@@ -101,8 +100,8 @@ const JournalCard = memo(function JournalCard({
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 300,
-      friction: 20,
+      tension: 400, // Snappier spring
+      friction: 25,
     }).start();
   }, [scaleAnim]);
 
