@@ -129,11 +129,9 @@ export default function App() {
             // FCM token'ı al
             const fcmToken = await fcmService.getToken();
             
-            // Firestore servisini başlat
-            await firestoreService.setCurrentUserId('test-user');
-            if (fcmToken) {
-              await firestoreService.setFCMToken(fcmToken);
-            }
+            // ℹ️ Firestore servisi kendi başlatılıyor (constructor'da)
+            // User ID ve FCM token zaten FirestoreService.initializeService() içinde ayarlanıyor
+            // Burada tekrar ayarlamaya gerek yok
             
             // Otomatik olarak daily reminders topic'ine subscribe ol
             console.log('📖 Daily reminders topic\'ine subscribe olunuyor...');
