@@ -449,12 +449,11 @@ export const TaskProvider = ({ children }) => {
       prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
     );
     
-    // Firestore'da projeyi güncelle
-    if (taskToUpdate && updates.endDate) {
+    // Firestore'da projeyi güncelle - TÜM değişiklikleri gönder
+    if (taskToUpdate) {
       try {
-        await firestoreService.updateProject(taskToUpdate.title, { 
-          deadline: new Date(updates.endDate) 
-        });
+        await firestoreService.updateProject(taskToUpdate.id, updates);
+        console.log('✅ Firestore: Proje güncellendi:', taskToUpdate.title);
       } catch (error) {
         console.error('❌ Firestore: Proje güncelleme hatası:', error);
       }
