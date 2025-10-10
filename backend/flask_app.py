@@ -1,23 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-PythonAnywhere Flask Web App - Notification API
-------------------------------------------------
-Bu Flask app, dışarıdan HTTP request ile bildirim gönderme imkanı sağlar.
-Cron-job.org gibi external cronjob servislerinden çağrılabilir.
-
-Endpoints:
-1. /trigger-daily-reminder - Günlük hatırlatma gönder
-2. /trigger-milestone-reminder - Milestone hatırlatması gönder
-3. /trigger-project-deadline - Proje bitiş tarihi hatırlatması
-
-Setup:
-1. PythonAnywhere → Web → Add a new web app → Flask
-2. Bu dosyayı WSGI configuration'da tanımla
-3. SECRET_KEY environment variable ayarla
-"""
-
 from flask import Flask, request, jsonify
 import firebase_admin
 from firebase_admin import credentials, messaging, firestore
