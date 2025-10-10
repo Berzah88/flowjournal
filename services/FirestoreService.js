@@ -35,10 +35,19 @@ class FirestoreService {
         this.fcmToken = token;
         console.log('✅ Firestore: FCM token alındı');
         
-        // Sabit user ID kullan (auth gelene kadar)
-        // Test için 'test-user', production'da AsyncStorage'dan device ID al
-        await this.setCurrentUserId('test-user');
-        console.log('💡 Firestore: Test user ID kullanılıyor (test-user)');
+        // Unique user ID oluştur veya al
+        // Authentication sistemi yoksa, cihaz bazlı ID kullan
+        let userId = await AsyncStorage.getItem('unique_user_id');
+        
+        if (!userId) {
+          // İlk kez çalışıyor - FCM token'ın ilk 20 karakterini kullan (unique)
+          userId = `user_${token.substring(0, 20)}`;
+          await AsyncStorage.setItem('unique_user_id', userId);
+          console.log('✅ Firestore: Yeni kullanıcı ID oluşturuldu');
+        }
+        
+        await this.setCurrentUserId(userId);
+        console.log(`💡 Firestore: Kullanıcı ID: ${userId.substring(0, 25)}...`);
       }
       
     } catch (error) {
