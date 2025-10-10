@@ -242,7 +242,6 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
             {completed ? `${Math.ceil(totalDays)} days completed` : `${Math.ceil(remainingDays)} gün kaldı`}
           </Text>
         </View>
-        
       </View>
 
 

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
@@ -19,7 +19,7 @@ import AnimatedReanimated, {
   useAnimatedStyle,
   withTiming,
   runOnJS,
-  Easing,
+  Easing as ReanimatedEasing,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
@@ -92,11 +92,11 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
       // some RN versions may throw if no offset - ignore
     }
 
-    Animated.spring(panX, {
+    Animated.timing(panX, {
       toValue: target,
       useNativeDriver: true,
-      bounciness: 0,
-      speed: 20,
+      duration: 300, // Faster, smoother transition
+      easing: Easing.bezier(0.4, 0.0, 0.2, 1), // Material Design easing
     }).start(() => {
       // commit final state-cleanly
       offsetRef.current = target;
@@ -145,7 +145,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => {
         // only start when horizontal movement dominant and no modals open
-        return !isModalOpenRef.current && Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
+        // Lower threshold for quick swipes (milestone swipes have delay)
+        return !isModalOpenRef.current && Math.abs(gesture.dx) > 20 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
       },
       onPanResponderGrant: () => {
         // prepare to track delta relative to committed offset
@@ -167,14 +168,14 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
           panX.flattenOffset();
         } catch (e) {}
         const currentOffset = offsetRef.current; // either 0 or -width
-        const threshold = width * 0.3; // 30% of screen width
+        const threshold = width * 0.35; // 35% of screen width (increased for more deliberate swipes)
 
         // Decide navigation based on gesture.dx (not clamped) and current offset
         if (gesture.dx <= -threshold && currentOffset === 0) {
-          // swipe left enough from milestones -> go to calendar (index 1)
+          // swipe left enough from milestones -> go to journey (index 1)
           animateToTab(1);
         } else if (gesture.dx >= threshold && currentOffset === -width) {
-          // swipe right enough from calendar -> go to milestones (index 0)
+          // swipe right enough from journey -> go to milestones (index 0)
           animateToTab(0);
         } else {
           // snap back to the current page
@@ -192,16 +193,16 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   useEffect(() => {
     // Smooth premium opening animation
     translateY.value = withTiming(0, { 
-      duration: 500,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
+      duration: 400,
+      easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
     });
     scale.value = withTiming(1, { 
-      duration: 500,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+      duration: 400,
+      easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
     });
     opacity.value = withTiming(1, { 
-      duration: 500,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1)
+      duration: 400,
+      easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
     });
   }, []);
 
@@ -267,12 +268,12 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
 
   const handleClose = useCallback(() => {
     translateY.value = withTiming(height, { 
-      duration: 350,
-      easing: Easing.bezier(0.4, 0, 0.6, 1) // Accelerated easing
+      duration: 300,
+      easing: ReanimatedEasing.bezier(0.4, 0, 0.6, 1) // Accelerated easing
     });
     opacity.value = withTiming(0, { 
-      duration: 350,
-      easing: Easing.bezier(0.4, 0, 0.6, 1)
+      duration: 300,
+      easing: ReanimatedEasing.bezier(0.4, 0, 0.6, 1)
     }, () => {
       if (onClose) runOnJS(onClose)();
     });

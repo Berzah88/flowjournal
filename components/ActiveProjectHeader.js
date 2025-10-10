@@ -69,7 +69,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   // Sliding indicator position
   const indicatorTranslate = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, (width - 48) / 2 - 6], // Half tab width
+    outputRange: [0, 136], // Half of maxWidth (280/2) 
   });
 
   return (
@@ -156,62 +156,65 @@ export default ActiveProjectHeader;
 const styles = StyleSheet.create({
   // Modern Header Styles
   modernHeader: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
     borderBottomWidth: 0.5,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   headerContent: {
     flexDirection: 'column',
-    gap: 16,
+    gap: 12,
   },
   titleSection: {
     flexDirection: 'column',
-    gap: 6,
+    gap: 4,
   },
   modernTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontFamily: "Poppins_700Bold",
     letterSpacing: -0.5,
-    lineHeight: 28,
+    lineHeight: 24,
   },
   dateRange: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: "Poppins_500Medium",
     letterSpacing: -0.2,
+    opacity: 0.7,
   },
   tabSwitcher: {
     flexDirection: 'row',
-    borderRadius: 16,
-    paddingHorizontal: 6,
-    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 4,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 0.5,
     overflow: 'hidden',
+    maxWidth: 280,
+    alignSelf: 'center',
   },
   indicator: {
     position: 'absolute',
-    left: 6,
-    top: 6,
-    bottom: 6,
-    width: (width - 48) / 2 - 12, // half minus paddings
-    borderRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+    left: 4,
+    top: 4,
+    bottom: 4,
+    width: 136, // Half of maxWidth (280/2) minus padding
+    borderRadius: 10,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
     elevation: 2,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Poppins_600SemiBold",
     letterSpacing: -0.1,
   },

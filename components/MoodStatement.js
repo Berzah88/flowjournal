@@ -153,25 +153,37 @@ const MoodStatement = ({
   
   const content = (
     <View style={styles.container}>
-      {/* Mood Status - Inline Design */}
+      {/* Enhanced Mood Status - More Prominent */}
       <View style={[
         styles.moodStatus,
         { 
           borderLeftColor: todayMoodData.dominantMood?.color || '#007AFF',
           backgroundColor: theme.name === 'dark' 
-            ? (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 122, 255, 0.1)')
-            : (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 122, 255, 0.1)')
+            ? (todayMoodData.dominantMood ? 'rgba(28, 28, 30, 0.95)' : 'rgba(0, 122, 255, 0.12)')
+            : (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.98)' : 'rgba(0, 122, 255, 0.08)'),
+          borderWidth: theme.name === 'dark' ? 1 : 0.5,
+          borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+          shadowColor: todayMoodData.dominantMood?.color || '#8E7DBE',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
+          elevation: 3,
         }
       ]}>
         <View style={[
           styles.moodIconContainer,
           {
-            backgroundColor: todayMoodData.dominantMood?.color || '#007AFF'
+            backgroundColor: todayMoodData.dominantMood?.color || '#007AFF',
+            shadowColor: todayMoodData.dominantMood?.color || '#007AFF',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 2,
           }
         ]}>
           <MaterialIcons 
             name={todayMoodData.dominantMood?.icon || 'create'} 
-            size={18} 
+            size={20} 
             color="#000000" 
           />
         </View>
@@ -218,39 +230,41 @@ const MoodStatement = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 30, // DailyMoodSummary ile aynı
-    marginTop: 8, // DailyMoodSummary ile arasındaki boşluğu artırdım
-    marginBottom: 4, // StatusTabs ile arasındaki boşluğu biraz artırdım
+    marginHorizontal: 26,
+    marginTop: 10,
+    marginBottom: 6,
   },
   moodStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     borderLeftWidth: 3,
   },
   moodIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   statusContent: {
     flex: 1,
   },
   statusText: {
-    fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
-    marginBottom: 1,
-    lineHeight: 16,
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 3,
+    lineHeight: 19,
+    letterSpacing: -0.3,
   },
   motivationText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Poppins_400Regular',
-    lineHeight: 14,
+    lineHeight: 16,
+    opacity: 0.75,
   },
 });
 

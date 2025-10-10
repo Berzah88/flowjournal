@@ -4,6 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { MaterialIcons } from "@expo/vector-icons";
 import Svg, { Circle } from "react-native-svg";
 import * as Haptics from 'expo-haptics';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import AnimatedReanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, Easing as ReanimatedEasing } from 'react-native-reanimated';
 import FlashCalendar from "./FlashCalendar";
 import JournalCard from "./JournalCard";
 import PropTypes from "prop-types";
@@ -202,10 +204,12 @@ function MileStone({
   const [editable, setEditable] = useState(
     !isCompleted && (!title || title.trim() === "")
   );
-  const [showDeleteOption, setShowDeleteOption] = useState(false);
+  // ⚠️ GEÇICI OLARAK KALDIRILDI - showDeleteOption state
+  // const [showDeleteOption, setShowDeleteOption] = useState(false);
 
   const inputRef = useRef(null);
-  const deleteAnimation = useRef(new Animated.Value(0)).current;
+  // ⚠️ GEÇICI OLARAK KALDIRILDI - deleteAnimation
+  // const deleteAnimation = useRef(new Animated.Value(0)).current;
   
   // Smooth attach/detach animation - initialize later after calculating shouldShowAsChild
   const childIndentAnim = useRef(new Animated.Value(0)).current;
@@ -213,8 +217,13 @@ function MileStone({
   // Smooth collapse/expand animation for children
   const collapseAnim = useRef(new Animated.Value(1)).current; // 1 = visible, 0 = hidden
   
-  // Apple-style touch animation (scale only - no opacity for nested backgrounds)
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  // ⚠️ Touch animation kaldırıldı - görsel geri bildirim yok
+  // const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // Swipe gesture animations
+  const translateX = useSharedValue(0);
+  const swipeActionOpacity = useSharedValue(0);
+  const hasTriggeredHaptic = useSharedValue(false); // Haptic sadece bir kez tetiklensin
 
   // Update local state when milestone prop changes
   useEffect(() => {
@@ -232,6 +241,8 @@ function MileStone({
     }
   }, [editable]);
 
+  // ⚠️ GEÇICI OLARAK KALDIRILDI - Action menu functions
+  /*
   const showDeleteOptionWithAnimation = useCallback(() => {
     setShowDeleteOption(true);
     Animated.timing(deleteAnimation, {
@@ -252,8 +263,6 @@ function MileStone({
   }, [deleteAnimation]);
 
   const handleLongPress = useCallback(() => {
-    // Milestone'lar için basılı tutma işlevselliğini etkinleştir
-    // (sadece title'ı olan milestone'lar için - completed veya incomplete fark etmez)
     if (title && title.trim() !== "") {
       triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
       showDeleteOptionWithAnimation();
@@ -263,15 +272,15 @@ function MileStone({
   const handleDelete = useCallback(() => {
     Alert.alert(
       t('deleteMilestoneConfirm'),
-      "",
+      t('deleteMilestoneMessage') || "This milestone and all its memories will be permanently deleted.",
       [
         {
-          text: t('cancel'),
+          text: t('cancel') || "Wait, no!",
           style: "cancel",
           onPress: hideDeleteOptionWithAnimation,
         },
         {
-          text: t('delete'),
+          text: t('delete') || "Yes, Delete",
           style: "destructive",
           onPress: () => {
             hideDeleteOptionWithAnimation();
@@ -284,19 +293,18 @@ function MileStone({
         onDismiss: hideDeleteOptionWithAnimation,
       }
     );
-  }, [onDelete, hideDeleteOptionWithAnimation]);
+  }, [onDelete, hideDeleteOptionWithAnimation, t]);
+  */
 
   const handleEditToggle = useCallback(() => {
     // Open modal for editing
-    triggerHaptic();
     onEditToggle?.(milestone);
-  }, [onEditToggle, milestone, triggerHaptic]);
+  }, [onEditToggle, milestone]);
 
   const handleCreateMilestone = useCallback(() => {
     if (!title.trim()) {
       return;
     }
-    triggerHaptic();
     setEditable(false);
     onUpdate?.({
       title,
@@ -305,7 +313,7 @@ function MileStone({
     });
     // Dismiss keyboard after milestone creation
     Keyboard.dismiss();
-  }, [title, startDate, endDate, onUpdate, triggerHaptic]);
+  }, [title, startDate, endDate, onUpdate]);
 
 
   const handleCalendarConfirm = ({ startDate: sISO, endDate: eISO }) => {
@@ -360,48 +368,148 @@ function MileStone({
     isProjectBased: true
   }), [milestone.taskId, milestone.projectTitle, currentTask?.title]);
 
-  // Apple-style touch animations (scale only - optimized)
-  const handlePressIn = useCallback(() => {
-    if (editable || (isAttachMode && !isSelectableForAttach)) return;
-    
-    Animated.timing(scaleAnim, {
-      toValue: 0.96,
-      useNativeDriver: true,
-      duration: 100, // Fast and responsive
-    }).start();
-  }, [scaleAnim, editable, isAttachMode, isSelectableForAttach]);
-
-  const handlePressOut = useCallback(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 400, // Snappier spring
-      friction: 25,
-    }).start();
-  }, [scaleAnim]);
-
+  // ⚠️ Touch animations kaldırıldı - görsel geri bildirim yok
+  
   // Optimized press handler
   const handlePress = useCallback(() => {
-    // Attach mode aktifken normal press işlemlerini engelle
+    // Attach mode aktifken attach işlemini yap
     if (isAttachMode) {
       if (isSelectableForAttach && onSelectForAttach) {
-        triggerHaptic(); // Uses Medium by default
         onSelectForAttach();
       }
       return;
     }
     
-    if (!editable && !showDeleteOption) {
-      triggerHaptic(); // Uses Medium by default
-      if (onOpenJournal) {
-        onOpenJournal(projectData);
-      } else if (onOpenDetail) {
-        onOpenDetail();
+    // ⚠️ Milestone tıklama - günlük açma kaldırıldı
+    // Artık milestone'lara tıklayınca bir şey olmuyor
+    // Sadece swipe gesture (complete/delete) ve attach mode aktif
+  }, [isAttachMode, isSelectableForAttach, onSelectForAttach]);
+  
+  // Swipe gesture handlers
+  const handleSwipeDelete = useCallback(() => {
+    Alert.alert(
+      t('deleteMilestoneConfirm'),
+      t('deleteMilestoneMessage') || "This milestone and all its memories will be permanently deleted.",
+      [
+        {
+          text: t('cancel') || "Cancel",
+          style: "cancel",
+        },
+        {
+          text: t('delete') || "Delete",
+          style: "destructive",
+          onPress: () => {
+            onDelete?.();
+          },
+        },
+      ]
+    );
+  }, [onDelete, t]);
+  
+  const handleSwipeComplete = useCallback(() => {
+    if (isCompleted) {
+      // Reopen
+      if (milestone.parentId && allMilestones) {
+        const parent = allMilestones.find(ms => ms.id === milestone.parentId);
+        if (parent?.completed) {
+          Alert.alert(
+            t('cannotReopenChild') || 'Cannot Reopen',
+            t('parentMustBeActiveFirst') || `Parent milestone is completed. Please reopen the parent first.`,
+            [{ text: t('ok') || 'OK', style: 'default' }]
+          );
+          return;
+        }
       }
+      onSetActive?.();
+    } else {
+      // Complete
+      onComplete?.();
     }
-  }, [editable, showDeleteOption, onOpenJournal, onOpenDetail, projectData, isAttachMode, isSelectableForAttach, onSelectForAttach, triggerHaptic]);
+  }, [isCompleted, milestone.parentId, allMilestones, onSetActive, onComplete, t]);
+  
+  // Swipe gesture with delay - prevents conflict with tab switching
+  const swipeGesture = Gesture.Pan()
+    .enabled(!editable && !isAttachMode)
+    .minDistance(15) // Minimum swipe distance to activate
+    .activateAfterLongPress(200) // 200ms basılı tutma gerekiyor
+    .onStart(() => {
+      // Swipe gerçekten başladığında bir kez titreşim
+      hasTriggeredHaptic.value = false;
+    })
+    .onUpdate((e) => {
+      // Haptic sadece bir kez tetikle - ilk swipe'da
+      if (!hasTriggeredHaptic.value && (Math.abs(e.translationX) > 15)) {
+        hasTriggeredHaptic.value = true;
+        runOnJS(triggerHaptic)(Haptics.ImpactFeedbackStyle.Light);
+      }
+      
+      // Left swipe (delete) - red
+      if (e.translationX < -10) {
+        translateX.value = Math.max(e.translationX, -120);
+        swipeActionOpacity.value = Math.min(Math.abs(e.translationX) / 100, 1);
+      }
+      // Right swipe (complete) - green
+      else if (e.translationX > 10) {
+        translateX.value = Math.min(e.translationX, 120);
+        swipeActionOpacity.value = Math.min(e.translationX / 100, 1);
+      }
+    })
+    .onEnd((e) => {
+      // Reset haptic flag
+      hasTriggeredHaptic.value = false;
+      // Left swipe threshold for delete
+      if (e.translationX < -100) {
+        translateX.value = withTiming(0, { 
+          duration: 350,
+          easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
+        });
+        swipeActionOpacity.value = withTiming(0, { 
+          duration: 300,
+          easing: ReanimatedEasing.ease
+        });
+        runOnJS(handleSwipeDelete)();
+      }
+      // Right swipe threshold for complete
+      else if (e.translationX > 100) {
+        translateX.value = withTiming(0, { 
+          duration: 350,
+          easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
+        });
+        swipeActionOpacity.value = withTiming(0, { 
+          duration: 300,
+          easing: ReanimatedEasing.ease
+        });
+        runOnJS(handleSwipeComplete)();
+      }
+      // Reset if not enough swipe
+      else {
+        translateX.value = withSpring(0, {
+          damping: 20,
+          stiffness: 120,
+          mass: 0.5,
+        });
+        swipeActionOpacity.value = withTiming(0, { 
+          duration: 250,
+          easing: ReanimatedEasing.ease
+        });
+      }
+    });
+  
+  const swipeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+  
+  const deleteActionStyle = useAnimatedStyle(() => ({
+    opacity: translateX.value < 0 ? swipeActionOpacity.value : 0,
+  }));
+  
+  const completeActionStyle = useAnimatedStyle(() => ({
+    opacity: translateX.value > 0 ? swipeActionOpacity.value : 0,
+  }));
 
   // Günlükleri tarihlere göre gruplandır
+  // ⚠️ GEÇICI OLARAK KALDIRILDI - Journal grouping functions
+  /*
   const groupEntriesByDate = useCallback((entries) => {
     const groups = {};
     entries.forEach(entry => {
@@ -434,6 +542,7 @@ function MileStone({
   }, []);
 
   const groupedEntries = useMemo(() => groupEntriesByDate(entries), [entries, groupEntriesByDate]);
+  */
 
   // Calculate children info for this milestone
   const childMilestones = useMemo(() => {
@@ -571,35 +680,46 @@ function MileStone({
             }),
           }
         ]}>
-          <Animated.View style={[
-            {
-              // Apple-style touch animation (scale only)
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}>
-            <Pressable
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              style={[
-                styles.milestoneItemClickable,
-                hasChildren && styles.parentMilestoneClickable,
-                {
-                  backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
-                },
-                isAttachMode && isSelectableForAttach && {
-                  borderWidth: 2,
-                  borderColor: '#007AFF',
-                  borderStyle: 'dashed',
-                },
-                isAttachMode && !isSelectableForAttach && {
-                  opacity: 0.4,
-                },
-              ]}
-              disabled={editable || (isAttachMode && !isSelectableForAttach)}
-              onPress={handlePress}
-              onLongPress={!isAttachMode ? handleLongPress : undefined}
-              delayLongPress={500}
-            >
+          {/* Swipe Action Backgrounds */}
+          <View style={styles.swipeActionsContainer}>
+            {/* Delete Action (Left) - Red */}
+            <AnimatedReanimated.View style={[styles.deleteAction, deleteActionStyle]}>
+              <Ionicons name="trash" size={24} color="#FFF" />
+              <Text style={styles.actionText}>Delete</Text>
+            </AnimatedReanimated.View>
+            
+            {/* Complete Action (Right) - Green */}
+            <AnimatedReanimated.View style={[styles.completeAction, completeActionStyle]}>
+              <Ionicons name={isCompleted ? "play-circle" : "checkmark-circle"} size={24} color="#FFF" />
+              <Text style={styles.actionText}>{isCompleted ? 'Reopen' : 'Complete'}</Text>
+            </AnimatedReanimated.View>
+          </View>
+          
+          <GestureDetector gesture={swipeGesture}>
+            <AnimatedReanimated.View style={[swipeAnimatedStyle]}>
+              {/* ⚠️ Touch animation wrapper kaldırıldı */}
+              <View>
+                <Pressable
+                  style={[
+                    styles.milestoneItemClickable,
+                    hasChildren && styles.parentMilestoneClickable,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(142, 125, 190, 0.06)',
+                      borderWidth: theme.name === 'dark' ? 0 : 1,
+                      borderColor: theme.name === 'dark' ? 'transparent' : 'rgba(142, 125, 190, 0.12)',
+                    },
+                    isAttachMode && isSelectableForAttach && {
+                      borderWidth: 2,
+                      borderColor: '#007AFF',
+                      borderStyle: 'dashed',
+                    },
+                    isAttachMode && !isSelectableForAttach && {
+                      opacity: 0.4,
+                    },
+                  ]}
+                  disabled={editable || (isAttachMode && !isSelectableForAttach)}
+                  onPress={handlePress}
+                >
             <View style={[
               styles.iconContainer,
               hasChildren && styles.parentIconContainer,
@@ -614,32 +734,33 @@ function MileStone({
               {hasChildren ? (
                 // Parent milestone icon - SVG Circular Progress Bar (Time-based, Two Colors)
                 <View style={styles.parentIconWrapper}>
-                  {/* SVG Circular Progress Ring */}
+                  {/* SVG Circular Progress Ring - Modernized */}
                   <View style={styles.circularProgressContainer}>
-                    <Svg width={48} height={48} viewBox="0 0 48 48">
-                      {/* Background Circle (Empty/Unfilled) - Soluk gri */}
+                    <Svg width={52} height={52} viewBox="0 0 52 52">
+                      {/* Background Circle (Empty/Unfilled) - Daha soft */}
                       <Circle
-                        cx="24"
-                        cy="24"
-                        r="20"
-                        stroke={theme.name === 'dark' ? 'rgba(142, 142, 147, 0.25)' : 'rgba(142, 142, 147, 0.2)'}
-                        strokeWidth="4"
+                        cx="26"
+                        cy="26"
+                        r="22"
+                        stroke={theme.name === 'dark' ? 'rgba(142, 142, 147, 0.2)' : 'rgba(142, 125, 190, 0.15)'}
+                        strokeWidth="5"
                         fill="none"
                       />
                       
-                      {/* Progress Circle (Filled) - Milestone rengi */}
+                      {/* Progress Circle (Filled) - Milestone rengi with glow */}
                       <Circle
-                        cx="24"
-                        cy="24"
-                        r="20"
+                        cx="26"
+                        cy="26"
+                        r="22"
                         stroke={isCompleted ? "#888" : iconBgColor}
-                        strokeWidth="4"
+                        strokeWidth="5"
                         fill="none"
-                        strokeDasharray={`${2 * Math.PI * 20}`}
-                        strokeDashoffset={`${2 * Math.PI * 20 * (1 - progressPercentage / 100)}`}
+                        strokeDasharray={`${2 * Math.PI * 22}`}
+                        strokeDashoffset={`${2 * Math.PI * 22 * (1 - progressPercentage / 100)}`}
                         strokeLinecap="round"
                         rotation="-90"
-                        origin="24, 24"
+                        origin="26, 26"
+                        opacity={0.9}
                       />
                     </Svg>
                     
@@ -719,7 +840,6 @@ function MileStone({
                       {/* Collapse/Expand button */}
                       <TouchableOpacity 
                         onPress={() => {
-                          triggerHaptic();
                           onToggleCollapse?.(milestone.id);
                         }}
                         style={styles.collapseButtonInline}
@@ -853,147 +973,12 @@ function MileStone({
             )}
           </Pressable>
 
-          {/* Günlük Kartları */}
-          {/* Journal Entries - Project-based system only */}
-          {/* Milestone-based journal entries removed */}
-
-          {/* Animated Action Buttons - Theme Consistent */}
-          {showDeleteOption && (
-          <Animated.View 
-            style={[
-              styles.actionButtonsContainer,
-              {
-                backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(0, 122, 255, 0.04)',
-                opacity: deleteAnimation,
-                transform: [
-                  {
-                    scale: deleteAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.8, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            {/* Attach/Detach Button - LEFT */}
-            {milestone.parentId ? (
-              // Detach button for child milestones
-              <TouchableOpacity
-                style={[styles.themeButton, styles.detachButtonTheme]}
-                onPress={() => {
-                  triggerHaptic();
-                  hideDeleteOptionWithAnimation();
-                  onDetachMilestone?.();
-                }}
-              >
-                <View style={styles.buttonIconContainer}>
-                  <Ionicons name="unlink" size={16} color="#FF5722" />
-                </View>
-                <Text style={styles.themeButtonText}>{t('detach') || 'Detach'}</Text>
-              </TouchableOpacity>
-            ) : (
-              // Attach button for parent milestones
-              <TouchableOpacity
-                style={[styles.themeButton, styles.attachButtonTheme]}
-                onPress={() => {
-                  triggerHaptic();
-                  hideDeleteOptionWithAnimation();
-                  onStartAttachMode?.();
-                }}
-              >
-                <View style={styles.buttonIconContainer}>
-                  <Ionicons name="link" size={16} color="#007AFF" />
-                </View>
-                <Text style={styles.themeButtonText}>{t('attach') || 'Attach'}</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Complete/Reopen Button - MIDDLE */}
-            {!isCompleted ? (
-              <TouchableOpacity
-                style={[styles.themeButton, styles.completeButtonTheme]}
-                onPress={() => {
-                  triggerHaptic();
-                  hideDeleteOptionWithAnimation();
-                  onComplete?.();
-                }}
-              >
-                <View style={styles.buttonIconContainer}>
-                  <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-                </View>
-                <Text style={styles.themeButtonText}>Complete</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.themeButton, styles.activeButtonTheme]}
-                onPress={async () => {
-                  // SAFETY CHECK: If this is a child, check if parent is completed
-                  if (milestone.parentId && allMilestones) {
-                    const parent = allMilestones.find(ms => ms.id === milestone.parentId);
-                    if (parent?.completed) {
-                      try {
-                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                      } catch {
-                        Vibration.vibrate([0, 100, 50, 100]); // Error pattern
-                      }
-                      Alert.alert(
-                        t('cannotReopenChild') || 'Cannot Reopen',
-                        t('parentMustBeActiveFirst') || `Parent milestone "${parent.title}" is completed. Please reopen the parent first.`,
-                        [{ text: t('ok') || 'OK', style: 'default' }]
-                      );
-                      hideDeleteOptionWithAnimation();
-                      return;
-                    }
-                  }
-                  
-                  triggerHaptic();
-                  hideDeleteOptionWithAnimation();
-                  onSetActive?.();
-                }}
-              >
-                <View style={styles.buttonIconContainer}>
-                  <Ionicons name="play-circle" size={16} color="#2196F3" />
-                </View>
-                <Text style={styles.themeButtonText}>Reopen</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Delete Button - RIGHT */}
-            <TouchableOpacity
-              style={[styles.themeButton, styles.deleteButtonTheme]}
-              onPress={() => {
-                triggerHaptic();
-                handleDelete();
-              }}
-            >
-              <View style={styles.buttonIconContainer}>
-                <Ionicons name="trash" size={16} color="#FF3B30" />
+          {/* ⚠️ GEÇICI OLARAK KALDIRILDI - Action Buttons Menu */}
               </View>
-              <Text style={styles.themeButtonText}>Delete</Text>
-            </TouchableOpacity>
-
-            {/* Close Button - Elegant */}
-            <TouchableOpacity
-              style={[
-                styles.elegantCloseButton,
-                {
-                  backgroundColor: theme.name === 'dark' ? 'rgba(44, 44, 46, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-                  borderColor: theme.name === 'dark' ? 'rgba(142, 142, 147, 0.3)' : 'rgba(142, 142, 147, 0.2)',
-                }
-              ]}
-              onPress={() => {
-                triggerHaptic();
-                hideDeleteOptionWithAnimation();
-              }}
-            >
-              <Ionicons name="close" size={18} color={theme.name === 'dark' ? '#FFFFFF' : '#8E8E93'} />
-            </TouchableOpacity>
-          </Animated.View>
-          )}
+            </AnimatedReanimated.View>
+          </GestureDetector>
         </Animated.View>
-      </Animated.View>
-    </Pressable>
+      </Pressable>
     
       <FlashCalendar
         visible={calendarVisible}
@@ -1044,7 +1029,50 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 8,
     marginBottom: 0,
+    position: 'relative',
     // marginLeft and marginRight are handled inline for equal spacing
+  },
+  swipeActionsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 0,
+  },
+  deleteAction: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 120,
+    backgroundColor: '#FF3B30',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  completeAction: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 120,
+    backgroundColor: '#34C759',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  actionText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
   },
   milestoneItemClickable: {
     flexDirection: "row",
@@ -1053,6 +1081,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 16,
     justifyContent: 'flex-start',
+    zIndex: 1,
     // No minHeight - dynamic!
   },
   parentMilestoneClickable: {
@@ -1067,7 +1096,7 @@ const styles = StyleSheet.create({
     paddingTop: 2, // Slight top padding for alignment
   },
   parentIconContainer: {
-    width: 70, // Wider for larger icon
+    width: 74, // Wider for larger icon (52px circle + margins)
     marginTop: 0,
     justifyContent: "center", // Parent icons centered
   },
@@ -1079,13 +1108,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 0, // Child icons at top
   },
-  // SVG Circular Progress Bar Styles (Two Colors)
+  // SVG Circular Progress Bar Styles (Modernized)
   circularProgressContainer: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    shadowColor: '#8E7DBE',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   progressCircleCenter: {
     position: 'absolute',
@@ -1103,32 +1137,32 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   circleStartDayText: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: FONTS.BOLD,
     fontWeight: '800',
-    letterSpacing: -0.4,
-    lineHeight: 12,
+    letterSpacing: -0.5,
+    lineHeight: 13,
   },
   circleStartMonthText: {
-    fontSize: 5,
+    fontSize: 6,
     fontFamily: FONTS.MEDIUM,
     fontWeight: '500',
     letterSpacing: -0.1,
-    lineHeight: 6,
+    lineHeight: 7,
     marginTop: 1,
   },
   circleEndDateText: {
-    fontSize: 7,
+    fontSize: 8,
     fontFamily: FONTS.MEDIUM,
     fontWeight: '500',
     letterSpacing: -0.2,
-    lineHeight: 8,
+    lineHeight: 9,
   },
   circleSeparator: {
-    fontSize: 6,
+    fontSize: 7,
     fontFamily: FONTS.REGULAR,
     letterSpacing: 0,
-    lineHeight: 6,
+    lineHeight: 7,
     marginVertical: 0,
   },
   // Badge and Collapse Button Row
