@@ -275,9 +275,12 @@ export const TaskProvider = ({ children }) => {
     
     // Firestore'a projeyi kaydet
     try {
+      console.log('🔄 Firestore: Proje kaydediliyor...', taskWithId.title);
       await firestoreService.saveProject(taskWithId);
+      console.log('✅ Firestore: Proje başarıyla kaydedildi:', taskWithId.title);
     } catch (error) {
       console.error('❌ Firestore: Proje kaydetme hatası:', error);
+      console.error('❌ Hata detayı:', error.message);
     }
 
     // ⚠️ Topic-based sistem devre dışı - Firestore kullanılıyor
@@ -296,9 +299,12 @@ export const TaskProvider = ({ children }) => {
     // Firestore'dan projeyi sil
     if (taskToDelete) {
       try {
+        console.log('🔄 Firestore: Proje siliniyor...', taskToDelete.title);
         await firestoreService.deleteProject(taskToDelete.id); // ID kullan, title değil
+        console.log('✅ Firestore: Proje başarıyla silindi:', taskToDelete.title);
       } catch (error) {
         console.error('❌ Firestore: Proje silme hatası:', error);
+        console.error('❌ Hata detayı:', error.message);
       }
     }
     
@@ -361,6 +367,7 @@ export const TaskProvider = ({ children }) => {
       // Firestore'da projeyi tamamlandı olarak güncelle
       if (taskToComplete) {
         try {
+          console.log('🔄 Firestore: Proje tamamlanıyor...', taskToComplete.title);
           await firestoreService.updateProject(taskToComplete.id, { 
             status: 'completed', 
             done: true,
@@ -368,8 +375,10 @@ export const TaskProvider = ({ children }) => {
             completedAt: completionTime,
             journalEntries: taskToComplete.journalEntries // Etiketlenmiş journal'lar
           });
+          console.log('✅ Firestore: Proje başarıyla tamamlandı:', taskToComplete.title);
         } catch (error) {
           console.error('❌ Firestore: Proje tamamlama hatası:', error);
+          console.error('❌ Hata detayı:', error.message);
         }
       }
 
