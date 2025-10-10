@@ -1,250 +1,288 @@
-# 🐍 PythonAnywhere Setup - Daily Reminder System
+# 🚀 PythonAnywhere Setup Guide
 
-## 📋 **Genel Bakış**
-
-Bu dokümantasyon, **FCM (Firebase Cloud Messaging)** ile **PythonAnywhere** üzerinde günlük hatırlatma sistemi kurulumunu açıklar.
-
-**Sistem Mimarisi:**
-- ✅ **React Native App** → FCM topic'e subscribe
-- ✅ **PythonAnywhere** → Scheduled task ile günlük bildirim gönder
-- ✅ **Firebase FCM** → Topic'teki tüm cihazlara bildirim ilet
+**Account:** mberzah.pythonanywhere.com  
+**Date:** October 10, 2025
 
 ---
 
-## 🔧 **1. Firebase Admin SDK Kurulumu**
+## 📋 Step-by-Step Setup
 
-### **A) PythonAnywhere'e Giriş Yap**
-https://www.pythonanywhere.com → **Login**
+### **1. Login to PythonAnywhere**
+```
+https://www.pythonanywhere.com/login/
+Username: mberzah
+```
 
-### **B) Bash Console Aç**
-`Consoles` sekmesi → **Bash**
+---
 
-### **C) Firebase Admin SDK Yükle**
+### **2. Upload Backend Files**
+
+Go to **Files** tab and create:
+
+```
+/home/mberzah/
+├── flask_app.py                    # Main Flask application
+├── check_project_deadlines.py      # Deadline checker
+├── serviceAccountKey.json          # Firebase credentials
+└── requirements.txt                # Python dependencies
+```
+
+**Upload these files:**
+1. `flask_app.py` - from your `backend/` folder
+2. `check_project_deadlines.py` - from your `backend/` folder
+3. `serviceAccountKey.json` - from your `backend/` folder
+
+---
+
+### **3. Create requirements.txt**
+
+File: `/home/mberzah/requirements.txt`
+
+```txt
+Flask==3.0.0
+firebase-admin==6.2.0
+python-dotenv==1.0.0
+gunicorn==21.2.0
+```
+
+---
+
+### **4. Install Dependencies**
+
+Go to **Consoles** → Open **Bash console**:
+
 ```bash
-pip3 install --user firebase-admin
+cd ~
+pip3 install --user -r requirements.txt
 ```
 
-**Kontrol:**
-```bash
-pip3 list | grep firebase
-```
-
-Çıktı:
-```
-firebase-admin   6.x.x
-```
+Wait for installation to complete (~2-3 minutes)
 
 ---
 
-## 📁 **2. Firebase Service Account Key Yükle**
+### **5. Create Web App**
 
-### **A) Firebase Console'dan Key İndir**
-1. https://console.firebase.google.com
-2. **Project Settings** (⚙️) → **Service Accounts** sekmesi
-3. **Generate new private key** → **Generate key**
-4. `serviceAccountKey.json` dosyasını indir
+Go to **Web** tab:
 
-### **B) PythonAnywhere'e Yükle**
-1. **Files** sekmesine git
-2. `mysite` dizinine git (veya kendi dizinin)
-3. **Upload a file** → `serviceAccountKey.json` seç
+1. Click **"Add a new web app"**
+2. Select **Flask**
+3. Select **Python 3.10**
+4. Click **Next**
 
-**Path:**
+**Important:** Set these configurations:
+
+#### Source Code:
 ```
-/home/KULLANICI_ADIN/mysite/serviceAccountKey.json
+/home/mberzah/
 ```
 
----
-
-## 📝 **3. Python Script Oluştur**
-
-### **A) Script Dosyasını Yükle**
-1. **Files** sekmesi → `mysite` dizini
-2. **Upload a file** → `send_daily_reminder.py` seç
-   (Veya **New file** ile oluştur ve içeriği yapıştır)
-
-### **B) Script İçeriğini Kontrol Et**
-`send_daily_reminder.py` dosyasını aç ve şu satırı bul:
+#### WSGI Configuration File:
+Click on the WSGI config file link and replace content with:
 
 ```python
-cred_path = '/home/KULLANICI_ADIN/mysite/serviceAccountKey.json'
+import sys
+import os
+
+# Add your project directory to sys.path
+project_home = '/home/mberzah'
+if project_home not in sys.path:
+    sys.path = [project_home] + sys.path
+
+# Import flask app
+from flask_app import app as application
 ```
 
-**⚠️ ÖNEMLİ:** `KULLANICI_ADIN` kısmını kendi PythonAnywhere kullanıcı adınla değiştir!
-
-**Örnek:**
-```python
-cred_path = '/home/berzah/mysite/serviceAccountKey.json'
+#### Working Directory:
+```
+/home/mberzah/
 ```
 
 ---
 
-## 🧪 **4. Script'i Test Et**
+### **6. Configure Environment Variables**
 
-### **Bash Console'dan Test:**
+Still in **Web** tab, scroll to **Environment variables**:
+
+Add these:
+```
+GOOGLE_APPLICATION_CREDENTIALS = /home/mberzah/serviceAccountKey.json
+```
+
+---
+
+### **7. Reload Web App**
+
+Click the big green **"Reload mberzah.pythonanywhere.com"** button
+
+---
+
+### **8. Test API Endpoints**
+
+Open a new browser tab or use curl:
+
+#### Test Health Check:
 ```bash
-cd ~/mysite
-python3 send_daily_reminder.py
+curl https://mberzah.pythonanywhere.com/
 ```
 
-### **Beklenen Çıktı:**
-```
-🚀 PythonAnywhere Daily Reminder Script başlatılıyor...
-============================================================
-✅ Firebase Admin SDK başlatıldı
-📅 Günlük hatırlatma gönderiliyor... (2025-10-08 20:30:00)
-✅ Bildirim başarıyla gönderildi!
-📱 Message ID: projects/witapp-fcm/messages/0:1234567890
-🔥 Topic: daily_reminders
-============================================================
-✅ Script başarıyla tamamlandı!
+**Expected Response:**
+```json
+{
+  "status": "healthy",
+  "message": "Flow Journal Notification API is running!",
+  "timestamp": "2025-10-10T12:00:00.000000"
+}
 ```
 
-**Telefonuna HEMEN bildirim gelmeli!** 🔥
-
-### **Hata Durumunda:**
-```
-❌ serviceAccountKey.json bulunamadı: /home/xxx/mysite/serviceAccountKey.json
-```
-→ Path'i kontrol et, `KULLANICI_ADIN` doğru mu?
-
-```
-❌ Firebase başlatma hatası: Permission denied
-```
-→ `serviceAccountKey.json` dosyasının izinlerini kontrol et
-
----
-
-## ⏰ **5. Scheduled Task Oluştur**
-
-### **A) Tasks Sekmesine Git**
-**Tasks** sekmesi → **Create a new scheduled task**
-
-### **B) Task Ayarları**
-
-**Hour:** `16` (UTC saat)  
-**Minute:** `00`
-
-**Command:**
+#### Test Daily Reminder:
 ```bash
-python3 /home/KULLANICI_ADIN/mysite/send_daily_reminder.py
+curl -X POST https://mberzah.pythonanywhere.com/api/send-daily-reminder
 ```
 
-**⚠️ ÖNEMLİ:** `KULLANICI_ADIN` kısmını değiştir!
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Daily reminders sent successfully",
+  "sent_count": 2
+}
+```
 
-**Örnek:**
+#### Test Deadline Reminder:
 ```bash
-python3 /home/berzah/mysite/send_daily_reminder.py
+curl -X POST https://mberzah.pythonanywhere.com/api/send-project-deadline-reminder
 ```
 
-### **C) Create Butonuna Bas** ✅
-
----
-
-## 🕐 **6. Saat Hesaplama**
-
-### **Türkiye Saati → UTC:**
-- Türkiye = **UTC+3**
-- **19:00 Türkiye** = **16:00 UTC** ✅
-- **20:00 Türkiye** = **17:00 UTC**
-- **21:00 Türkiye** = **18:00 UTC**
-
-### **Task Hour Ayarı:**
-```
-19:00 Türkiye için → Hour: 16
+**Expected Response:**
+```json
+{
+  "status": "success",
+  "message": "Deadline reminders sent",
+  "projects_found": 3,
+  "notifications_sent": 3
+}
 ```
 
 ---
 
-## 🔥 **7. Task'ı Hemen Test Et**
+### **9. Setup Scheduled Tasks (Cron)**
 
-### **Run Now Butonu:**
-1. **Tasks** listesinde yeni task'ını gör
-2. Sağ tarafta **"Run now"** butonuna bas
-3. **Telefonuna HEMEN bildirim gelmeli!** 🔥
+Go to **Tasks** tab:
 
-### **Log Kontrol:**
-1. Task'ın yanında **log link** var
-2. Tıkla ve çıktıyı gör:
-   ```
-   ✅ Firebase Admin SDK başlatıldı
-   ✅ Bildirim başarıyla gönderildi!
-   ```
+#### Task 1: Daily Journal Reminder
+- **Time:** `19:00 UTC` (22:00 Turkey)
+- **Command:** 
+  ```bash
+  curl -X POST https://mberzah.pythonanywhere.com/api/send-daily-reminder
+  ```
+- **Frequency:** Daily
+
+#### Task 2: Project Deadline Reminder
+- **Time:** `09:00 UTC` (12:00 Turkey)
+- **Command:**
+  ```bash
+  curl -X POST https://mberzah.pythonanywhere.com/api/send-project-deadline-reminder
+  ```
+- **Frequency:** Daily
 
 ---
 
-## 📱 **8. React Native App Tarafı**
+### **10. Monitor Logs**
 
-### **App.js:**
-```javascript
-// Otomatik olarak daily reminders topic'ine subscribe ol
-const subscribed = await fcmService.subscribeToDailyReminders();
+Go to **Web** tab → **Log files**:
+
+Check these logs regularly:
+- **Error log:** `/var/log/mberzah.pythonanywhere.com.error.log`
+- **Server log:** `/var/log/mberzah.pythonanywhere.com.server.log`
+
+---
+
+## 🔧 Troubleshooting
+
+### Issue: 404 Not Found
+**Solution:** 
+1. Check WSGI configuration
+2. Ensure `flask_app.py` is in `/home/mberzah/`
+3. Reload web app
+
+### Issue: 500 Internal Server Error
+**Solution:**
+1. Check error log for details
+2. Verify `serviceAccountKey.json` is uploaded
+3. Verify Firebase credentials are correct
+4. Check Python packages are installed
+
+### Issue: No notifications received
+**Solution:**
+1. Check if API responds (use health check)
+2. Verify FCM tokens in Firestore
+3. Check Firebase Console for errors
+4. Run manual test: `python send_manual_test.py`
+
+### Issue: ImportError
+**Solution:**
+```bash
+cd ~
+pip3 install --user firebase-admin Flask
 ```
 
-### **Kontrol:**
-Uygulama başladığında konsol logları:
+---
+
+## ✅ Verification Checklist
+
+- [ ] Files uploaded to PythonAnywhere
+- [ ] requirements.txt created
+- [ ] Dependencies installed
+- [ ] Web app created and configured
+- [ ] WSGI config updated
+- [ ] Environment variables set
+- [ ] Web app reloaded
+- [ ] Health check returns 200 OK
+- [ ] Daily reminder endpoint works
+- [ ] Deadline reminder endpoint works
+- [ ] Scheduled tasks created
+- [ ] Logs are accessible
+- [ ] Notifications received on device
+
+---
+
+## 📱 Quick Test
+
+After setup, test immediately:
+
+```bash
+# 1. Health check
+curl https://mberzah.pythonanywhere.com/
+
+# 2. Send test notification
+curl -X POST https://mberzah.pythonanywhere.com/api/send-daily-reminder
+
+# 3. Check your phone for notification
 ```
-✅ FCM token başarıyla alındı: eExyBGCm...
-✅ Daily reminders topic'ine subscribe olundu!
-✅ Bildirimler PythonAnywhere + FCM ile gelecek
-```
 
 ---
 
-## ✅ **Kontrol Listesi**
+## 📞 Support
 
-- [ ] Firebase Admin SDK yüklü (`pip3 install --user firebase-admin`)
-- [ ] `serviceAccountKey.json` yüklendi
-- [ ] `send_daily_reminder.py` script'i yüklendi
-- [ ] Script'te `KULLANICI_ADIN` değiştirildi
-- [ ] Script test edildi (`python3 send_daily_reminder.py`)
-- [ ] Telefonuna test bildirimi geldi ✅
-- [ ] Scheduled task oluşturuldu (Hour: 16)
-- [ ] Task command'ında `KULLANICI_ADIN` değiştirildi
-- [ ] "Run now" ile task test edildi
-- [ ] Task log'ları kontrol edildi
+If you encounter issues:
+
+1. **PythonAnywhere Help:** https://help.pythonanywhere.com/
+2. **PythonAnywhere Forums:** https://www.pythonanywhere.com/forums/
+3. **Firebase Console:** Check for quota/errors
+4. **Local Test:** Run `python send_manual_test.py` to verify Firebase works
 
 ---
 
-## 🐛 **Sorun Giderme**
+## 🎯 Success Criteria
 
-### **1. Bildirim Gelmiyor**
-- ✅ Uygulama açık mı? FCM token alındı mı?
-- ✅ Topic'e subscribe olundu mu? (`✅ Daily reminders topic'ine subscribe olundu!`)
-- ✅ PythonAnywhere task çalıştı mı? (Log kontrol et)
-- ✅ Firebase Console → Cloud Messaging → Topic mesajı göndermeyi test et
-
-### **2. Task Hata Veriyor**
-- ✅ `KULLANICI_ADIN` doğru mu?
-- ✅ `serviceAccountKey.json` path'i doğru mu?
-- ✅ Python version: `python3 --version` (3.8+ olmalı)
-- ✅ Firebase Admin SDK yüklü mü? `pip3 list | grep firebase`
-
-### **3. Script Elle Çalışıyor Ama Task Çalışmıyor**
-- ✅ Task command'ı tam path ile yazıldı mı?
-- ✅ Task enabled mi? (Disabled olabilir)
-- ✅ Task saati doğru mu? (UTC saat kullan)
+✅ API responds to health check  
+✅ Daily reminder sends notifications  
+✅ Deadline reminder sends notifications  
+✅ Scheduled tasks run automatically  
+✅ No errors in logs  
+✅ Notifications received on device
 
 ---
 
-## 📞 **Destek**
-
-Sorun mu yaşıyorsun? Konsol loglarını ve error mesajlarını paylaş!
-
-**Gerekli Bilgiler:**
-1. Uygulama konsol logları (FCM token, topic subscription)
-2. PythonAnywhere task log'ları
-3. `python3 send_daily_reminder.py` çıktısı
-
----
-
-## 🎉 **Başarı!**
-
-Her şey çalışıyorsa:
-- ✅ Uygulama başladığında otomatik topic'e subscribe olur
-- ✅ PythonAnywhere her gün 19:00'da (Türkiye saati) bildirim gönderir
-- ✅ FCM tüm abone cihazlara bildirimi iletir
-- ✅ Bildirim hem foreground hem background'da gelir
-
-**Sistem tamamen otomatik çalışır!** 🚀🔥
-
+**Last Updated:** October 10, 2025  
+**Status:** Ready for deployment
