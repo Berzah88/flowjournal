@@ -495,19 +495,14 @@ export default function Journal({
   });
 
   const addPreviewImage = (uri) => {
-    // Video uzantılarını kontrol ederek medya tipini belirle
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.3gp', '.webm'];
-    const isVideo = videoExtensions.some(ext => uri.toLowerCase().endsWith(ext));
-    
     setPreviews((p) => {
-      const newPreviews = [...p, { type: isVideo ? "video" : "image", content: uri }];
-      // FIFO: Sadece son 5 medyayı tut, eski medyaları tamamen sil
+      const newPreviews = [...p, { type: "image", content: uri }];
+      // FIFO: Sadece son 5 resmi tut, eski resimleri tamamen sil
       if (newPreviews.length > UI_DISPLAY_LIMIT) {
         return newPreviews.slice(-UI_DISPLAY_LIMIT);
       }
       return newPreviews;
     });
-    // setHasMedia kaldırıldı - preview render'ı sadece klavye durumuna göre olacak
     return true;
   };
 
@@ -517,7 +512,7 @@ export default function Journal({
       
       const result = await ImagePicker.launchImageLibraryAsync({
         quality: 0.7,
-        mediaTypes: ImagePicker.MediaTypeOptions.All, // Hem resim hem video seçimine izin ver
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Sadece resim
       });
       let uri = null;
       if (result?.assets && result.assets.length > 0) uri = result.assets[0].uri;
@@ -575,7 +570,7 @@ export default function Journal({
       await pickLocation();
       return;
     }
-    if (label === t('media')) {
+    if (label === t('photo')) {
       await pickImage();
       return;
     }
@@ -623,7 +618,6 @@ export default function Journal({
       const payload = {
         text: textValue?.trim() || "",
         images: previews.filter((x) => x.type === "image").map((x) => x.content),
-        videos: previews.filter((x) => x.type === "video").map((x) => x.content), // Video desteği eklendi
         location: previews.find((x) => x.type === "map")?.content?.coords || null,
         // include mood data (compatible keys)
         mood: finalMood?.key || null,
@@ -692,25 +686,6 @@ export default function Journal({
         </TouchableOpacity>
       );
     }
-    if (item.type === "video") {
-      return (
-        <TouchableOpacity 
-          key={key} 
-          onPress={() => {
-            Keyboard.dismiss();
-            setSelectedImage({ type: "video", content: item.content });
-            setShowImageModal(true);
-          }}
-          activeOpacity={0.8}
-          style={styles.videoPreviewContainer}
-        >
-          <Image source={{ uri: item.content }} style={styles.previewImage} resizeMode="cover" />
-          <View style={styles.videoPlayIcon}>
-            <Ionicons name="play-circle" size={32} color="rgba(255,255,255,0.9)" />
-          </View>
-        </TouchableOpacity>
-      );
-    }
     // Harita artık medya alanında gösterilmiyor
     return null;
   };
@@ -722,41 +697,41 @@ export default function Journal({
     // Medya seçme işlemi devam ediyorsa gösterme (yanıp sönmeyi engelle)
     if (isPickingMedia) return null;
     
-    // Hem resimleri hem videoları göster, sadece konum bilgisini hariç tut
-    const mediaPreviews = previews.filter(item => item.type === "image" || item.type === "video");
-    if (!mediaPreviews || mediaPreviews.length === 0) return null;
+    // Sadece resimleri filtrele, konum bilgisini hariç tut
+    const imagePreviews = previews.filter(item => item.type === "image");
+    if (!imagePreviews || imagePreviews.length === 0) return null;
 
-    // Sadece son 5 medyayı göster (UI_DISPLAY_LIMIT)
-    const displayPreviews = mediaPreviews.slice(-UI_DISPLAY_LIMIT);
+    // Sadece son 5 resmi göster (UI_DISPLAY_LIMIT)
+    const displayPreviews = imagePreviews.slice(-UI_DISPLAY_LIMIT);
     
     // Asimetrik layout: Sol büyük + Sağ 4 küçük (üst 2, alt 2)
-    const leftMedia = displayPreviews[0];
-    const rightMedia = displayPreviews.slice(1);
+    const leftImage = displayPreviews[0];
+    const rightImages = displayPreviews.slice(1);
 
     return (
       <View style={styles.previewWrapper}>
         <View style={styles.asymmetricGrid}>
-          {/* Sol taraf - 1 büyük medya */}
+          {/* Sol taraf - 1 büyük resim */}
           <View style={styles.leftColumn}>
-            {leftMedia && renderPreviewItem(leftMedia, "left")}
+            {leftImage && renderPreviewItem(leftImage, "left")}
           </View>
           
-          {/* Sağ taraf - 4 küçük medya */}
+          {/* Sağ taraf - 4 küçük resim */}
           <View style={styles.rightColumn}>
             <View style={styles.rightTop}>
               <View style={styles.rightTopLeft}>
-                {rightMedia[0] && renderPreviewItem(rightMedia[0], "right-top-left")}
+                {rightImages[0] && renderPreviewItem(rightImages[0], "right-top-left")}
               </View>
               <View style={styles.rightTopRight}>
-                {rightMedia[1] && renderPreviewItem(rightMedia[1], "right-top-right")}
+                {rightImages[1] && renderPreviewItem(rightImages[1], "right-top-right")}
               </View>
             </View>
             <View style={styles.rightBottom}>
               <View style={styles.rightBottomLeft}>
-                {rightMedia[2] && renderPreviewItem(rightMedia[2], "right-bottom-left")}
+                {rightImages[2] && renderPreviewItem(rightImages[2], "right-bottom-left")}
               </View>
               <View style={styles.rightBottomRight}>
-                {rightMedia[3] && renderPreviewItem(rightMedia[3], "right-bottom-right")}
+                {rightImages[3] && renderPreviewItem(rightImages[3], "right-bottom-right")}
               </View>
             </View>
           </View>
@@ -767,7 +742,7 @@ export default function Journal({
 
   const buttons = [
     { label: t('location'), icon: "map-outline" },
-    { label: t('media'), icon: "albums-outline" }, // Medya butonu: resim + video
+    { label: t('photo'), icon: "image-outline" },
     { label: "Mood", icon: "happy-outline" },
     { label: t('save'), icon: "save-outline" },
   ];
@@ -918,12 +893,12 @@ export default function Journal({
               )}
             </View>
             
-            {/* Media Counter - Right Side */}
-            {previews.filter(p => p.type === "image" || p.type === "video").length > 0 && (
+            {/* Photo Counter - Right Side */}
+            {previews.filter(p => p.type === "image").length > 0 && (
               <View style={styles.mediaCounterContainer}>
                 <View style={styles.mediaCounter}>
-                  <Ionicons name="albums" size={16} color="#007AFF" />
-                  <Text style={styles.mediaCounterText}>{previews.filter(p => p.type === "image" || p.type === "video").length}</Text>
+                  <Ionicons name="image" size={16} color="#007AFF" />
+                  <Text style={styles.mediaCounterText}>{previews.filter(p => p.type === "image").length}</Text>
                 </View>
               </View>
             )}
@@ -1247,23 +1222,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
-  },
-  videoPreviewContainer: {
-    position: 'relative',
-    width: "100%",
-    height: "100%",
-  },
-  videoPlayIcon: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -16 }, { translateY: -16 }],
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
   },
   mapWrapper: { 
     flex: 1, 

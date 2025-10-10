@@ -92,15 +92,11 @@ const JournalDetailScreen = ({
     // En güncel entry'yi bul (medya, konum, mood için)
     const latestEntry = filteredEntries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     
-    // Tüm medyaları topla (tüm entries'lerden)
+    // Tüm resimleri topla (tüm entries'lerden)
     const allImages = [];
-    const allVideos = [];
     filteredEntries.forEach(entry => {
       if (entry.images && entry.images.length > 0) {
         allImages.push(...entry.images);
-      }
-      if (entry.videos && entry.videos.length > 0) {
-        allVideos.push(...entry.videos);
       }
     });
     
@@ -134,7 +130,6 @@ const JournalDetailScreen = ({
       task: task, // Task bilgisini de ekle
       // Güncel medya, konum ve mood verilerini güncelle
       images: allImages, // Tüm resimleri birleştir
-      videos: allVideos, // Tüm videoları birleştir
       location: latestEntry?.location || initialMediaData.location,
       mood: moodObj, // Doğru mood objesi
     };
@@ -323,7 +318,7 @@ const JournalDetailScreen = ({
   const mediaList = useMemo(() => {
     const media = [];
     
-    // Add images
+    // Add images only
     if (selectedMediaData.images && selectedMediaData.images.length > 0) {
       media.push(...selectedMediaData.images.map(imageUri => ({
         uri: imageUri,
@@ -332,17 +327,8 @@ const JournalDetailScreen = ({
       })));
     }
     
-    // Add videos
-    if (selectedMediaData.videos && selectedMediaData.videos.length > 0) {
-      media.push(...selectedMediaData.videos.map(videoUri => ({
-        uri: videoUri,
-        type: 'video',
-        timestamp: new Date().toISOString() // Fallback timestamp
-      })));
-    }
-    
     return media;
-  }, [selectedMediaData.images, selectedMediaData.videos]);
+  }, [selectedMediaData.images]);
 
   // Fullscreen viewer functions
   const openFullscreen = (imageIndex) => {
@@ -391,15 +377,11 @@ const JournalDetailScreen = ({
     });
 
   const renderMediaGrid = (mediaData) => {
-    // selectedMediaData'dan medyaları al
+    // selectedMediaData'dan resimleri al
     const images = mediaData.images || [];
-    const videos = mediaData.videos || [];
     
-    // Combine images and videos
-    const previews = [
-      ...images.map((uri) => ({ type: "image", content: uri })),
-      ...videos.map((uri) => ({ type: "video", content: uri }))
-    ];
+    // Sadece resimler
+    const previews = images.map((uri) => ({ type: "image", content: uri }));
 
     if (!previews || previews.length === 0) return null;
 
@@ -439,26 +421,7 @@ const JournalDetailScreen = ({
           </TouchableOpacity>
         );
       }
-      if (item.type === "video") {
-        // Find the global index of this video in mediaList
-        const globalIndex = mediaList.findIndex(media => media.uri === item.content);
-        
-        return (
-          <TouchableOpacity 
-            key={key} 
-            style={styles.mediaItem}
-            onPress={() => globalIndex >= 0 && openFullscreen(globalIndex)}
-            activeOpacity={0.9}
-          >
-            <Image source={{ uri: item.content }} style={styles.mediaImage} resizeMode="cover" />
-            <View style={styles.mediaOverlay}>
-              <View style={styles.videoPlayButton}>
-                <Ionicons name="play" size={24} color="#FFFFFF" />
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      }
+      // Video desteği kaldırıldı
       // Harita render kaldırıldı - APK crash sorunu nedeniyle
       return null;
     };
@@ -736,8 +699,7 @@ const JournalDetailScreen = ({
           <View style={styles.content}>
             {/* Media Section - Fixed */}
             <View style={styles.mediaSection}>
-              {(selectedMediaData.images && selectedMediaData.images.length > 0) || 
-               (selectedMediaData.videos && selectedMediaData.videos.length > 0) ? (
+              {(selectedMediaData.images && selectedMediaData.images.length > 0) ? (
                 renderMediaGrid(selectedMediaData)
               ) : (
                 <View style={[
@@ -1213,20 +1175,6 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
 
-  videoPlayButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-
   mapWrapper: {
     flex: 1,
     borderRadius: 12,
@@ -1291,65 +1239,6 @@ const styles = StyleSheet.create({
   fullscreenImage: {
     width: width,
     height: height * 0.8,
-  },
-
-  fullscreenVideoContainer: {
-    flex: 1,
-    width: width,
-    height: height * 0.8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  fullscreenVideo: {
-    width: width,
-    height: height * 0.8,
-  },
-
-  videoPlayPauseButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -30 }, { translateY: -30 }],
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-
-  videoIndicatorOverlay: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 1000,
-  },
-
-  videoIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-
-  videoIndicatorText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
-    marginLeft: 4,
   },
 
   navArrow: {

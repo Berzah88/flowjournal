@@ -156,22 +156,16 @@ const JournalCard = memo(function JournalCard({
     return "Location";
   }, [locationTexts]);
 
-  // O günün tüm medyalarını birleştir (harita hariç - APK crash sorunu)
+  // O günün tüm resimlerini birleştir (harita hariç - APK crash sorunu)
   const allMedia = useMemo(() => {
     const media = [];
     dayGroup.allEntries.forEach(entry => {
       if (entry.images) {
         media.push(...entry.images.map(uri => ({ type: "image", content: uri })));
       }
-      if (entry.videos) {
-        media.push(...entry.videos.map(uri => ({ type: "video", content: uri })));
-      }
+      // Video desteği kaldırıldı
       // Harita medyası kaldırıldı - APK crash sorunu nedeniyle
-      // if (entry.location) {
-      //   media.push({ type: "map", content: entry.location });
-      // }
     });
-    
     
     return media;
   }, [dayGroup.allEntries, refreshKey]); // refreshKey dependency eklendi
@@ -325,9 +319,8 @@ const JournalCard = memo(function JournalCard({
   const renderPreviewGridForEntry = useCallback((entry) => {
     const previews = [
       ...(entry.images?.map((uri) => ({ type: "image", content: uri })) || []),
-      ...(entry.videos?.map((uri) => ({ type: "video", content: uri })) || []),
+      // Video desteği kaldırıldı
       // Harita preview kaldırıldı - APK crash sorunu nedeniyle
-      // ...(entry.location ? [{ type: "map", content: entry.location }] : []),
     ];
 
     if (!previews || previews.length === 0) return null;
@@ -353,16 +346,7 @@ const JournalCard = memo(function JournalCard({
       if (item.type === "image") {
         return <Image key={key} source={{ uri: item.content }} style={styles.previewImage} resizeMode="cover" />;
       }
-      if (item.type === "video") {
-        return (
-          <View key={key} style={styles.videoPreviewContainer}>
-            <Image source={{ uri: item.content }} style={styles.previewImage} resizeMode="cover" />
-            <View style={styles.videoPlayButton}>
-              <Ionicons name="play" size={16} color="#FFFFFF" />
-            </View>
-          </View>
-        );
-      }
+      // Video desteği kaldırıldı
       // Harita preview kaldırıldı - konum bilgisi etiket olarak gösterilecek
       return null;
     };
@@ -405,7 +389,7 @@ const JournalCard = memo(function JournalCard({
         onPress={() => {
           triggerHaptic(); // Haptic feedback
           openJournalDetail({
-            images: allMedia.filter(m => m.type === "image").map(m => m.content),
+            images: allMedia.map(m => m.content), // Sadece resimler
             location: dayGroup.allEntries.find(entry => entry.location)?.location,
             date: dayGroup.date,
             mood: dayMoodObj,
@@ -850,28 +834,6 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     shadowOpacity: 0.1,
   },
-  videoPreviewContainer: {
-    position: 'relative',
-    width: "100%", 
-    height: "100%", 
-  },
-  videoPlayButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -8 }, { translateY: -8 }],
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-  },
   mapWrapper: { 
     flex: 1, 
     borderRadius: 6, 
@@ -930,7 +892,6 @@ JournalCard.propTypes = {
       moodIcon: PropTypes.string,
       moodColor: PropTypes.string,
       images: PropTypes.arrayOf(PropTypes.string),
-      videos: PropTypes.arrayOf(PropTypes.string),
       location: PropTypes.object,
     })).isRequired,
   }).isRequired,
