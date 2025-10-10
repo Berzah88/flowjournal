@@ -20,11 +20,11 @@ Setup:
 
 from flask import Flask, request, jsonify
 import firebase_admin
-from firebase_admin import credentials, messaging
+from firebase_admin import credentials, messaging, firestore
 import os
 import sys
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 # Logging setup
@@ -81,20 +81,17 @@ def index():
     return jsonify({
         'status': 'active',
         'service': 'Flow Journal Notification API',
-        'version': '1.3.0',
+        'version': '2.0.0',
         'endpoints': [
             '/trigger-daily-reminder',
-            '/check-project-deadlines',
-            '/send-deadline-notifications',  # ← NEW: Optimized version
-            '/trigger-milestone-reminder',
-            '/trigger-project-deadline',
-            '/trigger-project-deadline-reminder',
+            '/send-deadline-notifications',
             '/health'
         ],
         'recommended': {
             'daily_reminder': '/trigger-daily-reminder',
-            'deadline_check': '/send-deadline-notifications'  # ← Use this for cron!
-        }
+            'deadline_check': '/send-deadline-notifications'
+        },
+        'note': 'Use send-deadline-notifications for cron (inline, no timeout)'
     })
 
 @app.route('/health')
@@ -386,8 +383,8 @@ def trigger_project_deadline():
 @app.route('/send-deadline-notifications', methods=['GET', 'POST'])
 def send_deadline_notifications_endpoint():
     """
-    OPTIMIZED deadline notification sender
-    Lightweight version that won't timeout
+    INLINE deadline notification sender (no subprocess!)
+    Fast and lightweight - won't timeout
     """
     
     # Secret key kontrolü
@@ -399,45 +396,81 @@ def send_deadline_notifications_endpoint():
         return jsonify({'error': 'Firebase initialization failed'}), 500
     
     try:
-        logger.info('🚀 Optimized deadline notifications starting...')
+        logger.info('🚀 Inline deadline notifications starting...')
         
-        # Lightweight script'i çalıştır (timeout-safe)
-        result = subprocess.run(
-            ['python3', '/home/mberzah/mysite/send_deadline_notifications.py'],
-            capture_output=True,
-            text=True,
-            timeout=25  # 25 saniye (PythonAnywhere free tier: 30s)
-        )
+        db = firestore.client()
+        now = datetime.now()
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
         
-        if result.returncode == 0:
-            # Parse JSON output
-            import json
-            try:
-                output_data = json.loads(result.stdout.strip().split('\n')[-1])
-            except:
-                output_data = {"output": result.stdout}
+        notifications_sent = 0
+        users_checked = 0
+        
+        # Kullanıcıları al (limit 100)
+        users = db.collection('users').limit(100).stream()
+        
+        for user in users:
+            users_checked += 1
+            user_data = user.to_dict()
+            fcm_token = user_data.get('fcmToken')
             
-            logger.info(f'✅ Deadline notifications sent: {output_data}')
+            if not fcm_token:
+                continue
             
-            return jsonify({
-                'success': True,
-                'message': 'Deadline notifications sent',
-                **output_data
-            }), 200
-        else:
-            logger.error(f'Script error: {result.stderr}')
-            return jsonify({
-                'success': False,
-                'error': 'Script execution failed',
-                'stderr': result.stderr
-            }), 500
+            # Aktif projeleri al
+            projects = db.collection('users').document(user.id).collection('projects').where('status', '==', 'active').limit(50).stream()
+            
+            for project in projects:
+                project_data = project.to_dict()
+                end_date = project_data.get('endDate')
+                
+                if not end_date or not hasattr(end_date, 'timestamp'):
+                    continue
+                
+                # Deadline hesapla
+                end_datetime = datetime.fromtimestamp(end_date.timestamp())
+                deadline_date = end_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+                days_left = (deadline_date - today).days
+                
+                # 0, 1, 3 gün kala bildirim
+                if days_left not in [0, 1, 3]:
+                    continue
+                
+                title = project_data.get('title', 'Unnamed Project')
+                
+                if days_left == 0:
+                    body = f'"{title}" projeniz bugün bitiyor!'
+                elif days_left == 1:
+                    body = f'"{title}" projeniz yarın bitiyor! 1 gün kaldı.'
+                else:
+                    body = f'"{title}" projenize 3 gün kaldı!'
+                
+                # Bildirim gönder
+                message = messaging.Message(
+                    notification=messaging.Notification(
+                        title='⏰ Proje Deadline Yaklaşıyor!',
+                        body=body
+                    ),
+                    data={'type': 'project_deadline', 'project_id': str(project.id), 'days_left': str(days_left)},
+                    token=fcm_token,
+                    android=messaging.AndroidConfig(
+                        priority='high',
+                        notification=messaging.AndroidNotification(sound='default', priority='high')
+                    )
+                )
+                
+                messaging.send(message)
+                notifications_sent += 1
+                logger.info(f'✅ Sent to {user.id}: {title} ({days_left} days)')
         
-    except subprocess.TimeoutExpired:
-        logger.error('❌ Script timeout (>25 seconds)')
+        logger.info(f'✅ Complete: {notifications_sent} notifications sent to {users_checked} users')
+        
         return jsonify({
-            'success': False,
-            'error': 'Script timeout - too many users/projects'
-        }), 500
+            'success': True,
+            'users_checked': users_checked,
+            'notifications_sent': notifications_sent,
+            'timestamp': datetime.now().isoformat()
+        }), 200
+        
     except Exception as e:
         logger.error(f'❌ Deadline notification error: {str(e)}')
         return jsonify({
