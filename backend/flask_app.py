@@ -81,15 +81,20 @@ def index():
     return jsonify({
         'status': 'active',
         'service': 'Flow Journal Notification API',
-        'version': '1.2.0',
+        'version': '1.3.0',
         'endpoints': [
             '/trigger-daily-reminder',
             '/check-project-deadlines',
+            '/send-deadline-notifications',  # ← NEW: Optimized version
             '/trigger-milestone-reminder',
             '/trigger-project-deadline',
             '/trigger-project-deadline-reminder',
             '/health'
-        ]
+        ],
+        'recommended': {
+            'daily_reminder': '/trigger-daily-reminder',
+            'deadline_check': '/send-deadline-notifications'  # ← Use this for cron!
+        }
     })
 
 @app.route('/health')
@@ -373,6 +378,68 @@ def trigger_project_deadline():
         
     except Exception as e:
         logger.error(f'❌ Deadline hatırlatma hatası: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/send-deadline-notifications', methods=['GET', 'POST'])
+def send_deadline_notifications_endpoint():
+    """
+    OPTIMIZED deadline notification sender
+    Lightweight version that won't timeout
+    """
+    
+    # Secret key kontrolü
+    if not verify_secret_key():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    # Firebase'i başlat
+    if not initialize_firebase():
+        return jsonify({'error': 'Firebase initialization failed'}), 500
+    
+    try:
+        logger.info('🚀 Optimized deadline notifications starting...')
+        
+        # Lightweight script'i çalıştır (timeout-safe)
+        result = subprocess.run(
+            ['python3', '/home/mberzah/mysite/send_deadline_notifications.py'],
+            capture_output=True,
+            text=True,
+            timeout=25  # 25 saniye (PythonAnywhere free tier: 30s)
+        )
+        
+        if result.returncode == 0:
+            # Parse JSON output
+            import json
+            try:
+                output_data = json.loads(result.stdout.strip().split('\n')[-1])
+            except:
+                output_data = {"output": result.stdout}
+            
+            logger.info(f'✅ Deadline notifications sent: {output_data}')
+            
+            return jsonify({
+                'success': True,
+                'message': 'Deadline notifications sent',
+                **output_data
+            }), 200
+        else:
+            logger.error(f'Script error: {result.stderr}')
+            return jsonify({
+                'success': False,
+                'error': 'Script execution failed',
+                'stderr': result.stderr
+            }), 500
+        
+    except subprocess.TimeoutExpired:
+        logger.error('❌ Script timeout (>25 seconds)')
+        return jsonify({
+            'success': False,
+            'error': 'Script timeout - too many users/projects'
+        }), 500
+    except Exception as e:
+        logger.error(f'❌ Deadline notification error: {str(e)}')
         return jsonify({
             'success': False,
             'error': str(e)
