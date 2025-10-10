@@ -204,12 +204,8 @@ function MileStone({
   const [editable, setEditable] = useState(
     !isCompleted && (!title || title.trim() === "")
   );
-  // ⚠️ GEÇICI OLARAK KALDIRILDI - showDeleteOption state
-  // const [showDeleteOption, setShowDeleteOption] = useState(false);
 
   const inputRef = useRef(null);
-  // ⚠️ GEÇICI OLARAK KALDIRILDI - deleteAnimation
-  // const deleteAnimation = useRef(new Animated.Value(0)).current;
   
   // Smooth attach/detach animation - initialize later after calculating shouldShowAsChild
   const childIndentAnim = useRef(new Animated.Value(0)).current;
@@ -220,9 +216,11 @@ function MileStone({
   // ⚠️ Touch animation kaldırıldı - görsel geri bildirim yok
   // const scaleAnim = useRef(new Animated.Value(1)).current;
   
-  // Swipe gesture animations
+  // Swipe gesture animations - 4 YÖNLÜ (up/down/left/right)
   const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
   const swipeActionOpacity = useSharedValue(0);
+  const currentSwipeDirection = useSharedValue('none'); // 'up', 'down', 'left', 'right', 'none'
   const hasTriggeredHaptic = useSharedValue(false); // Haptic sadece bir kez tetiklensin
 
   // Update local state when milestone prop changes
@@ -241,60 +239,6 @@ function MileStone({
     }
   }, [editable]);
 
-  // ⚠️ GEÇICI OLARAK KALDIRILDI - Action menu functions
-  /*
-  const showDeleteOptionWithAnimation = useCallback(() => {
-    setShowDeleteOption(true);
-    Animated.timing(deleteAnimation, {
-      toValue: 1,
-      duration: ANIMATION_DURATIONS.NORMAL,
-      useNativeDriver: true,
-    }).start();
-  }, [deleteAnimation]);
-
-  const hideDeleteOptionWithAnimation = useCallback(() => {
-    Animated.timing(deleteAnimation, {
-      toValue: 0,
-      duration: ANIMATION_DURATIONS.FAST,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowDeleteOption(false);
-    });
-  }, [deleteAnimation]);
-
-  const handleLongPress = useCallback(() => {
-    if (title && title.trim() !== "") {
-      triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
-      showDeleteOptionWithAnimation();
-    }
-  }, [title, showDeleteOptionWithAnimation, triggerHaptic]);
-
-  const handleDelete = useCallback(() => {
-    Alert.alert(
-      t('deleteMilestoneConfirm'),
-      t('deleteMilestoneMessage') || "This milestone and all its memories will be permanently deleted.",
-      [
-        {
-          text: t('cancel') || "Wait, no!",
-          style: "cancel",
-          onPress: hideDeleteOptionWithAnimation,
-        },
-        {
-          text: t('delete') || "Yes, Delete",
-          style: "destructive",
-          onPress: () => {
-            hideDeleteOptionWithAnimation();
-            onDelete?.();
-          },
-        },
-      ],
-      {
-        cancelable: true,
-        onDismiss: hideDeleteOptionWithAnimation,
-      }
-    );
-  }, [onDelete, hideDeleteOptionWithAnimation, t]);
-  */
 
   const handleEditToggle = useCallback(() => {
     // Open modal for editing
@@ -371,6 +315,9 @@ function MileStone({
   // ⚠️ Touch animations kaldırıldı - görsel geri bildirim yok
   
   // Optimized press handler
+  // Press animation for visual feedback
+  const [pressScale] = useState(new Animated.Value(1));
+  
   const handlePress = useCallback(() => {
     // Attach mode aktifken attach işlemini yap
     if (isAttachMode) {
@@ -380,10 +327,26 @@ function MileStone({
       return;
     }
     
-    // ⚠️ Milestone tıklama - günlük açma kaldırıldı
-    // Artık milestone'lara tıklayınca bir şey olmuyor
-    // Sadece swipe gesture (complete/delete) ve attach mode aktif
-  }, [isAttachMode, isSelectableForAttach, onSelectForAttach]);
+    // Editable değilse ve completed değilse, edit modal aç
+    if (!editable && !isCompleted) {
+      // Visual feedback - scale animation (haptic yok)
+      Animated.sequence([
+        Animated.timing(pressScale, {
+          toValue: 0.98,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pressScale, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      // Edit modal aç
+      setTimeout(() => handleEditToggle(), 50);
+    }
+  }, [isAttachMode, isSelectableForAttach, onSelectForAttach, editable, isCompleted, pressScale, handleEditToggle]);
   
   // Swipe gesture handlers
   const handleSwipeDelete = useCallback(() => {
@@ -427,84 +390,96 @@ function MileStone({
     }
   }, [isCompleted, milestone.parentId, allMilestones, onSetActive, onComplete, t]);
   
-  // Swipe gesture with delay - prevents conflict with tab switching
+  // Attach/Detach handler - worklet dışında tanımla
+  const handleSwipeAttach = useCallback(() => {
+    if (milestone.parentId) {
+      // Child ise detach
+      onDetachMilestone?.();
+    } else {
+      // Parent ise attach mode başlat
+      onStartAttachMode?.();
+    }
+  }, [milestone.parentId, onDetachMilestone, onStartAttachMode]);
+  
+  // 2-WAY Swipe gesture - Left/Right only (Delete/Complete)
   const swipeGesture = Gesture.Pan()
     .enabled(!editable && !isAttachMode)
-    .minDistance(15) // Minimum swipe distance to activate
-    .activateAfterLongPress(200) // 200ms basılı tutma gerekiyor
+    .minDistance(10)
+    .activateAfterLongPress(100) // 100ms sonra swipe aktif
     .onStart(() => {
-      // Swipe gerçekten başladığında bir kez titreşim
       hasTriggeredHaptic.value = false;
+      currentSwipeDirection.value = 'none';
     })
     .onUpdate((e) => {
-      // Haptic sadece bir kez tetikle - ilk swipe'da
-      if (!hasTriggeredHaptic.value && (Math.abs(e.translationX) > 15)) {
-        hasTriggeredHaptic.value = true;
-        runOnJS(triggerHaptic)(Haptics.ImpactFeedbackStyle.Light);
-      }
+      const absX = Math.abs(e.translationX);
+      const absY = Math.abs(e.translationY);
       
-      // Left swipe (delete) - red
-      if (e.translationX < -10) {
-        translateX.value = Math.max(e.translationX, -120);
-        swipeActionOpacity.value = Math.min(Math.abs(e.translationX) / 100, 1);
-      }
-      // Right swipe (complete) - green
-      else if (e.translationX > 10) {
-        translateX.value = Math.min(e.translationX, 120);
-        swipeActionOpacity.value = Math.min(e.translationX / 100, 1);
+      // Sadece horizontal swipe - vertical'ı ignore et
+      if (absX > absY) {
+        // Determine direction
+        let direction = 'none';
+        if (absX > 10) {
+          direction = e.translationX > 0 ? 'right' : 'left';
+        }
+        
+        // Haptic feedback sadece bir kez
+        if (!hasTriggeredHaptic.value && direction !== 'none') {
+          hasTriggeredHaptic.value = true;
+          currentSwipeDirection.value = direction;
+          runOnJS(triggerHaptic)(Haptics.ImpactFeedbackStyle.Light);
+        }
+        
+        // ⬅️ Left swipe (DELETE) - Kırmızı
+        if (e.translationX < -10) {
+          translateX.value = Math.max(e.translationX, -100);
+          swipeActionOpacity.value = Math.min(absX / 80, 1);
+        }
+        // ➡️ Right swipe (COMPLETE) - Yeşil
+        else if (e.translationX > 10) {
+          translateX.value = Math.min(e.translationX, 100);
+          swipeActionOpacity.value = Math.min(absX / 80, 1);
+        }
       }
     })
     .onEnd((e) => {
-      // Reset haptic flag
       hasTriggeredHaptic.value = false;
-      // Left swipe threshold for delete
-      if (e.translationX < -100) {
-        translateX.value = withTiming(0, { 
-          duration: 350,
-          easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
-        });
-        swipeActionOpacity.value = withTiming(0, { 
-          duration: 300,
-          easing: ReanimatedEasing.ease
-        });
+      const absX = Math.abs(e.translationX);
+      
+      // ⬅️ Left swipe (DELETE)
+      if (e.translationX < -80) {
+        translateX.value = withTiming(0, { duration: 350, easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) });
+        swipeActionOpacity.value = withTiming(0, { duration: 300, easing: ReanimatedEasing.ease });
         runOnJS(handleSwipeDelete)();
       }
-      // Right swipe threshold for complete
-      else if (e.translationX > 100) {
-        translateX.value = withTiming(0, { 
-          duration: 350,
-          easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
-        });
-        swipeActionOpacity.value = withTiming(0, { 
-          duration: 300,
-          easing: ReanimatedEasing.ease
-        });
+      // ➡️ Right swipe (COMPLETE)
+      else if (e.translationX > 80) {
+        translateX.value = withTiming(0, { duration: 350, easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) });
+        swipeActionOpacity.value = withTiming(0, { duration: 300, easing: ReanimatedEasing.ease });
         runOnJS(handleSwipeComplete)();
       }
       // Reset if not enough swipe
       else {
-        translateX.value = withSpring(0, {
-          damping: 20,
-          stiffness: 120,
-          mass: 0.5,
-        });
-        swipeActionOpacity.value = withTiming(0, { 
-          duration: 250,
-          easing: ReanimatedEasing.ease
-        });
+        translateX.value = withSpring(0, { damping: 20, stiffness: 120, mass: 0.5 });
+        swipeActionOpacity.value = withTiming(0, { duration: 250, easing: ReanimatedEasing.ease });
       }
+      
+      currentSwipeDirection.value = 'none';
     });
   
   const swipeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
+    transform: [
+      { translateX: translateX.value },
+    ],
+    // Opacity kontrolü inline style'da yapılıyor
   }));
   
+  // 2 yönlü action opacity'leri (sadece horizontal)
   const deleteActionStyle = useAnimatedStyle(() => ({
-    opacity: translateX.value < 0 ? swipeActionOpacity.value : 0,
+    opacity: translateX.value < 0 ? swipeActionOpacity.value : 0, // Left swipe
   }));
   
   const completeActionStyle = useAnimatedStyle(() => ({
-    opacity: translateX.value > 0 ? swipeActionOpacity.value : 0,
+    opacity: translateX.value > 0 ? swipeActionOpacity.value : 0, // Right swipe
   }));
 
   // Günlükleri tarihlere göre gruplandır
@@ -623,16 +598,27 @@ function MileStone({
     }
   }, [shouldShowAsChild, childIndentAnim]);
 
-  // Animate collapse/expand for child visibility
+  // Animate collapse/expand for child visibility - Snappy and smooth
   useEffect(() => {
     // Only animate if this is a child milestone
     if (milestone.parentId) {
-      Animated.timing(collapseAnim, {
-        toValue: isCollapsed ? 0 : 1,
-        duration: 250,
-        useNativeDriver: false,
-        easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Smooth easing curve
-      }).start();
+      if (isCollapsed) {
+        // Collapse: Snappy and smooth
+        Animated.timing(collapseAnim, {
+          toValue: 0,
+          duration: 320, // Daha hızlı ve responsive
+          useNativeDriver: false,
+          easing: Easing.bezier(0.4, 0, 0.2, 1), // Material Design standard
+        }).start();
+      } else {
+        // Expand: Snappy and smooth (aynı süre)
+        Animated.timing(collapseAnim, {
+          toValue: 1,
+          duration: 320, // Aynı hız - simetrik
+          useNativeDriver: false,
+          easing: Easing.bezier(0.4, 0, 0.2, 1), // Material Design standard
+        }).start();
+      }
     }
   }, [isCollapsed, milestone.parentId, collapseAnim]);
 
@@ -653,66 +639,72 @@ function MileStone({
               outputRange: [20, 40], // Parent: 20px, Child: 40px (daha az indent)
             }),
             marginRight: 20, // Sol ile eşit
-            // Smooth collapse animation for child milestones
-            ...(milestone.parentId && isCollapsed && {
+            // Smooth collapse animation for child milestones - Ultra gentle (no jank)
+            ...(milestone.parentId && {
               opacity: collapseAnim,
-              maxHeight: 0,
+              maxHeight: collapseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 1000], // 0 to full height
+              }),
+              marginBottom: collapseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 5], // Parent ile aynı - 5px
+              }),
+              marginTop: collapseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 5], // Parent ile aynı - 5px
+              }),
               overflow: 'hidden',
               transform: [
                 {
                   scaleY: collapseAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.3, 1],
-                  })
-                },
-                {
-                  translateY: collapseAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-10, 0],
+                    outputRange: [0.98, 1], // Minimal scale
                   })
                 }
               ],
             }),
-            // Expanded - no constraints
-            ...(milestone.parentId && !isCollapsed && {
-              opacity: 1,
-              // No maxHeight - fully dynamic!
-            }),
           }
         ]}>
-          {/* Swipe Action Backgrounds */}
+          {/* Swipe Action Backgrounds - Horizontal Only */}
           <View style={styles.swipeActionsContainer}>
-            {/* Delete Action (Left) - Red */}
+            {/* ⬅️ Left: DELETE - Kırmızı */}
             <AnimatedReanimated.View style={[styles.deleteAction, deleteActionStyle]}>
-              <Ionicons name="trash" size={24} color="#FFF" />
+              <Ionicons name="trash" size={22} color="#FFF" />
               <Text style={styles.actionText}>Delete</Text>
             </AnimatedReanimated.View>
             
-            {/* Complete Action (Right) - Green */}
+            {/* ➡️ Right: COMPLETE - Yeşil */}
             <AnimatedReanimated.View style={[styles.completeAction, completeActionStyle]}>
-              <Ionicons name={isCompleted ? "play-circle" : "checkmark-circle"} size={24} color="#FFF" />
+              <Ionicons name={isCompleted ? "play-circle" : "checkmark-circle"} size={22} color="#FFF" />
               <Text style={styles.actionText}>{isCompleted ? 'Reopen' : 'Complete'}</Text>
             </AnimatedReanimated.View>
           </View>
           
           <GestureDetector gesture={swipeGesture}>
             <AnimatedReanimated.View style={[swipeAnimatedStyle]}>
-              {/* ⚠️ Touch animation wrapper kaldırıldı */}
-              <View>
+              {/* Kart container - background her zaman solid + press animation */}
+              <Animated.View style={{ transform: [{ scale: pressScale }] }}>
                 <Pressable
                   style={[
                     styles.milestoneItemClickable,
                     hasChildren && styles.parentMilestoneClickable,
                     {
-                      backgroundColor: theme.name === 'dark' ? '#2C2C2E' : 'rgba(142, 125, 190, 0.06)',
+                      backgroundColor: milestone.parentId 
+                        ? (theme.name === 'dark' ? '#353538' : '#F3F0F8')  // Child: solid light purple
+                        : (theme.name === 'dark' ? '#2C2C2E' : '#F8F6FB'), // Parent: solid very light purple
                       borderWidth: theme.name === 'dark' ? 0 : 1,
-                      borderColor: theme.name === 'dark' ? 'transparent' : 'rgba(142, 125, 190, 0.12)',
+                      borderColor: milestone.parentId
+                        ? (theme.name === 'dark' ? 'transparent' : 'rgba(142, 125, 190, 0.15)')  // Child border
+                        : (theme.name === 'dark' ? 'transparent' : 'rgba(142, 125, 190, 0.12)'), // Parent border
                     },
+                    // Attach mode border
                     isAttachMode && isSelectableForAttach && {
                       borderWidth: 2,
                       borderColor: '#007AFF',
                       borderStyle: 'dashed',
                     },
+                    // Attach mode opacity - sadece bu durumda şeffaflaşsın
                     isAttachMode && !isSelectableForAttach && {
                       opacity: 0.4,
                     },
@@ -824,14 +816,22 @@ function MileStone({
                       <View style={[
                         styles.childBadgeInline,
                         { 
-                          backgroundColor: theme.name === 'dark' ? toRgba(iconBgColor, 0.2) : toRgba(iconBgColor, 0.1),
-                          borderColor: theme.name === 'dark' ? toRgba(iconBgColor, 0.4) : toRgba(iconBgColor, 0.3)
+                          backgroundColor: theme.name === 'dark' 
+                            ? 'rgba(142, 142, 147, 0.25)' 
+                            : 'rgba(142, 125, 190, 0.12)',
+                          borderColor: theme.name === 'dark' 
+                            ? 'rgba(142, 142, 147, 0.4)' 
+                            : 'rgba(142, 125, 190, 0.25)'
                         }
                       ]}>
-                        <Ionicons name="link" size={8} color={isCompleted ? "#888" : iconBgColor} />
+                        <Ionicons 
+                          name="link" 
+                          size={8} 
+                          color={theme.name === 'dark' ? '#AEAEB2' : '#8E7DBE'} 
+                        />
                         <Text style={[
                           styles.childBadgeTextSmall,
-                          { color: isCompleted ? "#888" : iconBgColor }
+                          { color: theme.name === 'dark' ? '#AEAEB2' : '#8E7DBE' }
                         ]}>
                           {completedChildren}/{childMilestones.length}
                         </Text>
@@ -937,22 +937,24 @@ function MileStone({
               )}
             </View>
 
-            {/* Edit Button - Top Right Corner */}
-            {!editable && !isCompleted && !isAttachMode && (
+            {/* Attach/Detach Button - Top Right Corner */}
+            {/* Parent milestone'larda (hasChildren) gizle */}
+            {!editable && !isCompleted && !isAttachMode && !hasChildren && (
               <Pressable
                 style={({ pressed }) => [
-                  styles.editButton,
+                  styles.attachButton,
                   {
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                     opacity: pressed ? 0.8 : 1,
                   }
                 ]}
-                onPress={handleEditToggle}
+                onPress={handleSwipeAttach}
               >
-                <Text style={[
-                  styles.editButtonText,
-                  { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
-                ]}>Edit</Text>
+                <Ionicons 
+                  name={milestone.parentId ? "remove-circle-outline" : "link-outline"}
+                  size={20} 
+                  color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} 
+                />
               </Pressable>
             )}
 
@@ -973,8 +975,8 @@ function MileStone({
             )}
           </Pressable>
 
-          {/* ⚠️ GEÇICI OLARAK KALDIRILDI - Action Buttons Menu */}
-              </View>
+          {/* Long press menü kaldırıldı - 4-way swipe kullan */}
+                </Animated.View>
             </AnimatedReanimated.View>
           </GestureDetector>
         </Animated.View>
@@ -1027,8 +1029,8 @@ export default memo(MileStone, areMilestonePropsEqual);
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
-    marginBottom: 0,
+    marginTop: 5,
+    marginBottom: 5,
     position: 'relative',
     // marginLeft and marginRight are handled inline for equal spacing
   },
@@ -1038,17 +1040,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     zIndex: 0,
   },
+  // ⬅️ Left swipe: DELETE - Sol tarafta görünsün
   deleteAction: {
     position: 'absolute',
-    right: 0,
+    right: 0, // Sola swipe → Sağda kaldığı için DELETE burada
     top: 0,
     bottom: 0,
-    width: 120,
+    width: 100,
     backgroundColor: '#FF3B30',
     borderRadius: 16,
     justifyContent: 'center',
@@ -1056,12 +1056,13 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
   },
+  // ➡️ Right swipe: COMPLETE - Sağ tarafta görünsün
   completeAction: {
     position: 'absolute',
-    left: 0,
+    left: 0, // Sağa swipe → Solda kaldığı için COMPLETE burada
     top: 0,
     bottom: 0,
-    width: 120,
+    width: 100,
     backgroundColor: '#34C759',
     borderRadius: 16,
     justifyContent: 'center',
@@ -1081,8 +1082,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 16,
     justifyContent: 'flex-start',
-    zIndex: 1,
-    // No minHeight - dynamic!
+    zIndex: 2, // Action'ların üzerinde olmalı (zIndex: 0)
+    // Dinamik height - başlık uzunluğuna göre
   },
   parentMilestoneClickable: {
     paddingVertical: 12,
@@ -1115,11 +1116,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    shadowColor: '#8E7DBE',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: 'transparent',
   },
   progressCircleCenter: {
     position: 'absolute',
@@ -1216,20 +1213,22 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "column",
     marginLeft: 8,
-    minWidth: 0, // Flex shrinking için gerekli
+    minWidth: 0,
+    maxWidth: '100%',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    flex: 1,
+    width: '100%',
   },
   milestoneText: {
     fontFamily: FONTS.MEDIUM,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
     letterSpacing: -0.2,
     paddingRight: 54, // Edit tuşu için boşluk
     flex: 1,
+    flexWrap: 'wrap',
   },
   completedText: {
     color: "#888", // Daha soluk renk completed milestone'lar için
@@ -1344,17 +1343,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#545454",
   },
-  editButton: {
+  attachButton: {
     position: "absolute",
     top: 10,
     right: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 4,
     zIndex: 5,
   },
-  editButtonText: {
+  attachButtonText: {
     fontSize: 11,
     fontFamily: "Poppins_600SemiBold",
   },
@@ -1380,7 +1381,7 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     letterSpacing: 0.3,
   },
-  // Theme Consistent Action Buttons
+  // Compact Action Menu - Edit ve Attach
   actionButtonsContainer: {
     position: "absolute",
     top: 0,
@@ -1390,70 +1391,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(248, 249, 250, 0.95)",
     borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     zIndex: 1000,
-    flexWrap: "nowrap",
-  },
-  themeButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginHorizontal: 4,
-    maxWidth: 100,
-  },
-  attachButtonTheme: {
-    backgroundColor: "#E3F2FD",
-    borderWidth: 1,
-    borderColor: "#007AFF",
-  },
-  completeButtonTheme: {
-    backgroundColor: "#E8F5E8",
-    borderWidth: 1,
-    borderColor: "#4CAF50",
-  },
-  activeButtonTheme: {
-    backgroundColor: "#E3F2FD",
-    borderWidth: 1,
-    borderColor: "#2196F3",
-  },
-  deleteButtonTheme: {
-    backgroundColor: "#FFEBEE",
-    borderWidth: 1,
-    borderColor: "#FF3B30",
-  },
-  detachButtonTheme: {
-    backgroundColor: "#FBE9E7",
-    borderWidth: 1,
-    borderColor: "#FF5722",
-  },
-  buttonIconContainer: {
-    marginRight: 4,
-  },
-  themeButtonText: {
-    fontSize: 10,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#1D1D1F",
-    letterSpacing: -0.2,
-  },
-  elegantCloseButton: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(142, 142, 147, 0.2)",
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });
 

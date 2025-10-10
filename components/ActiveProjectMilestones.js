@@ -61,9 +61,15 @@ function ActiveProjectMilestones({
     milestones.forEach(ms => {
       if (!ms.parentId) {
         organized.push(ms);
-        // Add children right after parent
+        // Add children right after parent, sorted by startDate (earliest first)
         if (childrenMap[ms.id]) {
-          organized.push(...childrenMap[ms.id]);
+          const sortedChildren = [...childrenMap[ms.id]].sort((a, b) => {
+            // Sort by startDate - earliest (closest) first
+            const dateA = a.startDate ? new Date(a.startDate).getTime() : Infinity;
+            const dateB = b.startDate ? new Date(b.startDate).getTime() : Infinity;
+            return dateA - dateB;
+          });
+          organized.push(...sortedChildren);
         }
       }
     });

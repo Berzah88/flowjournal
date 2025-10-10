@@ -91,12 +91,21 @@ export const useSpringAnimation = (visible) => {
 
   useEffect(() => {
     if (visible) {
-      // ActiveProject ile aynı süreler: 320ms açılış
-      translateY.value = withTiming(0, { duration: 320 });
-      opacity.value = withTiming(1, { duration: 320 });
-      scale.value = withTiming(1, { duration: 320 });
+      // Hızlı ve smooth açılış - klavye ile senkronize
+      translateY.value = withTiming(0, { 
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+      });
+      opacity.value = withTiming(1, { 
+        duration: 250,
+        easing: Easing.out(Easing.ease),
+      });
+      scale.value = withTiming(1, { 
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+      });
     } else {
-      // ActiveProject ile aynı süreler: 200ms kapanış
+      // Hızlı kapanış
       translateY.value = withTiming(height, { duration: 200 });
       opacity.value = withTiming(0, { duration: 200 });
       scale.value = withTiming(0.96, { duration: 200 });

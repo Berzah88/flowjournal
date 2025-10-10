@@ -83,9 +83,10 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
         setIsEditing(false);
       }
       
+      // Klavye focus'u hemen yap - modal animasyonu ile senkronize
       const timeout = setTimeout(() => {
         inputRef.current?.focus();
-      }, 400); // Animasyon bitince focus
+      }, 50); // 50ms - modal ve klavye birlikte açılsın
 
       return () => clearTimeout(timeout);
     } else {

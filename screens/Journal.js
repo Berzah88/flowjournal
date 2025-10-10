@@ -120,8 +120,8 @@ export default function Journal({
       width,
       top: dynamicTopGap,
       height: modalHeight,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
       zIndex: 201,
       elevation: 25,
       overflow: "hidden",
@@ -841,7 +841,12 @@ export default function Journal({
           {/* Mood Suggestions + Media Counter Row */}
           <View style={styles.moodMediaRow}>
             {/* Mood Suggestions - Left Side */}
-            <View style={styles.moodSuggestionsContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.moodSuggestionsScrollView}
+              contentContainerStyle={styles.moodSuggestionsContainer}
+            >
               {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
                 moodSuggestions.map((suggestion, index) => {
                   // First try to find in basic MOODS, then in EXTENDED_MOODS
@@ -891,7 +896,7 @@ export default function Journal({
                   );
                 })
               )}
-            </View>
+            </ScrollView>
             
             {/* Photo Counter - Right Side */}
             {previews.filter(p => p.type === "image").length > 0 && (
@@ -1013,8 +1018,7 @@ export default function Journal({
           <View style={[
             styles.buttonRow, 
             { 
-              bottom: fromActiveProject ? (keyboardHeight || 0) + 20 : (keyboardHeight || 0), 
-              marginBottom: 15,
+              bottom: (keyboardHeight || 0) + 35,
               backgroundColor: theme.name === 'dark' ? 'rgba(44, 44, 46, 0.95)' : 'rgba(248, 249, 250, 0.95)',
               borderTopColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             }
@@ -1086,8 +1090,8 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1 },
   gradientBackground: {
     flex: 1,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     backgroundColor: '#F5F5F5', // Eski hafif gri background
   },
   topSpacer: { height: 8 },
@@ -1434,13 +1438,15 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 10,
   },
+  moodSuggestionsScrollView: {
+    flex: 1,
+    maxHeight: 40,
+  },
   moodSuggestionsContainer: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    flex: 1,
+    alignItems: "center",
     gap: 6,
-    zIndex: 10,
-    elevation: 10,
+    paddingRight: 8,
   },
   mediaCounterContainer: {
     alignItems: "flex-end",
@@ -1468,8 +1474,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    marginRight: 5,
-    marginBottom: 3,
     minHeight: 32,
     minWidth: 55,
     shadowColor: '#000',
