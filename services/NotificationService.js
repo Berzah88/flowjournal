@@ -2,7 +2,7 @@
 // Sadece FCM debug amaçlı - scheduled local notifications KALDIRILDI
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getMessaging } from '@react-native-firebase/messaging';
+import { getMessaging, getToken } from '@react-native-firebase/messaging';
 
 class NotificationService {
   constructor() {
@@ -14,7 +14,7 @@ class NotificationService {
   async getFCMToken() {
     try {
       const messagingInstance = getMessaging();
-      const token = await messagingInstance.getToken();
+      const token = await getToken(messagingInstance);
       console.log('🔥 FCM Token alındı:', token);
       return token;
     } catch (error) {

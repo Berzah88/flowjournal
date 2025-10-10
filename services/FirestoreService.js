@@ -1,6 +1,16 @@
 // services/FirestoreService.js
-import firestore, { getFirestore } from '@react-native-firebase/firestore';
-import messaging, { getMessaging } from '@react-native-firebase/messaging';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  deleteDoc,
+  serverTimestamp,
+  Timestamp
+} from '@react-native-firebase/firestore';
+import { getMessaging, getToken } from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class FirestoreService {
@@ -18,9 +28,9 @@ class FirestoreService {
   // Servisi başlat
   async initializeService() {
     try {
-      // FCM token'ı al
+      // FCM token'ı al - modular API
       const messagingInstance = getMessaging();
-      const token = await messagingInstance.getToken();
+      const token = await getToken(messagingInstance);
       if (token) {
         this.fcmToken = token;
         console.log('✅ Firestore: FCM token alındı');
@@ -72,9 +82,10 @@ class FirestoreService {
         return;
       }
 
-      await this.db.collection('users').doc(this.currentUserId).set({
+      const userDocRef = doc(this.db, 'users', this.currentUserId);
+      await setDoc(userDocRef, {
         ...data,
-        updatedAt: firestore.FieldValue.serverTimestamp()
+        updatedAt: serverTimestamp()
       }, { merge: true });
 
       console.log('✅ Firestore: Kullanıcı profili güncellendi');
@@ -94,8 +105,8 @@ class FirestoreService {
       const projectData = {
         id: project.id,
         title: project.title,
-        startDate: firestore.Timestamp.fromDate(new Date(project.startDate)),
-        endDate: firestore.Timestamp.fromDate(new Date(project.endDate)),
+        startDate: Timestamp.fromDate(new Date(project.startDate)),
+        endDate: Timestamp.fromDate(new Date(project.endDate)),
         status: project.done ? 'completed' : 'active',
         milestones: project.milestones || [],
         journals: project.journals || [],
@@ -105,16 +116,12 @@ class FirestoreService {
           projectDeadlines: true,
           milestoneReminders: true
         },
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        updatedAt: firestore.FieldValue.serverTimestamp()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
 
-      await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .doc(project.id.toString())
-        .set(projectData);
+      const projectDocRef = doc(this.db, 'users', this.currentUserId, 'projects', project.id.toString());
+      await setDoc(projectDocRef, projectData);
 
       console.log('✅ Firestore: Proje kaydedildi:', project.title);
     } catch (error) {
@@ -131,12 +138,8 @@ class FirestoreService {
         return;
       }
 
-      await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .doc(projectId.toString())
-        .delete();
+      const projectDocRef = doc(this.db, 'users', this.currentUserId, 'projects', projectId.toString());
+      await deleteDoc(projectDocRef);
 
       console.log('✅ Firestore: Proje silindi');
     } catch (error) {
@@ -155,24 +158,20 @@ class FirestoreService {
 
       const updateData = {
         ...updates,
-        updatedAt: firestore.FieldValue.serverTimestamp()
+        updatedAt: serverTimestamp()
       };
 
       // Tarih alanlarını Timestamp'e çevir
       if (updates.startDate) {
-        updateData.startDate = firestore.Timestamp.fromDate(new Date(updates.startDate));
+        updateData.startDate = Timestamp.fromDate(new Date(updates.startDate));
       }
       if (updates.endDate) {
-        updateData.endDate = firestore.Timestamp.fromDate(new Date(updates.endDate));
+        updateData.endDate = Timestamp.fromDate(new Date(updates.endDate));
       }
 
       // set() with merge kullan - document yoksa oluşturur, varsa günceller
-      await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .doc(projectId.toString())
-        .set(updateData, { merge: true });
+      const projectDocRef = doc(this.db, 'users', this.currentUserId, 'projects', projectId.toString());
+      await setDoc(projectDocRef, updateData, { merge: true });
 
       console.log('✅ Firestore: Proje güncellendi');
     } catch (error) {
@@ -190,14 +189,11 @@ class FirestoreService {
         return [];
       }
 
-      const snapshot = await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .collection('projects')
-        .get();
+      const projectsCollectionRef = collection(this.db, 'users', this.currentUserId, 'projects');
+      const snapshot = await getDocs(projectsCollectionRef);
 
-      const projects = snapshot.docs.map(doc => {
-        const data = doc.data();
+      const projects = snapshot.docs.map(docSnapshot => {
+        const data = docSnapshot.data();
         return {
           ...data,
           startDate: data.startDate?.toDate?.()?.toISOString() || data.startDate,
@@ -221,14 +217,12 @@ class FirestoreService {
         return null;
       }
 
-      const doc = await this.db
-        .collection('users')
-        .doc(this.currentUserId)
-        .get();
+      const userDocRef = doc(this.db, 'users', this.currentUserId);
+      const docSnapshot = await getDoc(userDocRef);
 
-      if (doc.exists) {
+      if (docSnapshot.exists()) {
         console.log('✅ Firestore: Kullanıcı bilgileri alındı');
-        return doc.data();
+        return docSnapshot.data();
       }
 
       console.log('⚠️ Firestore: Kullanıcı bulunamadı');
