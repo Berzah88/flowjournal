@@ -1,11 +1,12 @@
 import { registerRootComponent } from 'expo';
-import messaging from '@react-native-firebase/messaging';
+import { getMessaging } from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
 import App from './App';
 
 // 🔥 CRITICAL: Background message handler - App component dışında tanımlanmalı!
 // Uygulama kapalı/arka plandayken gelen FCM mesajlarını işler
-messaging().setBackgroundMessageHandler(async remoteMessage => {
+const messagingInstance = getMessaging();
+messagingInstance.setBackgroundMessageHandler(async remoteMessage => {
   console.log('📱 [Background] FCM mesajı alındı:', remoteMessage);
   
   // Eğer notification payload varsa, Android otomatik gösterir

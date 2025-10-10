@@ -1,6 +1,6 @@
 // services/FirestoreService.js
-import firestore from '@react-native-firebase/firestore';
-import messaging from '@react-native-firebase/messaging';
+import firestore, { getFirestore } from '@react-native-firebase/firestore';
+import messaging, { getMessaging } from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class FirestoreService {
@@ -9,7 +9,7 @@ class FirestoreService {
     this.isEnabled = true;
     this.currentUserId = null;
     this.fcmToken = null;
-    this.db = firestore();
+    this.db = getFirestore();
     
     console.log('✅ Firestore: Aktif edildi (Expo SDK 54+)');
     this.initializeService();
@@ -19,7 +19,8 @@ class FirestoreService {
   async initializeService() {
     try {
       // FCM token'ı al
-      const token = await messaging().getToken();
+      const messagingInstance = getMessaging();
+      const token = await messagingInstance.getToken();
       if (token) {
         this.fcmToken = token;
         console.log('✅ Firestore: FCM token alındı');

@@ -1,5 +1,5 @@
 // services/FCMService.js
-import messaging from '@react-native-firebase/messaging';
+import messaging, { getMessaging } from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
@@ -123,7 +123,8 @@ class FCMService {
     while (attempts < maxAttempts) {
       try {
         // Firebase app'in hazır olup olmadığını kontrol et
-        const app = messaging().app;
+        const messagingInstance = getMessaging();
+        const app = messagingInstance.app;
         if (app) {
           console.log('✅ Firebase hazır');
           return true;
@@ -143,8 +144,10 @@ class FCMService {
     try {
       console.log('🔥 FCM token alınmaya çalışılıyor...');
 
+      const messagingInstance = getMessaging();
+
       // İzin iste
-      const authStatus = await messaging().requestPermission();
+      const authStatus = await messagingInstance.requestPermission();
       const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
                      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
@@ -155,8 +158,8 @@ class FCMService {
 
       console.log('✅ FCM izni verildi');
 
-      // Token al - yeni API kullan
-      const token = await messaging().getToken();
+      // Token al - modular API
+      const token = await messagingInstance.getToken();
       console.log('✅ FCM token başarıyla alındı:', token ? token.substring(0, 20) + '...' : 'null');
       
       // Token'ı kaydet
@@ -241,7 +244,8 @@ class FCMService {
         }
       };
 
-      const unsubscribe = messaging().onMessage(globalThis.__fcmForegroundHandler);
+      const messagingInstance = getMessaging();
+      const unsubscribe = messagingInstance.onMessage(globalThis.__fcmForegroundHandler);
       this.foregroundUnsubscribe = unsubscribe;
       console.log('✅ Foreground handler kaydedildi');
     }
@@ -256,7 +260,8 @@ class FCMService {
       return this.notificationOpenedUnsubscribe;
     }
 
-    const unsubscribe = messaging().onNotificationOpenedApp(remoteMessage => {
+    const messagingInstance = getMessaging();
+    const unsubscribe = messagingInstance.onNotificationOpenedApp(remoteMessage => {
       if (typeof this.onNotificationResponse === 'function') {
         try {
           this.onNotificationResponse(remoteMessage);
@@ -352,8 +357,9 @@ class FCMService {
   // Topic'e subscribe ol (günlük bildirimler için)
   async subscribeToDailyReminders() {
     try {
+      const messagingInstance = getMessaging();
       const topic = 'daily_reminders';
-      await messaging().subscribeToTopic(topic);
+      await messagingInstance.subscribeToTopic(topic);
       return true;
     } catch (error) {
       console.error('❌ Topic subscription hatası:', error);
@@ -364,8 +370,9 @@ class FCMService {
   // Topic'ten unsubscribe ol
   async unsubscribeFromDailyReminders() {
     try {
+      const messagingInstance = getMessaging();
       const topic = 'daily_reminders';
-      await messaging().unsubscribeFromTopic(topic);
+      await messagingInstance.unsubscribeFromTopic(topic);
       return true;
     } catch (error) {
       console.error('❌ Topic unsubscription hatası:', error);
