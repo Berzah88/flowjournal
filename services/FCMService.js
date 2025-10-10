@@ -1,5 +1,5 @@
 // services/FCMService.js
-import messaging, { 
+import { 
   getMessaging, 
   getToken, 
   requestPermission,
@@ -7,7 +7,8 @@ import messaging, {
   setBackgroundMessageHandler,
   onNotificationOpenedApp,
   subscribeToTopic,
-  unsubscribeFromTopic
+  unsubscribeFromTopic,
+  AuthorizationStatus
 } from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -157,8 +158,8 @@ class FCMService {
 
       // İzin iste - modular API
       const authStatus = await requestPermission(messagingInstance);
-      const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-                     authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      const enabled = authStatus === AuthorizationStatus.AUTHORIZED ||
+                     authStatus === AuthorizationStatus.PROVISIONAL;
 
       if (!enabled) {
         console.log('❌ FCM izni verilmemiş');
