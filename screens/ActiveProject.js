@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing } from "react-native";
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
@@ -79,6 +80,14 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
       }
     };
   }, [panX]);
+
+  // Refresh data when screen comes into focus (e.g., returning from JournalDetailScreen)
+  useFocusEffect(
+    useCallback(() => {
+      // Increment refreshKey to trigger re-render of JournalCards with updated data
+      setRefreshKey(prev => prev + 1);
+    }, [])
+  );
 
   // Memoized animate to tab index (0 or 1)
   const animateToTab = useCallback((index) => {

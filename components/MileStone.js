@@ -350,24 +350,8 @@ function MileStone({
   
   // Swipe gesture handlers
   const handleSwipeDelete = useCallback(() => {
-    Alert.alert(
-      t('deleteMilestoneConfirm'),
-      t('deleteMilestoneMessage') || "This milestone and all its memories will be permanently deleted.",
-      [
-        {
-          text: t('cancel') || "Cancel",
-          style: "cancel",
-        },
-        {
-          text: t('delete') || "Delete",
-          style: "destructive",
-          onPress: () => {
-            onDelete?.();
-          },
-        },
-      ]
-    );
-  }, [onDelete, t]);
+    onDelete?.();
+  }, [onDelete]);
   
   const handleSwipeComplete = useCallback(() => {
     if (isCompleted) {

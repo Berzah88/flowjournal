@@ -1,5 +1,5 @@
 import React, { useCallback, memo, useMemo, useState, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, Image, Dimensions, Animated, Vibration } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image, Dimensions, Animated, Vibration, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 // import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
@@ -10,6 +10,7 @@ import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/AIMood
 import { getMilestoneColor } from "../utils/milestoneColors";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useTaskActions } from "../hooks/useTaskContext";
 
 const { width } = Dimensions.get("window");
 const PREVIEW_HEIGHT = 120; // Medya alanı için 120px yükseklik
@@ -65,10 +66,14 @@ const JournalCard = memo(function JournalCard({
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { deleteProjectJournalEntry } = useTaskActions();
   const [locationTexts, setLocationTexts] = useState({});
+  const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
   
   // Apple-style touch animation (scale only - cleaner for nested backgrounds)
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const overlayScale = useRef(new Animated.Value(0.9)).current;
 
   // Haptic feedback helper with fallback (same as MileStone)
   const triggerHaptic = useCallback(async (style = Haptics.ImpactFeedbackStyle.Medium) => {
@@ -86,6 +91,58 @@ const JournalCard = memo(function JournalCard({
       }
     }
   }, []);
+
+  // Show delete overlay with animation
+  const handleLongPress = useCallback(() => {
+    triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+    setShowDeleteOverlay(true);
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(overlayScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [overlayOpacity, overlayScale, triggerHaptic]);
+
+  // Hide delete overlay with animation
+  const handleCancelDelete = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayScale, {
+        toValue: 0.9,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowDeleteOverlay(false);
+    });
+  }, [overlayOpacity, overlayScale]);
+
+  // Confirm delete - delete all entries for this day
+  const handleConfirmDelete = useCallback(() => {
+    triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Delete all journal entries for this day
+    dayGroup.allEntries.forEach(entry => {
+      if (entry.id && taskId) {
+        deleteProjectJournalEntry(taskId, entry.id);
+      }
+    });
+    
+    // Hide overlay
+    handleCancelDelete();
+  }, [dayGroup.allEntries, taskId, deleteProjectJournalEntry, handleCancelDelete, triggerHaptic]);
 
   // Apple-style touch animations (scale only - optimized)
   const handlePressIn = useCallback(() => {
@@ -300,10 +357,20 @@ const JournalCard = memo(function JournalCard({
     return bestScore >= 0.6 ? { milestone: bestMatch, confidence: Math.min(bestScore, 1) } : null;
   }, [dayGroup.allEntries]);
 
-  // Bu günlük kayıtları için en uygun milestone'ı bul
+  // Bu günlük kayıtları için en uygun milestone'ı bul - önce kaydedilmiş olanı kontrol et
   const relevantMilestone = useMemo(() => {
     if (!availableMilestones || availableMilestones.length === 0) return null;
     
+    // Önce journal entry'lerde kaydedilmiş milestone var mı kontrol et
+    const firstEntryWithMilestone = dayGroup.allEntries.find(entry => entry.milestoneId);
+    if (firstEntryWithMilestone && firstEntryWithMilestone.milestoneId) {
+      const savedMilestone = availableMilestones.find(m => m.id === firstEntryWithMilestone.milestoneId);
+      if (savedMilestone) {
+        return { milestone: savedMilestone, confidence: 1.0, isSaved: true };
+      }
+    }
+    
+    // Kaydedilmiş milestone yoksa AI analizi yap
     // Tüm günlük metinlerini birleştir
     const allTexts = dayGroup.allEntries
       .filter(entry => entry.text && entry.text.trim().length > 0)
@@ -387,6 +454,7 @@ const JournalCard = memo(function JournalCard({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={() => {
+          if (showDeleteOverlay) return; // Overlay açıkken normal press'i engelle
           triggerHaptic(); // Haptic feedback
           openJournalDetail({
             images: allMedia.map(m => m.content), // Sadece resimler
@@ -396,6 +464,8 @@ const JournalCard = memo(function JournalCard({
             textEntries: textEntries
           });
         }}
+        onLongPress={handleLongPress}
+        delayLongPress={500}
         style={[
           styles.dayCard,
           {
@@ -631,6 +701,96 @@ const JournalCard = memo(function JournalCard({
             </View>
           ))}
         </View>
+      )}
+
+      {/* Delete Overlay - Cool & Stylish */}
+      {showDeleteOverlay && (
+        <Animated.View style={[
+          styles.deleteOverlay,
+          {
+            opacity: overlayOpacity,
+            backgroundColor: theme.name === 'dark' 
+              ? 'rgba(0, 0, 0, 0.85)' 
+              : 'rgba(255, 255, 255, 0.95)',
+          }
+        ]}>
+          <Animated.View style={[
+            styles.deleteContent,
+            {
+              transform: [{ scale: overlayScale }],
+            }
+          ]}>
+            {/* Delete Icon */}
+            <View style={[
+              styles.deleteIconContainer,
+              {
+                backgroundColor: theme.name === 'dark' 
+                  ? 'rgba(255, 59, 48, 0.2)' 
+                  : 'rgba(255, 59, 48, 0.1)',
+              }
+            ]}>
+              <Ionicons 
+                name="trash" 
+                size={32} 
+                color="#FF3B30" 
+              />
+            </View>
+
+            {/* Delete Text */}
+            <Text style={[
+              styles.deleteTitle,
+              { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+            ]}>
+              {t('deleteJournal') || 'Delete Journal?'}
+            </Text>
+            <Text style={[
+              styles.deleteSubtitle,
+              { color: theme.name === 'dark' ? '#8E8E93' : '#666' }
+            ]}>
+              {t('deleteJournalMessage') || 'All entries and media will be permanently deleted.'}
+            </Text>
+
+            {/* Action Buttons */}
+            <View style={styles.deleteActions}>
+              <TouchableOpacity 
+                style={[
+                  styles.deleteButton,
+                  styles.cancelButton,
+                  {
+                    backgroundColor: theme.name === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.1)' 
+                      : '#F0F0F0',
+                    borderColor: theme.name === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.2)' 
+                      : 'rgba(0, 0, 0, 0.1)',
+                  }
+                ]}
+                onPress={handleCancelDelete}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.cancelButtonText,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#333' }
+                ]}>
+                  {t('cancel') || 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[
+                  styles.deleteButton,
+                  styles.confirmButton,
+                ]}
+                onPress={handleConfirmDelete}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {t('delete') || 'Delete'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </Animated.View>
       )}
       </Pressable>
     </Animated.View>
@@ -878,6 +1038,78 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     marginLeft: 4,
     letterSpacing: 0.2,
+  },
+  // Delete Overlay Styles
+  deleteOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  deleteContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  deleteIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  deleteSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 18,
+    paddingHorizontal: 10,
+  },
+  deleteActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  deleteButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    borderWidth: 1,
+  },
+  confirmButton: {
+    backgroundColor: '#FF3B30',
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    letterSpacing: -0.2,
+  },
+  confirmButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
 });
 

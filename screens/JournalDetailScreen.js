@@ -27,7 +27,7 @@ import Reanimated, {
   Extrapolate,
 } from "react-native-reanimated";
 import Journal from "./Journal";
-import { useActiveTasks } from "../hooks/useTaskContext";
+import { useActiveTasks, useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { getMilestoneColor } from "../utils/milestoneColors";
@@ -42,6 +42,7 @@ const JournalDetailScreen = ({
   const { t } = useLanguage();
   const { selectedMediaData: initialMediaData } = route.params;
   const activeTasks = useActiveTasks();
+  const { updateProjectJournalEntry } = useTaskActions();
   const [locationText, setLocationText] = useState(null);
   const [journalModalVisible, setJournalModalVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
@@ -205,7 +206,7 @@ const JournalDetailScreen = ({
     return bestScore >= 0.6 ? { milestone: bestMatch, confidence: Math.min(bestScore, 1) } : null;
   }, [selectedMediaData.textEntries]);
 
-  // Milestone analizi - kullanıcı seçimi varsa onu kullan, yoksa AI analizi yap
+  // Milestone analizi - kullanıcı seçimi varsa onu kullan, yoksa kaydedilmiş milestone'ı göster, yoksa AI analizi yap
   const relevantMilestone = useMemo(() => {
     if (!selectedMediaData.task || !selectedMediaData.textEntries || selectedMediaData.textEntries.length === 0) {
       return null;
@@ -214,12 +215,21 @@ const JournalDetailScreen = ({
     const milestones = selectedMediaData.task.milestones || [];
     if (milestones.length === 0) return null;
     
-    // Eğer kullanıcı manuel seçim yapmışsa onu kullan
+    // Eğer kullanıcı manuel seçim yapmışsa onu kullan (state'den)
     if (selectedMilestone) {
       return { milestone: selectedMilestone, confidence: 1.0, isManual: true };
     }
     
-    // Tüm journal metinlerini birleştir
+    // Journal entry'lerde kaydedilmiş milestone var mı kontrol et
+    const firstEntryWithMilestone = selectedMediaData.textEntries.find(entry => entry.milestoneId);
+    if (firstEntryWithMilestone && firstEntryWithMilestone.milestoneId) {
+      const savedMilestone = milestones.find(m => m.id === firstEntryWithMilestone.milestoneId);
+      if (savedMilestone) {
+        return { milestone: savedMilestone, confidence: 1.0, isManual: true, isSaved: true };
+      }
+    }
+    
+    // Tüm journal metinlerini birleştir - AI analizi
     const allJournalText = selectedMediaData.textEntries
       .map(entry => entry.text || '')
       .join(' ');
@@ -240,11 +250,38 @@ const JournalDetailScreen = ({
   const handleMilestoneSelect = useCallback((milestone) => {
     setSelectedMilestone(milestone);
     setMilestoneModalVisible(false);
-  }, []);
+    
+    // O günün tüm journal entry'lerine milestone bilgisini kaydet
+    if (selectedMediaData.textEntries && selectedMediaData.taskId) {
+      selectedMediaData.textEntries.forEach(entry => {
+        if (entry.id) {
+          updateProjectJournalEntry(selectedMediaData.taskId, entry.id, {
+            ...entry,
+            milestoneId: milestone.id,
+            milestoneTitle: milestone.title
+          });
+        }
+      });
+    }
+  }, [selectedMediaData, updateProjectJournalEntry]);
 
   const handleMilestoneClear = useCallback(() => {
     setSelectedMilestone(null);
-  }, []);
+    setMilestoneModalVisible(false);
+    
+    // O günün tüm journal entry'lerinden milestone bilgisini kaldır
+    if (selectedMediaData.textEntries && selectedMediaData.taskId) {
+      selectedMediaData.textEntries.forEach(entry => {
+        if (entry.id) {
+          updateProjectJournalEntry(selectedMediaData.taskId, entry.id, {
+            ...entry,
+            milestoneId: null,
+            milestoneTitle: null
+          });
+        }
+      });
+    }
+  }, [selectedMediaData, updateProjectJournalEntry]);
 
   // Konum bilgisini al - sadece bir kez çalışır
   const [locationLoaded, setLocationLoaded] = useState(false);
