@@ -200,17 +200,17 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   ).current;
 
   useEffect(() => {
-    // Smooth premium opening animation
+    // Fast, smooth opening animation - optimized for speed
     translateY.value = withTiming(0, { 
-      duration: 400,
+      duration: 250,
       easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
     });
     scale.value = withTiming(1, { 
-      duration: 400,
+      duration: 250,
       easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
     });
     opacity.value = withTiming(1, { 
-      duration: 400,
+      duration: 250,
       easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
     });
   }, []);

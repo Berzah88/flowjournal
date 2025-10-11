@@ -30,9 +30,6 @@ function ActiveProjectMilestones({
   
   // Attach mode state
   const [attachMode, setAttachMode] = useState(null); // null veya { milestoneId: string }
-  
-  // Collapse/expand state
-  const [collapsedMilestones, setCollapsedMilestones] = useState(new Set());
 
   // Prepare active milestones data with hierarchy
   const activeMilestonesWithLatest = useMemo(() => {
@@ -106,19 +103,6 @@ function ActiveProjectMilestones({
 
   const handleDetachMilestone = (milestoneId) => {
     onAttachMilestone(currentTask.id, milestoneId, null); // null = detach
-  };
-
-  // Collapse/expand handlers
-  const handleToggleCollapse = (milestoneId) => {
-    setCollapsedMilestones(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(milestoneId)) {
-        newSet.delete(milestoneId);
-      } else {
-        newSet.add(milestoneId);
-      }
-      return newSet;
-    });
   };
 
   return (
@@ -205,9 +189,6 @@ function ActiveProjectMilestones({
               !item.completed && 
               !item.parentId; // Can't attach to child milestones
             
-            // Check if this child's parent is collapsed
-            const isParentCollapsed = item.parentId && collapsedMilestones.has(item.parentId);
-            
             return (
               <MileStone
                 key={item.id}
@@ -231,8 +212,6 @@ function ActiveProjectMilestones({
                 isSelectableForAttach={isSelectableForAttach}
                 attachModeSourceId={attachMode?.milestoneId}
                 allMilestones={allMilestones}
-                isCollapsed={isParentCollapsed}
-                onToggleCollapse={handleToggleCollapse}
                 onStartAttachMode={() => handleStartAttachMode(item.id)}
                 onSelectForAttach={() => handleSelectForAttach(item.id)}
                 onDetachMilestone={() => handleDetachMilestone(item.id)}
@@ -258,8 +237,6 @@ function ActiveProjectMilestones({
             styles={styles}
             isAttachMode={!!attachMode}
             attachModeSourceId={attachMode?.milestoneId}
-            collapsedMilestones={collapsedMilestones}
-            onToggleCollapse={handleToggleCollapse}
             onStartAttachMode={handleStartAttachMode}
             onSelectForAttach={handleSelectForAttach}
             onDetachMilestone={handleDetachMilestone}

@@ -12,6 +12,7 @@ import {
   Dimensions,
   TextInput,
   Alert,
+  Vibration,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -577,22 +578,103 @@ const ProjectCard = memo(function ProjectCard({
   isFocused,
   onProjectLongPress,
 }) {
-  // Instant touch animation (same as Card.js)
+  // Smooth touch animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+  const longPressTimer = useRef(null);
+  const isLongPress = useRef(false);
+  
+  const handlePressIn = useCallback(() => {
+    // Reset long press flag
+    isLongPress.current = false;
+    
+    // Clear any existing timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+    
+    // Smooth scale down animation
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    // Start long press timer
+    longPressTimer.current = setTimeout(() => {
+      // Mark as long press
+      isLongPress.current = true;
+      
+      // Haptic feedback
+      Vibration.vibrate(50);
+      
+      // Smooth spring back
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+        Animated.spring(opacityAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+      ]).start();
+      
+      // Trigger long press action
+      onProjectLongPress(project);
+    }, 500);
+  }, [scaleAnim, opacityAnim, onProjectLongPress, project]);
+  
+  const handlePressOut = useCallback(() => {
+    // Clear timer if press is released early
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
+    // Smooth spring back (only if not already animated by long press)
+    if (!isLongPress.current) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+        Animated.spring(opacityAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+      ]).start();
+    }
+  }, [scaleAnim, opacityAnim]);
+  
+  const handlePress = useCallback(() => {
+    // Only trigger normal press if it wasn't a long press
+    if (!isLongPress.current) {
+      setSelectedCard(project);
+    }
+  }, [setSelectedCard, project]);
   
   return (
     <TouchableWithoutFeedback
-      onPressIn={() => scaleAnim.setValue(0.97)}
-      onPressOut={() => scaleAnim.setValue(1)}
-      onPress={() => {
-        scaleAnim.setValue(1);
-        setSelectedCard(project);
-      }}
-      onLongPress={() => {
-        scaleAnim.setValue(1);
-        onProjectLongPress(project);
-      }}
-      delayLongPress={500}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
     >
       <Animated.View
         style={[
@@ -606,6 +688,7 @@ const ProjectCard = memo(function ProjectCard({
             elevation: theme.name === 'dark' ? 8 : 2,
             marginBottom: isLastProject ? 0 : 20,
             transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
           },
           isFocused && {
             borderColor: '#FF9500',

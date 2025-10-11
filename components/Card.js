@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo, useCallback, memo } from "react";
-import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from "react-native";
+import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback, Vibration } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -90,8 +90,9 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
   const { theme } = useTheme();
   const { t } = useLanguage();
   
-  // Instant touch animation
+  // Smooth touch animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
   
   // Safety check for required props
   if (!title || !startDate || !endDate) {
@@ -139,6 +140,47 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
     onMilestonePress?.(milestone);
   }, [onMilestonePress]);
 
+  // Smooth touch interaction handlers
+  const handlePressIn = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [scaleAnim, opacityAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 80,
+      }),
+      Animated.spring(opacityAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 80,
+      }),
+    ]).start();
+  }, [scaleAnim, opacityAnim]);
+
+  const handlePress = useCallback(() => {
+    const onPressTime = performance.now();
+    console.log('⏱️ [PERFORMANCE] Card onPress triggered at:', onPressTime.toFixed(2), 'ms');
+    console.log('👆 Card PRESSED (onPress):', title);
+    onPress?.();
+  }, [onPress, title]);
+
   useEffect(() => {
     Animated.timing(animatedValue, {
       toValue: progress,
@@ -165,15 +207,9 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
 
   return (
     <TouchableWithoutFeedback
-      onPressIn={() => scaleAnim.setValue(0.97)}
-      onPressOut={() => scaleAnim.setValue(1)}
-      onPress={() => {
-        const onPressTime = performance.now();
-        console.log('⏱️ [PERFORMANCE] Card onPress triggered at:', onPressTime.toFixed(2), 'ms');
-        console.log('👆 Card PRESSED (onPress):', title);
-        scaleAnim.setValue(1); // Reset
-        onPress?.();
-      }}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
     >
       <Animated.View
         style={[
@@ -186,8 +222,9 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
             shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
             shadowRadius: theme.name === 'dark' ? 12 : 8,
             elevation: theme.name === 'dark' ? 8 : 1,
-            // Instant scale animation
+            // Smooth scale and opacity animations
             transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
           },
           completed && styles.modernCompletedCard,
         ]}

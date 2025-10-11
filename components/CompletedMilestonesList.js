@@ -22,8 +22,6 @@ function CompletedMilestonesList({
   onStartAttachMode,
   onSelectForAttach,
   onDetachMilestone,
-  collapsedMilestones = new Set(),
-  onToggleCollapse,
 }) {
   if (!completedMilestones || completedMilestones.length === 0) return null;
 
@@ -64,9 +62,6 @@ function CompletedMilestonesList({
           !ms.completed && 
           !ms.parentId;
         
-        // Check if this child's parent is collapsed
-        const isParentCollapsed = ms.parentId && collapsedMilestones.has(ms.parentId);
-        
         return (
           <MileStone
             key={`${ms.id}`}
@@ -88,8 +83,6 @@ function CompletedMilestonesList({
             isSelectableForAttach={isSelectableForAttach}
             attachModeSourceId={attachModeSourceId}
             allMilestones={allMilestones}
-            isCollapsed={isParentCollapsed}
-            onToggleCollapse={onToggleCollapse}
             onStartAttachMode={() => onStartAttachMode?.(ms.id)}
             onSelectForAttach={() => onSelectForAttach?.(ms.id)}
             onDetachMilestone={() => onDetachMilestone?.(ms.id)}

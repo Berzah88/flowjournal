@@ -38,8 +38,6 @@ function MileStone({
   onDetachMilestone, // Milestone'u parent'ından ayır
   attachModeSourceId = null, // Attach mode'u başlatan milestone ID
   allMilestones = [], // Tüm milestone'lar (child sayısı için)
-  isCollapsed = false, // Collapse/expand state
-  onToggleCollapse, // Collapse/expand handler
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -209,9 +207,6 @@ function MileStone({
   
   // Smooth attach/detach animation - initialize later after calculating shouldShowAsChild
   const childIndentAnim = useRef(new Animated.Value(0)).current;
-  
-  // Smooth collapse/expand animation for children
-  const collapseAnim = useRef(new Animated.Value(1)).current; // 1 = visible, 0 = hidden
   
   // ⚠️ Touch animation kaldırıldı - görsel geri bildirim yok
   // const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -562,10 +557,6 @@ function MileStone({
   useEffect(() => {
     if (isFirstRender.current) {
       childIndentAnim.setValue(shouldShowAsChild ? 1 : 0);
-      // Initialize collapse animation for children
-      if (milestone.parentId) {
-        collapseAnim.setValue(isCollapsed ? 0 : 1);
-      }
       isFirstRender.current = false;
     }
   }, []);
@@ -581,30 +572,6 @@ function MileStone({
       }).start();
     }
   }, [shouldShowAsChild, childIndentAnim]);
-
-  // Animate collapse/expand for child visibility - Snappy and smooth
-  useEffect(() => {
-    // Only animate if this is a child milestone
-    if (milestone.parentId) {
-      if (isCollapsed) {
-        // Collapse: Snappy and smooth
-        Animated.timing(collapseAnim, {
-          toValue: 0,
-          duration: 320, // Daha hızlı ve responsive
-          useNativeDriver: false,
-          easing: Easing.bezier(0.4, 0, 0.2, 1), // Material Design standard
-        }).start();
-      } else {
-        // Expand: Snappy and smooth (aynı süre)
-        Animated.timing(collapseAnim, {
-          toValue: 1,
-          duration: 320, // Aynı hız - simetrik
-          useNativeDriver: false,
-          easing: Easing.bezier(0.4, 0, 0.2, 1), // Material Design standard
-        }).start();
-      }
-    }
-  }, [isCollapsed, milestone.parentId, collapseAnim]);
 
   return (
     <>
@@ -623,31 +590,8 @@ function MileStone({
               outputRange: [20, 40], // Parent: 20px, Child: 40px (daha az indent)
             }),
             marginRight: 20, // Sol ile eşit
-            // Smooth collapse animation for child milestones - Ultra gentle (no jank)
-            ...(milestone.parentId && {
-              opacity: collapseAnim,
-              maxHeight: collapseAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 1000], // 0 to full height
-              }),
-              marginBottom: collapseAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 5], // Parent ile aynı - 5px
-              }),
-              marginTop: collapseAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 5], // Parent ile aynı - 5px
-              }),
-              overflow: 'hidden',
-              transform: [
-                {
-                  scaleY: collapseAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.98, 1], // Minimal scale
-                  })
-                }
-              ],
-            }),
+            marginBottom: 5,
+            marginTop: 5,
           }
         ]}>
           {/* Swipe Action Backgrounds - Horizontal Only */}
@@ -820,21 +764,6 @@ function MileStone({
                           {completedChildren}/{childMilestones.length}
                         </Text>
                       </View>
-                      
-                      {/* Collapse/Expand button */}
-                      <TouchableOpacity 
-                        onPress={() => {
-                          onToggleCollapse?.(milestone.id);
-                        }}
-                        style={styles.collapseButtonInline}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons 
-                          name={isCollapsed ? "chevron-forward" : "chevron-down"} 
-                          size={12} 
-                          color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
-                        />
-                      </TouchableOpacity>
                     </View>
                   )}
                 </View>
@@ -1002,7 +931,6 @@ function areMilestonePropsEqual(prevProps, nextProps) {
     prev.isAttachMode === next.isAttachMode &&
     prev.isSelectableForAttach === next.isSelectableForAttach &&
     prev.attachModeSourceId === next.attachModeSourceId &&
-    prev.isCollapsed === next.isCollapsed &&
     prevChildren.length === nextChildren.length && // Children count changed
     (prev.currentTask?.id || null) === (next.currentTask?.id || null)
   );
@@ -1416,8 +1344,6 @@ MileStone.propTypes = {
   onDetachMilestone: PropTypes.func,
   attachModeSourceId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   allMilestones: PropTypes.array,
-  isCollapsed: PropTypes.bool,
-  onToggleCollapse: PropTypes.func,
 };
 
 MileStone.defaultProps = {
@@ -1439,7 +1365,5 @@ MileStone.defaultProps = {
   onDetachMilestone: null,
   attachModeSourceId: null,
   allMilestones: [],
-  isCollapsed: false,
-  onToggleCollapse: null,
 };
 
