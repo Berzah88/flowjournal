@@ -111,6 +111,9 @@ export default function Journal({
   // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler
   const dynamicTopGap = fromActiveProject ? 0 : (fromMainScreen ? 40 : TOP_GAP);
   const modalHeight = height - dynamicTopGap;
+  
+  // Dinamik button bottom pozisyonu - Active Project'te daha yukarıda olmalı
+  const dynamicButtonBottom = fromActiveProject ? 60 : 20;
 
   // Dinamik styles
   const dynamicStyles = StyleSheet.create({
@@ -949,7 +952,7 @@ export default function Journal({
                 style={[
                   styles.moodPicker, 
                   { 
-                    bottom: keyboardHeight ? keyboardHeight + 90 : 106,
+                    bottom: (keyboardHeight || 0) + dynamicButtonBottom + 70,
                     backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#FFFFFF',
                     borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
                     shadowColor: theme.name === 'dark' ? '#000000' : '#000',
@@ -1018,7 +1021,7 @@ export default function Journal({
           <View style={[
             styles.buttonRow, 
             { 
-              bottom: (keyboardHeight || 0) + 35,
+              bottom: (keyboardHeight || 0) + dynamicButtonBottom,
               backgroundColor: theme.name === 'dark' ? 'rgba(44, 44, 46, 0.95)' : 'rgba(248, 249, 250, 0.95)',
               borderTopColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             }
