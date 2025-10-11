@@ -21,19 +21,42 @@ import MoodCalendar from '../components/MoodCalendar';
 
 const { width, height } = Dimensions.get('window');
 
+// Helper: Mood category belirle (fallback için)
+const getMoodCategory = (moodKey) => {
+  const positiveMoods = ['happy', 'excited', 'grateful', 'hopeful', 'proud', 'motivated', 'energetic', 'relieved', 'peaceful', 'content'];
+  const negativeMoods = ['sad', 'angry', 'anxious', 'frustrated', 'overwhelmed', 'lonely', 'disappointed', 'worried', 'tired'];
+  
+  if (positiveMoods.includes(moodKey)) return 'positive';
+  if (negativeMoods.includes(moodKey)) return 'negative';
+  return 'neutral';
+};
+
+// Helper: Zaman bazlı weight hesapla (MoodStatement ile aynı)
+const getTimeBasedWeight = (timestamp) => {
+  const hour = new Date(timestamp).getHours();
+  
+  // Sabah (6-12): 0.7 - Eski
+  if (hour >= 6 && hour < 12) return 0.7;
+  
+  // Öğle (12-18): 0.85 - Orta
+  if (hour >= 12 && hour < 18) return 0.85;
+  
+  // Akşam (18-24 + 0-6): 1.0 - En güncel
+  return 1.0;
+};
+
 const EmotionalJournalScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
 
-  // Günün dominant mood'unu hesapla (Yeni proje bazlı sistem)
+  // Günün dominant mood'unu hesapla (Yeni proje bazlı sistem) - MoodStatement ile senkronize
   const todayDominantMood = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const todayMoods = [];
-    const moodCounts = {};
     
     // Tüm projelerdeki günlükleri tara (sadece proje bazlı sistem)
     [...activeTasks, ...completedTasks].forEach(task => {
@@ -48,22 +71,34 @@ const EmotionalJournalScreen = ({ navigation }) => {
               mood: entry.mood,
               moodIcon: entry.moodIcon,
               moodColor: entry.moodColor,
+              timestamp: entry.createdAt
             });
-            
-            // Mood sayısını artır
-            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
           }
         });
       }
     });
     
-    // En çok tekrar eden mood'u bul
+    // ✨ YENİ: Zaman bazlı ağırlıklandırma ile dominant mood hesapla (MoodStatement ile aynı)
     let dominantMood = null;
-    let maxCount = 0;
+    let maxWeightedScore = 0;
+    const moodWeightedScores = {};
     
-    Object.entries(moodCounts).forEach(([mood, count]) => {
-      if (count > maxCount) {
-        maxCount = count;
+    // Her mood için weighted score hesapla
+    todayMoods.forEach(entry => {
+      const timeWeight = getTimeBasedWeight(entry.timestamp);
+      const mood = entry.mood;
+      
+      if (!moodWeightedScores[mood]) {
+        moodWeightedScores[mood] = 0;
+      }
+      
+      moodWeightedScores[mood] += timeWeight;
+    });
+    
+    // En yüksek weighted score'u bul
+    Object.entries(moodWeightedScores).forEach(([mood, score]) => {
+      if (score > maxWeightedScore) {
+        maxWeightedScore = score;
         dominantMood = MOODS.find(m => m.key === mood) || 
                        EXTENDED_MOODS.find(m => m.key === mood) || {
           key: mood,
@@ -296,6 +331,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
       '#FAFAFA': '#E0E0E0', // Bored - Very light gray
       '#FFF9C4': '#FFF59D', // Surprised - Light yellow
       '#FCE4EC': '#F06292', // Worried - Light magenta
+      '#CFD8DC': '#90A4AE', // Natural - Light gray
     };
     
     return colorMap[originalColor] || originalColor;
@@ -665,9 +701,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
           
           const averageScore = totalMoodScore / projectMoods.length;
           let progressType = 'neutral';
-          let progressColor = '#9E9E9E';
           
-          if (averageScore > 0.2) {
+          // ✨ YENİ: Dominant mood rengini kullan (completed projects)
+          let progressColor = dominantMoodInfo ? getSolidMoodColor(dominantMoodInfo.color) : '#9E9E9E';
+          
+          // Progress type'ı dominant mood category'sine göre belirle
+          if (dominantMoodInfo && dominantMoodInfo.category) {
+            progressType = dominantMoodInfo.category;
+          } else if (averageScore > 0.2) {
             progressType = 'positive';
             progressColor = '#4CAF50';
           } else if (averageScore < -0.2) {
@@ -875,9 +916,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
           
           const averageScore = totalMoodScore / projectMoods.length;
           let progressType = 'neutral';
-          let progressColor = '#9E9E9E';
           
-          if (averageScore > 0.2) {
+          // ✨ YENİ: Dominant mood rengini kullan (active projects)
+          let progressColor = dominantMoodInfo ? getSolidMoodColor(dominantMoodInfo.color) : '#9E9E9E';
+          
+          // Progress type'ı dominant mood category'sine göre belirle
+          if (dominantMoodInfo && dominantMoodInfo.category) {
+            progressType = dominantMoodInfo.category;
+          } else if (averageScore > 0.2) {
             progressType = 'positive';
             progressColor = '#4CAF50';
           } else if (averageScore < -0.2) {
@@ -1226,8 +1272,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
             <View style={styles.overviewGrid}>
               {/* Active Projects */}
               <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(33, 150, 243, 0.1)' }]}>
-                  <Ionicons name="play-circle-outline" size={16} color="#2196F3" />
+                <View style={[styles.overviewIcon, { 
+                  backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(33, 150, 243, 0.1)' 
+                }]}>
+                  <Ionicons 
+                    name="play-circle-outline" 
+                    size={16} 
+                    color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#2196F3'} 
+                  />
                 </View>
                 <Text style={[
                   styles.overviewNumber,
@@ -1241,8 +1293,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
               {/* Completed Projects */}
               <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color="#4CAF50" />
+                <View style={[styles.overviewIcon, { 
+                  backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(76, 175, 80, 0.1)' 
+                }]}>
+                  <Ionicons 
+                    name="checkmark-circle-outline" 
+                    size={16} 
+                    color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#4CAF50'} 
+                  />
                 </View>
                 <Text style={[
                   styles.overviewNumber,
@@ -1256,8 +1314,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
               {/* Total Entries */}
               <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(25, 118, 210, 0.1)' }]}>
-                  <Ionicons name="document-text-outline" size={16} color="#1976D2" />
+                <View style={[styles.overviewIcon, { 
+                  backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(25, 118, 210, 0.1)' 
+                }]}>
+                  <Ionicons 
+                    name="document-text-outline" 
+                    size={16} 
+                    color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#1976D2'} 
+                  />
                 </View>
                 <Text style={[
                   styles.overviewNumber,
@@ -1271,8 +1335,14 @@ const EmotionalJournalScreen = ({ navigation }) => {
 
               {/* Words Written */}
               <View style={styles.overviewItem}>
-                <View style={[styles.overviewIcon, { backgroundColor: 'rgba(255, 152, 0, 0.1)' }]}>
-                  <Ionicons name="create-outline" size={16} color="#FF9800" />
+                <View style={[styles.overviewIcon, { 
+                  backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(255, 152, 0, 0.1)' 
+                }]}>
+                  <Ionicons 
+                    name="create-outline" 
+                    size={16} 
+                    color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#FF9800'} 
+                  />
                 </View>
                 <Text style={[
                   styles.overviewNumber,

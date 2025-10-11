@@ -2,7 +2,7 @@
   "expo": {
     "name": "Flow Journal",
     "slug": "WITApp-FCM",
-    "version": "8.2.0",
+    "version": "8.6.0",
     "orientation": "portrait",
     "icon": "./assets/logo-yeni.png",
     "userInterfaceStyle": "light",
@@ -27,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.witapp.fcm",
-      "versionCode": 12,
+      "versionCode": 13,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -46,13 +46,6 @@
       "@react-native-firebase/app",
       "expo-font",
       "expo-asset",
-      "expo-maps",
-      [
-        "expo-background-fetch",
-        {
-          "backgroundFetchInterval": 15
-        }
-      ],
       [
         "expo-notifications",
         {

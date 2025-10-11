@@ -849,6 +849,8 @@ export default function Journal({
               showsHorizontalScrollIndicator={false}
               style={styles.moodSuggestionsScrollView}
               contentContainerStyle={styles.moodSuggestionsContainer}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="none"
             >
               {textValue.trim().split(/\s+/).length >= 3 && moodSuggestions.length > 0 && (
                 moodSuggestions.map((suggestion, index) => {
@@ -871,20 +873,23 @@ export default function Journal({
                             : 'rgba(0, 0, 0, 0.1)',
                           borderWidth: 1,
                           zIndex: 15,
-                          elevation: 15,
+                          elevation: 1,
                         }
                       ]}
-                      activeOpacity={0.6}
+                      activeOpacity={0.7}
                       onPress={() => {
                         if (suggestedMood) {
                           setSelectedMood(suggestedMood);
                           setShowSuggestions(false);
                           setAutoMoodApplied(true);
+                          
+                          // Keep keyboard open - no need to refocus, just prevent dismiss
                         }
                       }}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       delayPressIn={0}
                       delayPressOut={0}
+                      onPressIn={(e) => e.stopPropagation()}
                     >
                       <MaterialIcons 
                         name={getValidIconName(suggestedMood?.icon || 'sentiment-satisfied')} 
@@ -935,18 +940,21 @@ export default function Journal({
               placeholderTextColor={theme.name === 'dark' ? '#6E6E73' : '#999'}
               textAlignVertical="top"
               editable={true}
-               scrollEnabled={true}
-               showsVerticalScrollIndicator={true}
-              keyboardShouldPersistTaps="handled"
+              scrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="always"
             />
           </View>
 
           {/* Mood picker popup with backdrop */}
           {showMoodPicker && (
-            <TouchableOpacity 
+            <View 
               style={styles.moodPickerBackdrop}
-              activeOpacity={1}
-              onPress={() => setShowMoodPicker(false)}
+              onStartShouldSetResponder={() => true}
+              onResponderRelease={() => {
+                // Don't dismiss keyboard, just close picker
+                setShowMoodPicker(false);
+              }}
             >
               <Animated.View 
                 style={[
@@ -961,7 +969,10 @@ export default function Journal({
                     elevation: theme.name === 'dark' ? 20 : 8,
                   }
                 ]}
-                onStartShouldSetResponder={() => true}
+                onStartShouldSetResponder={(e) => {
+                  e.stopPropagation();
+                  return true;
+                }}
               >
                 
                 {/* Manual Selection Section */}
@@ -974,6 +985,8 @@ export default function Journal({
                         selectedMood?.key === m.key ? { borderColor: "#007AFF", borderWidth: 2 } : null,
                       ]}
                       activeOpacity={0.8}
+                      delayPressIn={0}
+                      onPressIn={(e) => e.stopPropagation()}
                       onPress={async () => {
                         // toggle selection (if selecting different mood, replace; if same, keep/replace)
                         setSelectedMood((prev) => (prev?.key === m.key ? m : m));
@@ -1014,7 +1027,7 @@ export default function Journal({
                   ))}
                 </View>
               </Animated.View>
-            </TouchableOpacity>
+            </View>
           )}
 
 
@@ -1479,11 +1492,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     minHeight: 32,
     minWidth: 55,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    elevation: 1,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },

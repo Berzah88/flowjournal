@@ -208,6 +208,231 @@ const STORAGE_KEYS = {
   CONFIDENCE_HISTORY: 'smart_mood_confidence_history'
 };
 
+// Semantic Analyzer - Advanced Context Understanding
+class SemanticAnalyzer {
+  constructor() {
+    // Co-occurrence patterns - which words typically appear together with which moods
+    this.coOccurrencePatterns = {
+      // Context keywords that modify mood interpretation
+      'sınav': {
+        positiveWith: ['geçtim', 'başardım', 'bitti', 'iyi gitti', 'kolay', 'tamamladım'],
+        negativeWith: ['var', 'gelecek', 'yaklaşıyor', 'korkuyorum', 'kaygılıyım', 'hazır değilim'],
+        neutralWith: ['çalışıyorum', 'hazırlanıyorum'],
+        confidence: 0.85
+      },
+      'iş': {
+        positiveWith: ['tamamladım', 'başardım', 'bitti', 'kolay', 'severek'],
+        negativeWith: ['çok fazla', 'bunalmış', 'yoruldum', 'bitmez', 'çok'],
+        neutralWith: ['yapıyorum', 'devam ediyor'],
+        confidence: 0.9
+      },
+      'proje': {
+        positiveWith: ['tamamladım', 'başarılı', 'bitti', 'gurur duyuyorum'],
+        negativeWith: ['gecikmesi', 'zor', 'karmaşık', 'takıldım'],
+        neutralWith: ['üzerinde çalışıyorum'],
+        confidence: 0.85
+      },
+      'arkadaş': {
+        positiveWith: ['gördüm', 'buluştum', 'eğlendik', 'harika', 'mutlu'],
+        negativeWith: ['kavga', 'tartışma', 'küs', 'görmüyorum'],
+        neutralWith: ['konuştum', 'mesajlaştık'],
+        confidence: 0.8
+      },
+      'aile': {
+        positiveWith: ['buluştuk', 'mutlu', 'güzel vakit', 'sevgi dolu'],
+        negativeWith: ['sorun', 'tartışma', 'problem', 'anlaşamıyoruz'],
+        neutralWith: ['ziyaret', 'görüştük'],
+        confidence: 0.8
+      }
+    };
+
+    // Sentiment flow connectors - words that change mood direction
+    this.sentimentConnectors = {
+      contrast: ['ama', 'fakat', 'ancak', 'lakin', 'oysa', 'but', 'however', 'yet', 'although'],
+      cause: ['çünkü', 'zira', 'nedeniyle', 'dolayısıyla', 'because', 'since', 'as'],
+      progression: ['artık', 'şimdi', 'sonunda', 'nihayet', 'now', 'finally', 'at last'],
+      addition: ['ayrıca', 've', 'hem', 'de', 'da', 'also', 'and', 'moreover']
+    };
+
+    // Temporal markers - detect time-based context
+    this.temporalMarkers = {
+      past: ['dün', 'geçen', 'önceden', 'eskiden', 'idi', 'dı', 'du', 'yesterday', 'was', 'were', 'used to'],
+      present: ['şimdi', 'şu an', 'bugün', 'halen', 'now', 'currently', 'today', 'am', 'is', 'are'],
+      future: ['yarın', 'gelecek', 'olacak', 'edeceğim', 'iyileşecek', 'tomorrow', 'will', 'going to']
+    };
+  }
+
+  // Analyze co-occurrence to understand context better
+  analyzeCoOccurrence(text, detectedMood) {
+    const lowerText = text.toLowerCase();
+    let contextAdjustment = 0;
+    let contextReason = '';
+
+    for (const [keyword, patterns] of Object.entries(this.coOccurrencePatterns)) {
+      if (lowerText.includes(keyword)) {
+        // Check if positive context words are present
+        const hasPositive = patterns.positiveWith.some(word => lowerText.includes(word));
+        const hasNegative = patterns.negativeWith.some(word => lowerText.includes(word));
+
+        if (hasPositive && detectedMood === 'happy') {
+          contextAdjustment += 0.2 * patterns.confidence;
+          contextReason = `Positive context with "${keyword}"`;
+        } else if (hasNegative && (detectedMood === 'anxious' || detectedMood === 'overwhelmed')) {
+          contextAdjustment += 0.2 * patterns.confidence;
+          contextReason = `Negative context with "${keyword}"`;
+        } else if (hasPositive && (detectedMood === 'anxious' || detectedMood === 'sad')) {
+          // Contradiction detected - user might be using irony or mixed feelings
+          contextAdjustment -= 0.3;
+          contextReason = `Contradiction: positive "${keyword}" with negative mood`;
+        } else if (hasNegative && detectedMood === 'happy') {
+          // Contradiction - might be sarcasm or resilience
+          contextAdjustment -= 0.2;
+          contextReason = `Possible irony: negative "${keyword}" with happy mood`;
+        }
+      }
+    }
+
+    return {
+      adjustment: contextAdjustment,
+      reason: contextReason,
+      hasContext: contextReason !== ''
+    };
+  }
+
+  // Analyze sentiment flow - how mood changes within text
+  analyzeSentimentFlow(text) {
+    const lowerText = text.toLowerCase();
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    if (sentences.length < 2) {
+      return { hasFlow: false, flowType: null, emphasis: 'single' };
+    }
+
+    // Detect contrast connectors
+    for (const connector of this.sentimentConnectors.contrast) {
+      if (lowerText.includes(connector)) {
+        // Text has "but" structure - the part after connector is more important
+        const parts = lowerText.split(connector);
+        if (parts.length >= 2) {
+          return {
+            hasFlow: true,
+            flowType: 'contrast',
+            emphasis: 'latter', // Emphasize what comes after "but/ama"
+            reason: `Contrast detected with "${connector}"`,
+            beforePart: parts[0].trim(),
+            afterPart: parts.slice(1).join(connector).trim()
+          };
+        }
+      }
+    }
+
+    // Detect progression (things getting better/worse)
+    for (const connector of this.sentimentConnectors.progression) {
+      if (lowerText.includes(connector)) {
+        return {
+          hasFlow: true,
+          flowType: 'progression',
+          emphasis: 'latter',
+          reason: `Progression detected with "${connector}"`
+        };
+      }
+    }
+
+    // Detect cause-effect
+    for (const connector of this.sentimentConnectors.cause) {
+      if (lowerText.includes(connector)) {
+        return {
+          hasFlow: true,
+          flowType: 'cause',
+          emphasis: 'balanced',
+          reason: `Causal relationship detected with "${connector}"`
+        };
+      }
+    }
+
+    return { hasFlow: false, flowType: null, emphasis: 'balanced' };
+  }
+
+  // Detect temporal context
+  detectTemporalContext(text) {
+    const lowerText = text.toLowerCase();
+    
+    const hasPast = this.temporalMarkers.past.some(marker => lowerText.includes(marker));
+    const hasPresent = this.temporalMarkers.present.some(marker => lowerText.includes(marker));
+    const hasFuture = this.temporalMarkers.future.some(marker => lowerText.includes(marker));
+
+    if (hasPresent && (hasPast || hasFuture)) {
+      return {
+        temporal: 'transition',
+        weight: 1.2, // Current feelings more important in transitions
+        reason: 'Temporal transition detected'
+      };
+    } else if (hasPast) {
+      return {
+        temporal: 'past',
+        weight: 0.8, // Past feelings less relevant to current mood
+        reason: 'Past tense detected'
+      };
+    } else if (hasFuture) {
+      return {
+        temporal: 'future',
+        weight: 0.9, // Future anxieties/hopes
+        reason: 'Future tense detected'
+      };
+    }
+
+    return {
+      temporal: 'present',
+      weight: 1.0,
+      reason: 'Present tense'
+    };
+  }
+
+  // Main semantic analysis function
+  analyzeSemantics(text, detectedMood, confidence) {
+    const coOccurrence = this.analyzeCoOccurrence(text, detectedMood);
+    const sentimentFlow = this.analyzeSentimentFlow(text);
+    const temporalContext = this.detectTemporalContext(text);
+
+    // Adjust confidence based on semantic analysis
+    let adjustedConfidence = confidence;
+    let adjustmentReasons = [];
+
+    // Apply co-occurrence adjustment
+    if (coOccurrence.hasContext) {
+      adjustedConfidence += coOccurrence.adjustment;
+      adjustmentReasons.push(coOccurrence.reason);
+    }
+
+    // Apply temporal context weight
+    adjustedConfidence *= temporalContext.weight;
+    if (temporalContext.weight !== 1.0) {
+      adjustmentReasons.push(temporalContext.reason);
+    }
+
+    // Handle sentiment flow
+    let finalMood = detectedMood;
+    if (sentimentFlow.hasFlow && sentimentFlow.flowType === 'contrast') {
+      // For contrast sentences, analyze the latter part more heavily
+      adjustmentReasons.push(sentimentFlow.reason);
+      if (sentimentFlow.emphasis === 'latter') {
+        // The part after "but" is more important
+        // This will be used by the main detector
+      }
+    }
+
+    return {
+      originalConfidence: confidence,
+      adjustedConfidence: Math.max(0, Math.min(1, adjustedConfidence)),
+      adjustmentReasons,
+      sentimentFlow,
+      temporalContext,
+      coOccurrenceContext: coOccurrence,
+      suggestedEmphasis: sentimentFlow.emphasis || 'balanced'
+    };
+  }
+}
+
 // Smart Pattern Matching System
 class SmartPatternMatcher {
   constructor() {
@@ -240,71 +465,71 @@ class SmartPatternMatcher {
   // Physical states
       physical: {
         tired: {
-          patterns: ['yorgun', 'bitkin', 'tükenmiş', 'halsiz', 'güçsüz', 'dermansız', 'takatsiz', 'kudretsiz'],
-          ngrams: ['çok yorgun', 'aşırı yorgun', 'bitkin durumda', 'tükenmiş hissediyorum'],
-          context: ['fiziksel', 'beden', 'vücut', 'enerji', 'güç']
+          patterns: ['yorgun', 'bitkin', 'tükenmiş', 'halsiz', 'güçsüz', 'dermansız', 'takatsiz', 'kudretsiz', 'uyumak istiyorum', 'uykum var'],
+          ngrams: ['yorgun hissediyorum', 'bitkin durumdayım', 'tükenmiş gibiyim', 'uyumak istiyorum', 'enerji kalmadı'],
+          context: ['uyku', 'yorgunluk', 'dinlenme', 'istirahat', 'uyumak']
         },
         energetic: {
-          patterns: ['enerjik', 'dinç', 'güçlü', 'aktif', 'canlı', 'diri', 'taze', 'zinde'],
-          ngrams: ['çok enerjik', 'aşırı aktif', 'dinç hissediyorum', 'güçlü hissediyorum'],
-          context: ['fiziksel', 'beden', 'vücut', 'enerji', 'güç']
+          patterns: ['enerjik', 'dinç', 'güçlü', 'aktif', 'canlı', 'diri', 'taze', 'zinde', 'kabarık'],
+          ngrams: ['enerjik hissediyorum', 'dinç hissediyorum', 'güçlü hissediyorum', 'enerji doluyum'],
+          context: ['enerji', 'güç', 'hareket', 'aktivite', 'spor']
         }
   },
   
   // Emotional states
       emotional: {
         happy: {
-          patterns: ['mutlu', 'sevinçli', 'neşeli', 'gururlu', 'memnun', 'hoşnut', 'tatmin', 'umutlu', 'umudum', 'umut', 'great', 'feeling', 'accomplished'],
-          ngrams: ['çok mutlu', 'aşırı sevinçli', 'müthiş mutlu', 'harika hissediyorum', 'umudum var', 'umut var', 'feeling great', 'accomplished a lot'],
-          context: ['başarı', 'kazandım', 'tamamladım', 'başardım', 'güzel', 'iyi', 'umut', 'gelecek', 'today', 'lot']
+          patterns: ['mutlu', 'sevinçli', 'neşeli', 'gururlu', 'memnun', 'hoşnut', 'tatmin', 'umutlu', 'umudum', 'umut', 'heyecanlı', 'heyecan', 'aşık', 'sevinç', 'keyifli', 'coşkulu', 'şen', 'renkli', 'iyiyim', 'harika', 'mutluyum', 'great', 'feeling', 'accomplished'],
+          ngrams: ['mutlu hissediyorum', 'mutluyum', 'iyiyim', 'çok iyiyim', 'daha iyiyim', 'sevinçliyim', 'harika hissediyorum', 'umudum var', 'umut var', 'heyecanlı hissediyorum', 'aşık hissediyorum', 'içime sığmayan sevinç', 'mutluluktan uçuyorum', 'feeling great', 'accomplished a lot'],
+          context: ['başarı', 'kazandım', 'tamamladım', 'başardım', 'güzel', 'sevgi', 'aşk', 'mutluluk', 'gülümseme', 'iyi']
         },
         sad: {
-          patterns: ['üzgün', 'hüzünlü', 'kederli', 'acılı', 'üzüntülü', 'kırgın', 'mutsuz'],
-          ngrams: ['çok üzgün', 'aşırı hüzünlü', 'müthiş kederli', 'berbat hissediyorum'],
-          context: ['kaybettim', 'başarısız', 'hata', 'yanlış', 'kötü', 'berbat']
+          patterns: ['üzgün', 'hüzünlü', 'kederli', 'acılı', 'üzüntülü', 'kırgın', 'mutsuz', 'mahzun', 'karamsar'],
+          ngrams: ['üzgün hissediyorum', 'hüzünlü hissediyorum', 'kalbim kırık', 'ağlamak istiyorum', 'içim sıkılıyor'],
+          context: ['kaybettim', 'başarısız', 'kayıp', 'ayrılık', 'yas', 'gözyaşı']
         },
         angry: {
-          patterns: ['kızgın', 'sinirli', 'öfkeli', 'gergin', 'huzursuz', 'tedirgin', 'hate', 'terrible'],
-          ngrams: ['çok kızgın', 'aşırı sinirli', 'müthiş öfkeli', 'kızgın hissediyorum', 'hate everything'],
-          context: ['problem', 'sorun', 'hata', 'yanlış', 'kayıp', 'zarar', 'everything']
+          patterns: ['kızgın', 'sinirli', 'öfkeli', 'gergin', 'huzursuz', 'deli oldum', 'çıldıracağım', 'sinir oldum', 'kudurdum', 'hate', 'terrible'],
+          ngrams: ['kızgın hissediyorum', 'sinirleniyorum', 'öfkeliyim', 'deliye dönüyorum', 'sinir oldum', 'öfkeden kudurdum', 'hate everything'],
+          context: ['problem', 'sorun', 'adaletsizlik', 'haksızlık', 'kavga', 'tartışma', 'öfke']
         },
         anxious: {
-          patterns: ['endişeli', 'kaygılı', 'tedirgin', 'korku', 'panik', 'stresli'],
-          ngrams: ['çok endişeli', 'aşırı kaygılı', 'müthiş stresli', 'panik hissediyorum'],
-          context: ['gelecek', 'yarın', 'sınav', 'iş', 'para', 'sağlık']
+          patterns: ['endişeli', 'kaygılı', 'tedirgin', 'korku', 'panik', 'stresli', 'telaşlı', 'huzursuz'],
+          ngrams: ['endişeli hissediyorum', 'kaygılanıyorum', 'panik halindeyim', 'korkuyorum', 'stresli hissediyorum'],
+          context: ['gelecek', 'yarın', 'sınav', 'toplantı', 'randevu', 'belirsizlik']
         }
   },
   
   // Mental states
       mental: {
         frustrated: {
-          patterns: ['bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'bezgin', 'can sıkıcı', 'sıkıcı', 'yorucu', 'bunaltıcı'],
-          ngrams: ['bıktım artık', 'usandım artık', 'sıkıldım artık', 'yeter artık', 'can sıkıcı', 'ne kadar sıkıcı', 'çok sıkıcı'],
-          context: ['tekrar', 'aynı', 'sürekli', 'hep', 'her zaman', 'sistem', 'bu sistem']
+          patterns: ['bıktım', 'usandım', 'sıkıldım', 'sıkkın', 'sıkıntılı', 'bezgin', 'can sıkıcı', 'sıkıcı', 'yorucu', 'bunaltıcı', 'dayanılmaz'],
+          ngrams: ['bıktım artık', 'usandım artık', 'sıkıldım artık', 'yeter artık', 'can sıkıcı', 'ne kadar sıkıcı', 'dayanamıyorum artık'],
+          context: ['tekrar', 'aynı şey', 'sürekli', 'monoton', 'rutin', 'değişiklik yok']
         },
         overwhelmed: {
-    patterns: ['bunalmış', 'aşırı yüklenmiş', 'çok fazla', 'bitkin', 'tükenmiş'],
-          ngrams: ['çok fazla iş', 'aşırı yüklenmiş', 'bunalmış hissediyorum'],
-          context: ['çok', 'fazla', 'aşırı', 'yük', 'iş', 'sorumluluk']
+    patterns: ['bunalmış', 'aşırı yüklenmiş', 'boğuluyorum', 'dayanamıyorum', 'başa çıkamıyorum', 'altında eziliyorum'],
+          ngrams: ['bunalmış hissediyorum', 'aşırı yüklenmiş hissediyorum', 'başa çıkamıyorum', 'altında eziliyorum', 'çok fazla sorumluluk', 'çok fazla iş', 'çok fazla yük'],
+          context: ['yük', 'sorumluluk', 'görev', 'yapılacak', 'deadline', 'teslim', 'baskı']
         },
         motivated: {
-          patterns: ['motiveli', 'hevesli', 'istekli', 'azimli', 'kararlı', 'umutlu'],
-          ngrams: ['çok motiveli', 'aşırı hevesli', 'müthiş istekli', 'azimli hissediyorum'],
-          context: ['hedef', 'amaç', 'plan', 'gelecek', 'başarı', 'ilerleme']
+          patterns: ['motiveli', 'hevesli', 'istekli', 'azimli', 'kararlı', 'hırslı', 'tutkulu', 'ateşli'],
+          ngrams: ['motiveli hissediyorum', 'hevesliyim', 'azimli hissediyorum', 'kararlıyım', 'başaracağım'],
+          context: ['hedef', 'amaç', 'plan', 'başarı', 'ilerleme', 'gelişme']
         }
   },
   
   // Social states
       social: {
         lonely: {
-          patterns: ['yalnız', 'tek başına', 'kimsesiz', 'izole', 'soyutlanmış'],
-          ngrams: ['çok yalnız', 'aşırı yalnız', 'müthiş yalnız', 'yalnız hissediyorum'],
-          context: ['kimse', 'arkadaş', 'aile', 'sosyal', 'insan', 'toplum']
+          patterns: ['yalnız', 'tek başına', 'kimsesiz', 'izole', 'soyutlanmış', 'yalıtılmış', 'yapayalnız'],
+          ngrams: ['yalnız hissediyorum', 'tek başımayım', 'kimse yok', 'kimsem yok', 'yalnızım'],
+          context: ['kimse', 'arkadaş', 'aile', 'sosyal', 'iletişim', 'konuşacak kimse']
         },
         grateful: {
-          patterns: ['minnettar', 'şükür', 'teşekkür', 'memnun', 'hoşnut'],
-          ngrams: ['çok minnettar', 'aşırı şükür', 'müthiş minnettar', 'şükür hissediyorum'],
-          context: ['yardım', 'destek', 'iyilik', 'lütuf', 'nimet']
+          patterns: ['minnettar', 'şükür', 'teşekkür', 'memnun', 'hoşnut', 'şükran', 'müteşekkir'],
+          ngrams: ['minnettar hissediyorum', 'şükür hissediyorum', 'çok teşekkür', 'minnettarım', 'şükrediyorum'],
+          context: ['yardım', 'destek', 'iyilik', 'lütuf', 'nimet', 'şanslı']
         }
       }
     };
@@ -407,27 +632,42 @@ class SmartPatternMatcher {
 
   // Enhanced pattern detection for better accuracy
   detectAdvancedPatterns(text, matches, intensity, hasNegation) {
-    // Turkish specific patterns
+    // Turkish specific patterns - mood-specific only, no generic intensifiers
     const turkishPatterns = {
       'frustrated': [
         'can sıkıcı', 'sıkıldım', 'bıktım', 'usandım', 'bezgin', 'yeter artık',
-        'ne kadar sıkıcı', 'çok sıkıcı', 'sıkılmaya başladım'
+        'ne kadar sıkıcı', 'sıkılmaya başladım', 'dayanamıyorum artık'
       ],
       'overwhelmed': [
-        'çok fazla', 'aşırı yüklenmiş', 'bunalmış', 'bitkin', 'tükenmiş',
-        'çok fazla iş', 'aşırı yüklenmiş', 'bunalmış hissediyorum'
+        'aşırı yüklenmiş', 'bunalmış', 'boğuluyorum', 
+        'çok fazla iş', 'çok fazla sorumluluk', 'çok fazla yük',
+        'bunalmış hissediyorum', 'başa çıkamıyorum', 'altında eziliyorum'
       ],
       'anxious': [
         'endişeli', 'kaygılı', 'tedirgin', 'korku', 'panik', 'stresli',
-        'çok endişeli', 'aşırı kaygılı', 'müthiş stresli', 'panik hissediyorum'
+        'endişeli hissediyorum', 'kaygılanıyorum', 'panik halindeyim', 'korkuyorum'
       ],
       'hopeful': [
         'umudum var', 'umut var', 'gelecek güzel', 'iyi olacak', 'düzelecek',
-        'umutlu', 'pozitif düşünüyorum', 'iyi şeyler olacak'
+        'umutluyum', 'pozitif düşünüyorum', 'iyi şeyler olacak', 'inancım var',
+        'rahatladım', 'rahat', 'iyileşecek'
       ],
       'grateful': [
-        'minnettar', 'şükür', 'teşekkür', 'memnun', 'hoşnut',
-        'çok minnettar', 'aşırı şükür', 'müthiş minnettar', 'şükür hissediyorum'
+        'minnettar', 'şükür', 'teşekkür', 'minnettarım', 'şükrediyorum',
+        'minnettar hissediyorum', 'şükür hissediyorum', 'şanslıyım'
+      ],
+      'excited': [
+        'heyecanlı', 'heyecan', 'coşkulu', 'coşku', 'heyecanlandım',
+        'heyecanlıyım', 'heyecanlı hissediyorum', 'heyecandan uçuyorum',
+        'enerjik hissediyorum', 'enerji doluyum'
+      ],
+      'relieved': [
+        'rahatladım', 'rahat hissediyorum', 'rahatlama', 'rahat',
+        'huzurlu', 'sakin', 'dingin', 'ferahladım'
+      ],
+      'happy': [
+        'mutluyum', 'mutlu', 'iyiyim', 'çok iyiyim', 'daha iyiyim',
+        'harika', 'süper', 'mükemmel', 'güzel hissediyorum'
       ]
     };
 
@@ -457,51 +697,51 @@ class SmartPatternMatcher {
       });
     });
 
-    // English specific patterns
+    // English specific patterns - mood-specific only, no generic intensifiers
     const englishPatterns = {
       'frustrated': [
         'frustrated', 'annoyed', 'irritated', 'fed up', 'sick of',
-        'can\'t take it', 'too much', 'had enough'
+        'can\'t take it', 'had enough', 'so annoying'
       ],
       'overwhelmed': [
-        'overwhelmed', 'swamped', 'drowning', 'too much', 'can\'t handle',
-        'burned out', 'exhausted', 'drained'
+        'overwhelmed', 'swamped', 'drowning', 'can\'t handle',
+        'burned out', 'too much work', 'too much responsibility', 'too many tasks'
       ],
       'anxious': [
         'anxious', 'worried', 'concerned', 'nervous', 'stressed',
-        'panic', 'fear', 'scared'
+        'panic', 'fear', 'scared', 'feeling anxious', 'freaking out'
       ],
       'hopeful': [
         'hopeful', 'optimistic', 'positive', 'looking forward',
-        'excited about', 'can\'t wait'
+        'excited about', 'can\'t wait', 'things will get better'
       ],
       'grateful': [
         'grateful', 'thankful', 'appreciate', 'blessed',
-        'lucky', 'fortunate'
+        'lucky', 'fortunate', 'feeling grateful', 'so thankful'
       ],
       'tired': [
         'tired', 'exhausted', 'drained', 'worn out', 'fatigued',
-        'sleepy', 'drowsy', 'weary', 'beat', 'pooped'
+        'sleepy', 'drowsy', 'weary', 'need sleep', 'want to sleep'
       ],
       'sad': [
         'sad', 'depressed', 'down', 'blue', 'melancholy', 'gloomy',
-        'miserable', 'unhappy', 'dejected', 'disheartened', 'disappointed'
+        'miserable', 'unhappy', 'dejected', 'disheartened', 'heartbroken'
       ],
       'angry': [
-        'angry', 'mad', 'furious', 'irritated', 'annoyed', 'rage',
-        'livid', 'outraged', 'fuming', 'upset', 'cross'
+        'angry', 'mad', 'furious', 'irritated', 'rage',
+        'livid', 'outraged', 'fuming', 'upset', 'pissed off'
       ],
       'excited': [
         'excited', 'thrilled', 'enthusiastic', 'pumped', 'hyped',
-        'eager', 'elated', 'ecstatic', 'overjoyed'
+        'eager', 'elated', 'ecstatic', 'overjoyed', 'can\'t wait'
       ],
       'proud': [
         'proud', 'accomplished', 'achieved', 'successful', 'victorious',
-        'triumphant', 'satisfied', 'fulfilled'
+        'triumphant', 'satisfied', 'fulfilled', 'feeling proud'
       ],
       'calm': [
         'calm', 'peaceful', 'relaxed', 'serene', 'tranquil',
-        'composed', 'collected', 'cool', 'chill'
+        'composed', 'collected', 'chill', 'at peace'
       ]
     };
 
@@ -982,6 +1222,7 @@ class SmartMoodDetector {
     this.userLearning = new UserLearningSystem();
     this.confidenceScorer = new ConfidenceScorer();
     this.realTimeAdapter = new RealTimeAdapter();
+    this.semanticAnalyzer = new SemanticAnalyzer(); // NEW: Advanced semantic analysis
     
     // Performance optimization - Cache system
     this.cache = new Map();
@@ -1056,13 +1297,13 @@ class SmartMoodDetector {
       const userPrediction = await this.userLearning.getUserMoodPrediction(text);
       
       // 4. Confidence Scoring
-      const confidence = this.confidenceScorer.calculateConfidence(
+      let confidence = this.confidenceScorer.calculateConfidence(
         weightedMatches, 
         contexts[0], 
         userPrediction
       );
       
-      // 5. Determine final mood
+      // 5. Determine preliminary mood
       let finalMood = 'neutral';
       let reason = 'No clear mood detected';
       
@@ -1077,7 +1318,40 @@ class SmartMoodDetector {
         }
       }
       
-      // 6. Real-time Adaptation
+      // 6. NEW: Semantic Analysis - Advanced context understanding
+      const semanticAnalysis = this.semanticAnalyzer.analyzeSemantics(text, finalMood, confidence.score);
+      
+      // Handle sentiment flow (e.g., "I was sad BUT now I'm happy")
+      if (semanticAnalysis.sentimentFlow.hasFlow && semanticAnalysis.sentimentFlow.flowType === 'contrast') {
+        // Re-analyze the emphasized part
+        const emphasizedText = semanticAnalysis.sentimentFlow.emphasis === 'latter' 
+          ? semanticAnalysis.sentimentFlow.afterPart 
+          : text;
+        
+        if (emphasizedText && emphasizedText.length > 3) {
+          const reMatches = this.patternMatcher.matchPatterns(emphasizedText);
+          if (reMatches.length > 0) {
+            const reTopMatch = reMatches[0];
+            if (Math.abs(reTopMatch.score) > 0.4) {
+              finalMood = reTopMatch.mood;
+              reason = `Contrast detected: ${semanticAnalysis.sentimentFlow.reason} - Focus on latter part`;
+              semanticAnalysis.adjustmentReasons.push('Sentiment flow adjusted mood');
+            }
+          }
+        }
+      }
+      
+      // Update confidence with semantic adjustments
+      confidence = {
+        ...confidence,
+        score: semanticAnalysis.adjustedConfidence,
+        level: semanticAnalysis.adjustedConfidence > 0.7 ? 'high' : 
+               semanticAnalysis.adjustedConfidence > 0.5 ? 'medium' :
+               semanticAnalysis.adjustedConfidence > 0.3 ? 'low' : 'very_low',
+        factors: [...confidence.factors, ...semanticAnalysis.adjustmentReasons]
+      };
+      
+      // 7. Real-time Adaptation
       this.realTimeAdapter.trackPrediction(finalMood, text, confidence.score, null);
       
       const result = {
@@ -1086,7 +1360,8 @@ class SmartMoodDetector {
         reason,
         matches: weightedMatches,
         userPrediction,
-        context: contexts
+        context: contexts,
+        semanticAnalysis: semanticAnalysis // NEW: Include semantic analysis in result
       };
 
       // Cache the result
