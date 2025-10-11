@@ -44,6 +44,7 @@ import AddMilestoneModal from "../components/AddMilestoneModal";
 import ThemeToggle from "../components/ThemeToggle";
 import MoodStatement from "../components/MoodStatement";
 import Motive from "../components/Motive";
+import CelebrationModal from "../components/CelebrationModal";
 import ProjectAnalyzer from "../utils/ProjectAnalyzer";
 import LanguageSettings from "../components/LanguageSettings";
 import notificationService from "../services/NotificationService";
@@ -61,13 +62,12 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   
-  // Performance monitoring (only in development) - temporarily disabled
-  // Performance monitoring - daha az agresif
-  const performanceData = usePerformanceMonitor('MainScreen', {
-    trackFPS: false, // FPS tracking'i kapat
-    warnThreshold: 100, // 100ms'den az render frequency için uyar
-    criticalThreshold: 50 // 50ms'den az için kritik uyarı
-  });
+  // Performance monitoring - DEVRE DIŞI (celebration sistemi eklendiği için normal render sayısı arttı)
+  // const performanceData = usePerformanceMonitor('MainScreen', {
+  //   trackFPS: false,
+  //   warnThreshold: 100,
+  //   criticalThreshold: 50
+  // });
   
   // Performance optimization
   const { flatListProps, runAfterInteractions } = usePerformanceOptimization();
@@ -85,6 +85,9 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [forceUpdate, setForceUpdate] = useState(0);
   const [dailyAnalysisVisible, setDailyAnalysisVisible] = useState(false);
   const [dailyAnalysis, setDailyAnalysis] = useState(null);
+  const [celebrationVisible, setCelebrationVisible] = useState(false);
+  const [celebrationData, setCelebrationData] = useState(null);
+  const celebrationDataRef = useRef(null);
   
   // Menu animation values
   const menuScale = useSharedValue(0);
@@ -418,6 +421,24 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       global.forceReloadAIFeedback = () => {};
     };
   }, [forceReloadAIFeedback]);
+
+  // Celebration için global trigger sistemi - OPTIMIZED
+  useEffect(() => {
+    // Global function to trigger celebration
+    global.triggerCelebration = (completion) => {
+      // SADECE yeni bir completion ise setState yap
+      if (!celebrationDataRef.current || celebrationDataRef.current.completedAt !== completion.completedAt) {
+        console.log('🎉 Celebration tetiklendi:', completion.name);
+        celebrationDataRef.current = completion;
+        setCelebrationData(completion);
+        setCelebrationVisible(true);
+      }
+    };
+    
+    return () => {
+      global.triggerCelebration = null;
+    };
+  }, []);
 
   // Memoized render functions for FlatList
   const renderActiveItem = useCallback(({ item }) => (
@@ -837,6 +858,33 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           color={currentFeedback?.color || '#667eea'}
         />
       )}
+
+      {/* Celebration Modal */}
+      <CelebrationModal
+        visible={celebrationVisible}
+        onClose={() => {
+          setCelebrationVisible(false);
+          setCelebrationData(null);
+        }}
+        onJournalPress={() => {
+          if (celebrationData) {
+            // Tamamlanan proje için journal aç
+            const projectData = {
+              id: 'project-journal-celebration',
+              title: t('projectJournal'),
+              taskId: celebrationData.projectId,
+              projectTitle: celebrationData.projectTitle,
+              isProjectBased: true,
+              celebrationMode: true,
+              completionInfo: celebrationData
+            };
+            setMyDaySelectedMilestone(projectData);
+          }
+        }}
+        completion={celebrationData}
+        activeTasks={activeTasks}
+        completedTasks={completedTasks}
+      />
       </LinearGradient>
     );
   } catch (error) {

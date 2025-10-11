@@ -11,6 +11,7 @@ import {
   Animated,
   Dimensions,
   TextInput,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +27,7 @@ import ActiveProject from "./ActiveProject";
 import AddMilestoneModal from "../components/AddMilestoneModal";
 import DailyMoodSummary from "../components/DailyMoodSummary";
 import HorizontalCalendar from "../components/HorizontalCalendar";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width } = Dimensions.get("window");
 
 const MyDayScreen = memo(function MyDayScreen({ 
@@ -45,7 +47,7 @@ const MyDayScreen = memo(function MyDayScreen({
 }) {
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
-  const { addMilestone, updateMilestone, completeMilestone } = useTaskActions();
+  const { addMilestone, updateMilestone, completeMilestone, setActiveMilestone } = useTaskActions();
   const { theme } = useTheme();
   const { t } = useLanguage();
   
@@ -53,7 +55,56 @@ const MyDayScreen = memo(function MyDayScreen({
   // usePerformanceMonitor('MyDayScreen');
 
   const [completingMilestones, setCompletingMilestones] = useState(new Set());
+  const [focusedProjects, setFocusedProjects] = useState(new Set());
 
+  // Load focused projects from AsyncStorage
+  useEffect(() => {
+    const loadFocusedProjects = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('myDayFocusedProjects');
+        if (stored) {
+          const projectIds = JSON.parse(stored);
+          setFocusedProjects(new Set(projectIds));
+          console.log('✅ Focused projeler yüklendi:', projectIds);
+        } else {
+          console.log('ℹ️ Henüz focused proje yok');
+        }
+      } catch (error) {
+        console.error('❌ Focused projeler yüklenirken hata:', error);
+      }
+    };
+    loadFocusedProjects();
+  }, []);
+
+  // Save focused projects to AsyncStorage
+  const saveFocusedProjects = useCallback(async (projects) => {
+    try {
+      const projectIds = [...projects];
+      await AsyncStorage.setItem('myDayFocusedProjects', JSON.stringify(projectIds));
+      console.log('💾 Focused projeler kaydedildi:', projectIds);
+    } catch (error) {
+      console.error('❌ Focused projeler kaydedilirken hata:', error);
+    }
+  }, []);
+
+  // Toggle project focus
+  const handleProjectLongPress = useCallback((project) => {
+    setFocusedProjects(prev => {
+      const newSet = new Set(prev);
+      const wasFocused = newSet.has(project.id);
+      
+      if (wasFocused) {
+        newSet.delete(project.id);
+        console.log(`🔄 "${project.title}" artık focused değil`);
+      } else {
+        newSet.add(project.id);
+        console.log(`⭐ "${project.title}" focused oldu`);
+      }
+      
+      saveFocusedProjects(newSet);
+      return newSet;
+    });
+  }, [saveFocusedProjects]);
 
   // Memoized handlers to prevent unnecessary re-renders
      const openCard = useCallback((card) => {
@@ -75,11 +126,35 @@ const MyDayScreen = memo(function MyDayScreen({
     onOpenJournal(projectData);
   }, [onOpenJournal]);
 
-  const handleMilestoneComplete = useCallback((milestone, project) => {
-    if (milestone.completed) return;
+  const handleMilestoneToggle = useCallback((milestone, project, selectedDate) => {
+    // SADECE BUGÜN İÇİN complete/uncomplete yapılabilir
+    const today = new Date();
+    const selected = new Date(selectedDate);
+    today.setHours(0, 0, 0, 0);
+    selected.setHours(0, 0, 0, 0);
+    
+    if (today.getTime() !== selected.getTime()) {
+      // Bugün değilse işlem yapma - Kullanıcıya bilgi ver
+      const isPast = selected < today;
+      Alert.alert(
+        isPast ? '⏮️ ' + (t('pastDateRestriction') || 'Geçmiş Tarih') : '⏭️ ' + (t('futureDateRestriction') || 'Gelecek Tarih'),
+        isPast 
+          ? (t('cannotModifyPast') || 'Geçmişteki milestone\'ları değiştiremezsiniz. Sadece bugün için complete/uncomplete yapabilirsiniz.')
+          : (t('cannotModifyFuture') || 'Gelecekteki milestone\'ları şimdiden complete edemezsiniz. Sadece bugün için işlem yapabilirsiniz.'),
+        [{ text: 'Tamam', style: 'default' }]
+      );
+      return;
+    }
     
     const milestoneKey = `${project.id}-${milestone.id}`;
     
+    // Eğer milestone completed ise → uncomplete yap (direkt, animasyonsuz)
+    if (milestone.completed) {
+      setActiveMilestone(project.id, milestone.id);
+      return;
+    }
+    
+    // Eğer milestone active ise → complete yap (animasyonlu)
     // Milestone'u completing state'e ekle
     setCompletingMilestones(prev => new Set([...prev, milestoneKey]));
     
@@ -87,6 +162,21 @@ const MyDayScreen = memo(function MyDayScreen({
     setTimeout(() => {
       try {
         completeMilestone(project.id, milestone.id);
+        
+        // Celebration'ı tetikle
+        if (global.triggerCelebration) {
+          setTimeout(() => {
+            global.triggerCelebration({
+              type: 'milestone',
+              name: milestone.title,
+              projectId: project.id,
+              projectTitle: project.title,
+              completedAt: Date.now(),
+              project: project
+            });
+          }, 100); // Complete animasyonundan sonra
+        }
+        
         setCompletingMilestones(prev => {
           const newSet = new Set(prev);
           newSet.delete(milestoneKey);
@@ -101,7 +191,20 @@ const MyDayScreen = memo(function MyDayScreen({
         });
       }
     }, 1500);
-  }, [completeMilestone]);
+  }, [completeMilestone, setActiveMilestone, t]);
+
+  // Check if milestone was completed today
+  const isMilestoneCompletedToday = useCallback((milestone, selectedDate) => {
+    if (!milestone.completed || !milestone.completedAt) return false;
+    
+    const completedDate = new Date(milestone.completedAt);
+    const selected = new Date(selectedDate);
+    
+    completedDate.setHours(0, 0, 0, 0);
+    selected.setHours(0, 0, 0, 0);
+    
+    return completedDate.getTime() === selected.getTime();
+  }, []);
 
   // Check if milestone is suitable for today - SHOW OVERDUE MILESTONES
   const isMilestoneActiveToday = useCallback((milestone, selectedDate) => {
@@ -246,15 +349,23 @@ const MyDayScreen = memo(function MyDayScreen({
       };
     });
     
-    // Sort by last milestone activity (most recent first)
+    // Sort by focused status first, then by last milestone activity
     const sorted = filtered.sort((a, b) => {
+      // Focused projects always come first
+      const aIsFocused = focusedProjects.has(a.id);
+      const bIsFocused = focusedProjects.has(b.id);
+      
+      if (aIsFocused && !bIsFocused) return -1;
+      if (!aIsFocused && bIsFocused) return 1;
+      
+      // If both focused or both not focused, sort by last activity
       const dateA = new Date(a.lastMilestoneActivity);
       const dateB = new Date(b.lastMilestoneActivity);
       return dateB - dateA; // Most recent first
     });
 
     return sorted;
-  }, [activeTasks, selectedDate]);
+  }, [activeTasks, selectedDate, focusedProjects]);
 
   // Calculate milestones for today's summary - based on milestones active on that day
   const todaySummary = useMemo(() => {
@@ -263,7 +374,8 @@ const MyDayScreen = memo(function MyDayScreen({
     }, 0);
 
     const completedMilestones = selectedDateActiveTasks.reduce((total, project) => {
-      return total + (project.milestones?.filter(m => m.completed && isMilestoneActiveToday(m, selectedDate)).length || 0);
+      // Count milestones completed TODAY
+      return total + (project.milestones?.filter(m => isMilestoneCompletedToday(m, selectedDate)).length || 0);
     }, 0);
 
     const activeMilestones = totalMilestones;
@@ -274,7 +386,7 @@ const MyDayScreen = memo(function MyDayScreen({
       completedMilestones,
       activeMilestones,
     };
-  }, [selectedDateActiveTasks]);
+  }, [selectedDateActiveTasks, selectedDate, isMilestoneCompletedToday]);
 
 
 
@@ -404,8 +516,11 @@ const MyDayScreen = memo(function MyDayScreen({
                 isMilestoneOverdue={isMilestoneOverdue}
                 isMilestoneLastDay={isMilestoneLastDay}
                 openMilestone={openMilestone}
-                handleMilestoneComplete={handleMilestoneComplete}
+                handleMilestoneToggle={handleMilestoneToggle}
                 onOpenJournal={onOpenJournal}
+                isMilestoneCompletedToday={isMilestoneCompletedToday}
+                isFocused={focusedProjects.has(project.id)}
+                onProjectLongPress={handleProjectLongPress}
               />
             ))
         )}
@@ -456,8 +571,11 @@ const ProjectCard = memo(function ProjectCard({
   isMilestoneOverdue,
   isMilestoneLastDay,
   openMilestone,
-  handleMilestoneComplete,
+  handleMilestoneToggle,
   onOpenJournal,
+  isMilestoneCompletedToday,
+  isFocused,
+  onProjectLongPress,
 }) {
   // Instant touch animation (same as Card.js)
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -470,6 +588,11 @@ const ProjectCard = memo(function ProjectCard({
         scaleAnim.setValue(1);
         setSelectedCard(project);
       }}
+      onLongPress={() => {
+        scaleAnim.setValue(1);
+        onProjectLongPress(project);
+      }}
+      delayLongPress={500}
     >
       <Animated.View
         style={[
@@ -484,12 +607,21 @@ const ProjectCard = memo(function ProjectCard({
             marginBottom: isLastProject ? 0 : 20,
             transform: [{ scale: scaleAnim }],
           },
-          project.isLastDay && {
+          isFocused && {
+            borderColor: '#FF9500',
+            borderWidth: 2,
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF9F0',
+            shadowColor: '#FF9500',
+            shadowOpacity: 0.3,
+            shadowRadius: 16,
+            elevation: 12,
+          },
+          !isFocused && project.isLastDay && {
             borderColor: '#8E7DBE',
             borderWidth: 1.5,
             backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F6FF',
           },
-          project.isOverdue && {
+          !isFocused && project.isOverdue && {
             borderColor: '#FF4444',
             borderWidth: 1.5,
             backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF5F5',
@@ -497,20 +629,34 @@ const ProjectCard = memo(function ProjectCard({
         ]}
       >
         <View style={styles.projectHeader}>
-          <Text style={[
-            styles.projectTitle,
-            {
-              color: theme.name === 'dark' ? '#FF6B6B' : '#1B2951',
-            },
-            project.isLastDay && {
-              color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
-            },
-            project.isOverdue && {
-              color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
-            }
-          ]}>
-            {project.title || ''}
-          </Text>
+          <View style={styles.projectTitleContainer}>
+            <Text style={[
+              styles.projectTitle,
+              {
+                color: theme.name === 'dark' ? '#FF6B6B' : '#1B2951',
+              },
+              isFocused && {
+                color: theme.name === 'dark' ? '#FF9500' : '#FF9500',
+              },
+              !isFocused && project.isLastDay && {
+                color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
+              },
+              !isFocused && project.isOverdue && {
+                color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
+              }
+            ]}>
+              {project.title || ''}
+            </Text>
+            {isFocused && (
+              <View style={[
+                styles.focusedBadge,
+                { backgroundColor: theme.name === 'dark' ? '#FF9500' : '#FF9500' }
+              ]}>
+                <Ionicons name="star" size={12} color="#FFFFFF" />
+                <Text style={styles.focusedBadgeText}>{t('focused') || 'Focused'}</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.dateContainer}>
             <View style={[
               styles.projectDateRange,
@@ -593,22 +739,24 @@ const ProjectCard = memo(function ProjectCard({
         {project.milestones && project.milestones.length > 0 && (
           <View style={styles.milestonesList}>
             {(() => {
-              // NEW FILTERING LOGIC: Show active milestones with parent-child hierarchy
+              // NEW FILTERING LOGIC: Show active milestones + today's completed milestones
               const filteredMilestones = project.milestones.filter(m => {
                 // Always show if completing
                 if (completingMilestones.has(`${project.id}-${m.id}`)) return true;
                 
-                // Don't show completed milestones
-                if (m.completed) return false;
+                // Show completed milestones ONLY if completed today
+                if (m.completed) {
+                  return isMilestoneCompletedToday(m, selectedDate);
+                }
                 
                 // If milestone is a child
                 if (m.parentId) {
                   const parent = project.milestones.find(p => p.id === m.parentId);
-                  // Show child only if parent is active
-                  if (parent && !parent.completed) {
+                  // Show child only if parent is not completed (or completed today)
+                  if (parent && (!parent.completed || isMilestoneCompletedToday(parent, selectedDate))) {
                     return isMilestoneActiveToday(m, selectedDate);
                   }
-                  // Don't show child if parent is completed
+                  // Don't show child if parent is completed (and not today)
                   return false;
                 }
                 
@@ -661,18 +809,21 @@ const ProjectCard = memo(function ProjectCard({
                   ]}
                   onPress={() => openMilestone(milestone, project)}
                   onLongPress={() => {
-                    if (!milestone.completed) {
-                      handleMilestoneComplete(milestone, project);
-                    }
+                    // Toggle milestone: complete ↔ active (sadece bugün)
+                    handleMilestoneToggle(milestone, project, selectedDate);
                   }}
                   activeOpacity={0.7}
                   delayLongPress={500}
                 >
                   <View style={styles.milestoneInfo}>
                     <Ionicons 
-                      name="ellipse" 
+                      name={milestone.completed ? "checkmark-circle" : "ellipse"}
                       size={18} 
-                      color={getMilestoneColor(milestone, theme.name)} 
+                      color={
+                        milestone.completed 
+                          ? (theme.name === 'dark' ? '#34C759' : '#34C759')
+                          : getMilestoneColor(milestone, theme.name)
+                      } 
                     />
                     <View style={styles.milestoneContent}>
                       <View style={styles.milestoneTextContainer}>
@@ -683,11 +834,19 @@ const ProjectCard = memo(function ProjectCard({
                           },
                           milestone.completed && styles.completedMilestoneText,
                           isCompleting && styles.completingMilestoneText,
-                          isOverdue && styles.overdueMilestoneText,
-                          isLastDay && styles.lastDayMilestoneText
+                          isOverdue && !milestone.completed && styles.overdueMilestoneText,
+                          isLastDay && !milestone.completed && styles.lastDayMilestoneText
                         ]}>
                           {milestone.title || ''}
                         </Text>
+                        {milestone.completed && isMilestoneCompletedToday(milestone, selectedDate) && (
+                          <Text style={[
+                            styles.completedTodayBadge,
+                            { color: theme.name === 'dark' ? '#34C759' : '#34C759' }
+                          ]}>
+                            {' '}✓ {t('completedToday') || 'Bugün tamamlandı'}
+                          </Text>
+                        )}
                       </View>
                       {/* Mood stickers removed */}
                     </View>
@@ -948,13 +1107,13 @@ const styles = StyleSheet.create({
   projectHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  projectTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  projectTitleContainer: {
+    flexDirection: 'column',
     flex: 1,
+    gap: 6,
   },
   dateContainer: {
     alignItems: 'flex-end',
@@ -962,7 +1121,21 @@ const styles = StyleSheet.create({
   projectTitle: {
     fontSize: 18,
     fontFamily: 'Poppins_600SemiBold',
-    flex: 1,
+    flexShrink: 1,
+  },
+  focusedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  focusedBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
   },
   projectDateRange: {
     paddingHorizontal: 8,
@@ -1006,6 +1179,11 @@ const styles = StyleSheet.create({
   milestoneTextContainer: {
     position: 'relative',
     flex: 1,
+  },
+  completedTodayBadge: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginTop: 2,
   },
   completingMilestoneText: {
     color: '#8E8E93',
