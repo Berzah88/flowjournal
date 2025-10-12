@@ -29,14 +29,14 @@ const analyzeSemanticPatterns = (allMoods) => {
   
   // Gün içinde iyileşme/kötüleşme tespiti
   if (firstCategory === 'negative' && lastCategory === 'positive') {
-    return { type: 'improvement', message: '🌅 Gün içinde iyileştin!' };
+    return { type: 'improvement' };
   } else if (firstCategory === 'positive' && lastCategory === 'negative') {
-    return { type: 'decline', message: '🌙 Gün sonu yorgunluğu' };
+    return { type: 'decline' };
   } else if (allMoods.length >= 3) {
     // Mood çeşitliliği analizi
     const uniqueMoods = new Set(allMoods.map(m => m.mood));
     if (uniqueMoods.size >= 3) {
-      return { type: 'diverse', message: '🎨 Zengin bir duygu paleti' };
+      return { type: 'diverse' };
     }
   }
   
@@ -87,179 +87,212 @@ const getSolidMoodColor = (originalColor) => {
   return colorMap[originalColor] || originalColor;
 };
 
-// Helper: Zaman bazlı weight hesapla
-const getTimeBasedWeight = (timestamp) => {
-  const hour = new Date(timestamp).getHours();
+// Helper: Recency bazlı weight hesapla - EN ÖNEMLİ: Son girilen entry en yüksek weight
+const getRecencyWeight = (timestamp, allTimestamps) => {
+  const entryTime = new Date(timestamp).getTime();
+  const now = Date.now();
+  const timeDiff = now - entryTime; // Milliseconds
   
-  // Sabah (6-12): 0.7 - Eski
-  if (hour >= 6 && hour < 12) return 0.7;
+  // RECENCY FACTOR - Ne kadar yakınsa o kadar yüksek
+  let recencyWeight = 1.0;
   
-  // Öğle (12-18): 0.85 - Orta
-  if (hour >= 12 && hour < 18) return 0.85;
+  if (timeDiff < 60 * 60 * 1000) {
+    // Son 1 saat: 3.0x weight (ÇOK ÖNEMLİ)
+    recencyWeight = 3.0;
+  } else if (timeDiff < 3 * 60 * 60 * 1000) {
+    // Son 3 saat: 2.0x weight
+    recencyWeight = 2.0;
+  } else if (timeDiff < 6 * 60 * 60 * 1000) {
+    // Son 6 saat: 1.5x weight
+    recencyWeight = 1.5;
+  } else if (timeDiff < 12 * 60 * 60 * 1000) {
+    // Son 12 saat: 1.2x weight
+    recencyWeight = 1.2;
+  }
+  // Daha eski: 1.0x (normal)
   
-  // Akşam (18-24 + 0-6): 1.0 - En güncel
-  return 1.0;
+  return recencyWeight;
 };
 
-const MoodStatement = ({ 
+const MoodStatement = React.memo(({ 
   activeTasks = [], 
   completedTasks = [],
-  selectedDate,
+  selectedDate, // Optional - yoksa bugün kullanılır
   onPress = null
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  // Bugünkü mood'ları hesapla
+  
+  // STEP 1: Journal metadata'yı hesapla (lightweight!)
+  const journalMetadata = useMemo(() => {
+    let totalCount = 0;
+    let lastTimestamp = '';
+    
+    [...activeTasks, ...completedTasks].forEach(task => {
+      if (task.journalEntries && Array.isArray(task.journalEntries)) {
+        totalCount += task.journalEntries.length;
+        const lastEntry = task.journalEntries[task.journalEntries.length - 1];
+        if (lastEntry?.createdAt > lastTimestamp) {
+          lastTimestamp = lastEntry.createdAt;
+        }
+      }
+    });
+    
+    return { totalCount, lastTimestamp };
+  }, [activeTasks, completedTasks]);
+  
+  // STEP 2: Journal entries'i flat array'e çıkar - SADECE METADATA DEĞİŞTİĞİNDE
+  const allJournalEntries = useMemo(() => {
+    console.log('📦 MoodStatement - Journal cache güncelleniyor');
+    
+    const entries = [];
+    [...activeTasks, ...completedTasks].forEach(task => {
+      if (task.journalEntries && Array.isArray(task.journalEntries)) {
+        task.journalEntries.forEach(entry => {
+          entries.push({
+            ...entry,
+            projectId: task.id,
+            projectDone: task.done
+          });
+        });
+      }
+    });
+    return entries;
+  }, [journalMetadata.totalCount, journalMetadata.lastTimestamp]); // ✅ Primitive values!
+  
+  // Bugünkü mood'ları hesapla - SADECE allJournalEntries DEĞİŞTİĞİNDE
   const todayMoodData = useMemo(() => {
-    const today = new Date(selectedDate);
+    console.log('🔄 MoodStatement - HESAPLAMA YAPILIYOR (sadece journal değiştiğinde olmalı)');
+    
+    // selectedDate yoksa bugünü kullan
+    const dateToUse = selectedDate || new Date();
+    const today = new Date(dateToUse);
     today.setHours(0, 0, 0, 0);
     
     const todayMoods = [];
     const moodCounts = {};
     let hasCompletedProjectToday = false;
     
-    // Tüm projelerdeki journal entry'leri tara (project-based system)
-    activeTasks.forEach(task => {
-      if (task.journalEntries) {
-        task.journalEntries.forEach(entry => {
-          const entryDate = new Date(entry.createdAt);
-          entryDate.setHours(0, 0, 0, 0);
-          
-          // Bugünkü entry'leri filtrele
-          if (entryDate.getTime() === today.getTime() && entry.mood) {
-            todayMoods.push({
-              mood: entry.mood,
-              moodIcon: entry.moodIcon,
-              moodColor: entry.moodColor,
-              text: entry.text,
-              timestamp: entry.createdAt
-            });
-            
-            // Mood sayısını artır
-            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-          }
-        });
-      }
-    });
-    
-    // Bugün tamamlanan projeleri kontrol et
-    completedTasks.forEach(task => {
-      // Proje bugün tamamlandı mı kontrol et
-      if (task.done) {
-        // Task'in updatedAt veya completedAt alanı varsa onu kullan
-        // Yoksa milestones'ların tamamlanma tarihlerini kontrol et
-        let completionDate = null;
-        
-        // updatedAt veya completedAt varsa direkt kullan
-        if (task.updatedAt) {
-          completionDate = new Date(task.updatedAt);
-        } else if (task.completedAt) {
-          completionDate = new Date(task.completedAt);
-        }
-        
-        // Eğer completionDate varsa ve bugünse, günlük sayısını artır
-        if (completionDate) {
-          completionDate.setHours(0, 0, 0, 0);
-          if (completionDate.getTime() === today.getTime()) {
-            hasCompletedProjectToday = true;
-          }
-        }
-      }
+    // Bugünkü entry'leri filtrele - allJournalEntries'den (optimize edilmiş)
+    allJournalEntries.forEach(entry => {
+      const entryDate = new Date(entry.createdAt);
+      entryDate.setHours(0, 0, 0, 0);
       
-      // Ayrıca tamamlanan projelerin de journal entry'lerini kontrol et
-      if (task.journalEntries) {
-        task.journalEntries.forEach(entry => {
-          const entryDate = new Date(entry.createdAt);
-          entryDate.setHours(0, 0, 0, 0);
-          
-          // Bugünkü entry'leri filtrele
-          if (entryDate.getTime() === today.getTime() && entry.mood) {
-            todayMoods.push({
-              mood: entry.mood,
-              moodIcon: entry.moodIcon,
-              moodColor: entry.moodColor,
-              text: entry.text,
-              timestamp: entry.createdAt
-            });
-            
-            // Mood sayısını artır
-            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-          }
+      // Bugünkü entry'leri filtrele
+      if (entryDate.getTime() === today.getTime() && entry.mood) {
+        todayMoods.push({
+          mood: entry.mood,
+          moodIcon: entry.moodIcon,
+          moodColor: entry.moodColor,
+          text: entry.text,
+          timestamp: entry.createdAt
         });
+        
+        // Mood sayısını artır
+        moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
       }
     });
     
-    // ✨ YENİ: Zaman bazlı ağırlıklandırma ile dominant mood hesapla
+    // Bugün tamamlanan projeleri kontrol et (hızlı check)
+    const completedTasksList = completedTasks.filter(t => t.done);
+    completedTasksList.forEach(task => {
+      const completionDate = task.updatedAt ? new Date(task.updatedAt) : 
+                            task.completedAt ? new Date(task.completedAt) : null;
+      
+      if (completionDate) {
+        completionDate.setHours(0, 0, 0, 0);
+        if (completionDate.getTime() === today.getTime()) {
+          hasCompletedProjectToday = true;
+        }
+      }
+    });
+    
+    // ✨ RECENCY-BASED: Son girilen entry en yüksek öncelik!
     let dominantMood = null;
     let maxWeightedScore = 0;
     const moodWeightedScores = {};
     
-    // Her mood için weighted score hesapla
+    // Tüm timestamp'leri al (recency hesaplama için)
+    const allTimestamps = todayMoods.map(e => e.timestamp);
+    
+    // Her mood için weighted score hesapla - RECENCY FACTOR
     todayMoods.forEach(entry => {
-      const timeWeight = getTimeBasedWeight(entry.timestamp);
+      const recencyWeight = getRecencyWeight(entry.timestamp, allTimestamps);
       const mood = entry.mood;
       
       if (!moodWeightedScores[mood]) {
         moodWeightedScores[mood] = 0;
       }
       
-      moodWeightedScores[mood] += timeWeight;
+      // Son 1 saat içindeki entry 3x daha önemli!
+      moodWeightedScores[mood] += recencyWeight;
     });
     
-    // En yüksek weighted score'u bul
+    // En yüksek weighted score'u bul - SADECE EN YÜKSEK SCORE'U BUL
+    let dominantMoodKey = null;
     Object.entries(moodWeightedScores).forEach(([mood, score]) => {
       if (score > maxWeightedScore) {
         maxWeightedScore = score;
-        
-        // Önce MOODS'da ara
-        let foundMood = MOODS.find(m => m.key === mood);
-        
-        // MOODS'da bulunamazsa EXTENDED_MOODS'da ara
-        if (!foundMood) {
-          const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
-          foundMood = EXTENDED_MOODS.find(m => m.key === mood);
-        }
-        
-        // Hiçbirinde bulunamazsa, journal entry'den gelen bilgileri kullan
-        if (!foundMood) {
-          const entryWithMood = todayMoods.find(entry => entry.mood === mood);
-          foundMood = {
-            key: mood,
-            label: mood.charAt(0).toUpperCase() + mood.slice(1),
-            icon: entryWithMood?.moodIcon || 'sentiment-neutral',
-            color: entryWithMood?.moodColor || '#4A90E2'
-          };
-        }
-        
-        dominantMood = foundMood;
+        dominantMoodKey = mood;
       }
     });
     
-    // ✨ YENİ: Dünkü mood'u hesapla (Trend Analysis)
+    // Dominant mood bulunduysa mood objesini oluştur
+    if (dominantMoodKey) {
+      // Önce MOODS'da ara
+      let foundMood = MOODS.find(m => m.key === dominantMoodKey);
+        
+      // MOODS'da bulunamazsa EXTENDED_MOODS'da ara
+      if (!foundMood) {
+        const { EXTENDED_MOODS } = require('../utils/AIMoodPredictor');
+        foundMood = EXTENDED_MOODS.find(m => m.key === dominantMoodKey);
+      }
+      
+      // Hiçbirinde bulunamazsa, journal entry'den gelen bilgileri kullan
+      if (!foundMood) {
+        const entryWithMood = todayMoods.find(entry => entry.mood === dominantMoodKey);
+        foundMood = {
+          key: dominantMoodKey,
+          label: dominantMoodKey.charAt(0).toUpperCase() + dominantMoodKey.slice(1),
+          icon: entryWithMood?.moodIcon || 'sentiment-neutral',
+          color: entryWithMood?.moodColor || '#4A90E2'
+        };
+      }
+      
+      dominantMood = foundMood;
+      
+      // Debug log - Sadece final result
+      if (todayMoods.length > 0) {
+        console.log('🎭 MoodStatement - Final Dominant:', dominantMood?.key, 
+                    '| Scores:', moodWeightedScores,
+                    '| Entries:', todayMoods.length);
+      }
+    }
+    
+    // ✨ YENİ: Dünkü mood'u hesapla (Trend Analysis) - OPTIMIZE
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayMoods = [];
     
-    [...activeTasks, ...completedTasks].forEach(task => {
-      if (task.journalEntries) {
-        task.journalEntries.forEach(entry => {
-          const entryDate = new Date(entry.createdAt);
-          entryDate.setHours(0, 0, 0, 0);
-          
-          if (entryDate.getTime() === yesterday.getTime() && entry.mood) {
-            yesterdayMoods.push({ mood: entry.mood, timestamp: entry.createdAt });
-          }
-        });
+    // allJournalEntries'den dünkü mood'ları filtrele
+    allJournalEntries.forEach(entry => {
+      const entryDate = new Date(entry.createdAt);
+      entryDate.setHours(0, 0, 0, 0);
+      
+      if (entryDate.getTime() === yesterday.getTime() && entry.mood) {
+        yesterdayMoods.push({ mood: entry.mood, timestamp: entry.createdAt });
       }
     });
     
-    // Dünkü dominant mood
+    // Dünkü dominant mood - Dün için de recency kullan
     let yesterdayDominantMood = null;
     if (yesterdayMoods.length > 0) {
       const yesterdayWeightedScores = {};
+      const yesterdayTimestamps = yesterdayMoods.map(e => e.timestamp);
+      
       yesterdayMoods.forEach(entry => {
-        const timeWeight = getTimeBasedWeight(entry.timestamp);
-        yesterdayWeightedScores[entry.mood] = (yesterdayWeightedScores[entry.mood] || 0) + timeWeight;
+        const recencyWeight = getRecencyWeight(entry.timestamp, yesterdayTimestamps);
+        yesterdayWeightedScores[entry.mood] = (yesterdayWeightedScores[entry.mood] || 0) + recencyWeight;
       });
       
       let maxYesterdayScore = 0;
@@ -291,7 +324,7 @@ const MoodStatement = ({
       }
     }
     
-    // ✨ YENİ: Streak Calculation (Son 7 gün)
+    // ✨ YENİ: Streak Calculation (Son 7 gün) - OPTIMIZE
     const last7Days = [];
     const journalStreak = { current: 0, longest: 0 };
     const moodStreak = { mood: null, count: 0 };
@@ -301,19 +334,14 @@ const MoodStatement = ({
       checkDate.setDate(checkDate.getDate() - i);
       checkDate.setHours(0, 0, 0, 0);
       
-      const dayMoods = [];
-      [...activeTasks, ...completedTasks].forEach(task => {
-        if (task.journalEntries) {
-          task.journalEntries.forEach(entry => {
-            const entryDate = new Date(entry.createdAt);
-            entryDate.setHours(0, 0, 0, 0);
-            
-            if (entryDate.getTime() === checkDate.getTime() && entry.mood) {
-              dayMoods.push(entry.mood);
-            }
-          });
-        }
-      });
+      // allJournalEntries'den bu günün mood'larını filtrele (optimize)
+      const dayMoods = allJournalEntries
+        .filter(entry => {
+          const entryDate = new Date(entry.createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          return entryDate.getTime() === checkDate.getTime() && entry.mood;
+        })
+        .map(entry => entry.mood);
       
       last7Days.push({
         date: new Date(checkDate),
@@ -367,17 +395,19 @@ const MoodStatement = ({
       moodCounts, // Mood çeşitliliği için
       semanticPattern, // ✨ Gün içi pattern analizi
     };
-  }, [activeTasks, completedTasks, selectedDate]);
+  }, [allJournalEntries, completedTasks, selectedDate]); // ✅ SADECE JOURNAL DEĞİŞTİĞİNDE!
   
-  // Sadece bugün için göster
-  const today = new Date();
-  const selectedDateObj = new Date(selectedDate);
-  today.setHours(0, 0, 0, 0);
-  selectedDateObj.setHours(0, 0, 0, 0);
-  
-  // Bugün değilse component'i gösterme
-  if (selectedDateObj.getTime() !== today.getTime()) {
-    return null;
+  // Sadece bugün için göster - selectedDate verilmemişse her zaman göster
+  if (selectedDate) {
+    const today = new Date();
+    const selectedDateObj = new Date(selectedDate);
+    today.setHours(0, 0, 0, 0);
+    selectedDateObj.setHours(0, 0, 0, 0);
+    
+    // selectedDate bugün değilse component'i gösterme
+    if (selectedDateObj.getTime() !== today.getTime()) {
+      return null;
+    }
   }
   
   const content = (
@@ -456,20 +486,22 @@ const MoodStatement = ({
             {/* ✨ Context-Aware & Smart Messages with Priority */}
             {todayMoodData.totalEntries > 0 ? (
               // Priority 1: Dün vs bugün trend
-              todayMoodData.trendMessage === 'improvingFromYesterday' ? '✨ Dünden daha iyi hissediyorsun!' :
-              todayMoodData.trendMessage === 'worseningFromYesterday' ? '💙 Bugün zor bir gün olabilir, kendine iyi bak' :
+              todayMoodData.trendMessage === 'improvingFromYesterday' ? t('improvingFromYesterday') :
+              todayMoodData.trendMessage === 'worseningFromYesterday' ? t('worseningFromYesterday') :
               // Priority 2: Semantic gün içi pattern
-              todayMoodData.semanticPattern?.message ? todayMoodData.semanticPattern.message :
+              todayMoodData.semanticPattern?.type === 'improvement' ? t('dayImprovement') :
+              todayMoodData.semanticPattern?.type === 'decline' ? t('dayEndFatigue') :
+              todayMoodData.semanticPattern?.type === 'diverse' ? t('richEmotionalPalette') :
               // Priority 3: Mood streak
-              todayMoodData.moodStreak.count >= 3 ? `🎯 ${todayMoodData.moodStreak.count} gündür ${todayMoodData.moodStreak.mood}` :
+              todayMoodData.moodStreak.count >= 3 ? t('moodStreakDays', { count: todayMoodData.moodStreak.count, mood: t(todayMoodData.moodStreak.mood) || todayMoodData.moodStreak.mood }) :
               // Priority 4: Journal streak
-              todayMoodData.journalStreak.current >= 5 ? `🔥 ${todayMoodData.journalStreak.current} gün üst üste journal yazıyorsun!` :
+              todayMoodData.journalStreak.current >= 5 ? t('journalStreakDays', { count: todayMoodData.journalStreak.current }) :
               // Priority 5: Stable mood
-              todayMoodData.trendMessage === 'stableMood' ? '→ Tutarlı bir ruh hali' :
+              todayMoodData.trendMessage === 'stableMood' ? t('stableMood') :
               // Default: View details
               t('viewMoreDetails')
             ) : (
-              t('startJournalingToday') || 'Bugünü kaydetmeye başlayın'
+              t('startJournalingToday')
             )}
           </Text>
         </View>
@@ -486,7 +518,43 @@ const MoodStatement = ({
   }
 
   return content;
-};
+}, (prevProps, nextProps) => { // React.memo comparison function
+  // Custom comparison: SADECE journal entry değiştiğinde re-render
+  
+  // Journal entry count ve son timestamp karşılaştır
+  let prevCount = 0;
+  let prevLastTimestamp = '';
+  [...prevProps.activeTasks, ...prevProps.completedTasks].forEach(task => {
+    if (task.journalEntries) {
+      prevCount += task.journalEntries.length;
+      const last = task.journalEntries[task.journalEntries.length - 1];
+      if (last?.createdAt > prevLastTimestamp) prevLastTimestamp = last.createdAt;
+    }
+  });
+  
+  let nextCount = 0;
+  let nextLastTimestamp = '';
+  [...nextProps.activeTasks, ...nextProps.completedTasks].forEach(task => {
+    if (task.journalEntries) {
+      nextCount += task.journalEntries.length;
+      const last = task.journalEntries[task.journalEntries.length - 1];
+      if (last?.createdAt > nextLastTimestamp) nextLastTimestamp = last.createdAt;
+    }
+  });
+  
+  // True = DON'T re-render, False = RE-render
+  const shouldSkipRender = (
+    prevCount === nextCount && 
+    prevLastTimestamp === nextLastTimestamp &&
+    prevProps.selectedDate === nextProps.selectedDate
+  );
+  
+  if (!shouldSkipRender) {
+    console.log('🔄 MoodStatement - Re-render gerekli (journal değişti)');
+  }
+  
+  return shouldSkipRender;
+});
 
 const styles = StyleSheet.create({
   container: {

@@ -52,7 +52,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0); // For refresh after journal entry
-  const [forceUpdate, setForceUpdate] = useState(0); // For force update
+  // forceUpdate kaldırıldı - refreshKey yeterli
   
   // AI Milestone Suggestion states
   const [aiSuggestionVisible, setAiSuggestionVisible] = useState(false);
@@ -240,27 +240,25 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     return () => sub.remove();
   }, [menuVisible, editVisible, selectedMilestone, selectedJournalMilestone]);
 
-  // Cleanup animations on unmount
+  // Cleanup animations on unmount - DEPENDENCY-FREE
   useEffect(() => {
     return () => {
-      // Stop all running animations
-      if (translateY) translateY.value = 0;
-      if (scale) scale.value = 1;
-      if (opacity) opacity.value = 0;
-      if (dragY) dragY.value = 0;
+      // Stop all running animations - shared values referansları sabit
+      translateY.value = 0;
+      scale.value = 1;
+      opacity.value = 0;
+      dragY.value = 0;
       
-      // PanX cleanup
-      if (panX) {
-        panX.stopAnimation();
-        if (panX.removeAllListeners) {
-          panX.removeAllListeners();
-        }
-        panX.setValue(0);
-        try {
-          panX.flattenOffset();
-        } catch (e) {
-          // Ignore errors during cleanup
-        }
+      // PanX cleanup - ref stable
+      panX.stopAnimation();
+      if (panX.removeAllListeners) {
+        panX.removeAllListeners();
+      }
+      panX.setValue(0);
+      try {
+        panX.flattenOffset();
+      } catch (e) {
+        // Ignore errors during cleanup
       }
       
       // Clear any pending animation callbacks
@@ -273,7 +271,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
         animationCleanupRef.current = [];
       }
     };
-  }, [translateY, scale, opacity, dragY, panX]); // Dependencies eklendi
+  }, []); // Empty deps - sadece mount/unmount'ta çalış
 
   const handleClose = useCallback(() => {
     translateY.value = withTiming(height, { 
@@ -358,7 +356,6 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     
     // Refresh trigger for milestone updates
     setRefreshKey(prev => prev + 1);
-    setForceUpdate(prev => prev + 1);
     
     // Close modal and clear state
     setAddMilestoneModalVisible(false);
@@ -439,10 +436,10 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     animateToTab(newTab);
   }, [activeTab, animateToTab]);
 
-  // Memoize milestone calculations for performance
+  // Memoize milestone calculations for performance - OPTIMIZED
   const allMilestones = useMemo(() => 
     [...(currentTask?.milestones || [])].sort((a, b) => a.id - b.id),
-    [currentTask?.milestones, refreshKey]
+    [currentTask?.milestones] // refreshKey kaldırıldı - currentTask.milestones değişimi yeterli
   );
   
   const completedMilestones = useMemo(() => {
@@ -485,6 +482,9 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     <AnimatedReanimated.View style={[
       styles.modernContainer, 
       {
+        // Üst boşluk sabit kalıyor (kartlar efekti için)
+        // Alt boşluk yok (bottom: 0 ile ekranın en altına kadar iniyor)
+        bottom: 0,
         backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
       },
       isCompleted && {
@@ -615,7 +615,6 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 onSave={() => {
                   // Refresh trigger when journal is saved
                   setRefreshKey(prev => prev + 1);
-                  setForceUpdate(prev => prev + 1);
                 }}
                 onClose={() => {
                   setSelectedJournalMilestone(null);
@@ -645,9 +644,9 @@ const styles = StyleSheet.create({
   // Modern Container Styles
   modernContainer: { 
     position: "absolute", 
-    top: 40, // Less spacing
+    top: 40, // Sabit - kartlar efekti için
+    // bottom: 0 inline style ile ekleniyor (ekranın en altına kadar)
     width: width, 
-    height: height - 40, // Increase height
     zIndex: 100, 
     elevation: 10, 
     overflow: "hidden",

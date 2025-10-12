@@ -546,32 +546,53 @@ function MileStone({
     }
   }, [hasChildren, milestone.startDate, milestone.endDate, milestone.completed, childMilestones]);
 
-  // Check if this milestone should be shown as child
+  // Check if this milestone should be shown as child - MEMOIZED
   // Show as child if:
   // 1. Already has a parent
   // 2. Or this is the milestone that started attach mode (will become child)
-  const shouldShowAsChild = milestone.parentId || (isAttachMode && milestone.id === attachModeSourceId);
+  const shouldShowAsChild = useMemo(() => 
+    milestone.parentId || (isAttachMode && milestone.id === attachModeSourceId),
+    [milestone.parentId, isAttachMode, milestone.id, attachModeSourceId]
+  );
 
-  // Initialize animation value on first render
+  // Initialize animation value on first render - STABILIZED
   const isFirstRender = useRef(true);
+  const hasInitializedAnim = useRef(false);
+  
   useEffect(() => {
-    if (isFirstRender.current) {
+    // Sadece 1 kere initialize et
+    if (!hasInitializedAnim.current) {
       childIndentAnim.setValue(shouldShowAsChild ? 1 : 0);
+      hasInitializedAnim.current = true;
       isFirstRender.current = false;
     }
-  }, []);
+  }, [shouldShowAsChild, childIndentAnim]);
 
-  // Animate child indent when attach/detach
+  // Animate child indent when attach/detach - DEBOUNCED
   useEffect(() => {
-    if (!isFirstRender.current) {
-      Animated.spring(childIndentAnim, {
-        toValue: shouldShowAsChild ? 1 : 0,
-        useNativeDriver: false,
-        tension: 40,
-        friction: 8,
-      }).start();
+    if (!isFirstRender.current && hasInitializedAnim.current) {
+      // Küçük delay ile batch update'leri bekle
+      const timer = setTimeout(() => {
+        Animated.timing(childIndentAnim, {
+          toValue: shouldShowAsChild ? 1 : 0,
+          duration: 200, // Spring yerine timing - daha smooth
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false, // marginLeft için false gerekli
+        }).start();
+      }, 16); // 1 frame delay (16ms = ~60fps)
+      
+      return () => clearTimeout(timer);
     }
   }, [shouldShowAsChild, childIndentAnim]);
+
+  // Memoized margin interpolation - Her render'da yeni obje oluşturma!
+  const animatedMarginLeft = useMemo(() => 
+    childIndentAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 40], // Parent: 20px, Child: 40px
+    }),
+    [childIndentAnim]
+  );
 
   return (
     <>
@@ -584,11 +605,8 @@ function MileStone({
         <Animated.View style={[
           styles.container,
           {
-            // Eşit sol/sağ margin için
-            marginLeft: childIndentAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [20, 40], // Parent: 20px, Child: 40px (daha az indent)
-            }),
+            // Eşit sol/sağ margin için - MEMOIZED
+            marginLeft: animatedMarginLeft,
             marginRight: 20, // Sol ile eşit
             marginBottom: 5,
             marginTop: 5,

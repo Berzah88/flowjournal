@@ -82,7 +82,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [mainMenuVisible, setMainMenuVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
-  const [forceUpdate, setForceUpdate] = useState(0);
+  // forceUpdate kaldırıldı - refreshKey yeterli
   const [dailyAnalysisVisible, setDailyAnalysisVisible] = useState(false);
   const [dailyAnalysis, setDailyAnalysis] = useState(null);
   const [celebrationVisible, setCelebrationVisible] = useState(false);
@@ -490,14 +490,14 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     opacity: menuOpacity.value,
   }));
 
-  // Memoized data arrays with content-based dependencies
+  // Memoized data arrays - Basitleştirilmiş dependency
   const activeTasksReversed = useMemo(() => {
     return [...activeTasks].reverse();
-  }, [activeTasks.length, activeTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.journalEntries?.length || 0}-${t.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',')]);
+  }, [activeTasks, refreshKey]); // activeTasks array referansı değiştiğinde yeniden hesapla
   
   const completedTasksReversed = useMemo(() => {
     return [...completedTasks].reverse();
-  }, [completedTasks.length, completedTasks.map(t => `${t.id}-${t.title}-${t.done}-${t.milestones?.length || 0}-${t.journalEntries?.length || 0}-${t.journalEntries?.map(e => `${e.id}-${e.mood}-${e.moodIcon}-${e.moodColor}`).join(',') || ''}`).join(',')]);
+  }, [completedTasks, refreshKey]); // completedTasks array referansı değiştiğinde yeniden hesapla
 
   // Additional safety check
   if (!activeTasks || !completedTasks || !Array.isArray(activeTasks) || !Array.isArray(completedTasks)) {
@@ -564,7 +564,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       <MoodStatement 
         activeTasks={activeTasks}
         completedTasks={completedTasks}
-        selectedDate={new Date()}
         onPress={() => navigation.navigate('EmotionalJournal')}
       />
 
@@ -664,7 +663,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="help-circle-outline" size={20} color="#8B5CF6" />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Tutorial</Text>
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('tutorial')}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -720,7 +719,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="notifications-outline" size={20} color={theme.colors.secondary} />
-                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Bildirimler</Text>
+                  <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('notifications')}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -778,7 +777,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         onSave={() => {
           // Refresh trigger when journal is saved
           setRefreshKey(prev => prev + 1);
-          setForceUpdate(prev => prev + 1);
         }}
         fromMainScreen={true}
         // Project-based journal support

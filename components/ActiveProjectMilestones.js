@@ -31,7 +31,7 @@ function ActiveProjectMilestones({
   // Attach mode state
   const [attachMode, setAttachMode] = useState(null); // null veya { milestoneId: string }
 
-  // Prepare active milestones data with hierarchy
+  // Prepare active milestones data with hierarchy - OPTIMIZED
   const activeMilestonesWithLatest = useMemo(() => {
     const milestones = activeMilestones.map((milestone, index) => ({
       ...milestone,
@@ -72,9 +72,9 @@ function ActiveProjectMilestones({
     });
     
     return organized;
-  }, [activeMilestones, currentTask?.id, attachMode, refreshKey]);
+  }, [activeMilestones, currentTask?.id]);
 
-  // Prepare completed milestones data
+  // Prepare completed milestones data - OPTIMIZED
   const completedMilestonesWithLatest = useMemo(() => 
     completedMilestones.map((milestone, index) => ({
       ...milestone,
@@ -83,7 +83,7 @@ function ActiveProjectMilestones({
       title: milestone.title || '',
       id: milestone.id || `completed-${index}`
     }))
-  , [completedMilestones, currentTask?.id, attachMode]);
+  , [completedMilestones, currentTask?.id]);
 
   // Attach mode handlers
   const handleStartAttachMode = (milestoneId) => {

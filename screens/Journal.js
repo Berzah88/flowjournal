@@ -24,6 +24,7 @@ import Animated, {
   interpolate,
   Easing,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
@@ -103,17 +104,19 @@ export default function Journal({
 
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
   const { 
     addProjectJournalEntry,
     updateProjectJournalEntry 
   } = useTaskActions();
 
-  // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler
+  // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler (SABİT - kartlar efekti için)
   const dynamicTopGap = fromActiveProject ? 0 : (fromMainScreen ? 40 : TOP_GAP);
   const modalHeight = height - dynamicTopGap;
   
-  // Dinamik button bottom pozisyonu - Active Project'te daha yukarıda olmalı
-  const dynamicButtonBottom = fromActiveProject ? 60 : 20;
+  // Dinamik button bottom pozisyonu - Tüm durumlar için tutarlı pozisyon
+  // Safe area bottom ile cihazın gesture bar'ından kaçınıyoruz
+  const dynamicButtonBottom = 20 + Math.max(insets.bottom - 10, 0);
 
   // Dinamik styles
   const dynamicStyles = StyleSheet.create({
@@ -122,7 +125,7 @@ export default function Journal({
       left: 0,
       width,
       top: dynamicTopGap,
-      height: modalHeight,
+      bottom: 0, // Ekranın en altına kadar iniyor
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       zIndex: 201,
@@ -466,7 +469,7 @@ export default function Journal({
     setHasMoodSuggestions(false);
     
     // Smooth closing animation
-    translateY.value = withTiming(height, { 
+    translateY.value = withTiming(modalHeight, { 
       duration: 350,
       easing: Easing.bezier(0.4, 0, 0.6, 1) // Accelerated easing
     });
@@ -474,7 +477,7 @@ export default function Journal({
       duration: 350,
       easing: Easing.bezier(0.4, 0, 0.6, 1)
     });
-  }, [onClose]);
+  }, [onClose, modalHeight]);
 
   const panGesture = Gesture.Pan()
     .onUpdate((e) => {
@@ -484,7 +487,7 @@ export default function Journal({
     })
     .onEnd((e) => {
       if (e.translationY > 80) { // Daha düşük threshold
-        dragY.value = withTiming(height, { duration: 200 }, () => {
+        dragY.value = withTiming(modalHeight, { duration: 200 }, () => {
           runOnJS(handleClose)();
         });
       } else {
@@ -927,8 +930,11 @@ export default function Journal({
               style={[
                 styles.input,
                 {
-                   // Dynamic height using same logic as buttons + 50% margin bottom
-                   height: Math.max(150, (modalHeight - (keyboardHeight || 0)) * 0.5), // 50% of available space (50% margin bottom)
+                  // Dynamic height - daha tutarlı hesaplama
+                  // Maksimum height'ı sınırla, keyboard açıkken de düzgün görünsün
+                  height: keyboardHeight > 0 
+                    ? Math.max(150, Math.min(300, (height - keyboardHeight - 250))) // Keyboard açıkken: max 300px
+                    : Math.max(200, Math.min(400, modalHeight * 0.4)), // Keyboard kapalıyken: modal height'ın %40'ı, max 400px
                   minHeight: 150,
                   backgroundColor: 'transparent',
                   color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
