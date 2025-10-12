@@ -85,9 +85,9 @@ export default function NotificationMenu({
           setIsSubscribed(true);
           await AsyncStorage.setItem('fcm_daily_reminders_subscribed', 'true');
           Alert.alert(
-            '✅ Başarılı',
-            'Günlük hatırlatmalara abone oldunuz!\n\nBildirimler PythonAnywhere + FCM ile gelecek.',
-            [{ text: 'Tamam' }]
+            '✅ ' + t('subscriptionSuccess'),
+            t('subscribedToDailyReminders'),
+            [{ text: t('ok') }]
           );
         }
       } else {
@@ -100,11 +100,11 @@ export default function NotificationMenu({
       }
     } catch (error) {
       console.error('❌ Günlük bildirim toggle hatası:', error);
-      Alert.alert('❌ Hata', error.message);
+      Alert.alert('❌ ' + t('error'), error.message);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // Menu açıldığında abonelik durumunu kontrol et
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function NotificationMenu({
         <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
           <View style={styles.headerContent}>
             <Ionicons name="notifications-outline" size={24} color={theme.colors.primary} />
-            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Bildirim Ayarları</Text>
+            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{t('notificationSettings')}</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={theme.colors.text} />
@@ -145,9 +145,9 @@ export default function NotificationMenu({
             <View style={styles.menuItemContent}>
               <Ionicons name="calendar-outline" size={20} color={theme.colors.secondary} />
               <View style={styles.menuItemTextContainer}>
-                <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>Günlük Hatırlatma</Text>
+                <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>{t('dailyReminder')}</Text>
                 <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
-                  Günlük yazma hatırlatmaları
+                  {t('dailyJournalingReminders')}
                 </Text>
               </View>
             </View>

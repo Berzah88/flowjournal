@@ -13,6 +13,7 @@ const translations = {
     'data': 'Data',
     'theme': 'Theme',
     'language': 'Language',
+    'notifications': 'Notifications',
     'createBackup': 'Create Backup',
     'recoverData': 'Recover Data',
     'completedProjects': 'Completed Projects',
@@ -38,6 +39,11 @@ const translations = {
     'months': 'Months',
     'cancel': 'Cancel',
     'confirm': 'Confirm',
+    
+    // Active Task Menu
+    'markAsIncomplete': 'Mark as Incomplete',
+    'markAsComplete': 'Mark as Complete',
+    'complete': 'Complete',
     
     // Journal
     'journal': 'Mood Tracker',
@@ -84,6 +90,7 @@ const translations = {
     'getStarted': 'Get Started',
     
     // Tutorial Screen
+    'tutorial': 'Tutorial',
     'createProject': 'Create Project',
     'createProjectDescription': 'Add a new project and set start-end dates',
     'addMilestones': 'Add Milestones',
@@ -129,6 +136,14 @@ const translations = {
     'viewMoreDetails': 'View more details',
     'clickMilestoneStartWriting': 'Click on a Milestone right away and start writing your journal',
     'startJournalingToday': 'Start journaling today',
+    'improvingFromYesterday': '✨ You\'re feeling better than yesterday!',
+    'worseningFromYesterday': '💙 Today might be a tough day, take care of yourself',
+    'stableMood': '→ Consistent mood',
+    'moodStreakDays': '🎯 {count} days of {mood}',
+    'journalStreakDays': '🔥 You\'ve been journaling for {count} days straight!',
+    'dayImprovement': '🌅 You improved during the day!',
+    'dayEndFatigue': '🌙 End of day tiredness',
+    'richEmotionalPalette': '🎨 Rich emotional palette',
     
     // Project Analyzer
     'projectAnalyzer': 'Project Analyzer',
@@ -512,6 +527,14 @@ const translations = {
     'setSmallGoals': 'Consider setting small, achievable goals to maintain your progress.',
     'emotionalAwareness': 'Your emotional awareness is growing - keep up the great work!',
     
+    // Notification Settings
+    'notificationSettings': 'Notification Settings',
+    'dailyReminder': 'Daily Reminder',
+    'dailyJournalingReminders': 'Daily journaling reminders',
+    'subscriptionSuccess': 'Success',
+    'subscribedToDailyReminders': 'You have subscribed to daily reminders!\n\nNotifications will be delivered via PythonAnywhere + FCM.',
+    'unsubscribedFromDailyReminders': 'You have unsubscribed from daily reminders.',
+    
     // MyDay Screen
     'lastDay': 'Last Day',
     'overdue1Day': '1 Day Overdue',
@@ -686,6 +709,7 @@ const translations = {
     'data': 'Veri',
     'theme': 'Tema',
     'language': 'Dil',
+    'notifications': 'Bildirimler',
     'createBackup': 'Yedek Oluştur',
     'recoverData': 'Veri Kurtar',
     'completedProjects': 'Tamamlanan Projeler',
@@ -711,6 +735,11 @@ const translations = {
     'months': 'Ay',
     'cancel': 'İptal',
     'confirm': 'Onayla',
+    
+    // Active Task Menu
+    'markAsIncomplete': 'Tamamlanmadı Olarak İşaretle',
+    'markAsComplete': 'Tamamlandı Olarak İşaretle',
+    'complete': 'Tamamla',
     
     // Journal
     'journal': 'Mood Tracker',
@@ -757,6 +786,7 @@ const translations = {
     'getStarted': 'Başlayalım',
     
     // Tutorial Screen
+    'tutorial': 'Eğitim',
     'createProject': 'Proje Oluştur',
     'createProjectDescription': 'Yeni bir proje ekle ve başlangıç-bitiş tarihlerini belirle',
     'addMilestones': 'Kilometre Taşları Ekle',
@@ -802,6 +832,14 @@ const translations = {
     'viewMoreDetails': 'Daha fazla detay görüntüle',
     'clickMilestoneStartWriting': 'Hemen bir Kilometre Taşına tıklayın ve günlüğünüzü yazmaya başlayın',
     'startJournalingToday': 'Bugünü kaydetmeye başlayın',
+    'improvingFromYesterday': '✨ Dünden daha iyi hissediyorsun!',
+    'worseningFromYesterday': '💙 Bugün zor bir gün olabilir, kendine iyi bak',
+    'stableMood': '→ Tutarlı bir ruh hali',
+    'moodStreakDays': '🎯 {count} gündür {mood}',
+    'journalStreakDays': '🔥 {count} gün üst üste journal yazıyorsun!',
+    'dayImprovement': '🌅 Gün içinde iyileştin!',
+    'dayEndFatigue': '🌙 Gün sonu yorgunluğu',
+    'richEmotionalPalette': '🎨 Zengin bir duygu paleti',
     
     // Project Analyzer
     'projectAnalyzer': 'Proje Analizörü',
@@ -1184,6 +1222,14 @@ const translations = {
     'continueTracking': 'Duygusal kalıplarını daha iyi anlamak için duygularını takip etmeye devam et.',
     'setSmallGoals': 'İlerlemeni korumak için küçük, ulaşılabilir hedefler belirlemeyi düşün.',
     'emotionalAwareness': 'Duygusal farkındalığın gelişiyor - harika iş çıkarıyorsun!',
+    
+    // Notification Settings
+    'notificationSettings': 'Bildirim Ayarları',
+    'dailyReminder': 'Günlük Hatırlatma',
+    'dailyJournalingReminders': 'Günlük yazma hatırlatmaları',
+    'subscriptionSuccess': 'Başarılı',
+    'subscribedToDailyReminders': 'Günlük hatırlatmalara abone oldunuz!\n\nBildirimler PythonAnywhere + FCM ile gelecek.',
+    'unsubscribedFromDailyReminders': 'Günlük hatırlatmalardan abonelik iptal edildi.',
     
     // MyDay Screen
     'lastDay': 'Son Gün',

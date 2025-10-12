@@ -9,9 +9,11 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onDelete, onEdit, isCompleted }) {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   // Smooth animasyon değerleri
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -96,7 +98,7 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
               <Text style={[
                 styles.itemText,
                 { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-              ]}>Edit</Text>
+              ]}>{t('edit')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -119,7 +121,7 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
                 { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
                 isCompleted && styles.uncompleteText
               ]}>
-                {isCompleted ? "Mark as Incomplete" : "Complete"}
+                {isCompleted ? t('markAsIncomplete') : t('complete')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -142,7 +144,7 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
                 styles.itemText, 
                 { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
                 styles.deleteText
-              ]}>Delete</Text>
+              ]}>{t('delete')}</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
