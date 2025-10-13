@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   },
   content: {
     borderRadius: 16,
-    paddingVertical: 20,
+    paddingVertical: 16, // 20 → 16 (daha compact)
     paddingHorizontal: 24,
     borderWidth: 0.5,
     shadowOffset: { width: 0, height: 4 },
@@ -248,29 +248,29 @@ const styles = StyleSheet.create({
     alignItems: 'center', // Center aligned
   },
   celebrationEmoji: {
-    fontSize: 36,
-    marginBottom: 8,
+    fontSize: 28, // 36 → 28 (daha küçük)
+    marginBottom: 6, // 8 → 6 (daha compact)
   },
   title: {
     fontSize: 22,
     fontFamily: 'Poppins_700Bold',
-    marginBottom: 4,
+    marginBottom: 3, // 4 → 3 (daha compact)
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   completionName: {
     fontSize: 16,
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 10,
+    marginBottom: 8, // 10 → 8 (daha compact)
     letterSpacing: -0.2,
     textAlign: 'center',
   },
   aiMessage: {
-    fontSize: 15,
+    fontSize: 14, // 15 → 14 (biraz daha küçük)
     fontFamily: 'Poppins_400Regular',
-    lineHeight: 22,
+    lineHeight: 20, // 22 → 20 (daha compact)
     fontStyle: 'italic',
-    marginBottom: 16,
+    marginBottom: 12, // 16 → 12 (daha compact)
     textAlign: 'center',
     paddingHorizontal: 8,
   },
