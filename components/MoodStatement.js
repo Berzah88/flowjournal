@@ -118,7 +118,8 @@ const MoodStatement = React.memo(({
   activeTasks = [], 
   completedTasks = [],
   selectedDate, // Optional - yoksa bugün kullanılır
-  onPress = null
+  onPress = null,
+  onCreateFirstProject = null // Yeni: İlk proje oluşturma callback
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -410,19 +411,24 @@ const MoodStatement = React.memo(({
     }
   }
   
+  // Check: Hiç proje var mı?
+  const hasNoProjects = activeTasks.length === 0 && completedTasks.length === 0;
+  
   const content = (
     <View style={styles.container}>
       {/* Enhanced Mood Status - More Prominent */}
       <View style={[
         styles.moodStatus,
         { 
-          borderLeftColor: todayMoodData.dominantMood?.color || '#007AFF',
+          borderLeftColor: hasNoProjects 
+            ? '#667eea' // Proje yoksa mor
+            : (todayMoodData.dominantMood?.color || '#007AFF'),
           backgroundColor: theme.name === 'dark' 
-            ? (todayMoodData.dominantMood ? 'rgba(28, 28, 30, 0.95)' : 'rgba(0, 122, 255, 0.12)')
-            : (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.98)' : 'rgba(0, 122, 255, 0.08)'),
+            ? (hasNoProjects ? 'rgba(102, 126, 234, 0.12)' : (todayMoodData.dominantMood ? 'rgba(28, 28, 30, 0.95)' : 'rgba(0, 122, 255, 0.12)'))
+            : (hasNoProjects ? 'rgba(102, 126, 234, 0.08)' : (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.98)' : 'rgba(0, 122, 255, 0.08)')),
           borderWidth: theme.name === 'dark' ? 1 : 0.5,
           borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-          shadowColor: todayMoodData.dominantMood?.color || '#8E7DBE',
+          shadowColor: hasNoProjects ? '#667eea' : (todayMoodData.dominantMood?.color || '#8E7DBE'),
           shadowOffset: { width: 0, height: 3 }, // 2 → 3 (daha belirgin)
           shadowOpacity: 0.25, // 0.15 → 0.25 (daha belirgin)
           shadowRadius: 10, // 6 → 10 (daha yumuşak)
@@ -432,8 +438,12 @@ const MoodStatement = React.memo(({
         <View style={[
           styles.moodIconContainer,
           {
-            backgroundColor: todayMoodData.dominantMood?.color || '#007AFF',
-            shadowColor: todayMoodData.dominantMood?.color || '#007AFF',
+            backgroundColor: hasNoProjects 
+              ? '#667eea' // Proje yoksa mor (teşvik edici)
+              : (todayMoodData.dominantMood?.color || '#007AFF'),
+            shadowColor: hasNoProjects 
+              ? '#667eea' 
+              : (todayMoodData.dominantMood?.color || '#007AFF'),
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.4, // 0.3 → 0.4 (daha belirgin)
             shadowRadius: 6, // 4 → 6 (daha yumuşak)
@@ -441,7 +451,7 @@ const MoodStatement = React.memo(({
           }
         ]}>
           <MaterialIcons 
-            name={todayMoodData.dominantMood?.icon || 'create'} 
+            name={hasNoProjects ? 'rocket-launch' : (todayMoodData.dominantMood?.icon || 'create')} 
             size={24} 
             color="#000000" 
           />
@@ -453,22 +463,25 @@ const MoodStatement = React.memo(({
               styles.statusText,
               { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
             ]}>
-              {todayMoodData.dominantMood ? 
-                `${t('todayYourMoodIs')} ${t(todayMoodData.dominantMood.key) || todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}${t('like') ? ' ' + t('like') : ''}` :
-                t('howAreYouFeelingToday')
+              {hasNoProjects ? 
+                t('startYourJourney') || 'İlk projeni oluşturarak başla' :
+                (todayMoodData.dominantMood ? 
+                  `${t('todayYourMoodIs')} ${t(todayMoodData.dominantMood.key) || todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}${t('like') ? ' ' + t('like') : ''}` :
+                  t('howAreYouFeelingToday')
+                )
               }
             </Text>
             
-            {/* ✨ Trend Arrow */}
-            {todayMoodData.trendDirection && (
+            {/* ✨ Trend Arrow - Sadece proje varsa */}
+            {!hasNoProjects && todayMoodData.trendDirection && (
               <Text style={{ fontSize: 16, marginLeft: 4 }}>
                 {todayMoodData.trendDirection === 'up' ? ' ↗️' : 
                  todayMoodData.trendDirection === 'down' ? ' ↘️' : ' →'}
               </Text>
             )}
             
-            {/* ✨ Streak Badge */}
-            {todayMoodData.journalStreak.current >= 3 && (
+            {/* ✨ Streak Badge - Sadece proje varsa */}
+            {!hasNoProjects && todayMoodData.journalStreak.current >= 3 && (
               <View style={[styles.streakBadge, { backgroundColor: todayMoodData.dominantMood?.color || '#FF9500', marginLeft: 6 }]}>
                 <Text style={styles.streakText}>🔥 {todayMoodData.journalStreak.current}</Text>
               </View>
@@ -479,12 +492,15 @@ const MoodStatement = React.memo(({
             styles.motivationText,
             { 
               color: theme.name === 'dark' 
-                ? (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2')
-                : (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2')
+                ? (hasNoProjects ? '#667eea' : (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2'))
+                : (hasNoProjects ? '#667eea' : (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2'))
             }
           ]}>
             {/* ✨ Context-Aware & Smart Messages with Priority */}
-            {todayMoodData.totalEntries > 0 ? (
+            {hasNoProjects ? (
+              // Proje yoksa: Teşvik edici mesaj
+              t('noActiveProjects') || 'Henüz hiçbir proje yok! 🚀'
+            ) : todayMoodData.totalEntries > 0 ? (
               // Priority 1: Dün vs bugün trend
               todayMoodData.trendMessage === 'improvingFromYesterday' ? t('improvingFromYesterday') :
               todayMoodData.trendMessage === 'worseningFromYesterday' ? t('worseningFromYesterday') :
@@ -509,9 +525,12 @@ const MoodStatement = React.memo(({
     </View>
   );
 
-  if (onPress) {
+  // Smart onPress: Proje yoksa farklı action
+  const handlePress = hasNoProjects ? onCreateFirstProject : onPress;
+  
+  if (handlePress) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
         {content}
       </TouchableOpacity>
     );
@@ -519,7 +538,17 @@ const MoodStatement = React.memo(({
 
   return content;
 }, (prevProps, nextProps) => { // React.memo comparison function
-  // Custom comparison: SADECE journal entry değiştiğinde re-render
+  // Custom comparison: Journal entry VEYA proje sayısı değiştiğinde re-render
+  
+  // Proje sayılarını kontrol et
+  const prevHasNoProjects = prevProps.activeTasks.length === 0 && prevProps.completedTasks.length === 0;
+  const nextHasNoProjects = nextProps.activeTasks.length === 0 && nextProps.completedTasks.length === 0;
+  
+  // Proje durumu değiştiyse re-render gerekli
+  if (prevHasNoProjects !== nextHasNoProjects) {
+    console.log('🔄 MoodStatement - Re-render gerekli (proje durumu değişti)');
+    return false; // Do re-render
+  }
   
   // Journal entry count ve son timestamp karşılaştır
   let prevCount = 0;

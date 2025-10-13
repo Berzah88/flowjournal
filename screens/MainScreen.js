@@ -565,6 +565,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         activeTasks={activeTasks}
         completedTasks={completedTasks}
         onPress={() => navigation.navigate('EmotionalJournal')}
+        onCreateFirstProject={() => setAddVisible(true)} // Proje yoksa AddProject aç
       />
 
       {/* Status Tabs - Swipe alanı dışında */}
