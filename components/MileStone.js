@@ -205,8 +205,11 @@ function MileStone({
 
   const inputRef = useRef(null);
   
-  // Smooth attach/detach animation - initialize later after calculating shouldShowAsChild
-  const childIndentAnim = useRef(new Animated.Value(0)).current;
+  // Check if this milestone should be shown as child
+  const isChildMilestone = milestone.parentId || (isAttachMode && milestone.id === attachModeSourceId);
+  
+  // NO ANIMATION for child indent - direkt marginLeft kullan (daha stabil)
+  // Animasyon titreşim yapıyordu, static daha iyi
   
   // ⚠️ Touch animation kaldırıldı - görsel geri bildirim yok
   // const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -546,53 +549,7 @@ function MileStone({
     }
   }, [hasChildren, milestone.startDate, milestone.endDate, milestone.completed, childMilestones]);
 
-  // Check if this milestone should be shown as child - MEMOIZED
-  // Show as child if:
-  // 1. Already has a parent
-  // 2. Or this is the milestone that started attach mode (will become child)
-  const shouldShowAsChild = useMemo(() => 
-    milestone.parentId || (isAttachMode && milestone.id === attachModeSourceId),
-    [milestone.parentId, isAttachMode, milestone.id, attachModeSourceId]
-  );
-
-  // Initialize animation value on first render - STABILIZED
-  const isFirstRender = useRef(true);
-  const hasInitializedAnim = useRef(false);
-  
-  useEffect(() => {
-    // Sadece 1 kere initialize et
-    if (!hasInitializedAnim.current) {
-      childIndentAnim.setValue(shouldShowAsChild ? 1 : 0);
-      hasInitializedAnim.current = true;
-      isFirstRender.current = false;
-    }
-  }, [shouldShowAsChild, childIndentAnim]);
-
-  // Animate child indent when attach/detach - DEBOUNCED
-  useEffect(() => {
-    if (!isFirstRender.current && hasInitializedAnim.current) {
-      // Küçük delay ile batch update'leri bekle
-      const timer = setTimeout(() => {
-        Animated.timing(childIndentAnim, {
-          toValue: shouldShowAsChild ? 1 : 0,
-          duration: 200, // Spring yerine timing - daha smooth
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false, // marginLeft için false gerekli
-        }).start();
-      }, 16); // 1 frame delay (16ms = ~60fps)
-      
-      return () => clearTimeout(timer);
-    }
-  }, [shouldShowAsChild, childIndentAnim]);
-
-  // Memoized margin interpolation - Her render'da yeni obje oluşturma!
-  const animatedMarginLeft = useMemo(() => 
-    childIndentAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [20, 40], // Parent: 20px, Child: 40px
-    }),
-    [childIndentAnim]
-  );
+  // NO ANIMATION - direkt marginLeft hesapla (titreşim önleme)
 
   return (
     <>
@@ -602,12 +559,12 @@ function MileStone({
           setEditable(false);
         }
       }}>
-        <Animated.View style={[
+        <View style={[
           styles.container,
           {
-            // Eşit sol/sağ margin için - MEMOIZED
-            marginLeft: animatedMarginLeft,
-            marginRight: 20, // Sol ile eşit
+            // Eşit sol/sağ margin için - STATIC (titreşim önleme!)
+            marginLeft: isChildMilestone ? 40 : 20, // Child: 40px, Parent: 20px
+            marginRight: 20,
             marginBottom: 5,
             marginTop: 5,
           }
@@ -910,7 +867,7 @@ function MileStone({
                 </Animated.View>
             </AnimatedReanimated.View>
           </GestureDetector>
-        </Animated.View>
+        </View>
       </Pressable>
     
       <FlashCalendar
