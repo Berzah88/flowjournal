@@ -46,10 +46,10 @@ const CelebrationModal = ({
         }),
       ]).start();
 
-      // Auto close after 15 seconds
+      // Auto close after 10 seconds
       const timer = setTimeout(() => {
         handleClose();
-      }, 15000);
+      }, 10000);
 
       return () => clearTimeout(timer);
     } else {
@@ -231,7 +231,7 @@ const CelebrationModal = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 60, // 70'ten 60'a - daha yukarı
+    top: 45, // Daha yukarıda açılsın
     left: 12,
     right: 12,
     zIndex: 1000,
