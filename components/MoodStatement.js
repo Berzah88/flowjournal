@@ -423,10 +423,10 @@ const MoodStatement = React.memo(({
           borderWidth: theme.name === 'dark' ? 1 : 0.5,
           borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
           shadowColor: todayMoodData.dominantMood?.color || '#8E7DBE',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.15,
-          shadowRadius: 6,
-          elevation: 3,
+          shadowOffset: { width: 0, height: 3 }, // 2 → 3 (daha belirgin)
+          shadowOpacity: 0.25, // 0.15 → 0.25 (daha belirgin)
+          shadowRadius: 10, // 6 → 10 (daha yumuşak)
+          elevation: 6, // 3 → 6 (daha yüksek)
         }
       ]}>
         <View style={[
@@ -435,14 +435,14 @@ const MoodStatement = React.memo(({
             backgroundColor: todayMoodData.dominantMood?.color || '#007AFF',
             shadowColor: todayMoodData.dominantMood?.color || '#007AFF',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-            elevation: 2,
+            shadowOpacity: 0.4, // 0.3 → 0.4 (daha belirgin)
+            shadowRadius: 6, // 4 → 6 (daha yumuşak)
+            elevation: 4, // 2 → 4 (daha yüksek)
           }
         ]}>
           <MaterialIcons 
             name={todayMoodData.dominantMood?.icon || 'create'} 
-            size={20} 
+            size={24} 
             color="#000000" 
           />
         </View>
@@ -558,41 +558,41 @@ const MoodStatement = React.memo(({
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 26,
-    marginTop: 10,
-    marginBottom: 6,
+    marginHorizontal: 24, // 26 → 24 (biraz daha geniş)
+    marginTop: 12, // 10 → 12 (biraz daha fazla boşluk)
+    marginBottom: 8, // 6 → 8 (biraz daha fazla boşluk)
   },
   moodStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderLeftWidth: 3,
+    paddingVertical: 16, // 14 → 16 (daha spacious)
+    paddingHorizontal: 18, // 16 → 18 (daha spacious)
+    borderRadius: 16, // 14 → 16 (daha yuvarlak)
+    borderLeftWidth: 4, // 3 → 4 (daha kalın vurgu)
   },
   moodIconContainer: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40, // 34 → 40 (daha büyük icon)
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14, // 12 → 14 (biraz daha fazla boşluk)
   },
   statusContent: {
     flex: 1,
   },
   statusText: {
-    fontSize: 14,
+    fontSize: 15, // 14 → 15 (daha büyük)
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 3,
-    lineHeight: 19,
+    marginBottom: 4, // 3 → 4 (biraz daha fazla boşluk)
+    lineHeight: 20, // 19 → 20
     letterSpacing: -0.3,
   },
   motivationText: {
-    fontSize: 12,
+    fontSize: 13, // 12 → 13 (biraz daha büyük)
     fontFamily: 'Poppins_400Regular',
-    lineHeight: 16,
-    opacity: 0.75,
+    lineHeight: 17, // 16 → 17
+    opacity: 0.8, // 0.75 → 0.8 (biraz daha opak)
   },
   streakBadge: {
     paddingHorizontal: 8,
