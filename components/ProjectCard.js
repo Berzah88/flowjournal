@@ -484,7 +484,7 @@ const ProjectCard = memo(function ProjectCard({
                       <Text style={[
                         styles.projectProgressMessage,
                         { color: theme.name === 'dark' ? '#CCCCCC' : COLORS.GRAY[700] }
-                      ]} numberOfLines={2}>
+                      ]} numberOfLines={4}>
                         {emotionalProgress.progressMessage}
                       </Text>
                     </View>
@@ -570,7 +570,7 @@ const ProjectCard = memo(function ProjectCard({
                       <Text style={[
                         styles.projectProgressMessage,
                         { color: theme.name === 'dark' ? '#CCCCCC' : COLORS.GRAY[700] }
-                      ]} numberOfLines={1}>
+                      ]} numberOfLines={2}>
                         {totalEntries > 0 
                           ? t('youHaveJournalEntries', { count: totalEntries })
                           : t('startWritingJournal')
@@ -579,7 +579,7 @@ const ProjectCard = memo(function ProjectCard({
                       <Text style={[
                         styles.projectProgressMotivation,
                         { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
-                      ]} numberOfLines={2}>
+                      ]} numberOfLines={3}>
                         {totalEntries > 0 
                           ? t('thoughtsValuable')
                           : motivationMessage
