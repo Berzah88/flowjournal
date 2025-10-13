@@ -1751,23 +1751,7 @@ const EmotionalJournalScreen = ({ navigation }) => {
           </View>
 
           {/* Mood Calendar */}
-          <View style={styles.moodCalendarContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={[
-                styles.sectionTitle,
-                { color: '#1D1D1F' }
-              ]}>{t('moodCalendar')}</Text>
-              <View style={[
-                styles.progressFlowIndicator,
-                { backgroundColor: theme.name === 'dark' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.1)' }
-              ]}>
-                <MaterialIcons 
-                  name="calendar-today" 
-                  size={18} 
-                  color={theme.name === 'dark' ? '#4CAF50' : '#4CAF50'} 
-                />
-              </View>
-            </View>
+          <View style={{ marginTop: 24 }}>
             <MoodCalendar />
           </View>
 
@@ -2275,11 +2259,6 @@ const styles = StyleSheet.create({
      color: '#666',
      lineHeight: 18,
    },
-  moodCalendarContainer: {
-    marginTop: 40,
-    marginBottom: 20,
-    paddingHorizontal: 0,
-  },
   minimalRecommendationsContainer: {
     marginTop: 40,
     marginBottom: 40,

@@ -14,11 +14,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../constants";
 import { useLanguage } from "../context/LanguageContext";
+import { useEducation } from "../context/EducationContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function TutorialScreen({ navigation }) {
   const { t, language } = useLanguage();
+  const { startEducation } = useEducation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -166,6 +168,9 @@ export default function TutorialScreen({ navigation }) {
     if (currentStep < tutorialSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
+      // Tutorial bittiğinde education'ı başlat ve Main'e geç
+      console.log('🎓 Tutorial completed, starting education...');
+      startEducation();
       navigation?.replace("Main");
     }
   };
@@ -177,6 +182,9 @@ export default function TutorialScreen({ navigation }) {
   };
 
   const handleSkip = () => {
+    // Skip'te de education'ı başlat
+    console.log('🎓 Tutorial skipped, starting education...');
+    startEducation();
     navigation?.replace("Main");
   };
 

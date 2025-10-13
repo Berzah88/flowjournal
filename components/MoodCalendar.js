@@ -8,8 +8,11 @@ import { useLanguage } from '../context/LanguageContext';
 import { getValidIconName } from '../utils/AIMoodPredictor';
 
 const { width } = Dimensions.get("window");
-const CELL_SIZE = 40; // Fixed size for all cells
-const CELL_HEIGHT = 52; // Taller cells for better mood indicator visibility
+// Dinamik hücre genişliği hesaplama
+// Ekran genişliği - (38*2 marginHorizontal + 16*2 containerPadding) / 7 gün
+const AVAILABLE_WIDTH = width - (38 * 2) - (16 * 2);
+const CELL_SIZE = Math.floor(AVAILABLE_WIDTH / 7);
+const CELL_HEIGHT = 46; // Optimized height for better visibility
 
 export default function MoodCalendar() {
   const { theme } = useTheme();
@@ -224,13 +227,13 @@ export default function MoodCalendar() {
               styles.moodIndicator,
               { 
                 backgroundColor: moodData.moodColor || theme.colors.primary,
-                borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                borderWidth: 1.2
+                borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+                borderWidth: 0.8
               }
             ]}>
               <MaterialIcons 
                 name={getValidIconName(moodData.moodIcon || 'sentiment-neutral')} 
-                size={12} 
+                size={10} 
                 color={getContrastColor(moodData.moodColor || theme.colors.primary)}
               />
             </View>
@@ -243,64 +246,108 @@ export default function MoodCalendar() {
   };
 
   return (
-    <View style={[
-      styles.container,
-      { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF' }
-    ]}>
-      {/* Header */}
-      <View style={[
-        styles.header,
-        { borderBottomColor: theme.name === 'dark' ? '#2C2C2E' : '#E0E0E0' }
-      ]}>
-        <TouchableOpacity onPress={() => navigateMonth(-1)} style={styles.navButton}>
-          <MaterialIcons name="chevron-left" size={20} color={theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F'} />
-        </TouchableOpacity>
-        
+    <View style={styles.outerContainer}>
+      {/* Section Header */}
+      <View style={styles.sectionHeader}>
         <Text style={[
-          styles.monthYear,
+          styles.sectionTitle,
           { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+        ]}>{t('moodCalendar')}</Text>
+        <View style={[
+          styles.progressFlowIndicator,
+          { backgroundColor: theme.name === 'dark' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.1)' }
         ]}>
-          {currentDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
-        </Text>
-        
-        <TouchableOpacity onPress={() => navigateMonth(1)} style={styles.navButton}>
-          <MaterialIcons name="chevron-right" size={20} color={theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F'} />
-        </TouchableOpacity>
+          <MaterialIcons 
+            name="calendar-today" 
+            size={18} 
+            color={theme.name === 'dark' ? '#4CAF50' : '#4CAF50'} 
+          />
+        </View>
       </View>
 
-      {/* Day headers */}
-      <View style={styles.dayHeaders}>
-        {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, index) => (
-          <View key={index} style={styles.dayHeaderContainer}>
-            <Text style={[
-              styles.dayHeader,
-              { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
-            ]}>
-              {day}
-            </Text>
-          </View>
-        ))}
-      </View>
+      {/* Calendar Card */}
+      <View style={[
+        styles.container,
+        { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF' }
+      ]}>
+        {/* Month Navigation Header */}
+        <View style={[
+          styles.header,
+          { borderBottomColor: theme.name === 'dark' ? '#2C2C2E' : '#E0E0E0' }
+        ]}>
+          <TouchableOpacity onPress={() => navigateMonth(-1)} style={styles.navButton}>
+            <MaterialIcons name="chevron-left" size={20} color={theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F'} />
+          </TouchableOpacity>
+          
+          <Text style={[
+            styles.monthYear,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+          ]}>
+            {currentDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+          </Text>
+          
+          <TouchableOpacity onPress={() => navigateMonth(1)} style={styles.navButton}>
+            <MaterialIcons name="chevron-right" size={20} color={theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F'} />
+          </TouchableOpacity>
+        </View>
 
-      {/* Calendar grid */}
-      <View style={styles.calendarGrid}>
-        {renderCalendar()}
+        {/* Day headers */}
+        <View style={styles.dayHeaders}>
+          {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, index) => (
+            <View key={index} style={styles.dayHeaderContainer}>
+              <Text style={[
+                styles.dayHeader,
+                { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
+              ]}>
+                {day}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Calendar grid */}
+        <View style={styles.calendarGrid}>
+          {renderCalendar()}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    marginHorizontal: 38,
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  // EmotionalJournalScreen için farklı margin gerekirse bu prop olarak alınabilir
+  // Şu an MyDayScreen için: marginTop: 16
+  // EmotionalJournalScreen için ise: marginTop: 40 olması gerekiyor
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  progressFlowIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   header: {
     flexDirection: 'row',
@@ -322,6 +369,7 @@ const styles = StyleSheet.create({
   },
   dayHeaders: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
   dayHeaderContainer: {
@@ -331,18 +379,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dayHeader: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
   },
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'flex-start',
   },
   emptyDay: {
     width: CELL_SIZE,
     height: CELL_HEIGHT,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   calendarDay: {
     width: CELL_SIZE,
@@ -350,7 +399,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   todayDay: {
     borderRadius: 8,
@@ -369,7 +418,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dayText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Poppins_500Medium',
   },
   todayText: {
@@ -379,15 +428,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.18,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 1,
+    elevation: 1,
   },
 });

@@ -17,6 +17,8 @@ import { useSpringAnimation } from "../hooks/useAnimations";
 import FlashCalendar from "../components/FlashCalendar";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useEducation } from "../context/EducationContext";
+import { EDUCATION_STEPS } from "../context/EducationContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -30,6 +32,12 @@ export default function AddProjectScreen({ visible, onClose }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { addTask } = useTaskActions();
+  const { 
+    isEducationActive, 
+    currentStep, 
+    setEducationProjectId, 
+    nextStep 
+  } = useEducation();
   
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
   // usePerformanceMonitor('AddProjectScreen');
@@ -79,7 +87,10 @@ export default function AddProjectScreen({ visible, onClose }) {
     const e = new Date(eISO);
     
     if (newTitle.trim() !== "") {
+      const newProjectId = Date.now(); // This will be the task ID
+      
       addTask({
+        id: newProjectId, // Set ID explicitly for education tracking
         title: newTitle.trim(),
         startDate: s.toISOString(),
         endDate: e.toISOString(),
@@ -87,6 +98,17 @@ export default function AddProjectScreen({ visible, onClose }) {
         done: false,
         milestones: [],
       });
+
+      // Education: Move to next step after creating first project
+      if (isEducationActive && currentStep === EDUCATION_STEPS.CREATE_PROJECT) {
+        console.log('🎓 First project created! Moving to MY_DAY_INFO step');
+        console.log('🎓 Saving createdProjectId:', newProjectId);
+        setEducationProjectId(newProjectId);
+        // Move to next step
+        setTimeout(() => {
+          nextStep();
+        }, 300);
+      }
     }
     handleCloseModal();
   };

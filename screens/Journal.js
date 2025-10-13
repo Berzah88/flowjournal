@@ -34,6 +34,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useEducation } from "../context/EducationContext";
+import { EDUCATION_STEPS } from "../context/EducationContext";
 import { 
   MOODS, 
   EXTENDED_MOODS,
@@ -109,6 +111,11 @@ export default function Journal({
     addProjectJournalEntry,
     updateProjectJournalEntry 
   } = useTaskActions();
+  const { 
+    isEducationActive, 
+    currentStep, 
+    createdProjectId,
+  } = useEducation();
 
   // Dinamik TOP_GAP - Farklı yerlerden açılırken farklı yükseklikler (SABİT - kartlar efekti için)
   const dynamicTopGap = fromActiveProject ? 0 : (fromMainScreen ? 40 : TOP_GAP);
@@ -687,6 +694,8 @@ export default function Journal({
         
         // onSave callback'ini çağır
         onSave();
+        
+        // Education: No journal tracking needed - education ends after project creation
         
         // Kısa bir delay ile modal'ı kapat ki state güncellenmesi tamamlansın
         setTimeout(() => {

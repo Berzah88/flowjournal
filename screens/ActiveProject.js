@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+// Education removed from ActiveProject
 import EditModal from "../components/EditModal";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
@@ -15,6 +16,7 @@ import ActiveProjectHeader from "../components/ActiveProjectHeader";
 import ActiveProjectMilestones from "../components/ActiveProjectMilestones";
 import ProjectJourney from "../components/ProjectJourney";
 import AIMilestoneSuggestion from "../components/AIMilestoneSuggestion";
+// Education removed from ActiveProject
 import AnimatedReanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -43,6 +45,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     attachMilestone,
     detachMilestone,
   } = useTaskActions();
+  // Education: Removed - no education in ActiveProject
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
@@ -80,6 +83,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
       }
     };
   }, [panX]);
+
+  // Education: Removed - no education in ActiveProject
 
   // Refresh data when screen comes into focus (e.g., returning from JournalDetailScreen)
   useFocusEffect(
@@ -351,7 +356,11 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
       updateMilestone(currentTask.id, milestoneData.id, milestoneData);
     } else {
       // Add new milestone
-      addMilestone(currentTask.id, milestoneData);
+      const newMilestoneId = `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const milestoneWithId = { ...milestoneData, id: newMilestoneId };
+      addMilestone(currentTask.id, milestoneWithId);
+
+      // Education: Removed - no education tracking in milestones
     }
     
     // Refresh trigger for milestone updates
@@ -634,6 +643,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 editingMilestone={editingMilestone}
                 existingMilestones={allMilestones}
               />
+
+          {/* Education: Removed - no education overlay in ActiveProject */}
           
         </View>
     </AnimatedReanimated.View>

@@ -270,7 +270,13 @@ export const TaskProvider = ({ children }) => {
 
   // -------- TASK CRUD --------
   const addTask = useCallback(async (newTask) => {
-    const taskWithId = { ...newTask, id: Date.now(), done: false, milestones: [] };
+    // Use provided ID if exists, otherwise generate new one
+    const taskWithId = { 
+      ...newTask, 
+      id: newTask.id || Date.now(), 
+      done: false, 
+      milestones: [] 
+    };
     setTasks((prev) => [...prev, taskWithId]);
     
     // Firestore'a projeyi kaydet

@@ -14,6 +14,7 @@ import EmotionalJournalScreen from './screens/EmotionalJournalScreen';
 import { TaskProvider } from './context/TaskContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { EducationProvider } from './context/EducationContext';
 import { useHasAnyTasks, useTaskLoading } from './hooks/useTaskContext';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -176,7 +177,9 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <LanguageProvider>
           <ThemeProvider>
-            <ThemedApp />
+            <EducationProvider>
+              <ThemedApp />
+            </EducationProvider>
           </ThemeProvider>
         </LanguageProvider>
       </GestureHandlerRootView>

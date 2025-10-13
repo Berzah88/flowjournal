@@ -23,7 +23,8 @@ const DailyMoodSummary = ({
   selectedDate,
   hasMedia = false,
   onPress = null,
-  navigation = null
+  navigation = null,
+  insideCard = false
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -230,7 +231,7 @@ const DailyMoodSummary = ({
   
   const content = (
     <View style={[
-      styles.container,
+      insideCard ? styles.containerInside : styles.container,
       hasMedia && styles.mediaOverlay
     ]}>
       {/* Progress Status - Inline Design */}
@@ -298,6 +299,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 4,
   },
+  containerInside: {
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 12,
+  },
   mediaOverlay: {
     position: 'absolute',
     top: 0,
@@ -316,7 +322,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderLeftWidth: 3,
     marginTop: 4,
-    marginHorizontal: 2, // Kartlarla aynı margin
+    marginHorizontal: 0,
   },
   progressIconContainer: {
     marginRight: 12,

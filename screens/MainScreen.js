@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Animated,
   PanResponder,
-  Alert,
   Dimensions,
   TouchableWithoutFeedback,
   Image,
@@ -23,11 +22,14 @@ import AnimatedReanimated, {
   withTiming,
 } from "react-native-reanimated";
 import { useActiveTasks, useCompletedTasks, useTaskActions, useTaskSaving, useDataRecovery } from "../hooks/useTaskContext";
+import { Alert } from "react-native";
 import { useDataRecoveryOperations } from "../hooks/useDataRecoveryOperations";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
 import { usePerformanceOptimization } from "../utils/PerformanceOptimizer";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useEducation } from "../context/EducationContext";
+import { EDUCATION_STEPS } from "../context/EducationContext";
 import { SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import StatusTabs from "../components/StatusTabs";
@@ -49,6 +51,7 @@ import ProjectAnalyzer from "../utils/ProjectAnalyzer";
 import LanguageSettings from "../components/LanguageSettings";
 import notificationService from "../services/NotificationService";
 import fcmService from "../services/FCMService";
+import EducationOverlay from "../components/EducationOverlay";
 
 const { width, height } = Dimensions.get("window");
 
@@ -60,7 +63,23 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const { recoverData, createManualBackup, getDataStatus } = useDataRecovery();
   const { handleDataRecovery, handleCreateBackup, handleCheckDataStatus } = useDataRecoveryOperations();
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { 
+    isEducationActive, 
+    currentStep, 
+    startEducation, 
+    nextStep,
+    setEducationProjectId,
+    createdProjectId,
+    isLoading: educationLoading,
+    resetEducation, // For testing
+    completeEducation,
+  } = useEducation();
+  
+  // Debug: Monitor createdProjectId changes
+  useEffect(() => {
+    console.log('🎓 MainScreen - createdProjectId changed:', createdProjectId);
+  }, [createdProjectId]);
   
   // Performance monitoring - DEVRE DIŞI (celebration sistemi eklendiği için normal render sayısı arttı)
   // const performanceData = usePerformanceMonitor('MainScreen', {
@@ -99,8 +118,40 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [myDaySelectedMilestone, setMyDaySelectedMilestone] = useState(null);
   const [myDayAddMilestoneModalVisible, setMyDayAddMilestoneModalVisible] = useState(false);
   const [myDaySelectedProjectForMilestone, setMyDaySelectedProjectForMilestone] = useState(null);
+
+  // Simplified animations without scroll tracking
+  // Header animasyonu (sabit kalır)
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateY: 0, // Header sabit kalır
+        },
+      ],
+    };
+  });
+
+  // MoodStatement animasyonu (basit görünüm)
+  const moodStatementAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: 1 },
+        { translateY: 0 },
+      ],
+      opacity: 1,
+    };
+  });
+
+  // StatusTabs animasyonu (basit görünüm)
+  const statusTabsAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: 0 }],
+    };
+  });
+  
   const [welcomePopupVisible, setWelcomePopupVisible] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState(null);
+  const [educationInitialized, setEducationInitialized] = useState(false);
 
   // horizontal pan value (translateX)
   const panX = useRef(new Animated.Value(0)).current;
@@ -110,6 +161,50 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Memoized handlers to prevent unnecessary re-renders
   const openCard = useCallback((card) => setSelectedCard(card), []);
   const closeCard = useCallback(() => setSelectedCard(null), []);
+
+  // Education: Debug and initialization
+  useEffect(() => {
+    if (educationInitialized) return;
+    
+    console.log('🎓 MainScreen - Education state:', { 
+      isEducationActive, 
+      currentStep,
+      educationLoading,
+      activeTasks: activeTasks.length,
+      completedTasks: completedTasks.length 
+    });
+    
+    setEducationInitialized(true);
+  }, [educationInitialized, isEducationActive, currentStep, activeTasks.length, completedTasks.length, educationLoading]);
+
+  // Education: Handle AddProject opening from education overlay
+  const handleEducationAddProject = useCallback(() => {
+    console.log('🎓 User clicked Add Project in education');
+    setAddVisible(true);
+  }, []);
+
+  // Education: Handle AddMilestone opening from MY_DAY_INFO tooltip
+  const handleEducationAddMilestone = useCallback(() => {
+    console.log('🎓 User clicked "Add First Task" button in education');
+    console.log('🎓 Looking for createdProjectId:', createdProjectId);
+    console.log('🎓 Active tasks:', activeTasks.map(t => ({ id: t.id, title: t.title })));
+    
+    // Find the created project (1. modal ile oluşturulan proje)
+    const createdProject = activeTasks.find(t => t.id === createdProjectId);
+    
+    if (createdProject) {
+      console.log('🎓 ✅ Found created project:', createdProject.title);
+      console.log('🎓 Opening AddMilestone modal for created project');
+      setMyDaySelectedProjectForMilestone(createdProject);
+      setMyDayAddMilestoneModalVisible(true);
+    } else {
+      console.warn('🎓 ❌ Created project not found!', { 
+        createdProjectId, 
+        activeTasks: activeTasks.length,
+        taskIds: activeTasks.map(t => t.id)
+      });
+    }
+  }, [activeTasks, createdProjectId]);
 
 
 
@@ -515,163 +610,166 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        
-        <View style={styles.headerContainer}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerLeft}>
-              <View style={styles.logoContainer}>
-                <Image 
-                  source={theme.name === 'dark' 
-                    ? require('../assets/logo-yeni.png') 
-                    : require('../assets/logo-yeni.png')
-                  } 
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
+        {/* Fixed Header */}
+        <AnimatedReanimated.View style={headerAnimatedStyle}>
+          <View style={styles.headerContainer}>
+            <View style={styles.headerTop}>
+              <View style={styles.headerLeft}>
+                <View style={styles.logoContainer}>
+                  <Image 
+                    source={theme.name === 'dark' 
+                      ? require('../assets/logo-yeni.png') 
+                      : require('../assets/logo-yeni.png')
+                    } 
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.headerTextContainer}>
+                  <Text style={[styles.header, { color: theme.colors.text }]}>Flow Journal</Text>
+                </View>
               </View>
-              <View style={styles.headerTextContainer}>
-                <Text style={[styles.header, { color: theme.colors.text }]}>Flow Journal</Text>
-              </View>
-            </View>
-            <View style={styles.headerActions}>
-
-              <TouchableOpacity 
-                style={[
-                  styles.menuButton,
-                  {
-                    backgroundColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(255, 255, 255, 0.8)',
-                    borderColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(102, 126, 234, 0.15)',
-                    shadowColor: theme.name === 'dark' ? '#FF6B6B' : '#667eea',
-                  }
-                ]} 
-                onPress={() => setMainMenuVisible(true)}
-                accessible={true}
-                accessibilityLabel="Menu options"
-                accessibilityRole="button"
-              >
-                <Ionicons 
-                  name="menu" 
-                  size={20} 
-                  color={theme.name === 'dark' ? '#FFFFFF' : theme.colors.primary} 
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-
-      {/* Mood Statement - StatusTabs üstünde */}
-      <MoodStatement 
-        activeTasks={activeTasks}
-        completedTasks={completedTasks}
-        onPress={() => navigation.navigate('EmotionalJournal')}
-        onCreateFirstProject={() => setAddVisible(true)} // Proje yoksa AddProject aç
-      />
-
-      {/* Status Tabs - Swipe alanı dışında */}
-      <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
-
-
-      <View style={styles.viewport}>
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={[
-            styles.panContainer,
-            { width: width * 2, transform: [{ translateX: panX }] },
-          ]}
-        >
-          {/* My Day Screen (left) */}
-          <View style={{ width }}>
-            {/* Scrollable Content */}
-            <ScrollView 
-              style={styles.myDayScrollView}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.myDayScrollContent}
-            >
-              <MyDayScreen 
-                navigation={navigation}
-                selectedCard={myDaySelectedCard}
-                setSelectedCard={setMyDaySelectedCard}
-                selectedMilestone={myDaySelectedMilestone}
-                setSelectedMilestone={setMyDaySelectedMilestone}
-                addMilestoneModalVisible={myDayAddMilestoneModalVisible}
-                setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
-                selectedProjectForMilestone={myDaySelectedProjectForMilestone}
-                setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                onOpenJournal={handleMyDayOpenJournal}
-                onAddProject={handleMyDayAddProject}
-              />
-            </ScrollView>
-          </View>
-
-          {/* Active list (right) */}
-          <View style={{ width }}>
-            {/* Status Bar */}
-            <StatusBarComponent activeCount={activeTasks.length} doneCount={completedTasks.length} />
-            
-            <FlatList
-              data={activeTasksReversed}
-              keyExtractor={keyExtractor}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
-              renderItem={renderActiveItem}
-              extraData={`${refreshKey}-${activeTasks.map(t => 
-                `${t.id}-${t.milestones?.map(m => `${m.id}:${m.parentId || 'none'}`).join(',')}`
-              ).join('|')}`}
-              ListEmptyComponent={
-                <View style={styles.emptyStateContainer}>
-                  <View style={[
-                    styles.emptyStateCard,
+              <View style={styles.headerActions}>
+                <TouchableOpacity 
+                  style={[
+                    styles.menuButton,
                     {
-                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7',
+                      backgroundColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(255, 255, 255, 0.8)',
+                      borderColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(102, 126, 234, 0.15)',
+                      shadowColor: theme.name === 'dark' ? '#FF6B6B' : '#667eea',
                     }
-                  ]}>
-                    <Ionicons 
-                      name="rocket-outline" 
-                      size={48} 
-                      color={theme.name === 'dark' ? '#667eea' : '#8E8E93'} 
-                    />
-                    <Text style={[
-                      styles.emptyStateTitle,
-                      { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-                    ]}>{t('noActiveProjects')}</Text>
-                    <Text style={[
-                      styles.emptyStateSubtitle,
-                      { color: theme.name === 'dark' ? '#8E8E93' : '#7f8c8d' }
-                    ]}>{t('startYourJourney')}</Text>
-                    
-                    {/* Add Project Button - MyDay ile aynı style */}
-                    <TouchableOpacity
-                      style={[
-                        styles.emptyAddProjectButton,
-                        {
-                          backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
-                          borderColor: theme.name === 'dark' ? '#667eea' : '#667eea',
-                        }
-                      ]}
-                      onPress={() => setAddVisible(true)}
-                      activeOpacity={0.7}
-                    >
+                  ]} 
+                  onPress={() => setMainMenuVisible(true)}
+                  accessible={true}
+                  accessibilityLabel="Menu options"
+                  accessibilityRole="button"
+                >
+                  <Ionicons 
+                    name="menu" 
+                    size={20} 
+                    color={theme.name === 'dark' ? '#FFFFFF' : theme.colors.primary} 
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </AnimatedReanimated.View>
+
+        {/* Mood Statement - Animasyonlu */}
+        <AnimatedReanimated.View style={moodStatementAnimatedStyle}>
+          <MoodStatement 
+            activeTasks={activeTasks}
+            completedTasks={completedTasks}
+            onPress={() => navigation.navigate('EmotionalJournal')}
+            onCreateFirstProject={() => setAddVisible(true)} // Proje yoksa AddProject aç
+          />
+        </AnimatedReanimated.View>
+
+        {/* Status Tabs - Animasyonlu */}
+        <AnimatedReanimated.View style={statusTabsAnimatedStyle}>
+          <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
+        </AnimatedReanimated.View>
+
+        {/* Main Content with FlatList as primary scrollable */}
+        <View style={styles.viewport}>
+          <Animated.View
+            {...panResponder.panHandlers}
+            style={[
+              styles.panContainer,
+              { width: width * 2, transform: [{ translateX: panX }] },
+            ]}
+          >
+            {/* My Day Screen (left) */}
+            <View style={{ width }}>
+              <ScrollView 
+                style={styles.myDayScrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.myDayScrollContent}
+              >
+                <MyDayScreen 
+                  navigation={navigation}
+                  selectedCard={myDaySelectedCard}
+                  setSelectedCard={setMyDaySelectedCard}
+                  selectedMilestone={myDaySelectedMilestone}
+                  setSelectedMilestone={setMyDaySelectedMilestone}
+                  addMilestoneModalVisible={myDayAddMilestoneModalVisible}
+                  setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
+                  selectedProjectForMilestone={myDaySelectedProjectForMilestone}
+                  setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
+                  selectedDate={selectedDate}
+                  setSelectedDate={setSelectedDate}
+                  onOpenJournal={handleMyDayOpenJournal}
+                  onAddProject={handleMyDayAddProject}
+                />
+              </ScrollView>
+            </View>
+
+            {/* Active list (right) */}
+            <View style={{ width }}>
+              {/* Status Bar */}
+              <StatusBarComponent activeCount={activeTasks.length} doneCount={completedTasks.length} />
+              
+              <FlatList
+                data={activeTasksReversed}
+                keyExtractor={keyExtractor}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 8 }}
+                renderItem={renderActiveItem}
+                extraData={`${refreshKey}-${activeTasks.map(t => 
+                  `${t.id}-${t.milestones?.map(m => `${m.id}:${m.parentId || 'none'}`).join(',')}`
+                ).join('|')}`}
+                ListEmptyComponent={
+                  <View style={styles.emptyStateContainer}>
+                    <View style={[
+                      styles.emptyStateCard,
+                      {
+                        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7',
+                      }
+                    ]}>
                       <Ionicons 
-                        name="add-circle" 
-                        size={20} 
-                        color={theme.name === 'dark' ? '#667eea' : '#667eea'} 
+                        name="rocket-outline" 
+                        size={48} 
+                        color={theme.name === 'dark' ? '#667eea' : '#8E8E93'} 
                       />
                       <Text style={[
-                        styles.emptyAddProjectButtonText,
-                        { color: theme.name === 'dark' ? '#667eea' : '#667eea' }
-                      ]}>{t('addProject')}</Text>
-                    </TouchableOpacity>
+                        styles.emptyStateTitle,
+                        { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+                      ]}>{t('noActiveProjects')}</Text>
+                      <Text style={[
+                        styles.emptyStateSubtitle,
+                        { color: theme.name === 'dark' ? '#8E8E93' : '#7f8c8d' }
+                      ]}>{t('startYourJourney')}</Text>
+                      
+                      {/* Add Project Button - MyDay ile aynı style */}
+                      <TouchableOpacity
+                        style={[
+                          styles.emptyAddProjectButton,
+                          {
+                            backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
+                            borderColor: theme.name === 'dark' ? '#667eea' : '#667eea',
+                          }
+                        ]}
+                        onPress={() => setAddVisible(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons 
+                          name="add-circle" 
+                          size={20} 
+                          color={theme.name === 'dark' ? '#667eea' : '#667eea'} 
+                        />
+                        <Text style={[
+                          styles.emptyAddProjectButtonText,
+                          { color: theme.name === 'dark' ? '#667eea' : '#667eea' }
+                        ]}>{t('addProject')}</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              }
-              showsVerticalScrollIndicator={false}
-              {...flatListProps}
-            />
-          </View>
-        </Animated.View>
-      </View>
+                }
+                showsVerticalScrollIndicator={false}
+                {...flatListProps}
+              />
+            </View>
+          </Animated.View>
+        </View>
 
 
       {/* Main Menu - ActiveTaskMenu Style */}
@@ -707,6 +805,54 @@ const MainScreen = memo(function MainScreen({ navigation }) {
                   <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('tutorial')}</Text>
                 </View>
               </TouchableOpacity>
+
+              {/* Reset Education - Dev Mode */}
+              {__DEV__ && (
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={async () => {
+                    setMainMenuVisible(false);
+                    await resetEducation();
+                    console.log('🎓 Education reset - please restart app');
+                    Alert.alert(
+                      language === 'tr' ? 'Eğitim Sıfırlandı' : 'Education Reset',
+                      language === 'tr' ? 'Uygulamayı yeniden başlatın' : 'Please restart the app'
+                    );
+                  }}
+                  accessible={true}
+                  accessibilityLabel="Reset education"
+                  accessibilityRole="button"
+                >
+                  <View style={styles.menuItemContent}>
+                    <Ionicons name="refresh-outline" size={20} color="#FF6B6B" />
+                    <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
+                      {language === 'tr' ? 'Eğitimi Sıfırla (Dev)' : 'Reset Education (Dev)'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Start Education - Dev Mode */}
+              {__DEV__ && !isEducationActive && (
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setMainMenuVisible(false);
+                    console.log('🎓 Manually starting education');
+                    startEducation();
+                  }}
+                  accessible={true}
+                  accessibilityLabel="Start education"
+                  accessibilityRole="button"
+                >
+                  <View style={styles.menuItemContent}>
+                    <Ionicons name="school-outline" size={20} color="#10B981" />
+                    <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
+                      {language === 'tr' ? 'Eğitimi Başlat (Dev)' : 'Start Education (Dev)'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
 
               {/* Completed Projects */}
               <TouchableOpacity
@@ -797,7 +943,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           closeCard();
           setRefreshKey(prev => prev + 1); // Force refresh after attach/detach operations
         }} 
-        navigation={navigation} 
+        navigation={navigation}
       />}
       
       {/* MyDay modals */}
@@ -807,7 +953,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           setMyDaySelectedCard(null);
           setRefreshKey(prev => prev + 1); // Force refresh after attach/detach operations
         }} 
-        navigation={navigation} 
+        navigation={navigation}
       />}
       
       {myDaySelectedMilestone && <Journal 
@@ -835,9 +981,22 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         project={myDaySelectedProjectForMilestone}
         onSave={(milestoneData) => {
           if (myDaySelectedProjectForMilestone) {
-            addMilestone(myDaySelectedProjectForMilestone.id, milestoneData);
+            const projectId = myDaySelectedProjectForMilestone.id;
+            
+            // Add milestone
+            addMilestone(projectId, milestoneData);
+            
+            // Close modal
             setMyDayAddMilestoneModalVisible(false);
             setMyDaySelectedProjectForMilestone(null);
+            
+            // Education: Move to MY_DAY_FEATURES after adding milestone to created project
+            if (isEducationActive && currentStep === EDUCATION_STEPS.MY_DAY_INFO && projectId === createdProjectId) {
+              console.log('🎓 First milestone added! Moving to MY_DAY_FEATURES step.');
+              setTimeout(() => {
+                nextStep();
+              }, 300);
+            }
           }
         }}
         existingMilestones={myDaySelectedProjectForMilestone?.milestones || []}
@@ -924,6 +1083,16 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         activeTasks={activeTasks}
         completedTasks={completedTasks}
       />
+
+      {/* Education Overlay */}
+      {isEducationActive && <EducationOverlay 
+        onAddProject={handleEducationAddProject}
+        onAddMilestone={handleEducationAddMilestone}
+        hideOverlay={
+          (addVisible && currentStep === EDUCATION_STEPS.CREATE_PROJECT) ||
+          (myDayAddMilestoneModalVisible && currentStep === EDUCATION_STEPS.MY_DAY_INFO)
+        }
+      />}
       </LinearGradient>
     );
   } catch (error) {
@@ -1131,6 +1300,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  // Removed scroll view styles since we're using FlatList as primary scrollable
 });
 
 export default MainScreen;
+
+
