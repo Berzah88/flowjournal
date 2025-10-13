@@ -1,25 +1,35 @@
-﻿// screens/MyDayScreen.js
-import React, { useState, useMemo, useEffect, useCallback, memo } from "react";
+// screens/MyDayScreen.js
+import React, { useState, useRef, useMemo, useEffect, useCallback, memo } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
-  StyleSheet,
-  Alert,
-  TouchableOpacity,
   Text,
+  FlatList,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  TextInput,
+  Alert,
+  Vibration,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useActiveTasks, useCompletedTasks, useTaskActions } from "../hooks/useTaskContext";
+import { getMilestoneColor } from "../utils/milestoneColors";
+import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
+import { ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
-import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
+import LoadingSpinner from "../components/LoadingSpinner";
+import ActiveProject from "./ActiveProject";
+import AddMilestoneModal from "../components/AddMilestoneModal";
+import DailyMoodSummary from "../components/DailyMoodSummary";
 import HorizontalCalendar from "../components/HorizontalCalendar";
-import JourneyOverview from "../components/JourneyOverview";
-import MoodTrend from "../components/MoodTrend";
-import ActivityTimeline from "../components/ActivityTimeline";
-import MoodCalendar from "../components/MoodCalendar";
-import TodaysSummary from "../components/TodaysSummary";
-import ProjectCard from "../components/ProjectCard";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from "@expo/vector-icons";
+const { width } = Dimensions.get("window");
 
 const MyDayScreen = memo(function MyDayScreen({ 
   navigation, 
@@ -38,7 +48,7 @@ const MyDayScreen = memo(function MyDayScreen({
 }) {
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
-  const { completeMilestone, setActiveMilestone } = useTaskActions();
+  const { addMilestone, updateMilestone, completeMilestone, setActiveMilestone } = useTaskActions();
   const { theme } = useTheme();
   const { t } = useLanguage();
   
@@ -48,70 +58,62 @@ const MyDayScreen = memo(function MyDayScreen({
   const [completingMilestones, setCompletingMilestones] = useState(new Set());
   const [focusedProjects, setFocusedProjects] = useState(new Set());
 
-  // Save focused projects to AsyncStorage
-  const saveFocusedProjects = useCallback(async (projects) => {
-    try {
-      const projectIds = [...projects];
-      await AsyncStorage.setItem('myDayFocusedProjects', JSON.stringify(projectIds));
-    } catch (error) {
-      console.error('Focused projeler kaydedilirken hata:', error);
-    }
-  }, []);
-
-  // Load focused projects from AsyncStorage on mount only
+  // Load focused projects from AsyncStorage
   useEffect(() => {
     const loadFocusedProjects = async () => {
       try {
         const stored = await AsyncStorage.getItem('myDayFocusedProjects');
         if (stored) {
           const projectIds = JSON.parse(stored);
-          // Enforce single focused project
-          const firstId = Array.isArray(projectIds) && projectIds.length > 0 ? projectIds[0] : null;
-          setFocusedProjects(firstId ? new Set([firstId]) : new Set());
+          setFocusedProjects(new Set(projectIds));
+          console.log('✅ Focused projeler yüklendi:', projectIds);
+        } else {
+          console.log('ℹ️ Henüz focused proje yok');
         }
       } catch (error) {
-        console.error('Focused projeler yuklenirken hata:', error);
+        console.error('❌ Focused projeler yüklenirken hata:', error);
       }
     };
-    
     loadFocusedProjects();
   }, []);
 
-  // Clean up deleted projects from focused list (only on activeTasks.length change)
-  useEffect(() => {
-    if (activeTasks.length === 0 || focusedProjects.size === 0) return;
-    
-    const activeProjectIds = activeTasks.map(task => task.id);
-    const currentFocusedIds = [...focusedProjects];
-    const validProjectIds = currentFocusedIds.filter(id => activeProjectIds.includes(id));
-    
-    if (validProjectIds.length !== currentFocusedIds.length) {
-      // Keep only the first valid focused id (single selection)
-      const newSet = validProjectIds.length > 0 ? new Set([validProjectIds[0]]) : new Set();
-      setFocusedProjects(newSet);
-      saveFocusedProjects(newSet);
+  // Save focused projects to AsyncStorage
+  const saveFocusedProjects = useCallback(async (projects) => {
+    try {
+      const projectIds = [...projects];
+      await AsyncStorage.setItem('myDayFocusedProjects', JSON.stringify(projectIds));
+      console.log('💾 Focused projeler kaydedildi:', projectIds);
+    } catch (error) {
+      console.error('❌ Focused projeler kaydedilirken hata:', error);
     }
-  }, [activeTasks.length, saveFocusedProjects]);
+  }, []);
 
   // Toggle project focus
   const handleProjectLongPress = useCallback((project) => {
     setFocusedProjects(prev => {
-      const wasFocused = prev.has(project.id);
-      let newSet;
+      const newSet = new Set(prev);
+      const wasFocused = newSet.has(project.id);
+      
       if (wasFocused) {
-        // Unfocus if already focused
-        newSet = new Set();
-        console.log(`Focused kaldırıldı: "${project.title}"`);
+        newSet.delete(project.id);
+        console.log(`🔄 "${project.title}" artık focused değil`);
       } else {
-        // Focus only this project (single selection)
-        newSet = new Set([project.id]);
-        console.log(`Focused eklendi: "${project.title}"`);
+        newSet.add(project.id);
+        console.log(`⭐ "${project.title}" focused oldu`);
       }
+      
       saveFocusedProjects(newSet);
       return newSet;
     });
   }, [saveFocusedProjects]);
 
+  // Memoized handlers to prevent unnecessary re-renders
+     const openCard = useCallback((card) => {
+       setSelectedCard(card);
+     }, [setSelectedCard]);
+     const closeCard = useCallback(() => {
+       setSelectedCard(null);
+     }, [setSelectedCard]);
 
   const openMilestone = useCallback((milestone, project) => {
     // Project-based journal system - open journal for the entire project
@@ -126,20 +128,20 @@ const MyDayScreen = memo(function MyDayScreen({
   }, [onOpenJournal]);
 
   const handleMilestoneToggle = useCallback((milestone, project, selectedDate) => {
-    // SADECE BUGÃœN Ä°Ã‡Ä°N complete/uncomplete yapÄ±labilir
+    // SADECE BUGÜN İÇİN complete/uncomplete yapılabilir
     const today = new Date();
     const selected = new Date(selectedDate);
     today.setHours(0, 0, 0, 0);
     selected.setHours(0, 0, 0, 0);
     
     if (today.getTime() !== selected.getTime()) {
-      // BugÃ¼n deÄŸilse iÅŸlem yapma - KullanÄ±cÄ±ya bilgi ver
+      // Bugün değilse işlem yapma - Kullanıcıya bilgi ver
       const isPast = selected < today;
       Alert.alert(
-        isPast ? 'â®ï¸ ' + (t('pastDateRestriction') || 'GeÃ§miÅŸ Tarih') : 'â­ï¸ ' + (t('futureDateRestriction') || 'Gelecek Tarih'),
+        isPast ? '⏮️ ' + (t('pastDateRestriction') || 'Geçmiş Tarih') : '⏭️ ' + (t('futureDateRestriction') || 'Gelecek Tarih'),
         isPast 
-          ? (t('cannotModifyPast') || 'GeÃ§miÅŸteki milestone\'larÄ± deÄŸiÅŸtiremezsiniz. Sadece bugÃ¼n iÃ§in complete/uncomplete yapabilirsiniz.')
-          : (t('cannotModifyFuture') || 'Gelecekteki milestone\'larÄ± ÅŸimdiden complete edemezsiniz. Sadece bugÃ¼n iÃ§in iÅŸlem yapabilirsiniz.'),
+          ? (t('cannotModifyPast') || 'Geçmişteki milestone\'ları değiştiremezsiniz. Sadece bugün için complete/uncomplete yapabilirsiniz.')
+          : (t('cannotModifyFuture') || 'Gelecekteki milestone\'ları şimdiden complete edemezsiniz. Sadece bugün için işlem yapabilirsiniz.'),
         [{ text: 'Tamam', style: 'default' }]
       );
       return;
@@ -147,13 +149,13 @@ const MyDayScreen = memo(function MyDayScreen({
     
     const milestoneKey = `${project.id}-${milestone.id}`;
     
-    // EÄŸer milestone completed ise â†’ uncomplete yap (direkt, animasyonsuz)
+    // Eğer milestone completed ise → uncomplete yap (direkt, animasyonsuz)
     if (milestone.completed) {
       setActiveMilestone(project.id, milestone.id);
       return;
     }
     
-    // EÄŸer milestone active ise â†’ complete yap (animasyonlu)
+    // Eğer milestone active ise → complete yap (animasyonlu)
     // Milestone'u completing state'e ekle
     setCompletingMilestones(prev => new Set([...prev, milestoneKey]));
     
@@ -162,7 +164,7 @@ const MyDayScreen = memo(function MyDayScreen({
       try {
         completeMilestone(project.id, milestone.id);
         
-        // Celebration'Ä± tetikle
+        // Celebration'ı tetikle
         if (global.triggerCelebration) {
           setTimeout(() => {
             global.triggerCelebration({
@@ -249,105 +251,10 @@ const MyDayScreen = memo(function MyDayScreen({
 
   const closeMilestone = useCallback(() => setSelectedMilestone(null), [setSelectedMilestone]);
 
-  // Get mood info helper
-  const getMoodInfo = useCallback((moodKey) => {
-    const mood = MOODS.find(m => m.key === moodKey) || 
-                 EXTENDED_MOODS.find(m => m.key === moodKey) || 
-                 { key: moodKey, label: moodKey, icon: 'sentiment-neutral', color: '#8E8E93', category: 'neutral' };
-    
-    if (!mood.category) {
-      mood.category = 'neutral';
-    }
-    
-    return mood;
-  }, []);
 
-  // Mood rengini solid hale getir
-  const getSolidMoodColor = useCallback((originalColor) => {
-    const colorMap = {
-      '#C8E6C9': '#4CAF50', '#FFE0B2': '#FF9800', '#E1BEE7': '#9C27B0',
-      '#FFCDD2': '#F44336', '#FFAB91': '#FF5722', '#FFCCBC': '#FF7043',
-      '#FFF3E0': '#FFB74D', '#E8F5E8': '#66BB6A', '#E1F5FE': '#42A5F5',
-      '#FFF8E1': '#FFCA28', '#F3E5F5': '#BA68C8', '#FFEBEE': '#EF5350',
-      '#E0E0E0': '#90A4AE', '#DCEDC8': '#8BC34A', '#F5F5F5': '#BDBDBD',
-      '#FFE0E6': '#F48FB1', '#E8EAF6': '#7986CB', '#E0F2F1': '#4DB6AC',
-      '#FFFDE7': '#FFF176', '#FAFAFA': '#E0E0E0', '#FFF9C4': '#FFF59D',
-      '#FCE4EC': '#F06292', '#CFD8DC': '#90A4AE',
-    };
-    return colorMap[originalColor] || originalColor;
-  }, []);
 
-  // Project emotional progress hesaplama
-  const getProjectEmotionalProgress = useCallback((project) => {
-    if (!project.journalEntries || project.journalEntries.length === 0) {
-      return null;
-    }
-
-    const projectMoods = [];
-    const moodCounts = {};
-    
-    project.journalEntries.forEach(entry => {
-      if (entry.mood) {
-        const moodInfo = getMoodInfo(entry.mood);
-        projectMoods.push({ mood: entry.mood, moodInfo, date: new Date(entry.createdAt) });
-        moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-      }
-    });
-    
-    if (projectMoods.length === 0) return null;
-    
-    const sortedMoods = Object.entries(moodCounts).sort(([,a], [,b]) => b - a);
-    const dominantMoodKey = sortedMoods[0][0];
-    const dominantMoodCount = sortedMoods[0][1];
-    const dominantMoodInfo = getMoodInfo(dominantMoodKey);
-    
-    let totalMoodScore = 0;
-    projectMoods.forEach(mood => {
-      const score = mood.moodInfo.category === 'positive' ? 1 : 
-                   mood.moodInfo.category === 'negative' ? -1 : 0;
-      totalMoodScore += score;
-    });
-    
-    const averageScore = totalMoodScore / projectMoods.length;
-    let progressType = 'neutral';
-    let progressColor = dominantMoodInfo ? getSolidMoodColor(dominantMoodInfo.color) : '#9E9E9E';
-    
-    if (dominantMoodInfo && dominantMoodInfo.category) {
-      progressType = dominantMoodInfo.category;
-    } else if (averageScore > 0.2) {
-      progressType = 'positive';
-      progressColor = '#4CAF50';
-    } else if (averageScore < -0.2) {
-      progressType = 'negative';
-      progressColor = '#F44336';
-    }
-    
-    const moodMessages = {
-      happy: { msg: t('projectHappy'), icon: 'sentiment-satisfied' },
-      excited: { msg: t('projectExcited'), icon: 'celebration' },
-      grateful: { msg: t('projectGrateful'), icon: 'favorite' },
-      motivated: { msg: t('projectMotivated'), icon: 'trending-up' },
-      peaceful: { msg: t('projectPeaceful'), icon: 'spa' },
-      sad: { msg: t('projectSad'), icon: 'sentiment-dissatisfied' },
-      tired: { msg: t('projectTired'), icon: 'bedtime' },
-      frustrated: { msg: t('projectFrustrated'), icon: 'psychology' },
-      anxious: { msg: t('projectAnxious'), icon: 'warning' },
-    };
-    
-    const moodMsg = moodMessages[dominantMoodInfo?.key] || { msg: t('projectDefault'), icon: 'trending-flat' };
-    
-    return {
-      progressType,
-      progressMessage: moodMsg.msg,
-      progressIcon: moodMsg.icon,
-      progressColor,
-      averageScore,
-      moodCount: projectMoods.length,
-      dominantMood: dominantMoodKey,
-      dominantMoodCount,
-      dominantMoodInfo
-    };
-  }, [getMoodInfo, getSolidMoodColor, t]);
+  // String format of selected date
+  const selectedDateString = selectedDate.toDateString();
 
   // Filter tasks for selected date (by date range)
   const selectedDateActiveTasks = useMemo(() => {
@@ -445,20 +352,73 @@ const MyDayScreen = memo(function MyDayScreen({
     
     // Sort by focused status first, then by last milestone activity
     const sorted = filtered.sort((a, b) => {
-      // Focused project should come first
+      // Focused projects always come first
       const aIsFocused = focusedProjects.has(a.id);
       const bIsFocused = focusedProjects.has(b.id);
+      
       if (aIsFocused && !bIsFocused) return -1;
       if (!aIsFocused && bIsFocused) return 1;
-
-      // Then by last activity (desc)
+      
+      // If both focused or both not focused, sort by last activity
       const dateA = new Date(a.lastMilestoneActivity);
       const dateB = new Date(b.lastMilestoneActivity);
-      return dateB - dateA;
+      return dateB - dateA; // Most recent first
     });
 
     return sorted;
   }, [activeTasks, selectedDate, focusedProjects]);
+
+  // Calculate milestones for today's summary - based on milestones active on that day
+  const todaySummary = useMemo(() => {
+    const totalMilestones = selectedDateActiveTasks.reduce((total, project) => {
+      return total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length || 0);
+    }, 0);
+
+    const completedMilestones = selectedDateActiveTasks.reduce((total, project) => {
+      // Count milestones completed TODAY
+      return total + (project.milestones?.filter(m => isMilestoneCompletedToday(m, selectedDate)).length || 0);
+    }, 0);
+
+    const activeMilestones = totalMilestones;
+
+    return {
+      totalProjects: selectedDateActiveTasks.length,
+      totalMilestones,
+      completedMilestones,
+      activeMilestones,
+    };
+  }, [selectedDateActiveTasks, selectedDate, isMilestoneCompletedToday]);
+
+
+
+
+
+
+  const keyExtractor = useCallback((item) => item.id.toString(), []);
+
+  // Organize tasks by date (for calendar)
+  const tasksByDate = useMemo(() => {
+    const tasks = {};
+    if (activeTasks) {
+      activeTasks.forEach(task => {
+        const startDate = new Date(task.startDate);
+        const endDate = new Date(task.endDate);
+        
+        // Her gün için task'i ekle
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          const dateString = d.toDateString();
+          if (!tasks[dateString]) {
+            tasks[dateString] = [];
+          }
+          if (!tasks[dateString].find(t => t.id === task.id)) {
+            tasks[dateString].push(task);
+          }
+        }
+      });
+    }
+    return tasks;
+  }, [activeTasks]);
+
 
   return (
     <View style={styles.container}>
@@ -468,123 +428,693 @@ const MyDayScreen = memo(function MyDayScreen({
           onDateSelect={setSelectedDate}
         />
         
-        {/* Journey Overview - Sadece bugün için göster */}
-        {(() => {
-          const today = new Date();
-          const selected = new Date(selectedDate);
-          today.setHours(0, 0, 0, 0);
-          selected.setHours(0, 0, 0, 0);
-          
-          if (selected.getTime() === today.getTime()) {
-            return (
-              <JourneyOverview 
-                activeTasks={activeTasks}
-                completedTasks={completedTasks}
-                selectedDate={selectedDate}
-              />
-            );
-          }
-          return null;
-        })()}
+        {/* Today's Summary Header */}
+        <View style={styles.summaryHeaderContainer}>
+          <Text style={[
+            styles.summaryHeaderTitle,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+          ]}>{t('todaysSummary')}</Text>
+        </View>
         
-        {/* Today's Summary */}
-        <TodaysSummary
-          selectedDateActiveTasks={selectedDateActiveTasks}
-          selectedDate={selectedDate}
+        {/* Daily Mood Summary with Progress */}
+        <DailyMoodSummary
           activeTasks={activeTasks}
           completedTasks={completedTasks}
+          selectedDate={selectedDate}
           navigation={navigation}
-          onAddProject={onAddProject}
-          ProjectCard={ProjectCard}
-          setSelectedCard={setSelectedCard}
-          setSelectedProjectForMilestone={setSelectedProjectForMilestone}
-          setAddMilestoneModalVisible={setAddMilestoneModalVisible}
-          completingMilestones={completingMilestones}
-          isMilestoneActiveToday={isMilestoneActiveToday}
-          isMilestoneOverdue={isMilestoneOverdue}
-          isMilestoneLastDay={isMilestoneLastDay}
-          openMilestone={openMilestone}
-          handleMilestoneToggle={handleMilestoneToggle}
-          onOpenJournal={onOpenJournal}
-          isMilestoneCompletedToday={isMilestoneCompletedToday}
-          focusedProjects={focusedProjects}
-          handleProjectLongPress={handleProjectLongPress}
-          getProjectEmotionalProgress={getProjectEmotionalProgress}
         />
-
-        {/* Mood Trend - Sadece bugün için göster */}
-        {(() => {
-          const today = new Date();
-          const selected = new Date(selectedDate);
-          today.setHours(0, 0, 0, 0);
-          selected.setHours(0, 0, 0, 0);
-          
-          if (selected.getTime() === today.getTime()) {
-            return (
-              <MoodTrend 
-                activeTasks={activeTasks}
-                completedTasks={completedTasks}
+        
+        {/* Today's Summary Section */}
+        <View style={styles.summaryContainer}>
+        {selectedDateActiveTasks.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
+            <Text style={styles.emptyTitle}>{t('noProjectOnThisDate')}</Text>
+            <Text style={styles.emptyText}>
+              {(() => {
+                const today = new Date();
+                const selected = new Date(selectedDate);
+                today.setHours(0, 0, 0, 0);
+                selected.setHours(0, 0, 0, 0);
+                
+                if (selected < today) {
+                  return t('noProjectOnThisDate');
+                } else {
+                  return t('noActiveProjectOnSelectedDate');
+                }
+              })()}
+            </Text>
+            {(() => {
+              const today = new Date();
+              const selected = new Date(selectedDate);
+              today.setHours(0, 0, 0, 0);
+              selected.setHours(0, 0, 0, 0);
+              
+              // Show button for today or future dates, OR when there are active projects
+              if (selected >= today || selectedDateActiveTasks.length > 0) {
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.addProjectButton,
+                      {
+                        backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
+                        borderColor: theme.name === 'dark' ? '#636366' : '#1976D2',
+                      }
+                    ]}
+                    onPress={onAddProject}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name="add-circle" 
+                      size={20} 
+                      color={theme.name === 'dark' ? '#FF6B6B' : '#1976D2'} 
+                    />
+                    <Text style={[
+                      styles.addProjectButtonText,
+                      { color: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }
+                    ]}>{t('addProject')}</Text>
+                  </TouchableOpacity>
+                );
+              }
+              return null;
+            })()}
+          </View>
+        ) : (
+          selectedDateActiveTasks.map((project, index) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                index={index}
+                isLastProject={index >= selectedDateActiveTasks.length - 1}
+                theme={theme}
+                t={t}
+                setSelectedCard={setSelectedCard}
+                setSelectedProjectForMilestone={setSelectedProjectForMilestone}
+                setAddMilestoneModalVisible={setAddMilestoneModalVisible}
+                completingMilestones={completingMilestones}
+                selectedDate={selectedDate}
+                isMilestoneActiveToday={isMilestoneActiveToday}
+                isMilestoneOverdue={isMilestoneOverdue}
+                isMilestoneLastDay={isMilestoneLastDay}
+                openMilestone={openMilestone}
+                handleMilestoneToggle={handleMilestoneToggle}
+                onOpenJournal={onOpenJournal}
+                isMilestoneCompletedToday={isMilestoneCompletedToday}
+                isFocused={focusedProjects.has(project.id)}
+                onProjectLongPress={handleProjectLongPress}
               />
-            );
-          }
-          return null;
-        })()}
+            ))
+        )}
 
-        {/* Activity Timeline - Sadece bugün için göster */}
-        {(() => {
-          const today = new Date();
-          const selected = new Date(selectedDate);
-          today.setHours(0, 0, 0, 0);
-          selected.setHours(0, 0, 0, 0);
-          
-          if (selected.getTime() === today.getTime()) {
-            return (
-              <ActivityTimeline 
-                activeTasks={activeTasks}
-                completedTasks={completedTasks}
-              />
-            );
-          }
-          return null;
-        })()}
-
-        {/* Mood Calendar - Sadece bugün için göster */}
-        {(() => {
-          const today = new Date();
-          const selected = new Date(selectedDate);
-          today.setHours(0, 0, 0, 0);
-          selected.setHours(0, 0, 0, 0);
-          
-          if (selected.getTime() === today.getTime()) {
-            return <MoodCalendar />;
-          }
-          return null;
-        })()}
-
-        {/* Add Project Button - Page bottom */}
-        <View style={{ paddingHorizontal: 38, paddingTop: 12, paddingBottom: 24 }}>
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingVertical: 12,
-              borderRadius: 12,
-              backgroundColor: theme.name === 'dark' ? '#1976D2' : '#1976D2',
-            }}
-            activeOpacity={0.8}
+        {/* Add Project Button - Always visible when there are active projects */}
+        {selectedDateActiveTasks.length > 0 && (
+          <TouchableOpacity 
+            style={[
+              styles.addProjectButton,
+              {
+                backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
+                borderColor: theme.name === 'dark' ? '#FF6B6B' : '#1976D2',
+              }
+            ]}
             onPress={onAddProject}
+            activeOpacity={0.7}
           >
-            <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-            <Text style={{
-              color: '#FFFFFF',
-              fontFamily: 'Poppins_600SemiBold',
-              fontSize: 14,
-              marginLeft: 8,
-            }}>{t('addProject')}</Text>
+            <Ionicons 
+              name="add-circle" 
+              size={18} 
+              color={theme.name === 'dark' ? '#FF6B6B' : '#1976D2'} 
+            />
+            <Text style={[
+              styles.addProjectButtonText,
+              { color: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }
+            ]}>{t('addProject')}</Text>
+          </TouchableOpacity>
+        )}
+
+      </View>
+    </View>
+  );
+});
+
+// Separate ProjectCard component to avoid hook violations in map
+const ProjectCard = memo(function ProjectCard({
+  project,
+  index,
+  isLastProject,
+  theme,
+  t,
+  setSelectedCard,
+  setSelectedProjectForMilestone,
+  setAddMilestoneModalVisible,
+  completingMilestones,
+  selectedDate,
+  isMilestoneActiveToday,
+  isMilestoneOverdue,
+  isMilestoneLastDay,
+  openMilestone,
+  handleMilestoneToggle,
+  onOpenJournal,
+  isMilestoneCompletedToday,
+  isFocused,
+  onProjectLongPress,
+}) {
+  // Smooth touch animations
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+  const longPressTimer = useRef(null);
+  const isLongPress = useRef(false);
+  
+  const handlePressIn = useCallback(() => {
+    // Reset long press flag
+    isLongPress.current = false;
+    
+    // Clear any existing timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+    
+    // Smooth scale down animation
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    // Start long press timer
+    longPressTimer.current = setTimeout(() => {
+      // Mark as long press
+      isLongPress.current = true;
+      
+      // Haptic feedback
+      Vibration.vibrate(50);
+      
+      // Smooth spring back
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+        Animated.spring(opacityAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+      ]).start();
+      
+      // Trigger long press action
+      onProjectLongPress(project);
+    }, 500);
+  }, [scaleAnim, opacityAnim, onProjectLongPress, project]);
+  
+  const handlePressOut = useCallback(() => {
+    // Clear timer if press is released early
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
+    // Smooth spring back (only if not already animated by long press)
+    if (!isLongPress.current) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+        Animated.spring(opacityAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }),
+      ]).start();
+    }
+  }, [scaleAnim, opacityAnim]);
+  
+  const handlePress = useCallback(() => {
+    // Only trigger normal press if it wasn't a long press
+    if (!isLongPress.current) {
+      setSelectedCard(project);
+    }
+  }, [setSelectedCard, project]);
+  
+  return (
+    <TouchableWithoutFeedback
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+    >
+      <Animated.View
+        style={[
+          styles.projectSummaryCard,
+          {
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+            borderColor: theme.name === 'dark' ? '#000000' : '#1976D2',
+            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.06,
+            shadowRadius: theme.name === 'dark' ? 12 : 8,
+            elevation: theme.name === 'dark' ? 8 : 2,
+            marginBottom: isLastProject ? 0 : 20,
+            transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
+          },
+          isFocused && {
+            borderColor: '#FF9500',
+            borderWidth: 2,
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF9F0',
+            shadowColor: '#FF9500',
+            shadowOpacity: 0.3,
+            shadowRadius: 16,
+            elevation: 12,
+          },
+          !isFocused && project.isLastDay && {
+            borderColor: '#8E7DBE',
+            borderWidth: 1.5,
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F8F6FF',
+          },
+          !isFocused && project.isOverdue && {
+            borderColor: '#FF4444',
+            borderWidth: 1.5,
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFF5F5',
+          }
+        ]}
+      >
+        <View style={styles.projectHeader}>
+          <View style={styles.projectTitleContainer}>
+            <Text style={[
+              styles.projectTitle,
+              {
+                color: theme.name === 'dark' ? '#FF6B6B' : '#1B2951',
+              },
+              isFocused && {
+                color: theme.name === 'dark' ? '#FF9500' : '#FF9500',
+              },
+              !isFocused && project.isLastDay && {
+                color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
+              },
+              !isFocused && project.isOverdue && {
+                color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
+              }
+            ]}>
+              {project.title || ''}
+            </Text>
+            {isFocused && (
+              <View style={[
+                styles.focusedBadge,
+                { backgroundColor: theme.name === 'dark' ? '#FF9500' : '#FF9500' }
+              ]}>
+                <Ionicons name="star" size={12} color="#FFFFFF" />
+                <Text style={styles.focusedBadgeText}>{t('focused') || 'Focused'}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.dateContainer}>
+            <View style={[
+              styles.projectDateRange,
+              {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#E3F2FD',
+                borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
+                borderWidth: theme.name === 'dark' ? 0.5 : 0,
+              },
+              project.isLastDay && {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F0EDFF',
+                borderColor: '#8E7DBE',
+                borderWidth: 0.5,
+              },
+              project.isOverdue && {
+                backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFE5E5',
+                borderColor: '#FF4444',
+                borderWidth: 0.5,
+              }
+            ]}>
+              <Text style={[
+                styles.dateText,
+                {
+                  color: theme.name === 'dark' ? '#8E8E93' : '#1B2951',
+                },
+                project.isLastDay && {
+                  color: theme.name === 'dark' ? '#A78BFA' : '#8E7DBE',
+                },
+                project.isOverdue && {
+                  color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
+                }
+              ]}>
+                {new Date(project.startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(project.endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+              </Text>
+            </View>
+            {project.isLastDay && (
+              <View style={styles.lastDayBadge}>
+                <Ionicons name="warning" size={12} color="#FFFFFF" />
+                <Text style={styles.lastDayText}>{t('lastDay')}</Text>
+              </View>
+            )}
+            {project.isOverdue && (
+              <View style={[
+                styles.overdueBadge,
+                {
+                  backgroundColor: theme.name === 'dark' ? '#FF4444' : '#FF4444',
+                }
+              ]}>
+                <Ionicons name="alert-circle" size={12} color="#FFFFFF" />
+                <Text style={styles.overdueText}>
+                  {project.daysOverdue === 1 ? t('overdue1Day') : t('overdueDays', { days: project.daysOverdue })}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+        
+        {/* Milestone button under date - show for all projects */}
+        <TouchableOpacity 
+          style={[
+            styles.minimalAddMilestoneButton,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(34, 139, 34, 0.1)',
+              borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(34, 139, 34, 0.2)',
+              borderWidth: 0.5,
+            }
+          ]}
+          onPress={() => {
+            setSelectedProjectForMilestone(project);
+            setAddMilestoneModalVisible(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add" size={14} color={theme.name === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(34, 139, 34, 0.7)'} />
+          <Text style={[
+            styles.minimalAddMilestoneText,
+            { color: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(34, 139, 34, 0.7)' }
+          ]}>{t('milestone')}</Text>
+        </TouchableOpacity>
+        
+        {project.milestones && project.milestones.length > 0 && (
+          <View style={styles.milestonesList}>
+            {(() => {
+              // NEW FILTERING LOGIC: Show active milestones + today's completed milestones
+              const filteredMilestones = project.milestones.filter(m => {
+                // Always show if completing
+                if (completingMilestones.has(`${project.id}-${m.id}`)) return true;
+                
+                // Show completed milestones ONLY if completed today
+                if (m.completed) {
+                  return isMilestoneCompletedToday(m, selectedDate);
+                }
+                
+                // If milestone is a child
+                if (m.parentId) {
+                  const parent = project.milestones.find(p => p.id === m.parentId);
+                  // Show child only if parent is not completed (or completed today)
+                  if (parent && (!parent.completed || isMilestoneCompletedToday(parent, selectedDate))) {
+                    return isMilestoneActiveToday(m, selectedDate);
+                  }
+                  // Don't show child if parent is completed (and not today)
+                  return false;
+                }
+                
+                // If milestone is a parent or standalone
+                // Show if active and within date range
+                return isMilestoneActiveToday(m, selectedDate);
+              });
+              
+              // Organize hierarchically
+              const organized = [];
+              const childrenMap = {};
+              
+              // Group children by parent
+              filteredMilestones.forEach(ms => {
+                if (ms.parentId) {
+                  if (!childrenMap[ms.parentId]) {
+                    childrenMap[ms.parentId] = [];
+                  }
+                  childrenMap[ms.parentId].push(ms);
+                }
+              });
+              
+              // Add parents and their children in hierarchical order
+              filteredMilestones.forEach(ms => {
+                if (!ms.parentId) {
+                  organized.push(ms);
+                  // Add children right after parent
+                  if (childrenMap[ms.id]) {
+                    organized.push(...childrenMap[ms.id]);
+                  }
+                }
+              });
+              
+              return organized.map((milestone, index) => {
+                const milestoneKey = `${project.id}-${milestone.id}`;
+                const isCompleting = completingMilestones.has(milestoneKey);
+                const isOverdue = isMilestoneOverdue(milestone, selectedDate);
+                const isLastDay = isMilestoneLastDay(milestone, selectedDate);
+                const isChild = !!milestone.parentId;
+                const children = project.milestones.filter(m => m.parentId === milestone.id);
+                const hasChildren = children.length > 0;
+                const completedChildren = children.filter(m => m.completed).length;
+                
+                return (
+                <TouchableOpacity 
+                  key={milestone.id || index}
+                  style={[
+                    styles.milestoneItem,
+                    { marginLeft: isChild ? 20 : 0 }
+                  ]}
+                  onPress={() => openMilestone(milestone, project)}
+                  onLongPress={() => {
+                    // Toggle milestone: complete ↔ active (sadece bugün)
+                    handleMilestoneToggle(milestone, project, selectedDate);
+                  }}
+                  activeOpacity={0.7}
+                  delayLongPress={500}
+                >
+                  <View style={styles.milestoneInfo}>
+                    <Ionicons 
+                      name={milestone.completed ? "checkmark-circle" : "ellipse"}
+                      size={18} 
+                      color={
+                        milestone.completed 
+                          ? (theme.name === 'dark' ? '#34C759' : '#34C759')
+                          : getMilestoneColor(milestone, theme.name)
+                      } 
+                    />
+                    <View style={styles.milestoneContent}>
+                      <View style={styles.milestoneTextContainer}>
+                        <Text style={[
+                          styles.milestoneText,
+                          {
+                            color: theme.name === 'dark' ? '#FFFFFF' : '#1976D2',
+                          },
+                          milestone.completed && styles.completedMilestoneText,
+                          isCompleting && styles.completingMilestoneText,
+                          isOverdue && !milestone.completed && styles.overdueMilestoneText,
+                          isLastDay && !milestone.completed && styles.lastDayMilestoneText
+                        ]}>
+                          {milestone.title || ''}
+                        </Text>
+                        {milestone.completed && isMilestoneCompletedToday(milestone, selectedDate) && (
+                          <Text style={[
+                            styles.completedTodayBadge,
+                            { color: theme.name === 'dark' ? '#34C759' : '#34C759' }
+                          ]}>
+                            {' '}✓ {t('completedToday') || 'Bugün tamamlandı'}
+                          </Text>
+                        )}
+                      </View>
+                      {/* Mood stickers removed */}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                );
+              });
+            })()}
+          </View>
+        )}
+
+
+        {/* Journal Preview Section */}
+        {(() => {
+          // En son eklenen 2 journal entry'yi al (tarih fark etmeksizin)
+          let recentEntries = [];
+          
+          if (project.journalEntries && Array.isArray(project.journalEntries)) {
+            // En yeni entry'leri al (ProjectJourney mantığı)
+            recentEntries = project.journalEntries
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .slice(0, 2)
+              .map(entry => ({
+                ...entry,
+                milestoneTitle: entry.originalMilestoneTitle || entry.milestoneTitle || 'General Entry',
+                milestoneColor: getMilestoneColor({ title: entry.originalMilestoneTitle || entry.milestoneTitle }, theme.name)
+              }));
+          }
+          
+          
+          if (recentEntries.length > 0) {
+            return (
+              <View style={styles.journalPreviewSection}>
+                <View style={styles.journalPreviewHeader}>
+                  <Text style={[
+                    styles.journalPreviewTitle,
+                    { color: theme.name === 'dark' ? '#FFFFFF' : '#1B2951' }
+                  ]}>
+                    {t('recentEntries')}
+                  </Text>
+                </View>
+                
+                {recentEntries.map((entry, index) => (
+                  <TouchableOpacity 
+                    key={`${entry.id || index}-${entry.createdAt}`}
+                    style={[
+                      styles.journalPreviewCard,
+                      {
+                        backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                        borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                      }
+                    ]}
+                    onPress={() => {
+                      // Open journal with specific entry
+                      const projectData = {
+                        id: 'project-journal',
+                        title: t('projectJournal'),
+                        taskId: project.id,
+                        projectTitle: project.title || '',
+                        isProjectBased: true,
+                        editEntry: entry
+                      };
+                      onOpenJournal(projectData);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.journalPreviewContent}>
+                      {/* Text özeti kaldırıldı - sadece tarih ve mood gösterilecek */}
+                      
+                      <View style={styles.journalPreviewFooter}>
+                        <Text style={[
+                          styles.journalPreviewDate,
+                          { color: theme.name === 'dark' ? '#8E8E93' : '#666666' }
+                        ]}>
+                          {new Date(entry.createdAt).toLocaleDateString('tr-TR', { 
+                            day: '2-digit', 
+                            month: 'short' 
+                          })} • {new Date(entry.createdAt).toLocaleTimeString('tr-TR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Text>
+                        
+                        {/* Mood sticker - Tarih ile aynı satırda */}
+                        {entry.mood && (
+                          <View style={[
+                            styles.moodTag,
+                            { 
+                              backgroundColor: entry.moodColor || '#CFD8DC',
+                              borderColor: theme.name === 'dark' 
+                                ? 'rgba(255, 255, 255, 0.2)' 
+                                : 'rgba(0, 0, 0, 0.1)',
+                            }
+                          ]}>
+                            <MaterialIcons
+                              name={entry.moodIcon || entry.mood || 'sentiment-neutral'}
+                              size={10}
+                              color={theme.name === 'dark' ? '#000000' : '#333'}
+                            />
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            );
+          }
+          return null;
+        })()}
+
+
+        {/* Journal Add Button and Badge - Bottom of each project card */}
+        <View style={styles.journalActionsContainer}>
+          {/* Journal Count Badge */}
+          {(() => {
+            // Projedeki journal card sayısını say (benzersiz gün sayısı)
+            // ProjectJourney'deki gibi currentTask.journalEntries kullan
+            let journalCardCount = 0;
+            
+            if (project.journalEntries && Array.isArray(project.journalEntries)) {
+              // Tarihleri grupla (ProjectJourney mantığı)
+              const uniqueDates = new Set();
+              project.journalEntries.forEach(entry => {
+                if (entry.createdAt) {
+                  const date = new Date(entry.createdAt);
+                  const dateKey = date.toLocaleDateString('en-US', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  });
+                  uniqueDates.add(dateKey);
+                }
+              });
+              journalCardCount = uniqueDates.size;
+            }
+            
+            
+            if (journalCardCount > 0) {
+              return (
+                <View style={[
+                  styles.journalCountBadge,
+                  {
+                    backgroundColor: theme.name === 'dark' ? '#007AFF' : '#007AFF',
+                  }
+                ]}>
+                  <Ionicons name="journal" size={10} color="white" />
+                  <Text style={styles.journalCountText}>{journalCardCount}</Text>
+                </View>
+              );
+            }
+            return <View style={styles.journalBadgePlaceholder} />;
+          })()}
+          
+          {/* Journal Add Button */}
+          <TouchableOpacity 
+            style={[
+              styles.addJournalButton,
+              {
+                backgroundColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.1)' : 'rgba(0, 122, 255, 0.05)',
+                borderColor: theme.name === 'dark' ? 'rgba(0, 122, 255, 0.3)' : 'rgba(0, 122, 255, 0.2)',
+                borderWidth: 1,
+              }
+            ]}
+            onPress={() => {
+              const projectData = {
+                id: 'project-journal',
+                title: t('projectJournal'),
+                taskId: project.id,
+                projectTitle: project.title || '',
+                isProjectBased: true
+              };
+              onOpenJournal(projectData);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="journal-outline" size={16} color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} />
+            <Text style={[
+              styles.addJournalText,
+              { color: theme.name === 'dark' ? '#007AFF' : '#007AFF' }
+            ]}>{t('addJournal')}</Text>
           </TouchableOpacity>
         </View>
-    </View>
+      </Animated.View>
+    </TouchableWithoutFeedback>
   );
 });
 
@@ -594,5 +1124,330 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
+  },
+  summaryHeaderContainer: {
+    marginHorizontal: 30,
+    marginTop: 0, // 8'den 0'a düşürdüm - progress status üstüne aldım
+    marginBottom: 8,
+    paddingTop: 10, // Today's Summary padding top
+  },
+  summaryHeaderTitle: {
+    fontSize: 18, // 24'ten 18'e düşürdüm - eski haline getirdim
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: -0.5,
+  },
+  summaryContainer: {
+    marginHorizontal: 30,
+    marginTop: 8, // 16'dan 8'e düşürdüm - header'ı yukarıya aldım
+  },
+  emptyState: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 16,
+    padding: 32,
+    marginTop: 6, // 12'den 6'ya düşürdüm - daha kompakt
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#1D1D1F',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  addProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 20,
+    marginBottom: 20,
+    marginHorizontal: 30, // Proje kartlarıyla aynı margin
+  },
+  addProjectButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 6,
+  },
+  projectSummaryCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 6, // 12'den 6'ya düşürdüm - daha kompakt
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 2 },
+    marginHorizontal: 2,
+  },
+  projectHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  projectTitleContainer: {
+    flexDirection: 'column',
+    flex: 1,
+    gap: 6,
+  },
+  dateContainer: {
+    alignItems: 'flex-end',
+  },
+  projectTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    flexShrink: 1,
+  },
+  focusedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  focusedBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+  },
+  projectDateRange: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  dateText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+  },
+  milestonesList: {
+    marginTop: 8,
+    marginLeft: 16,
+  },
+  milestoneItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(25, 118, 210, 0.1)', // Mavi ton border
+  },
+  milestoneInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+  },
+  milestoneContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  milestoneText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    marginBottom: 4,
+  },
+  completedMilestoneText: {
+    textDecorationLine: 'line-through',
+    color: '#8E8E93',
+  },
+  milestoneTextContainer: {
+    position: 'relative',
+    flex: 1,
+  },
+  completedTodayBadge: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginTop: 2,
+  },
+  completingMilestoneText: {
+    color: '#8E8E93',
+    opacity: 0.7,
+    textDecorationLine: 'line-through',
+    textDecorationStyle: 'solid',
+    textDecorationColor: '#8E8E93',
+  },
+  journalCount: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.2)',
+  },
+  journalCountText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+    color: '#007AFF',
+  },
+  // Mood sticker styles removed
+  noMilestonesText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: '#8E8E93',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  overdueMilestoneText: {
+    color: '#FF3B30',
+  },
+  lastDayMilestoneText: {
+    color: '#FF9500',
+  },
+  addMilestoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  addMilestoneText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 6,
+  },
+  minimalAddMilestoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginTop: 6,
+    borderWidth: 0.5,
+    alignSelf: 'flex-end',
+    width: 85,
+    height: 36,
+  },
+  minimalAddMilestoneText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 4,
+  },
+  // Son gününde olan projeler için özel style'lar
+  lastDayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8E7DBE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  lastDayText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  // Gecikmiş projeler için özel style'lar
+  overdueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  overdueText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  // Journal Add Button
+  addJournalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    width: 85,
+    height: 36,
+  },
+  addJournalText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 4,
+  },
+  
+  // Journal Preview Styles
+  journalActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  journalCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  journalCountText: {
+    fontSize: 10,
+    fontFamily: 'Poppins_600SemiBold',
+    color: 'white',
+    marginLeft: 3,
+  },
+  journalBadgePlaceholder: {
+    width: 30, // Badge genişliği kadar boş alan
+    height: 20,
+  },
+  journalPreviewSection: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  journalPreviewHeader: {
+    marginBottom: 8,
+  },
+  journalPreviewTitle: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  journalPreviewCard: {
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 4,
+    borderWidth: 0.5,
+  },
+  journalPreviewContent: {
+    flex: 1,
+  },
+  // journalPreviewText kaldırıldı - artık text özeti gösterilmiyor
+  journalPreviewFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  journalPreviewDate: {
+    fontSize: 9,
+    fontFamily: 'Poppins_500Medium',
+    marginRight: 6,
+  },
+  moodTag: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
