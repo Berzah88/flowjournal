@@ -217,6 +217,11 @@ const translations = {
     // Journal Detail
     'location': 'Location',
     
+    // Permissions
+    'permissionRequired': 'Permission Required',
+    'locationPermissionMessage': 'Location permission is required to add your location to the journal. Please grant permission in settings.',
+    'galleryPermissionMessage': 'Gallery access permission is required to add photos. Please grant permission in settings.',
+    
     // Add Milestone Modal
     'enterMilestoneTitle': 'Enter milestone title...',
     
@@ -912,6 +917,11 @@ const translations = {
     
     // Journal Detail
     'location': 'Konum',
+    
+    // Permissions
+    'permissionRequired': 'İzin Gerekli',
+    'locationPermissionMessage': 'Konumunuzu eklemek için konum izni gerekli. Lütfen ayarlardan izin verin.',
+    'galleryPermissionMessage': 'Fotoğraf eklemek için galeri erişim izni gerekli. Lütfen ayarlardan izin verin.',
     
     // Add Milestone Modal
     'enterMilestoneTitle': 'Kilometre taşı başlığını girin...',

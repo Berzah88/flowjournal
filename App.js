@@ -20,6 +20,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import GlobalErrorHandler from './utils/GlobalErrorHandler';
 import fcmService from './services/FCMService';
 import firestoreService from './services/FirestoreService';
+import permissionManager from './services/PermissionManager';
 // import projectDeadlineService from './services/ProjectDeadlineService'; // ⚠️ KALDIRILDI - Firestore token sistemi kullanılıyor
 import { useFonts, Poppins_300Light, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import * as Notifications from 'expo-notifications';
@@ -150,6 +151,11 @@ export default function App() {
         }
 
         global.forceReloadAIFeedback = () => { /* override edilecek */ };
+        
+        // İzinleri iste (ilk açılışta)
+        console.log('🔐 İzinler kontrol ediliyor...');
+        await permissionManager.requestAllPermissions();
+        
       } catch (error) {
         console.error('❌ App initialization hatası:', error);
         GlobalErrorHandler.reportError(error, { context: 'app_initialization' });

@@ -516,6 +516,20 @@ export default function Journal({
     try {
       setIsPickingMedia(true); // Medya seçme başladı - preview'i engelle
       
+      // Check permission status first
+      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      
+      if (status === 'denied') {
+        // İzin reddedilmişse açıklama göster
+        Alert.alert(
+          t('permissionRequired') || 'İzin Gerekli',
+          t('galleryPermissionMessage') || 'Fotoğraf eklemek için galeri erişim izni gerekli. Lütfen ayarlardan izin verin.',
+          [{ text: t('ok') || 'Tamam' }]
+        );
+        setIsPickingMedia(false);
+        return;
+      }
+      
       const result = await ImagePicker.launchImageLibraryAsync({
         quality: 0.7,
         mediaTypes: ImagePicker.MediaTypeOptions.Images, // Sadece resim
@@ -526,6 +540,7 @@ export default function Journal({
       if (uri) addPreviewImage(uri);
     } catch (error) {
       // User'a error gösterme - sessizce logla
+      console.log('Image picker error:', error);
     } finally {
       // Medya seçme bitti - klavye kapanmışsa preview gösterilebilir
       setTimeout(() => setIsPickingMedia(false), 300); // 300ms bekle
@@ -534,13 +549,22 @@ export default function Journal({
 
   const pickLocation = async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      // Check if permission is already granted
+      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
       
-      if (status !== "granted") {
+      let finalStatus = existingStatus;
+      
+      // Eğer izin verilmemişse iste
+      if (existingStatus !== 'granted') {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== "granted") {
         Alert.alert(
-          t('permissionRequired') || 'Permission Required',
-          t('locationPermissionMessage') || 'Location permission is required to add your location to the journal.',
-          [{ text: t('ok') || 'OK' }]
+          t('permissionRequired') || 'İzin Gerekli',
+          t('locationPermissionMessage') || 'Konumunuzu eklemek için konum izni gerekli. Lütfen ayarlardan izin verin.',
+          [{ text: t('ok') || 'Tamam' }]
         );
         return;
       }
