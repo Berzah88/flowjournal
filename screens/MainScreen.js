@@ -621,9 +621,49 @@ const MainScreen = memo(function MainScreen({ navigation }) {
               ).join('|')}`}
               ListEmptyComponent={
                 <View style={styles.emptyStateContainer}>
-                  <Text style={styles.emptyStateIcon}>📋</Text>
-                  <Text style={styles.emptyStateTitle}>{t('noActiveProjects')}</Text>
-                  <Text style={styles.emptyStateSubtitle}>{t('startYourJourney')}</Text>
+                  <View style={[
+                    styles.emptyStateCard,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7',
+                    }
+                  ]}>
+                    <Ionicons 
+                      name="rocket-outline" 
+                      size={48} 
+                      color={theme.name === 'dark' ? '#667eea' : '#8E8E93'} 
+                    />
+                    <Text style={[
+                      styles.emptyStateTitle,
+                      { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+                    ]}>{t('noActiveProjects')}</Text>
+                    <Text style={[
+                      styles.emptyStateSubtitle,
+                      { color: theme.name === 'dark' ? '#8E8E93' : '#7f8c8d' }
+                    ]}>{t('startYourJourney')}</Text>
+                    
+                    {/* Add Project Button - MyDay ile aynı style */}
+                    <TouchableOpacity
+                      style={[
+                        styles.emptyAddProjectButton,
+                        {
+                          backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
+                          borderColor: theme.name === 'dark' ? '#667eea' : '#667eea',
+                        }
+                      ]}
+                      onPress={() => setAddVisible(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons 
+                        name="add-circle" 
+                        size={20} 
+                        color={theme.name === 'dark' ? '#667eea' : '#667eea'} 
+                      />
+                      <Text style={[
+                        styles.emptyAddProjectButtonText,
+                        { color: theme.name === 'dark' ? '#667eea' : '#667eea' }
+                      ]}>{t('addProject')}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               }
               showsVerticalScrollIndicator={false}
@@ -962,26 +1002,45 @@ const styles = StyleSheet.create({
   emptyStateContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: 40, // 60 → 40 (daha compact)
+    paddingHorizontal: 30, // 40 → 30 (MyDay ile uyumlu)
   },
-  emptyStateIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+  emptyStateCard: {
+    // MyDay ile aynı tema
+    borderRadius: 16,
+    padding: 32,
+    marginTop: 6,
+    alignItems: 'center',
+    width: '100%',
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 18, // 20 → 18 (MyDay ile aynı)
     fontFamily: "Poppins_600SemiBold",
-    color: "#34495e",
+    marginTop: 16, // MyDay ile aynı
     marginBottom: 8,
     textAlign: "center",
   },
   emptyStateSubtitle: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "#7f8c8d",
     textAlign: "center",
     lineHeight: 20,
+    marginBottom: 20, // Button için boşluk
+  },
+  emptyAddProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  emptyAddProjectButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 6,
   },
   
   // Main Menu Styles - ActiveTaskMenu Style
