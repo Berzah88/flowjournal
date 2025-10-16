@@ -92,8 +92,8 @@ android {
         applicationId 'com.witapp.fcm'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
-        versionName "8.0.0"
+        versionCode 13
+        versionName "8.6.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -181,5 +181,4 @@ dependencies {
     }
 }
 
-// Firebase Google Services plugin (MUST be at the bottom)
 apply plugin: 'com.google.gms.google-services'

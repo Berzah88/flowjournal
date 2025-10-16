@@ -26,6 +26,7 @@
         "backgroundColor": "#ffffff"
       },
       "icon": "./assets/icon.png",
+      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "package": "com.witapp.fcm",
       "versionCode": 13,

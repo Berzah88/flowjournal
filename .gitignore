@@ -36,6 +36,8 @@ yarn-error.*
 # Firebase credentials
 backend/serviceAccountKey.json
 **/serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
