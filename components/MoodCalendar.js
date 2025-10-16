@@ -9,8 +9,8 @@ import { getValidIconName } from '../utils/AIMoodPredictor';
 
 const { width } = Dimensions.get("window");
 // Dinamik hücre genişliği hesaplama
-// Ekran genişliği - (38*2 marginHorizontal + 16*2 containerPadding) / 7 gün
-const AVAILABLE_WIDTH = width - (38 * 2) - (16 * 2);
+// Ekran genişliği - (30*2 marginHorizontal + 16*2 containerPadding) / 7 gün
+const AVAILABLE_WIDTH = width - (30 * 2) - (16 * 2);
 const CELL_SIZE = Math.floor(AVAILABLE_WIDTH / 7);
 const CELL_HEIGHT = 46; // Optimized height for better visibility
 
@@ -316,7 +316,7 @@ export default function MoodCalendar() {
 
 const styles = StyleSheet.create({
   outerContainer: {
-    marginHorizontal: 38,
+    marginHorizontal: 30,
     marginTop: 16,
     marginBottom: 20,
   },

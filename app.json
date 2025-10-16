@@ -22,9 +22,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo-yeni.png",
+        "foregroundImage": "./assets/adaptive-icon-new.png",
         "backgroundColor": "#ffffff"
       },
+      "icon": "./assets/icon.png",
       "edgeToEdgeEnabled": true,
       "package": "com.witapp.fcm",
       "versionCode": 13,

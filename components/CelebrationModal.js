@@ -180,8 +180,28 @@ const CelebrationModal = ({
           }
         ]}
       >
+        {/* Close Button */}
+        <TouchableOpacity
+          style={[
+            styles.closeButton,
+            {
+              backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            }
+          ]}
+          onPress={handleClose}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name="close" 
+            size={16} 
+            color={theme.name === 'dark' ? '#8E8E93' : '#666'} 
+          />
+        </TouchableOpacity>
+
         {/* Celebration Emoji - Center */}
-        <Text style={styles.celebrationEmoji}>🎉</Text>
+        <View style={styles.emojiContainer}>
+          <Text style={styles.celebrationEmoji}>🎉</Text>
+        </View>
 
         {/* Title - Center */}
         <Text style={[
@@ -207,7 +227,7 @@ const CelebrationModal = ({
           {aiMessage}
         </Text>
 
-        {/* Action Button - Full Width */}
+        {/* Action Button - Compact */}
         <TouchableOpacity
           style={[
             styles.journalButton,
@@ -218,7 +238,7 @@ const CelebrationModal = ({
           onPress={handleJournalPress}
           activeOpacity={0.8}
         >
-          <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+          <Ionicons name="create-outline" size={16} color="#FFFFFF" />
           <Text style={styles.journalButtonText}>
             {t('writeJournal') || 'Günlük Yaz'}
           </Text>
@@ -231,65 +251,85 @@ const CelebrationModal = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 45, // Daha yukarıda açılsın
-    left: 12,
-    right: 12,
+    top: 50, // Biraz daha aşağı
+    left: 16,
+    right: 16,
     zIndex: 1000,
   },
   content: {
-    borderRadius: 16,
-    paddingVertical: 16, // 20 → 16 (daha compact)
-    paddingHorizontal: 24,
-    borderWidth: 0.5,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    alignItems: 'center', // Center aligned
+    borderRadius: 20, // Daha modern rounded corners
+    paddingVertical: 20, // Optimized padding
+    paddingHorizontal: 20,
+    borderWidth: 0,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    alignItems: 'center',
+  },
+  emojiContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   celebrationEmoji: {
-    fontSize: 28, // 36 → 28 (daha küçük)
-    marginBottom: 6, // 8 → 6 (daha compact)
+    fontSize: 24, // Daha kompakt
   },
   title: {
-    fontSize: 22,
+    fontSize: 18, // Daha kompakt
     fontFamily: 'Poppins_700Bold',
-    marginBottom: 3, // 4 → 3 (daha compact)
-    letterSpacing: -0.5,
+    marginBottom: 4,
+    letterSpacing: -0.3,
     textAlign: 'center',
   },
   completionName: {
-    fontSize: 16,
+    fontSize: 14, // Daha küçük
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 8, // 10 → 8 (daha compact)
-    letterSpacing: -0.2,
+    marginBottom: 8,
+    letterSpacing: -0.1,
     textAlign: 'center',
+    maxWidth: '90%',
   },
   aiMessage: {
-    fontSize: 14, // 15 → 14 (biraz daha küçük)
+    fontSize: 12, // Daha kompakt
     fontFamily: 'Poppins_400Regular',
-    lineHeight: 20, // 22 → 20 (daha compact)
+    lineHeight: 16, // Daha sıkı
     fontStyle: 'italic',
-    marginBottom: 12, // 16 → 12 (daha compact)
+    marginBottom: 16,
     textAlign: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
+    maxWidth: '95%',
   },
   journalButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-    width: '100%',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingVertical: 10, // Daha kompakt
+    paddingHorizontal: 20,
+    borderRadius: 16, // Daha modern
+    gap: 6,
+    minWidth: 140, // Fixed minimum width
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   journalButtonText: {
-    fontSize: 15,
+    fontSize: 13, // Daha kompakt
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },

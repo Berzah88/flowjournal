@@ -1,5 +1,5 @@
 // components/DailyMoodSummary.js
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { MOODS } from '../utils/AIMoodPredictor';
+import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -28,153 +28,171 @@ const DailyMoodSummary = ({
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  // Bugünkü mood'ları hesapla
-  const todayMoodData = useMemo(() => {
-    const today = new Date(selectedDate);
-    today.setHours(0, 0, 0, 0);
-    
-    const todayMoods = [];
-    const moodCounts = {};
-    
-    // Hem aktif hem tamamlanmış projelerdeki journal entries'leri tara
-    const allTasks = [...activeTasks, ...completedTasks];
-    allTasks.forEach(task => {
-      if (task.journalEntries) {
-        task.journalEntries.forEach(entry => {
-          const entryDate = new Date(entry.createdAt);
-          entryDate.setHours(0, 0, 0, 0);
-          
-          // Bugünkü entry'leri filtrele
-          if (entryDate.getTime() === today.getTime() && entry.mood) {
-            todayMoods.push({
-              mood: entry.mood,
-              moodIcon: entry.moodIcon,
-              moodColor: entry.moodColor,
-              text: entry.text,
-              timestamp: entry.createdAt
+
+  // ---------- Helpers: colors, icons, recency ----------
+  const getSolidMoodColor = useCallback((originalColor) => {
+    const map = {
+      '#C8E6C9': '#4CAF50',
+      '#FFE0B2': '#FF9800',
+      '#E1BEE7': '#9C27B0',
+      '#FFCDD2': '#F44336',
+      '#FFAB91': '#FF5722',
+      '#FFCCBC': '#FF7043',
+      '#FFF3E0': '#FFB74D',
+      '#E8F5E8': '#66BB6A',
+      '#E1F5FE': '#42A5F5',
+      '#FFF8E1': '#FFCA28',
+      '#F3E5F5': '#BA68C8',
+      '#FFEBEE': '#EF5350',
+      '#E0E0E0': '#90A4AE',
+      '#DCEDC8': '#8BC34A',
+      '#F5F5F5': '#BDBDBD',
+      '#FFE0E6': '#F48FB1',
+      '#E8EAF6': '#7986CB',
+      '#E0F2F1': '#4DB6AC',
+      '#FFFDE7': '#FFF176',
+      '#FAFAFA': '#E0E0E0',
+      '#FFF9C4': '#FFF59D',
+      '#FCE4EC': '#F06292',
+      '#CFD8DC': '#90A4AE',
+    };
+    return map[originalColor] || originalColor || '#8E8E93';
+  }, []);
+
+  const getMoodIconSafe = useCallback((key) => {
+    switch (key) {
+      case 'happy': return 'sentiment-satisfied';
+      case 'excited': return 'celebration';
+      case 'grateful': return 'favorite';
+      case 'hopeful': return 'wb-sunny';
+      case 'proud': return 'emoji-events';
+      case 'relieved': return 'spa';
+      case 'motivated': return 'trending-up';
+      case 'peaceful': return 'spa';
+      case 'content': return 'sentiment-satisfied';
+      case 'confident': return 'self-improvement';
+      case 'sad': return 'sentiment-dissatisfied';
+      case 'angry': return 'mood-bad';
+      case 'tired': return 'bedtime';
+      case 'frustrated': return 'psychology';
+      case 'anxious': return 'warning';
+      case 'overwhelmed': return 'psychology';
+      case 'lonely': return 'person-off';
+      case 'confused': return 'help';
+      case 'disappointed': return 'sentiment-dissatisfied';
+      case 'worried': return 'psychology';
+      case 'bored': return 'sentiment-neutral';
+      case 'stressed': return 'psychology';
+      case 'exhausted': return 'bedtime';
+      case 'calm': return 'spa';
+      case 'curious': return 'explore';
+      case 'nostalgic': return 'history';
+      case 'surprised': return 'emoji-emotions';
+      case 'focused': return 'center-focus-strong';
+      case 'neutral': return 'trending-flat';
+      case 'natural': return 'sentiment-neutral';
+      default: return 'sentiment-neutral';
+    }
+  }, []);
+
+  const getRecencyWeight = useCallback((timestamp) => {
+    const tms = new Date(timestamp).getTime();
+    const diff = Date.now() - tms;
+    if (diff < 60 * 60 * 1000) return 3.0;      // <1h
+    if (diff < 3 * 60 * 60 * 1000) return 2.0;  // <3h
+    if (diff < 6 * 60 * 60 * 1000) return 1.5;  // <6h
+    if (diff < 12 * 60 * 60 * 1000) return 1.2; // <12h
+    return 1.0;
+  }, []);
+
+  // ---------- Gather entries and detect dominant mood (recency-weighted) ----------
+  const allJournalEntries = useMemo(() => {
+    const list = [];
+    const all = [...activeTasks, ...completedTasks];
+    all.forEach(task => {
+      if (task?.journalEntries && Array.isArray(task.journalEntries)) {
+        task.journalEntries.forEach(e => {
+          if (e?.createdAt && (e.mood || e.moodIcon || e.moodColor)) {
+            list.push({ ...e, projectId: task.id });
+          }
+        });
+      }
+      // Legacy milestone-based entries (backward compatibility)
+      if (task?.milestones && Array.isArray(task.milestones)) {
+        task.milestones.forEach(ms => {
+          if (ms?.journalEntries && Array.isArray(ms.journalEntries)) {
+            ms.journalEntries.forEach(e => {
+              if (e?.createdAt && (e.mood || e.moodIcon || e.moodColor)) {
+                list.push({ ...e, projectId: task.id });
+              }
             });
-            
-            // Mood sayısını artır
-            moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
           }
         });
       }
     });
-    
-    // En çok kullanılan mood'u bul
-    const dominantMood = Object.keys(moodCounts).reduce((a, b) => 
-      moodCounts[a] > moodCounts[b] ? a : b, null
-    );
-    
-    // Mood objesini bul
-    const moodObj = MOODS.find(m => m.key === dominantMood) || 
-                   (todayMoods.length > 0 ? {
-                     key: todayMoods[0].mood,
-                     icon: todayMoods[0].moodIcon,
-                     color: todayMoods[0].moodColor,
-                     label: todayMoods[0].mood
-                   } : null);
-    
-    return {
-      moods: todayMoods,
-      dominantMood: moodObj,
-      totalEntries: todayMoods.length,
-      moodCounts
+    return list;
+  }, [activeTasks, completedTasks]);
+
+  const dominantMoodForSelectedDate = useMemo(() => {
+    if (!selectedDate) return null;
+    const day = new Date(selectedDate);
+    day.setHours(0,0,0,0);
+    const entries = allJournalEntries.filter(e => {
+      const d = new Date(e.createdAt); d.setHours(0,0,0,0);
+      return d.getTime() === day.getTime() && e.mood;
+    });
+    if (entries.length === 0) return null;
+
+    const scores = {};
+    entries.forEach(e => {
+      const w = getRecencyWeight(e.createdAt);
+      scores[e.mood] = (scores[e.mood] || 0) + w;
+    });
+
+    let bestKey = null, bestScore = -Infinity;
+    Object.entries(scores).forEach(([k, s]) => { if (s > bestScore) { bestScore = s; bestKey = k; } });
+    const mood = MOODS.find(m => m.key === bestKey) || EXTENDED_MOODS.find(m => m.key === bestKey) || null;
+    return mood || (entries[0]?.mood ? { key: entries[0].mood, color: entries[0].moodColor, icon: entries[0].moodIcon } : null);
+  }, [allJournalEntries, selectedDate, getRecencyWeight]);
+
+  // ---------- Quick Tips ----------
+  const generateQuickTip = useCallback((moodKey) => {
+    const tips = {
+      happy: ['keepDoingHappy','happinessContagious','joyWellDeserved'],
+      excited: ['channelExcitement','enthusiasmPowerful','energyPerfect'],
+      grateful: ['keepDoingHappy','joyWellDeserved','emotionalAwareness'],
+      hopeful: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      proud: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      motivated: ['motivationStrong','determinationAdvantage','motivationInspiring'],
+      peaceful: ['calmnessSuperpower','tranquilityPerfect','serenityValuable'],
+      content: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      confident: ['motivationStrong','determinationAdvantage','motivationInspiring'],
+      sad: ['okayToFeel','sadnessTemporary','considerCausingSadness'],
+      angry: ['frustrationSignalsGrowth','identifyFrustration','changeApproach'],
+      tired: ['bodyAskingRest','prioritizeSelfCare','reassessWorkLife'],
+      frustrated: ['frustrationSignalsGrowth','identifyFrustration','changeApproach'],
+      anxious: ['anxietyManageable','breakDownTasks','listenAnxiety'],
+      overwhelmed: ['breakDownTasks','anxietyManageable','listenAnxiety'],
+      lonely: ['okayToFeel','continueTracking','emotionalAwareness'],
+      confused: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      disappointed: ['changeApproach','setSmallGoals','continueTracking'],
+      worried: ['anxietyManageable','listenAnxiety','continueTracking'],
+      bored: ['setSmallGoals','continueTracking','emotionalAwareness'],
+      stressed: ['breakDownTasks','prioritizeSelfCare','setSmallGoals'],
+      exhausted: ['bodyAskingRest','prioritizeSelfCare','reassessWorkLife'],
+      calm: ['calmnessSuperpower','tranquilityPerfect','serenityValuable'],
+      curious: ['setSmallGoals','continueTracking','emotionalAwareness'],
+      nostalgic: ['emotionalAwareness','continueTracking','setSmallGoals'],
+      surprised: ['continueTracking','emotionalAwareness','setSmallGoals'],
+      focused: ['motivationStrong','setSmallGoals','emotionalAwareness'],
+      neutral: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      natural: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      default: ['continueTracking','setSmallGoals','emotionalAwareness']
     };
-  }, [activeTasks, completedTasks, selectedDate]);
-  
-  // Motivasyon mesajları
-  const getMotivationMessage = () => {
-    const { totalEntries, dominantMood } = todayMoodData;
-    
-    if (totalEntries === 0) {
-      return {
-        title: t('howAreYouFeelingToday'),
-        subtitle: t('startRecordingEmotions'),
-        action: t('writeYourFirstJournal')
-      };
-    }
-    
-    if (totalEntries === 1) {
-      return {
-        title: t('greatStart'),
-        subtitle: t('keepSharingEmotions'),
-        action: t('writeMore')
-      };
-    }
-    
-    if (totalEntries >= 3) {
-      return {
-        title: t('veryActiveDay'),
-        subtitle: t('expressEmotionsBeautifully'),
-        action: t('continue')
-      };
-    }
-    
-    // Mood'a göre kişiselleştirilmiş mesajlar
-    if (dominantMood) {
-      const moodMessages = {
-        'happy': {
-          title: t('happyDay'),
-          subtitle: t('keepRecordingPositiveEnergy'),
-          action: t('shareYourHappiness')
-        },
-        'calm': {
-          title: t('calmDay'),
-          subtitle: t('recordingPeacefulMoments'),
-          action: t('writeYourPeace')
-        },
-        'angry': {
-          title: t('challengingDay'),
-          subtitle: t('writingEmotionsWillRelax'),
-          action: t('expressYourEmotions')
-        },
-        'sick': {
-          title: t('timeToRest'),
-          subtitle: t('recordingHelpsRecovery'),
-          action: t('writeYourCondition')
-        },
-        'Natural': {
-          title: t('normalDay'),
-          subtitle: t('everyDayHasUniqueStory'),
-          action: t('recordYourDay')
-        }
-      };
-      
-      return moodMessages[dominantMood.key] || {
-        title: t('goingWell'),
-        subtitle: t('keepRecordingEmotions'),
-        action: t('writeMore')
-      };
-    }
-    
-    return {
-      title: t('goingWell'),
-      subtitle: t('keepRecordingEmotions'),
-      action: t('writeMore')
-    };
-  };
-  
-  const motivation = getMotivationMessage();
-  
-  // Mood trend analizi
-  const getMoodTrend = () => {
-    const { moodCounts } = todayMoodData;
-    const moodKeys = Object.keys(moodCounts);
-    
-    if (moodKeys.length === 0) return null;
-    if (moodKeys.length === 1) return "Consistent";
-    
-    const maxCount = Math.max(...Object.values(moodCounts));
-    const totalCount = Object.values(moodCounts).reduce((a, b) => a + b, 0);
-    
-    if (maxCount / totalCount > 0.7) return "Consistent";
-    if (maxCount / totalCount > 0.5) return "Mixed";
-    return "Variable";
-  };
-  
-  const moodTrend = getMoodTrend();
-  
+    const list = tips[moodKey] || tips.default;
+    return t(list[Math.floor(Math.random() * list.length)]);
+  }, [t]);
+
   // Milestone'ın bugün için uygun olup olmadığını kontrol et
   const isMilestoneActiveToday = (milestone, selectedDate) => {
     const today = new Date(selectedDate);
@@ -218,24 +236,49 @@ const DailyMoodSummary = ({
     };
   }, [activeTasks, selectedDate]);
   
-  // Sadece bugün için göster
+  // Sadece bugün için göster (component değil, progress için)
   const today = new Date();
   const selectedDateObj = new Date(selectedDate);
   today.setHours(0, 0, 0, 0);
   selectedDateObj.setHours(0, 0, 0, 0);
+  const isToday = selectedDateObj.getTime() === today.getTime();
   
-  // Bugün değilse component'i gösterme
-  if (selectedDateObj.getTime() !== today.getTime()) {
-    return null;
-  }
+  // Remove early return: component now always renders; use isToday to control progress visibility
   
   const content = (
     <View style={[
       insideCard ? styles.containerInside : styles.container,
       hasMedia && styles.mediaOverlay
     ]}>
-      {/* Progress Status - Inline Design */}
-      {progressData.total > 0 && (
+      {/* AI-Powered Quick Tip Only */}
+      {(() => {
+        const moodObj = dominantMoodForSelectedDate || { key: 'neutral', color: '#CFD8DC', icon: 'sentiment-neutral' };
+        const isDark = theme.name === 'dark';
+        const moodColor = getSolidMoodColor(moodObj.color || '#8E8E93');
+        const quickTip = generateQuickTip(moodObj.key || 'default');
+        return (
+          <View style={[
+            styles.moodStatementCard,
+            {
+              backgroundColor: isDark ? 'rgba(25, 118, 210, 0.08)' : 'rgba(25, 118, 210, 0.05)',
+              borderLeftColor: moodColor,
+            }
+          ]}>
+            <View style={styles.quickTipRow}>
+              <View style={[styles.moodIconCircle, { borderColor: moodColor }] }>
+                <MaterialIcons name={getMoodIconSafe(moodObj.key)} size={16} color={moodColor} />
+              </View>
+              <Ionicons name="bulb-outline" size={14} color={isDark ? '#9ED0FF' : '#1976D2'} style={{ marginLeft: 4 }} />
+              <Text style={[styles.quickTipText, { color: isDark ? '#E5F2FF' : '#0F3D91' }]}>
+                {quickTip}
+              </Text>
+            </View>
+          </View>
+        );
+      })()}
+
+      {/* Progress Status - Inline Design (only for today) */}
+      {isToday && progressData.total > 0 && (
         <View style={[
           styles.progressStatus,
           {
@@ -313,6 +356,37 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 8,
   },
+
+  // Mood Statement Card
+  moodStatementCard: {
+    // container already handles horizontal margins
+    marginTop: 4,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+  },
+  moodIconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickTipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quickTipText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    fontFamily: 'Poppins_500Medium',
+  },
+
   // Progress Status Styles
   progressStatus: {
     flexDirection: 'row',

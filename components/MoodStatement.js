@@ -1,5 +1,5 @@
 // components/MoodStatement.js
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -128,6 +128,8 @@ const MoodStatement = React.memo(({
   const journalMetadata = useMemo(() => {
     let totalCount = 0;
     let lastTimestamp = '';
+    let lastMoodKey = '';
+    let lastTextLen = 0;
     
     [...activeTasks, ...completedTasks].forEach(task => {
       if (task.journalEntries && Array.isArray(task.journalEntries)) {
@@ -135,11 +137,13 @@ const MoodStatement = React.memo(({
         const lastEntry = task.journalEntries[task.journalEntries.length - 1];
         if (lastEntry?.createdAt > lastTimestamp) {
           lastTimestamp = lastEntry.createdAt;
+          lastMoodKey = lastEntry?.mood || '';
+          lastTextLen = lastEntry?.text ? String(lastEntry.text).length : 0;
         }
       }
     });
     
-    return { totalCount, lastTimestamp };
+    return { totalCount, lastTimestamp, lastMoodKey, lastTextLen };
   }, [activeTasks, completedTasks]);
   
   // STEP 2: Journal entries'i flat array'e çıkar - SADECE METADATA DEĞİŞTİĞİNDE
@@ -159,7 +163,7 @@ const MoodStatement = React.memo(({
       }
     });
     return entries;
-  }, [journalMetadata.totalCount, journalMetadata.lastTimestamp]); // ✅ Primitive values!
+  }, [journalMetadata.totalCount, journalMetadata.lastTimestamp, journalMetadata.lastMoodKey, journalMetadata.lastTextLen]); // ✅ Expanded deps to react to mood/content changes
   
   // Bugünkü mood'ları hesapla - SADECE allJournalEntries DEĞİŞTİĞİNDE
   const todayMoodData = useMemo(() => {
@@ -397,6 +401,50 @@ const MoodStatement = React.memo(({
       semanticPattern, // ✨ Gün içi pattern analizi
     };
   }, [allJournalEntries, completedTasks, selectedDate]); // ✅ SADECE JOURNAL DEĞİŞTİĞİNDE!
+
+  // ----- Quick Tips: Emotional Journal ile aynı mapping -----
+  const generateQuickTip = useCallback((moodKey) => {
+    const tips = {
+      happy: ['keepDoingHappy','happinessContagious','joyWellDeserved'],
+      excited: ['channelExcitement','enthusiasmPowerful','energyPerfect'],
+      grateful: ['keepDoingHappy','joyWellDeserved','emotionalAwareness'],
+      hopeful: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      proud: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      motivated: ['motivationStrong','determinationAdvantage','motivationInspiring'],
+      peaceful: ['calmnessSuperpower','tranquilityPerfect','serenityValuable'],
+      content: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      confident: ['motivationStrong','determinationAdvantage','motivationInspiring'],
+      sad: ['okayToFeel','sadnessTemporary','considerCausingSadness'],
+      angry: ['frustrationSignalsGrowth','identifyFrustration','changeApproach'],
+      tired: ['bodyAskingRest','prioritizeSelfCare','reassessWorkLife'],
+      frustrated: ['frustrationSignalsGrowth','identifyFrustration','changeApproach'],
+      anxious: ['anxietyManageable','breakDownTasks','listenAnxiety'],
+      overwhelmed: ['breakDownTasks','anxietyManageable','listenAnxiety'],
+      lonely: ['okayToFeel','continueTracking','emotionalAwareness'],
+      confused: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      disappointed: ['changeApproach','setSmallGoals','continueTracking'],
+      worried: ['anxietyManageable','listenAnxiety','continueTracking'],
+      bored: ['setSmallGoals','continueTracking','emotionalAwareness'],
+      stressed: ['breakDownTasks','prioritizeSelfCare','setSmallGoals'],
+      exhausted: ['bodyAskingRest','prioritizeSelfCare','reassessWorkLife'],
+      calm: ['calmnessSuperpower','tranquilityPerfect','serenityValuable'],
+      curious: ['setSmallGoals','continueTracking','emotionalAwareness'],
+      nostalgic: ['emotionalAwareness','continueTracking','setSmallGoals'],
+      surprised: ['continueTracking','emotionalAwareness','setSmallGoals'],
+      focused: ['motivationStrong','setSmallGoals','emotionalAwareness'],
+      neutral: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      natural: ['continueTracking','setSmallGoals','emotionalAwareness'],
+      default: ['continueTracking','setSmallGoals','emotionalAwareness']
+    };
+    const list = tips[moodKey] || tips.default;
+    return t(list[Math.floor(Math.random() * list.length)]);
+  }, [t]);
+
+  // QuickTip: EmotionalJournal'daki önerilerle birebir uyumlu kısa ipuçları
+  const quickTip = useMemo(() => {
+    const moodKey = todayMoodData?.dominantMood?.key || 'default';
+    return generateQuickTip(moodKey);
+  }, [todayMoodData?.dominantMood?.key, generateQuickTip]);
   
   // Sadece bugün için göster - selectedDate verilmemişse her zaman göster
   if (selectedDate) {
@@ -424,8 +472,8 @@ const MoodStatement = React.memo(({
             ? '#667eea' // Proje yoksa mor
             : (todayMoodData.dominantMood?.color || '#007AFF'),
           backgroundColor: theme.name === 'dark' 
-            ? (hasNoProjects ? 'rgba(102, 126, 234, 0.12)' : (todayMoodData.dominantMood ? 'rgba(28, 28, 30, 0.95)' : 'rgba(0, 122, 255, 0.12)'))
-            : (hasNoProjects ? 'rgba(102, 126, 234, 0.08)' : (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.98)' : 'rgba(0, 122, 255, 0.08)')),
+            ? (hasNoProjects ? 'rgba(102, 126, 234, 0.12)' : (todayMoodData.dominantMood ? 'rgba(28, 28, 30, 0.88)' : 'rgba(0, 122, 255, 0.12)'))
+            : (hasNoProjects ? 'rgba(102, 126, 234, 0.08)' : (todayMoodData.dominantMood ? 'rgba(255, 255, 255, 0.94)' : 'rgba(0, 122, 255, 0.08)')),
           borderWidth: theme.name === 'dark' ? 1 : 0.5,
           borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
           shadowColor: hasNoProjects ? '#667eea' : (todayMoodData.dominantMood?.color || '#8E7DBE'),
@@ -452,17 +500,17 @@ const MoodStatement = React.memo(({
         ]}>
           <MaterialIcons 
             name={hasNoProjects ? 'rocket-launch' : (todayMoodData.dominantMood?.icon || 'create')} 
-            size={24} 
+            size={28} 
             color="#000000" 
           />
         </View>
         
         <View style={styles.statusContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', marginBottom: 6 }}>
             <Text style={[
               styles.statusText,
               { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-            ]}>
+            ]} numberOfLines={1} ellipsizeMode="tail">
               {hasNoProjects ? 
                 t('startYourJourney') || 'İlk projeni oluşturarak başla' :
                 (todayMoodData.dominantMood ? 
@@ -472,17 +520,9 @@ const MoodStatement = React.memo(({
               }
             </Text>
             
-            {/* ✨ Trend Arrow - Sadece proje varsa */}
-            {!hasNoProjects && todayMoodData.trendDirection && (
-              <Text style={{ fontSize: 16, marginLeft: 4 }}>
-                {todayMoodData.trendDirection === 'up' ? ' ↗️' : 
-                 todayMoodData.trendDirection === 'down' ? ' ↘️' : ' →'}
-              </Text>
-            )}
-            
             {/* ✨ Streak Badge - Sadece proje varsa */}
             {!hasNoProjects && todayMoodData.journalStreak.current >= 3 && (
-              <View style={[styles.streakBadge, { backgroundColor: todayMoodData.dominantMood?.color || '#FF9500', marginLeft: 6 }]}>
+              <View style={[styles.streakBadge, { backgroundColor: todayMoodData.dominantMood?.color || '#FF9500', marginLeft: 6 }]}> 
                 <Text style={styles.streakText}>🔥 {todayMoodData.journalStreak.current}</Text>
               </View>
             )}
@@ -496,29 +536,7 @@ const MoodStatement = React.memo(({
                 : (hasNoProjects ? '#667eea' : (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2'))
             }
           ]}>
-            {/* ✨ Context-Aware & Smart Messages with Priority */}
-            {hasNoProjects ? (
-              // Proje yoksa: Teşvik edici mesaj
-              t('noActiveProjects') || 'Henüz hiçbir proje yok! 🚀'
-            ) : todayMoodData.totalEntries > 0 ? (
-              // Priority 1: Dün vs bugün trend
-              todayMoodData.trendMessage === 'improvingFromYesterday' ? t('improvingFromYesterday') :
-              todayMoodData.trendMessage === 'worseningFromYesterday' ? t('worseningFromYesterday') :
-              // Priority 2: Semantic gün içi pattern
-              todayMoodData.semanticPattern?.type === 'improvement' ? t('dayImprovement') :
-              todayMoodData.semanticPattern?.type === 'decline' ? t('dayEndFatigue') :
-              todayMoodData.semanticPattern?.type === 'diverse' ? t('richEmotionalPalette') :
-              // Priority 3: Mood streak
-              todayMoodData.moodStreak.count >= 3 ? t('moodStreakDays', { count: todayMoodData.moodStreak.count, mood: t(todayMoodData.moodStreak.mood) || todayMoodData.moodStreak.mood }) :
-              // Priority 4: Journal streak
-              todayMoodData.journalStreak.current >= 5 ? t('journalStreakDays', { count: todayMoodData.journalStreak.current }) :
-              // Priority 5: Stable mood
-              todayMoodData.trendMessage === 'stableMood' ? t('stableMood') :
-              // Default: View details
-              t('viewMoreDetails')
-            ) : (
-              t('startJournalingToday')
-            )}
+            {quickTip}
           </Text>
         </View>
       </View>
@@ -553,21 +571,33 @@ const MoodStatement = React.memo(({
   // Journal entry count ve son timestamp karşılaştır
   let prevCount = 0;
   let prevLastTimestamp = '';
+  let prevLastMoodKey = '';
+  let prevLastTextLen = 0;
   [...prevProps.activeTasks, ...prevProps.completedTasks].forEach(task => {
     if (task.journalEntries) {
       prevCount += task.journalEntries.length;
       const last = task.journalEntries[task.journalEntries.length - 1];
       if (last?.createdAt > prevLastTimestamp) prevLastTimestamp = last.createdAt;
+      if (last?.createdAt === prevLastTimestamp) {
+        prevLastMoodKey = last?.mood || prevLastMoodKey;
+        prevLastTextLen = last?.text ? String(last.text).length : prevLastTextLen;
+      }
     }
   });
   
   let nextCount = 0;
   let nextLastTimestamp = '';
+  let nextLastMoodKey = '';
+  let nextLastTextLen = 0;
   [...nextProps.activeTasks, ...nextProps.completedTasks].forEach(task => {
     if (task.journalEntries) {
       nextCount += task.journalEntries.length;
       const last = task.journalEntries[task.journalEntries.length - 1];
       if (last?.createdAt > nextLastTimestamp) nextLastTimestamp = last.createdAt;
+      if (last?.createdAt === nextLastTimestamp) {
+        nextLastMoodKey = last?.mood || nextLastMoodKey;
+        nextLastTextLen = last?.text ? String(last.text).length : nextLastTextLen;
+      }
     }
   });
   
@@ -575,7 +605,9 @@ const MoodStatement = React.memo(({
   const shouldSkipRender = (
     prevCount === nextCount && 
     prevLastTimestamp === nextLastTimestamp &&
-    prevProps.selectedDate === nextProps.selectedDate
+    prevProps.selectedDate === nextProps.selectedDate &&
+    prevLastMoodKey === nextLastMoodKey &&
+    prevLastTextLen === nextLastTextLen
   );
   
   if (!shouldSkipRender) {
@@ -589,39 +621,39 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: 24, // 26 → 24 (biraz daha geniş)
     marginTop: 12, // 10 → 12 (biraz daha fazla boşluk)
-    marginBottom: 8, // 6 → 8 (biraz daha fazla boşluk)
+    marginBottom: 2, // 8 → 2 (yaklaşık %75 azaltıldı, hedef %65)
   },
   moodStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16, // 14 → 16 (daha spacious)
-    paddingHorizontal: 18, // 16 → 18 (daha spacious)
+    paddingVertical: 16, // 12 → 16 (daha ferah yükseklik)
+    paddingHorizontal: 10, // 14 → 10 (daha kompakt yatay)
     borderRadius: 16, // 14 → 16 (daha yuvarlak)
     borderLeftWidth: 4, // 3 → 4 (daha kalın vurgu)
   },
   moodIconContainer: {
-    width: 40, // 34 → 40 (daha büyük icon)
-    height: 40,
-    borderRadius: 20,
+    width: 36, // 32 → 36
+    height: 36, // 32 → 36
+    borderRadius: 18, // 16 → 18
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14, // 12 → 14 (biraz daha fazla boşluk)
+    marginRight: 10, // 14 → 10 (daha kompakt)
   },
   statusContent: {
     flex: 1,
   },
   statusText: {
-    fontSize: 15, // 14 → 15 (daha büyük)
+    fontSize: 13, // 12 → 13 (başlık biraz daha belirgin)
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 4, // 3 → 4 (biraz daha fazla boşluk)
-    lineHeight: 20, // 19 → 20
+    marginBottom: 3, // 2 → 3
+    lineHeight: 18, // 17 → 18
     letterSpacing: -0.3,
   },
   motivationText: {
-    fontSize: 13, // 12 → 13 (biraz daha büyük)
+    fontSize: 12, // 11 → 12
     fontFamily: 'Poppins_400Regular',
-    lineHeight: 17, // 16 → 17
-    opacity: 0.8, // 0.75 → 0.8 (biraz daha opak)
+    lineHeight: 16, // 15 → 16
+    opacity: 0.8, // 0.75 → 0.8 (biraz daha görünür)
   },
   streakBadge: {
     paddingHorizontal: 8,

@@ -11,6 +11,7 @@ import ActiveProject from './screens/ActiveProject';
 import JournalDetailScreen from './screens/JournalDetailScreen';
 import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
 import EmotionalJournalScreen from './screens/EmotionalJournalScreen';
+import OverviewScreen from './screens/overview';
 import { TaskProvider } from './context/TaskContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -95,6 +96,7 @@ function AppNavigator() {
         <Stack.Screen name="JournalDetail" component={JournalDetailScreen} />
         <Stack.Screen name="CompletedProjects" component={CompletedProjectsScreen} />
         <Stack.Screen name="EmotionalJournal" component={EmotionalJournalScreen} />
+        <Stack.Screen name="Overview" component={OverviewScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

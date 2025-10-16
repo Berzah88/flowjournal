@@ -2,6 +2,7 @@
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import DailyMoodSummary from './DailyMoodSummary';
@@ -36,18 +37,21 @@ const TodaysSummary = memo(function TodaysSummary({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[
-          styles.title,
-          { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-        ]}>{t('todaysSummary')}</Text>
-        <View style={[
-          styles.badge,
-          { backgroundColor: theme.name === 'dark' ? 'rgba(255, 107, 107, 0.1)' : 'rgba(25, 118, 210, 0.1)' }
-        ]}>
+        <View style={styles.headerLeft}>
+          <View style={[
+            styles.icon,
+            { backgroundColor: theme.name === 'dark' ? 'rgba(33, 150, 243, 0.12)' : 'rgba(33, 150, 243, 0.1)' }
+          ]}>
+            <MaterialIcons 
+              name="schedule" 
+              size={16}
+              color={theme.name === 'dark' ? '#2196F3' : '#2196F3'} 
+            />
+          </View>
           <Text style={[
-            styles.badgeText,
-            { color: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }
-          ]}>{selectedDateActiveTasks.length}</Text>
+            styles.title,
+            { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+          ]}>{t('todaysSummary')}</Text>
         </View>
       </View>
       
@@ -68,9 +72,10 @@ const TodaysSummary = memo(function TodaysSummary({
             backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7',
             borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
             borderWidth: theme.name === 'dark' ? 1 : 0,
+            borderLeftColor: theme.name === 'dark' ? '#FF6B6B' : '#1976D2',
           }
         ]}>
-          <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
+          <Ionicons name="calendar-outline" size={54} color="#8E8E93" />
           <Text style={[
             styles.emptyTitle,
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
@@ -113,7 +118,7 @@ const TodaysSummary = memo(function TodaysSummary({
                 >
                   <Ionicons 
                     name="add-circle" 
-                    size={20} 
+                    size={22} 
                     color={theme.name === 'dark' ? '#FF6B6B' : '#1976D2'} 
                   />
                   <Text style={[
@@ -169,39 +174,41 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    justifyContent: 'flex-start', // group icon + title on the left
+    marginBottom: 14, // 12 → 14: a bit more breathing room
     marginHorizontal: 0,
   },
-  title: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  badge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
+  headerLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  badgeText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_700Bold',
+  title: {
+    fontSize: 18, // 16 → 18
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  icon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8, // spacing between icon and title
   },
   emptyState: {
     borderRadius: 16,
-    padding: 32,
+    padding: 36, // 32 → 36
     alignItems: 'center',
     marginTop: 8,
+    borderLeftWidth: 3, // accent to draw attention
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20, // 18 → 20
     fontFamily: 'Poppins_600SemiBold',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15, // 14 → 15
     fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     marginBottom: 20,
@@ -211,13 +218,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18, // 16 → 18
+    paddingVertical: 12, // 10 → 12
     borderRadius: 12,
     marginTop: 20,
   },
   emptyAddButtonText: {
-    fontSize: 14,
+    fontSize: 15, // 14 → 15
     fontFamily: 'Poppins_500Medium',
     marginLeft: 6,
   },

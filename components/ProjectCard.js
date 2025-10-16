@@ -341,29 +341,32 @@ const ProjectCard = memo(function ProjectCard({
                 const completedChildren = children.filter(m => m.completed).length;
                 
                 return (
-                <TouchableOpacity 
+                <View 
                   key={milestone.id || index}
                   style={[
                     styles.milestoneItem,
                     { marginLeft: isChild ? 20 : 0 }
                   ]}
-                  onLongPress={() => {
-                    // Toggle milestone: complete ↔ active (sadece bugün)
-                    handleMilestoneToggle(milestone, project, selectedDate);
-                  }}
-                  activeOpacity={0.7}
-                  delayLongPress={500}
                 >
                   <View style={styles.milestoneInfo}>
-                    <Ionicons 
-                      name={milestone.completed ? "checkmark-circle" : "ellipse"}
-                      size={18} 
+                    <TouchableOpacity
+                      onPress={() => {
+                        // Toggle milestone: complete ↔ active (sadece bugün)
+                        handleMilestoneToggle(milestone, project, selectedDate);
+                      }}
+                      activeOpacity={0.6}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons 
+                        name={milestone.completed ? "checkmark-circle" : "ellipse-outline"}
+                        size={24} 
                       color={
                         milestone.completed 
                           ? (theme.name === 'dark' ? '#34C759' : '#34C759')
                           : getMilestoneColor(milestone, theme.name)
                       } 
                     />
+                    </TouchableOpacity>
                     <View style={styles.milestoneContent}>
                       <View style={styles.milestoneTextContainer}>
                         <Text style={[
@@ -390,7 +393,7 @@ const ProjectCard = memo(function ProjectCard({
                       {/* Mood stickers removed */}
                     </View>
                   </View>
-                </TouchableOpacity>
+                </View>
                 );
               });
             })()}

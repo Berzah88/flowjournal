@@ -1,26 +1,39 @@
-// screens/MyDayScreen.js
-import React, { useState, useMemo, useEffect, useCallback, memo } from "react";
+﻿// screens/MyDayScreen.js
+import React, { useState, useRef, useMemo, useEffect, useCallback, memo } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
+  FlatList,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
+  Animated,
+  Dimensions,
+  TextInput,
   Alert,
+  Vibration,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import * as Notifications from 'expo-notifications';
-import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useActiveTasks, useCompletedTasks, useTaskActions } from "../hooks/useTaskContext";
+import { getMilestoneColor } from "../utils/milestoneColors";
+import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
+import { ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
-import HorizontalCalendar from "../components/HorizontalCalendar";
-import ProjectCard from "../components/ProjectCard";
+import LoadingSpinner from "../components/LoadingSpinner";
+import ActiveProject from "./ActiveProject";
+import AddMilestoneModal from "../components/AddMilestoneModal";
 import MoodTrend from "../components/MoodTrend";
 import MoodCalendar from "../components/MoodCalendar";
-import TodaysSummary from "../components/TodaysSummary";
+import HorizontalCalendar from "../components/HorizontalCalendar";
+import ProjectCard from "../components/ProjectCard";
 import JourneyOverview from "../components/JourneyOverview";
 import ActivityTimeline from "../components/ActivityTimeline";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
+const { width } = Dimensions.get("window");
 
 const MyDayScreen = memo(function MyDayScreen({ 
   navigation, 
@@ -43,58 +56,62 @@ const MyDayScreen = memo(function MyDayScreen({
   const { theme } = useTheme();
   const { t } = useLanguage();
   
+  // Performance monitoring (only in development) - temporarily disabled
+  // usePerformanceMonitor('MyDayScreen');
 
   const [completingMilestones, setCompletingMilestones] = useState(new Set());
-  const [focusedProjects, setFocusedProjects] = useState(new Set());
+  const [focusedProject, setFocusedProject] = useState(null); // Single project focus
 
-  // Load focused projects from AsyncStorage
+  // Load focused project from AsyncStorage
   useEffect(() => {
-    const loadFocusedProjects = async () => {
+    const loadFocusedProject = async () => {
       try {
-        const stored = await AsyncStorage.getItem('myDayFocusedProjects');
+        const stored = await AsyncStorage.getItem('myDayFocusedProject');
         if (stored) {
-          const projectIds = JSON.parse(stored);
-          setFocusedProjects(new Set(projectIds));
-          console.log('✅ Focused projeler yüklendi:', projectIds);
+          const projectId = JSON.parse(stored);
+          setFocusedProject(projectId);
+          console.log('✅ Focused proje yüklendi:', projectId);
         } else {
           console.log('ℹ️ Henüz focused proje yok');
         }
       } catch (error) {
-        console.error('❌ Focused projeler yüklenirken hata:', error);
+        console.error('❌ Focused proje yüklenirken hata:', error);
       }
     };
-    loadFocusedProjects();
+    loadFocusedProject();
   }, []);
 
-  // Save focused projects to AsyncStorage
-  const saveFocusedProjects = useCallback(async (projects) => {
+  // Save focused project to AsyncStorage
+  const saveFocusedProject = useCallback(async (projectId) => {
     try {
-      const projectIds = [...projects];
-      await AsyncStorage.setItem('myDayFocusedProjects', JSON.stringify(projectIds));
-      console.log('💾 Focused projeler kaydedildi:', projectIds);
+      if (projectId) {
+        await AsyncStorage.setItem('myDayFocusedProject', JSON.stringify(projectId));
+        console.log('💾 Focused proje kaydedildi:', projectId);
+      } else {
+        await AsyncStorage.removeItem('myDayFocusedProject');
+        console.log('💾 Focused proje temizlendi');
+      }
     } catch (error) {
-      console.error('❌ Focused projeler kaydedilirken hata:', error);
+      console.error('❌ Focused proje kaydedilirken hata:', error);
     }
   }, []);
 
-  // Toggle project focus
+  // Toggle project focus (only one at a time)
   const handleProjectLongPress = useCallback((project) => {
-    setFocusedProjects(prev => {
-      const newSet = new Set(prev);
-      const wasFocused = newSet.has(project.id);
+    setFocusedProject(prev => {
+      const wasFocused = prev === project.id;
       
       if (wasFocused) {
-        newSet.delete(project.id);
         console.log(`🔄 "${project.title}" artık focused değil`);
+        saveFocusedProject(null);
+        return null;
       } else {
-        newSet.add(project.id);
         console.log(`⭐ "${project.title}" focused oldu`);
+        saveFocusedProject(project.id);
+        return project.id;
       }
-      
-      saveFocusedProjects(newSet);
-      return newSet;
     });
-  }, [saveFocusedProjects]);
+  }, [saveFocusedProject]);
 
   // Memoized handlers to prevent unnecessary re-renders
      const openCard = useCallback((card) => {
@@ -144,43 +161,42 @@ const MyDayScreen = memo(function MyDayScreen({
       return;
     }
     
-    // Eğer milestone active ise → complete yap (animasyonlu)
+    // Eğer milestone active ise → complete yap (anında celebration ile)
     // Milestone'u completing state'e ekle
     setCompletingMilestones(prev => new Set([...prev, milestoneKey]));
     
-    // Complete milestone after 1.5 seconds and remove from completing state
-    setTimeout(() => {
-      try {
-        completeMilestone(project.id, milestone.id);
-        
-        // Celebration'ı tetikle
-        if (global.triggerCelebration) {
-          setTimeout(() => {
-            global.triggerCelebration({
-              type: 'milestone',
-              name: milestone.title,
-              projectId: project.id,
-              projectTitle: project.title,
-              completedAt: Date.now(),
-              project: project
-            });
-          }, 100); // Complete animasyonundan sonra
-        }
-        
-        setCompletingMilestones(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(milestoneKey);
-          return newSet;
-        });
-      } catch (error) {
-        // Hata durumunda completing state'i temizle
-        setCompletingMilestones(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(milestoneKey);
-          return newSet;
+    // Complete milestone immediately and trigger celebration
+    try {
+      completeMilestone(project.id, milestone.id);
+      
+      // Celebration'ı anında tetikle
+      if (global.triggerCelebration) {
+        global.triggerCelebration({
+          type: 'milestone',
+          name: milestone.title,
+          projectId: project.id,
+          projectTitle: project.title,
+          completedAt: Date.now(),
+          project: project
         });
       }
-    }, 1500);
+      
+      // Completing state'i kısa bir süre sonra temizle (sadece UI için)
+      setTimeout(() => {
+        setCompletingMilestones(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(milestoneKey);
+          return newSet;
+        });
+      }, 300);
+    } catch (error) {
+      // Hata durumunda completing state'i temizle
+      setCompletingMilestones(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(milestoneKey);
+        return newSet;
+      });
+    }
   }, [completeMilestone, setActiveMilestone, t]);
 
   // Check if milestone was completed today
@@ -238,210 +254,300 @@ const MyDayScreen = memo(function MyDayScreen({
     return milestoneEndDate.toDateString() === today.toDateString();
   }, []);
 
-  // Helper to map mood key to mood info (aligned with EmotionalJournal)
+  // Helper function to get mood info
   const getMoodInfo = useCallback((moodKey) => {
-    const mood = MOODS.find(m => m.key === moodKey) ||
-                 EXTENDED_MOODS.find(m => m.key === moodKey) ||
+    const mood = MOODS.find(m => m.key === moodKey) || 
+                 EXTENDED_MOODS.find(m => m.key === moodKey) || 
                  { key: moodKey, label: moodKey, icon: 'sentiment-neutral', color: '#8E8E93', category: 'neutral' };
-    if (!mood.category) mood.category = 'neutral';
+    
+    // Ensure category is set
+    if (!mood.category) {
+      mood.category = 'neutral';
+    }
+    
     return mood;
   }, []);
 
-  // Helper to solidify soft mood colors (same mapping as EmotionalJournal)
   const getSolidMoodColor = useCallback((originalColor) => {
+    // Convert pale colors to more solid ones
     const colorMap = {
-      '#C8E6C9': '#4CAF50',
-      '#FFE0B2': '#FF9800',
-      '#E1BEE7': '#9C27B0',
-      '#FFCDD2': '#F44336',
-      '#FFAB91': '#FF5722',
-      '#FFCCBC': '#FF7043',
-      '#FFF3E0': '#FFB74D',
-      '#E8F5E8': '#66BB6A',
-      '#E1F5FE': '#42A5F5',
-      '#FFF8E1': '#FFCA28',
-      '#F3E5F5': '#BA68C8',
-      '#FFEBEE': '#EF5350',
-      '#E0E0E0': '#90A4AE',
-      '#DCEDC8': '#8BC34A',
-      '#F5F5F5': '#BDBDBD',
-      '#FFE0E6': '#F48FB1',
-      '#E8EAF6': '#7986CB',
-      '#E0F2F1': '#4DB6AC',
-      '#FFFDE7': '#FFF176',
-      '#FAFAFA': '#E0E0E0',
-      '#FFF9C4': '#FFF59D',
-      '#FCE4EC': '#F06292',
-      '#CFD8DC': '#90A4AE',
+      // Basic MOODS (Updated colors)
+      '#C8E6C9': '#4CAF50', // Happy - Light green
+      '#FFE0B2': '#FF9800', // Excited - Light orange
+      '#E1BEE7': '#9C27B0', // Tired - Light purple
+      '#FFCDD2': '#F44336', // Sad - Light red
+      '#FFAB91': '#FF5722', // Angry - Light deep orange
+      
+      // EXTENDED_MOODS (AI mood'ları) - Updated colors
+      '#FFCCBC': '#FF7043', // Frustrated - Light brown
+      '#FFF3E0': '#FFB74D', // Anxious - Light amber
+      '#E8F5E8': '#66BB6A', // Grateful - Light mint green
+      '#E1F5FE': '#42A5F5', // Hopeful - Light blue
+      '#FFF8E1': '#FFCA28', // Proud - Light yellow
+      '#F3E5F5': '#BA68C8', // Relieved - Light lavender
+      '#FFEBEE': '#EF5350', // Overwhelmed - Light pink
+      '#E0E0E0': '#90A4AE', // Lonely - Light gray
+      '#DCEDC8': '#8BC34A', // Motivated - Light lime green
+      '#F5F5F5': '#BDBDBD', // Confused - Very light gray
+      '#FFE0E6': '#F48FB1', // Disappointed - Light rose
+      '#E8EAF6': '#7986CB', // Nostalgic - Light indigo
+      '#E0F2F1': '#4DB6AC', // Peaceful - Light teal
+      '#FFFDE7': '#FFF176', // Curious - Light cream
+      '#FAFAFA': '#E0E0E0', // Bored - Very light gray
+      '#FFF9C4': '#FFF59D', // Surprised - Light yellow
+      '#FCE4EC': '#F06292', // Worried - Light magenta
+      '#CFD8DC': '#90A4AE', // Natural - Light gray
     };
+    
     return colorMap[originalColor] || originalColor;
   }, []);
 
-  // Get project emotional progress for display (aligned with EmotionalJournal)
+  // AI-powered motivation sentence generator - Mood-based
+  const generateMotivationSentence = useCallback((project, progressType, dominantMood) => {
+    const moodKey = dominantMood?.key || 'default';
+    const randomIndex = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+    const translationKey = `motivation${moodKey.charAt(0).toUpperCase() + moodKey.slice(1)}${randomIndex}`;
+    
+    return t(translationKey);
+  }, [t]);
+
+  // Project emotional progress analysis - Mood-based evaluation (Sadece aktif projeler)
   const getProjectEmotionalProgress = useCallback((project) => {
-    if (!project?.journalEntries || project.journalEntries.length === 0) return null;
-
-    // Count moods across all entries for this project
-    const moodCounts = {};
-    project.journalEntries.forEach(entry => {
-      if (entry?.mood) {
-        moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+    const projectProgress = [];
+    
+    if (project.journalEntries && project.journalEntries.length > 0) {
+      const projectMoods = [];
+      const moodCounts = {};
+      
+      // Collect all moods from this project (proje bazlı sistem)
+      project.journalEntries.forEach(entry => {
+        if (entry.mood) {
+          const moodInfo = getMoodInfo(entry.mood);
+          projectMoods.push({
+            mood: entry.mood,
+            moodInfo,
+            date: new Date(entry.createdAt)
+          });
+          
+          // Count each mood
+          moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+        }
+      });
+      
+      // Only show projects that have actual mood entries
+      if (projectMoods.length > 0) {
+        // Find the most frequent mood in the entire project
+        const sortedMoods = Object.entries(moodCounts)
+          .sort(([,a], [,b]) => b - a);
+        
+        const dominantMoodKey = sortedMoods[0][0];
+        const dominantMoodCount = sortedMoods[0][1];
+        const dominantMoodInfo = getMoodInfo(dominantMoodKey);
+        
+        // Calculate total mood score for progress type
+        let totalMoodScore = 0;
+        projectMoods.forEach(mood => {
+          const score = mood.moodInfo.category === 'positive' ? 1 : 
+                       mood.moodInfo.category === 'negative' ? -1 : 0;
+          totalMoodScore += score;
+        });
+        
+        const averageScore = totalMoodScore / projectMoods.length;
+        let progressType = 'neutral';
+        
+        // ✨ YENİ: Dominant mood rengini kullan (active projects)
+        let progressColor = dominantMoodInfo ? getSolidMoodColor(dominantMoodInfo.color) : '#9E9E9E';
+        
+        // Progress type'ı dominant mood category'sine göre belirle
+        if (dominantMoodInfo && dominantMoodInfo.category) {
+          progressType = dominantMoodInfo.category;
+        } else if (averageScore > 0.2) {
+          progressType = 'positive';
+          progressColor = '#4CAF50';
+        } else if (averageScore < -0.2) {
+          progressType = 'negative';
+          progressColor = '#F44336';
+        }
+        
+        // Mood-specific project evaluation messages
+        let progressMessage = '';
+        let progressIcon = '';
+        
+        switch (dominantMoodInfo?.key) {
+          // Positive moods
+          case 'happy':
+            progressMessage = t('projectHappy');
+            progressIcon = 'sentiment-satisfied';
+            break;
+          case 'excited':
+            progressMessage = t('projectExcited');
+            progressIcon = 'celebration';
+            break;
+          case 'grateful':
+            progressMessage = t('projectGrateful');
+            progressIcon = 'favorite';
+            break;
+          case 'hopeful':
+            progressMessage = t('projectHopeful');
+            progressIcon = 'wb-sunny';
+            break;
+          case 'proud':
+            progressMessage = t('projectProud');
+            progressIcon = 'emoji-events';
+            break;
+          case 'relieved':
+            progressMessage = t('projectRelieved');
+            progressIcon = 'spa';
+            break;
+          case 'motivated':
+            progressMessage = t('projectMotivated');
+            progressIcon = 'trending-up';
+            break;
+          case 'peaceful':
+            progressMessage = t('projectPeaceful');
+            progressIcon = 'spa';
+            break;
+          case 'content':
+            progressMessage = t('projectContent');
+            progressIcon = 'sentiment-satisfied';
+            break;
+          case 'confident':
+            progressMessage = t('projectConfident');
+            progressIcon = 'self-improvement';
+            break;
+          
+          // Negative moods
+          case 'sad':
+            progressMessage = t('projectSad');
+            progressIcon = 'sentiment-dissatisfied';
+            break;
+          case 'angry':
+            progressMessage = t('projectAngry');
+            progressIcon = 'mood-bad';
+            break;
+          case 'tired':
+            progressMessage = t('projectTired');
+            progressIcon = 'bedtime';
+            break;
+          case 'frustrated':
+            progressMessage = t('projectFrustrated');
+            progressIcon = 'psychology';
+            break;
+          case 'anxious':
+            progressMessage = t('projectAnxious');
+            progressIcon = 'warning';
+            break;
+          case 'overwhelmed':
+            progressMessage = t('projectOverwhelmed');
+            progressIcon = 'psychology';
+            break;
+          case 'lonely':
+            progressMessage = t('projectLonely');
+            progressIcon = 'person-off';
+            break;
+          case 'confused':
+            progressMessage = t('projectConfused');
+            progressIcon = 'help';
+            break;
+          case 'disappointed':
+            progressMessage = t('projectDisappointed');
+            progressIcon = 'sentiment-dissatisfied';
+            break;
+          case 'worried':
+            progressMessage = t('projectWorried');
+            progressIcon = 'psychology';
+            break;
+          case 'bored':
+            progressMessage = t('projectBored');
+            progressIcon = 'sentiment-neutral';
+            break;
+          case 'stressed':
+            progressMessage = t('projectStressed');
+            progressIcon = 'psychology';
+            break;
+          case 'exhausted':
+            progressMessage = t('projectExhausted');
+            progressIcon = 'bedtime';
+            break;
+          
+          // Neutral moods
+          case 'calm':
+            progressMessage = t('projectCalm');
+            progressIcon = 'spa';
+            break;
+          case 'curious':
+            progressMessage = t('projectCurious');
+            progressIcon = 'explore';
+            break;
+          case 'nostalgic':
+            progressMessage = t('projectNostalgic');
+            progressIcon = 'history';
+            break;
+          case 'surprised':
+            progressMessage = t('projectSurprised');
+            progressIcon = 'surprise';
+            break;
+          case 'focused':
+            progressMessage = t('projectFocused');
+            progressIcon = 'center-focus-strong';
+            break;
+          case 'neutral':
+            progressMessage = t('projectNeutral');
+            progressIcon = 'trending-flat';
+            break;
+          
+          default:
+            progressMessage = t('projectDefault');
+            progressIcon = 'trending-flat';
+        }
+        
+        // Generate AI motivation sentence based on dominant mood
+        const motivationSentence = generateMotivationSentence(project, progressType, dominantMoodInfo);
+        
+        return {
+          projectId: project.id,
+          projectTitle: project.title,
+          progressType,
+          progressMessage,
+          progressIcon,
+          progressColor,
+          averageScore,
+          moodCount: projectMoods.length,
+          dominantMood: dominantMoodKey,
+          dominantMoodCount,
+          dominantMoodInfo,
+          motivationSentence
+        };
       }
-    });
-
-    const sortedMoods = Object.entries(moodCounts).sort(([,a], [,b]) => b - a);
-    if (sortedMoods.length === 0) return null;
-
-    const dominantMoodKey = sortedMoods[0][0];
-    const dominantMoodInfo = getMoodInfo(dominantMoodKey);
-
-    // Color: use solid version of the mood color
-    let progressColor = getSolidMoodColor(dominantMoodInfo.color) || '#9E9E9E';
-
-    // Message & icon mapping exactly like EmotionalJournal active projects
-    let progressMessage = '';
-    let progressIcon = '';
-    switch (dominantMoodInfo.key) {
-      // Positive moods
-      case 'happy':
-        progressMessage = t('projectHappy');
-        progressIcon = 'sentiment-satisfied';
-        break;
-      case 'excited':
-        progressMessage = t('projectExcited');
-        progressIcon = 'celebration';
-        break;
-      case 'grateful':
-        progressMessage = t('projectGrateful');
-        progressIcon = 'favorite';
-        break;
-      case 'hopeful':
-        progressMessage = t('projectHopeful');
-        progressIcon = 'wb-sunny';
-        break;
-      case 'proud':
-        progressMessage = t('projectProud');
-        progressIcon = 'emoji-events';
-        break;
-      case 'relieved':
-        progressMessage = t('projectRelieved');
-        progressIcon = 'spa';
-        break;
-      case 'motivated':
-        progressMessage = t('projectMotivated');
-        progressIcon = 'trending-up';
-        break;
-      case 'peaceful':
-        progressMessage = t('projectPeaceful');
-        progressIcon = 'spa';
-        break;
-      case 'content':
-        progressMessage = t('projectContent');
-        progressIcon = 'sentiment-satisfied';
-        break;
-      case 'confident':
-        progressMessage = t('projectConfident');
-        progressIcon = 'self-improvement';
-        break;
-
-      // Negative moods
-      case 'sad':
-        progressMessage = t('projectSad');
-        progressIcon = 'sentiment-dissatisfied';
-        break;
-      case 'angry':
-        progressMessage = t('projectAngry');
-        progressIcon = 'mood-bad';
-        break;
-      case 'tired':
-        progressMessage = t('projectTired');
-        progressIcon = 'bedtime';
-        break;
-      case 'frustrated':
-        progressMessage = t('projectFrustrated');
-        progressIcon = 'psychology';
-        break;
-      case 'anxious':
-        progressMessage = t('projectAnxious');
-        progressIcon = 'warning';
-        break;
-      case 'overwhelmed':
-        progressMessage = t('projectOverwhelmed');
-        progressIcon = 'psychology';
-        break;
-      case 'lonely':
-        progressMessage = t('projectLonely');
-        progressIcon = 'person-off';
-        break;
-      case 'confused':
-        progressMessage = t('projectConfused');
-        progressIcon = 'help';
-        break;
-      case 'disappointed':
-        progressMessage = t('projectDisappointed');
-        progressIcon = 'sentiment-dissatisfied';
-        break;
-      case 'worried':
-        progressMessage = t('projectWorried');
-        progressIcon = 'psychology';
-        break;
-      case 'bored':
-        progressMessage = t('projectBored');
-        progressIcon = 'sentiment-neutral';
-        break;
-      case 'stressed':
-        progressMessage = t('projectStressed');
-        progressIcon = 'psychology';
-        break;
-      case 'exhausted':
-        progressMessage = t('projectExhausted');
-        progressIcon = 'bedtime';
-        break;
-
-      // Neutral moods
-      case 'calm':
-        progressMessage = t('projectCalm');
-        progressIcon = 'spa';
-        break;
-      case 'curious':
-        progressMessage = t('projectCurious');
-        progressIcon = 'explore';
-        break;
-      case 'nostalgic':
-        progressMessage = t('projectNostalgic');
-        progressIcon = 'history';
-        break;
-      case 'surprised':
-        progressMessage = t('projectSurprised');
-        progressIcon = 'surprise';
-        break;
-      case 'focused':
-        progressMessage = t('projectFocused');
-        progressIcon = 'center-focus-strong';
-        break;
-      case 'neutral':
-        progressMessage = t('projectNeutral');
-        progressIcon = 'trending-flat';
-        break;
-
-      default:
-        progressMessage = t('projectDefault');
-        progressIcon = 'trending-flat';
     }
+    
+    return null;
+  }, [getMoodInfo, getSolidMoodColor, generateMotivationSentence, t]);
 
-    return {
-      progressColor,
-      progressIcon,
-      progressMessage,
-      lastEntry: null,
-    };
-  }, [getMoodInfo, getSolidMoodColor, t]);
-
+  const closeMilestone = useCallback(() => setSelectedMilestone(null), [setSelectedMilestone]);
 
 
 
   // selectedDate için default değer
   const safeSelectedDate = selectedDate ? new Date(selectedDate) : new Date();
+
+  const handleJourneyOverviewPress = useCallback(() => {
+    if (!navigation) {
+      return;
+    }
+
+    const isoSelectedDate = (() => {
+      try {
+        return new Date(safeSelectedDate).toISOString();
+      } catch (error) {
+        return new Date().toISOString();
+      }
+    })();
+
+    navigation.navigate('Overview', {
+      selectedDate: isoSelectedDate,
+    });
+  }, [navigation, safeSelectedDate]);
 
   // String format of selected date
   const selectedDateString = safeSelectedDate.toDateString();
@@ -542,9 +648,9 @@ const MyDayScreen = memo(function MyDayScreen({
     
     // Sort by focused status first, then by last milestone activity
     const sorted = filtered.sort((a, b) => {
-      // Focused projects always come first
-      const aIsFocused = focusedProjects.has(a.id);
-      const bIsFocused = focusedProjects.has(b.id);
+      // Focused project always comes first
+      const aIsFocused = focusedProject === a.id;
+      const bIsFocused = focusedProject === b.id;
       
       if (aIsFocused && !bIsFocused) return -1;
       if (!aIsFocused && bIsFocused) return 1;
@@ -556,15 +662,58 @@ const MyDayScreen = memo(function MyDayScreen({
     });
 
     return sorted;
-  }, [activeTasks, safeSelectedDate, focusedProjects]);
+  }, [activeTasks, safeSelectedDate, focusedProject]);
+
+  // Calculate milestones for today's summary - based on milestones active on that day
+  const todaySummary = useMemo(() => {
+    const totalMilestones = selectedDateActiveTasks.reduce((total, project) => {
+      return total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, safeSelectedDate)).length || 0);
+    }, 0);
+
+    const completedMilestones = selectedDateActiveTasks.reduce((total, project) => {
+      // Count milestones completed TODAY
+      return total + (project.milestones?.filter(m => isMilestoneCompletedToday(m, safeSelectedDate)).length || 0);
+    }, 0);
+
+    const activeMilestones = totalMilestones;
+
+    return {
+      totalProjects: selectedDateActiveTasks.length,
+      totalMilestones,
+      completedMilestones,
+      activeMilestones,
+    };
+  }, [selectedDateActiveTasks, safeSelectedDate, isMilestoneCompletedToday]);
 
 
 
 
 
 
+  const keyExtractor = useCallback((item) => item.id.toString(), []);
 
-
+  // Organize tasks by date (for calendar)
+  const tasksByDate = useMemo(() => {
+    const tasks = {};
+    if (activeTasks) {
+      activeTasks.forEach(task => {
+        const startDate = new Date(task.startDate);
+        const endDate = new Date(task.endDate);
+        
+        // Her gün için task'i ekle
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          const dateString = d.toDateString();
+          if (!tasks[dateString]) {
+            tasks[dateString] = [];
+          }
+          if (!tasks[dateString].find(t => t.id === task.id)) {
+            tasks[dateString].push(task);
+          }
+        }
+      });
+    }
+    return tasks;
+  }, [activeTasks]);
 
 
   return (
@@ -575,90 +724,227 @@ const MyDayScreen = memo(function MyDayScreen({
           onDateSelect={setSelectedDate}
         />
         
-        
-        <View style={styles.componentContainer}>
-          <TodaysSummary
-            selectedDateActiveTasks={selectedDateActiveTasks}
-            selectedDate={selectedDate}
-            activeTasks={activeTasks}
-            completedTasks={completedTasks}
-            navigation={navigation}
-            onAddProject={onAddProject}
-            ProjectCard={ProjectCard}
-            setSelectedCard={setSelectedCard}
-            setSelectedProjectForMilestone={setSelectedProjectForMilestone}
-            setAddMilestoneModalVisible={setAddMilestoneModalVisible}
-            completingMilestones={completingMilestones}
-            isMilestoneActiveToday={isMilestoneActiveToday}
-            isMilestoneOverdue={isMilestoneOverdue}
-            isMilestoneLastDay={isMilestoneLastDay}
-            openMilestone={openMilestone}
-            handleMilestoneToggle={handleMilestoneToggle}
-            onOpenJournal={onOpenJournal}
-            isMilestoneCompletedToday={isMilestoneCompletedToday}
-            focusedProjects={focusedProjects}
-            handleProjectLongPress={handleProjectLongPress}
-            getProjectEmotionalProgress={getProjectEmotionalProgress}
-          />
-        </View>
+        {/* Today's Summary with Progress and Projects */}
+        <View style={styles.todaysSummaryContainer}>
+          {/* Today's Summary Header */}
+          <View style={styles.summaryHeaderContainer}>
+            <View style={styles.summaryHeaderContent}>
+              <Text
+                style={[
+                  styles.summaryHeaderTitle,
+                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
+                ]}
+              >
+                {t('todaysSummary')}
+              </Text>
+              <View
+                style={[
+                  styles.counterBadge,
+                  {
+                    backgroundColor:
+                      theme.name === 'dark'
+                        ? 'rgba(33, 150, 243, 0.12)'
+                        : 'rgba(33, 150, 243, 0.1)',
+                    borderColor:
+                      theme.name === 'dark'
+                        ? 'rgba(33,150,243,0.25)'
+                        : 'rgba(33,150,243,0.15)',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.counterText,
+                    { color: theme.name === 'dark' ? '#2196F3' : '#1976D2' },
+                  ]}
+                >
+                  {selectedDateActiveTasks.length}
+                </Text>
+              </View>
+            </View>
+          </View>
+          
+          {/* Progress Status - Integrated */}
+          {(() => {
+            // Calculate today's progress
+            const today = new Date();
+            const selectedDateObj = new Date(safeSelectedDate);
+            today.setHours(0, 0, 0, 0);
+            selectedDateObj.setHours(0, 0, 0, 0);
+            
+            // Only show for today
+            if (selectedDateObj.getTime() !== today.getTime()) {
+              return null;
+            }
+            
+            const totalMilestones = selectedDateActiveTasks.reduce((total, project) => {
+              return total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, safeSelectedDate)).length || 0);
+            }, 0);
 
-        <View style={styles.componentContainer}>
+            const completedMilestones = selectedDateActiveTasks.reduce((total, project) => {
+              return total + (project.milestones?.filter(m => isMilestoneCompletedToday(m, safeSelectedDate)).length || 0);
+            }, 0);
+
+            const total = totalMilestones + completedMilestones;
+            const percentage = total > 0 ? Math.round((completedMilestones / total) * 100) : 0;
+            
+            if (total === 0) return null;
+            
+            return (
+              <View style={[
+                styles.progressStatus,
+                {
+                  backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.05)',
+                  borderLeftColor: theme.name === 'dark' ? '#34C759' : '#34C759'
+                }
+              ]}>
+                <View style={styles.progressIconContainer}>
+                  <Ionicons name="trending-up" size={16} color="#34C759" />
+                </View>
+                
+                <View style={styles.progressContent}>
+                  <View style={styles.progressHeader}>
+                    <Text style={[
+                      styles.progressText,
+                      { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
+                    ]}>{t('progressStatus')}</Text>
+                    <Text style={[
+                      styles.progressPercentage,
+                      { 
+                        color: theme.name === 'dark' ? '#34C759' : '#34C759',
+                        backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.1)'
+                      }
+                    ]}>{percentage}%</Text>
+                  </View>
+                  
+                  <View style={styles.progressBarContainer}>
+                    <View style={[
+                      styles.progressBar,
+                      { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.3)' : 'rgba(52, 199, 89, 0.2)' }
+                    ]}>
+                      <View style={[
+                        styles.progressBarFill,
+                        { width: `${percentage}%` }
+                      ]}>
+                        <LinearGradient
+                          colors={['#34C759', '#30D158']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.progressGradient}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
+          
+          {/* Today's Projects Section */}
+          <View style={styles.summaryContainer}>
+            {selectedDateActiveTasks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
+                <Text style={styles.emptyTitle}>{t('noProjectOnThisDate')}</Text>
+                <Text style={styles.emptyText}>
+                  {(() => {
+                    const today = new Date();
+                    const selected = new Date(selectedDate);
+                    today.setHours(0, 0, 0, 0);
+                    selected.setHours(0, 0, 0, 0);
+                    
+                    if (selected < today) {
+                      return t('noProjectOnThisDate');
+                    } else {
+                      return t('noActiveProjectOnSelectedDate');
+                    }
+                  })()}
+                </Text>
+              </View>
+            ) : (
+              selectedDateActiveTasks.map((project, index) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  index={index}
+                  isLastProject={index >= selectedDateActiveTasks.length - 1}
+                  theme={theme}
+                  t={t}
+                  setSelectedCard={setSelectedCard}
+                  setSelectedProjectForMilestone={setSelectedProjectForMilestone}
+                  setAddMilestoneModalVisible={setAddMilestoneModalVisible}
+                  completingMilestones={completingMilestones}
+                  selectedDate={safeSelectedDate}
+                  isMilestoneActiveToday={isMilestoneActiveToday}
+                  isMilestoneOverdue={isMilestoneOverdue}
+                  isMilestoneLastDay={isMilestoneLastDay}
+                  openMilestone={openMilestone}
+                  handleMilestoneToggle={handleMilestoneToggle}
+                  onOpenJournal={onOpenJournal}
+                  isMilestoneCompletedToday={isMilestoneCompletedToday}
+                  isFocused={focusedProject === project.id}
+                  onProjectLongPress={handleProjectLongPress}
+                  getProjectEmotionalProgress={getProjectEmotionalProgress}
+                />
+              ))
+            )}
+          </View>
+        </View>
+        
+        {/* Journey Overview */}
+        <View style={styles.componentSpacing}>
           <JourneyOverview
             activeTasks={activeTasks}
             completedTasks={completedTasks}
-            selectedDate={selectedDate}
-            navigation={navigation}
+            selectedDate={safeSelectedDate}
+            onPress={handleJourneyOverviewPress}
           />
         </View>
-
-        <View style={styles.componentContainer}>
-          <MoodTrend 
+        
+        {/* Mood Trend */}
+        <View style={styles.componentSpacing}>
+          <MoodTrend
             activeTasks={activeTasks}
             completedTasks={completedTasks}
             selectedDate={selectedDate}
           />
         </View>
-
-        <View style={styles.componentContainer}>
+        
+        {/* Activity Timeline */}
+        <View style={styles.componentSpacing}>
           <ActivityTimeline
             activeTasks={activeTasks}
             completedTasks={completedTasks}
           />
         </View>
-
-        <View style={styles.componentContainer}>
-          <MoodCalendar
-            activeTasks={activeTasks}
-            completedTasks={completedTasks}
-            selectedDate={selectedDate}
-          />
+        
+        {/* Mood Calendar */}
+        <View style={styles.componentSpacing}>
+          <MoodCalendar />
         </View>
-
-        {/* Add Project Button */}
-        <View style={styles.addProjectButtonContainer}>
+        
+        {/* Bottom Add Project Button */}
+        <View style={styles.bottomAddButtonContainer}>
           <TouchableOpacity 
             style={[
-              styles.addProjectButton,
+              styles.bottomAddProjectButton,
               {
-                backgroundColor: theme.name === 'dark' ? '#2C2C2E' : '#F0F8FF',
-                borderColor: theme.name === 'dark' ? '#FF6B6B' : '#1976D2',
+                backgroundColor: theme.name === 'dark' ? '#FF6B6B' : '#007AFF',
               }
             ]}
             onPress={onAddProject}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
             <Ionicons 
-              name="add-circle" 
-              size={18} 
-              color={theme.name === 'dark' ? '#FF6B6B' : '#1976D2'} 
+              name="add" 
+              size={24} 
+              color="#FFFFFF" 
             />
-            <Text style={[
-              styles.addProjectButtonText,
-              { color: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }
-            ]}>{t('addProject')}</Text>
+            <Text style={styles.bottomAddProjectText}>
+              {t('addProject')}
+            </Text>
           </TouchableOpacity>
         </View>
-        
     </View>
   );
 });
@@ -670,30 +956,74 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
   },
+  componentSpacing: {
+    marginTop: 12,
+  },
+  todaysSummaryContainer: {
+    marginTop: 12,
+  },
+  reducedSpacing: {
+    marginTop: 8,
+  },
   summaryHeaderContainer: {
-    marginHorizontal: 30,
-    marginTop: 0, // 8'den 0'a düşürdüm - progress status üstüne aldım
-    marginBottom: 8,
-    paddingTop: 10, // Today's Summary padding top
+    marginHorizontal: 24,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  summaryHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   summaryHeaderTitle: {
-    fontSize: 18, // 24'ten 18'e düşürdüm - eski haline getirdim
+    fontSize: 16,
     fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.5,
   },
+  counterBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    padding: 0,
+  },
+  counterText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+    textAlign: 'center',
+    // Better vertical centering on Android
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    // Remove letter spacing to avoid visual offset
+    letterSpacing: 0,
+    lineHeight: 14,
+  },
   summaryContainer: {
     marginHorizontal: 30,
-    marginTop: 8, // 16'dan 8'e düşürdüm - header'ı yukarıya aldım
   },
-  componentContainer: {
-    marginTop: 4,
-    marginBottom: 0,
+  emptyState: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 16,
+    padding: 32,
+    marginTop: 6,
+    alignItems: 'center',
   },
-  addProjectButtonContainer: {
-    marginTop: 4,
-    marginBottom: 0,
-    alignItems: 'flex-end',
-    paddingRight: 38,
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#1D1D1F',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
   },
   addProjectButton: {
     flexDirection: 'row',
@@ -701,13 +1031,397 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 12,
-    minWidth: 130,
+    marginTop: 20,
+    marginBottom: 20,
+    marginHorizontal: 24, // Proje kartlarıyla aynı margin
   },
   addProjectButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Poppins_500Medium',
     marginLeft: 6,
+  },
+  projectSummaryCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 6, // 12'den 6'ya düşürdüm - daha kompakt
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 2 },
+    marginHorizontal: 0,
+  },
+  projectHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  projectTitleContainer: {
+    flexDirection: 'column',
+    flex: 1,
+    gap: 6,
+  },
+  dateContainer: {
+    alignItems: 'flex-end',
+  },
+  projectTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    flexShrink: 1,
+  },
+  focusedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  focusedBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+  },
+  projectDateRange: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  dateText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+  },
+  milestonesList: {
+    marginTop: 8,
+    marginLeft: 16,
+  },
+  milestoneItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(25, 118, 210, 0.1)', // Mavi ton border
+  },
+  milestoneInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+  },
+  milestoneContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  milestoneText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    marginBottom: 4,
+  },
+  completedMilestoneText: {
+    textDecorationLine: 'line-through',
+    color: '#8E8E93',
+  },
+  milestoneTextContainer: {
+    position: 'relative',
+    flex: 1,
+  },
+  completedTodayBadge: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginTop: 2,
+  },
+  completingMilestoneText: {
+    color: '#8E8E93',
+    opacity: 0.7,
+    textDecorationLine: 'line-through',
+    textDecorationStyle: 'solid',
+    textDecorationColor: '#8E8E93',
+  },
+  journalCount: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.2)',
+  },
+  journalCountText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+    color: '#007AFF',
+  },
+  // Mood sticker styles removed
+  noMilestonesText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    color: '#8E8E93',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  overdueMilestoneText: {
+    color: '#FF3B30',
+  },
+  lastDayMilestoneText: {
+    color: '#FF9500',
+  },
+  addMilestoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  addMilestoneText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 6,
+  },
+  minimalAddMilestoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginTop: 6,
+    borderWidth: 0.5,
+    alignSelf: 'flex-end',
+    width: 85,
+    height: 36,
+  },
+  minimalAddMilestoneText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 4,
+  },
+  // Son gününde olan projeler için özel style'lar
+  lastDayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8E7DBE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  lastDayText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  // Gecikmiş projeler için özel style'lar
+  overdueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  overdueText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  // Journal Add Button
+  addJournalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    width: 85,
+    height: 36,
+  },
+  addJournalText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_500Medium',
+    marginLeft: 4,
+  },
+  
+  // Journal Preview Styles
+  journalActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  journalCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  journalCountText: {
+    fontSize: 10,
+    fontFamily: 'Poppins_600SemiBold',
+    color: 'white',
+    marginLeft: 3,
+  },
+  journalBadgePlaceholder: {
+    width: 30, // Badge genişliği kadar boş alan
+    height: 20,
+  },
+  journalPreviewSection: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  journalPreviewHeader: {
+    marginBottom: 8,
+  },
+  journalPreviewTitle: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  journalPreviewCard: {
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 4,
+    borderWidth: 0.5,
+  },
+  journalPreviewContent: {
+    flex: 1,
+  },
+  // journalPreviewText kaldırıldı - artık text özeti gösterilmiyor
+  journalPreviewFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  journalPreviewDate: {
+    fontSize: 9,
+    fontFamily: 'Poppins_500Medium',
+    marginRight: 6,
+  },
+  moodTag: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Minimal Add Project Button Styles
+  minimalAddProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  minimalAddContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  minimalAddIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  minimalAddText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+  },
+  // Bottom Add Project Button Styles
+  bottomAddButtonContainer: {
+    marginHorizontal: 24,
+    marginTop: 16,
+    marginBottom: 30,
+  },
+  bottomAddProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    alignSelf: 'center',
+  },
+  bottomAddProjectText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#FFFFFF',
+    marginLeft: 6,
+  },
+  // Progress Status Styles
+  progressStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    marginTop: 4,
+    marginHorizontal: 30,
+    marginBottom: 8,
+  },
+  progressIconContainer: {
+    marginRight: 12,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressContent: {
+    flex: 1,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  progressText: {
+    fontSize: 13,
+    fontFamily: 'Poppins_500Medium',
+  },
+  progressPercentage: {
+    fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  progressBarContainer: {
+    marginBottom: 0,
+  },
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressGradient: {
+    flex: 1,
+    borderRadius: 2,
   },
 });

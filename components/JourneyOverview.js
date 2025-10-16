@@ -1,6 +1,6 @@
 // components/JourneyOverview.js
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { COLORS, ELEVATION } from '../constants';
@@ -8,9 +8,14 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 
-const JourneyOverview = ({ activeTasks, completedTasks, selectedDate }) => {
+const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
+
+  const ContainerComponent = onPress ? TouchableOpacity : View;
+  const containerProps = onPress
+    ? { activeOpacity: 0.85, onPress }
+    : {};
 
   // Mood rengini solid hale getir
   const getSolidMoodColor = (originalColor) => {
@@ -103,7 +108,7 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate }) => {
   }, [activeTasks, completedTasks, selectedDate]);
 
   return (
-    <View style={styles.container}>
+    <ContainerComponent style={styles.container} {...containerProps}>
       <View style={styles.header}>
         <Text style={[
           styles.title,
@@ -111,15 +116,25 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate }) => {
         ]}>
           {t('journeyOverview')}
         </Text>
-        <View style={[
-          styles.icon,
-          { backgroundColor: theme.name === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.1)' }
-        ]}>
-          <MaterialIcons 
-            name="analytics" 
-            size={18} 
-            color={theme.name === 'dark' ? '#1976D2' : '#1976D2'} 
-          />
+        <View style={styles.headerRight}>
+          <View style={[
+            styles.icon,
+            { backgroundColor: theme.name === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.1)' }
+          ]}>
+            <MaterialIcons 
+              name="analytics" 
+              size={18} 
+              color={theme.name === 'dark' ? '#1976D2' : '#1976D2'} 
+            />
+          </View>
+          {onPress && (
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.name === 'dark' ? '#8E8E93' : '#1D1D1F'}
+              style={styles.chevron}
+            />
+          )}
         </View>
       </View>
       
@@ -242,13 +257,13 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate }) => {
           </View>
         </View>
       </View>
-    </View>
+    </ContainerComponent>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 38,
+    marginHorizontal: 30,
     marginTop: 16,
     marginBottom: 8,
   },
@@ -257,6 +272,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
     fontSize: 16,
@@ -268,6 +287,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  chevron: {
+    marginLeft: 6,
   },
   card: {
     borderRadius: 16,

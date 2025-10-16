@@ -154,7 +154,7 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
 
 const styles = StyleSheet.create({
   outerContainer: {
-    marginHorizontal: 38,
+    marginHorizontal: 30,
     marginTop: 16,
   },
   sectionHeader: {
