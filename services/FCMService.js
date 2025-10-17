@@ -289,6 +289,19 @@ class FCMService {
   // Günlük bildirim planla (Native scheduled notification ile)
   async scheduleDailyReminder(hour = 19, minute = 0) {
     try {
+      // If the user is subscribed to topic-based daily reminders (server-side),
+      // skip scheduling a client-side local reminder to avoid duplicate notifications.
+      try {
+        const subscribed = await AsyncStorage.getItem('fcm_daily_reminders_subscribed');
+        if (subscribed === 'true') {
+          console.log('ℹ️ Kullanıcı server-side daily_reminders topicine abone — local schedule atlanıyor');
+          return null;
+        }
+      } catch (e) {
+        // If AsyncStorage fails, continue and attempt scheduling (fail-open)
+        console.warn('⚠️ AsyncStorage okunamadı, local daily reminder scheduling denenecek:', e);
+      }
+
       // Önceki bildirimleri iptal et
       await Notifications.cancelAllScheduledNotificationsAsync();
       
