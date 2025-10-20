@@ -1,5 +1,6 @@
 // utils/GlobalErrorHandler.js
 import { Platform } from 'react-native';
+import logger from './logger';
 
 class GlobalErrorHandler {
   static init() {
@@ -27,20 +28,19 @@ class GlobalErrorHandler {
       }
     };
     
-    // Sadece logla, console.error kullanma (sonsuz döngü önleme)
-    console.log('🚨 ERROR REPORT:', errorReport);
+    // Use logger to redact sensitive fields and honor log level
+    logger.report(errorReport);
     
-    // In production, send to crash reporting service
+    // In production, send to crash reporting service (integration point)
     if (!__DEV__) {
-      // TODO: Integrate with crash reporting service
-      // crashlytics().recordError(error);
-      // analytics().logEvent('app_error', errorReport);
+      // TODO: Integrate with crash reporting service (Sentry / Crashlytics)
+      // Example: sentry.captureException(error, { extra: errorReport })
     }
   }
 
   static reportPerformanceIssue(componentName, renderTime) {
     if (renderTime > 100) { // 100ms'den uzun render
-      console.warn(`⚠️ Performance issue in ${componentName}: ${renderTime}ms`);
+      logger.warn(`⚠️ Performance issue in ${componentName}: ${renderTime}ms`);
       
       if (!__DEV__) {
         // TODO: Send to analytics

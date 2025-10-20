@@ -3,6 +3,7 @@
 // Features: Smart Pattern Matching, Context Awareness, User Learning, Confidence Scoring, Real-time Adaptation
 
 // Mock AsyncStorage for Node.js testing
+import logger from './logger';
 const AsyncStorage = {
   getItem: async (key) => null,
   setItem: async (key, value) => {},
@@ -1237,13 +1238,13 @@ class RealTimeAdapter {
       // Boost successful patterns
       successfulPredictions.forEach(prediction => {
         // This would update pattern weights in real-time
-        console.log('Boosting pattern for:', prediction.mood);
+  logger.debug('Boosting pattern for:', prediction.mood);
       });
       
       // Learn from failed predictions
       failedPredictions.forEach(prediction => {
         // This would adjust pattern weights
-        console.log('Learning from failed prediction:', prediction.mood);
+  logger.debug('Learning from failed prediction:', prediction.mood);
       });
       
     } catch (error) {
@@ -1431,7 +1432,7 @@ class SmartMoodDetector {
       return result;
       
     } catch (error) {
-      console.error('Mood detection error:', error);
+  logger.error('Mood detection error:', error);
       return {
         mood: 'neutral',
         confidence: { score: 0.1, level: 'very_low', factors: ['Error in detection'] },
@@ -1443,9 +1444,9 @@ class SmartMoodDetector {
   // Get mood suggestions - Extended moods for AI suggestions
   async getMoodSuggestions(text, currentMood = null) {
     try {
-      console.log('getMoodSuggestions called with text:', text);
+  logger.debug('getMoodSuggestions called with text:', text);
       const detection = await this.detectMood(text);
-      console.log('Detection result:', detection);
+  logger.debug('Detection result:', detection);
       const suggestions = [];
       
       // Primary suggestion from extended moods - Always provide suggestion
@@ -1572,7 +1573,7 @@ class SmartMoodDetector {
       return finalSuggestions;
       
     } catch (error) {
-      console.error('Mood suggestions error:', error);
+  logger.error('Mood suggestions error:', error);
       return [
         { 
           mood: 'neutral', 
@@ -1599,7 +1600,7 @@ class SmartMoodDetector {
       // Track for real-time adaptation
       this.realTimeAdapter.trackPrediction(mood, text, confidence, userFeedback);
       
-      console.log('Learned from user:', { mood, text, confidence });
+  logger.debug('Learned from user:', { mood, text, confidence });
       
     } catch (error) {
       console.warn('Failed to learn from user:', error);
