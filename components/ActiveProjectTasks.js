@@ -297,25 +297,7 @@ const styles = StyleSheet.create({
     marginTop: -1, // Fine-tune vertical alignment
   },
   // Legacy styles (keeping for compatibility)
-  addMilestoneButton: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderRadius: 16,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  addMilestoneText: {
-    fontSize: 24,
-    fontFamily: "Poppins_700Bold",
-    color: "#007AFF",
-    lineHeight: 24,
-  },
+  // Legacy styles removed to keep file compact. Reintroduce if needed.
   emptyState: {
     flex: 1,
     alignItems: 'center',
