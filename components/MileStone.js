@@ -33,14 +33,14 @@ function MileStone({
   isDragging = false,
   isAttachMode = false, // Attach mode aktif mi
   isSelectableForAttach = false, // Bu milestone seçilebilir mi
-  onStartAttachMode, // Attach mode başlat
+  onStartAttachMode, // Attach mode'u başlat
   onSelectForAttach, // Attach için seç
   onDetachMilestone, // Milestone'u parent'ından ayır
   attachModeSourceId = null, // Attach mode'u başlatan milestone ID
   allMilestones = [], // Tüm milestone'lar (child sayısı için)
 }) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   // Performance monitoring (sadece development'ta) - geçici olarak devre dışı
   // usePerformanceMonitor('MileStone');
   
@@ -63,17 +63,18 @@ function MileStone({
     }
   }, []);
 
-  // Format date to "Mar. 13" format (for end date)
+  // Format date to localized short month format (e.g. 'Mar. 13' or 'Mar 13' depending on locale)
   const formatShortDate = useCallback((dateString) => {
     if (!dateString) return '';
     try {
       const date = new Date(dateString);
-      const months = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
-      return `${months[date.getMonth()]} ${date.getDate()}`;
+      const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+      const month = date.toLocaleDateString(locale, { month: 'short' });
+      return `${month} ${date.getDate()}`;
     } catch (e) {
       return '';
     }
-  }, []);
+  }, [language]);
 
   // Format date to day number only (for start date in calendar icon)
   const formatDayOnly = useCallback((dateString) => {
@@ -92,13 +93,13 @@ function MileStone({
     try {
       const date = new Date(dateString);
       const day = date.getDate();
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = months[date.getMonth()];
+      const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+      const month = date.toLocaleDateString(locale, { month: 'short' });
       return { day: day.toString(), month };
     } catch (e) {
       return { day: '', month: '' };
     }
-  }, []);
+  }, [language]);
 
   // Safely convert various color formats to rgba(r,g,b,a)
   const toRgba = useCallback((color, alpha = 1) => {
@@ -276,16 +277,33 @@ function MileStone({
       const today = new Date();
       const diffStart = Math.ceil((startDate - today) / 86400000);
       const diffEnd = Math.ceil((endDate - today) / 86400000);
-
-      if (isCompleted) {
-        const diff = Math.ceil((endDate - startDate) / 86400000);
-        return `Completed in ${diff} day${diff !== 1 ? "s" : ""}`;
-      } else if (diffStart > 0) {
-        return `Starts in ${diffStart} day${diffStart !== 1 ? "s" : ""}`;
-      } else if (diffEnd >= 0) {
-        return `Ends in ${diffEnd} day${diffEnd !== 1 ? "s" : ""}`;
+  // Use the `language` value from the component scope (useLanguage called at top)
+  if (language === 'tr') {
+        if (isCompleted) {
+          const diff = Math.ceil((endDate - startDate) / 86400000);
+          // "X günde tamamlandı"
+          return `${diff} günde tamamlandı`;
+        } else if (diffStart > 0) {
+          // "X gün sonra başlıyor"
+          return `${diffStart} gün sonra başlıyor`;
+        } else if (diffEnd >= 0) {
+          // "X gün sonra bitiyor"
+          return `${diffEnd} gün sonra bitiyor`;
+        } else {
+          // "X gün önce sona erdi"
+          return `${Math.abs(diffEnd)} gün önce sona erdi`;
+        }
       } else {
-        return `Ended ${Math.abs(diffEnd)} day${Math.abs(diffEnd) !== 1 ? "s" : ""} ago`;
+        if (isCompleted) {
+          const diff = Math.ceil((endDate - startDate) / 86400000);
+          return `Completed in ${diff} day${diff !== 1 ? "s" : ""}`;
+        } else if (diffStart > 0) {
+          return `Starts in ${diffStart} day${diffStart !== 1 ? "s" : ""}`;
+        } else if (diffEnd >= 0) {
+          return `Ends in ${diffEnd} day${diffEnd !== 1 ? "s" : ""}`;
+        } else {
+          return `Ended ${Math.abs(diffEnd)} day${Math.abs(diffEnd) !== 1 ? "s" : ""} ago`;
+        }
       }
     } catch (error) {
       console.error('Error in getDaysText:', error);
@@ -352,25 +370,14 @@ function MileStone({
   }, [onDelete]);
   
   const handleSwipeComplete = useCallback(() => {
-    if (isCompleted) {
-      // Reopen
-      if (milestone.parentId && allMilestones) {
-        const parent = allMilestones.find(ms => ms.id === milestone.parentId);
-        if (parent?.completed) {
-          Alert.alert(
-            t('cannotReopenChild') || 'Cannot Reopen',
-            t('parentMustBeActiveFirst') || `Parent milestone is completed. Please reopen the parent first.`,
-            [{ text: t('ok') || 'OK', style: 'default' }]
-          );
-          return;
-        }
-      }
-      onSetActive?.();
+    if (milestone.parentId) {
+      // Child: detach
+      onDetachMilestone?.();
     } else {
-      // Complete
-      onComplete?.();
+      // Parent: attach
+      onStartAttachMode?.();
     }
-  }, [isCompleted, milestone.parentId, allMilestones, onSetActive, onComplete, t]);
+  }, [milestone.parentId, onDetachMilestone, onStartAttachMode]);
   
   // Attach/Detach handler - worklet dışında tanımla
   const handleSwipeAttach = useCallback(() => {
@@ -464,6 +471,8 @@ function MileStone({
     opacity: translateX.value > 0 ? swipeActionOpacity.value : 0, // Right swipe
   }));
 
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+
   // Günlükleri tarihlere göre gruplandır
   // ⚠️ GEÇICI OLARAK KALDIRILDI - Journal grouping functions
   /*
@@ -471,7 +480,7 @@ function MileStone({
     const groups = {};
     entries.forEach(entry => {
       const date = new Date(entry.createdAt);
-      const dateKey = date.toLocaleDateString('en-US', {
+      const dateKey = date.toLocaleDateString(locale, {
         day: '2-digit',
         month: 'long',
         year: 'numeric'
@@ -496,7 +505,7 @@ function MileStone({
           allEntries: dayEntries
         };
       });
-  }, []);
+  }, [locale]);
 
   const groupedEntries = useMemo(() => groupEntriesByDate(entries), [entries, groupEntriesByDate]);
   */
@@ -562,11 +571,12 @@ function MileStone({
         <View style={[
           styles.container,
           {
-            // Eşit sol/sağ margin için - STATIC (titreşim önleme!)
-            marginLeft: isChildMilestone ? 40 : 20, // Child: 40px, Parent: 20px
-            marginRight: 20,
-            marginBottom: 5,
-            marginTop: 5,
+            // Daha ince, kart olmayan görünüm: sol/sağ boşluk biraz azaltıldı
+            // Child milestone'lar için biraz daha indent verildi
+            marginLeft: isChildMilestone ? 44 : 16,
+            marginRight: 16,
+            marginBottom: 0,
+            marginTop: 0,
           }
         ]}>
           {/* Swipe Action Backgrounds - Horizontal Only */}
@@ -577,40 +587,22 @@ function MileStone({
               <Text style={styles.actionText}>Delete</Text>
             </AnimatedReanimated.View>
             
-            {/* ➡️ Right: COMPLETE - Yeşil */}
+            {/* ➡️ Right: ATTACH - Sağ tarafta görünsün */}
             <AnimatedReanimated.View style={[styles.completeAction, completeActionStyle]}>
-              <Ionicons name={isCompleted ? "play-circle" : "checkmark-circle"} size={22} color="#FFF" />
-              <Text style={styles.actionText}>{isCompleted ? 'Reopen' : 'Complete'}</Text>
+              <Ionicons name={milestone.parentId ? "remove-circle-outline" : "link-outline"} size={22} color="#FFF" />
+              <Text style={styles.actionText}>{milestone.parentId ? "Detach" : "Attach"}</Text>
             </AnimatedReanimated.View>
           </View>
           
           <GestureDetector gesture={swipeGesture}>
-            <AnimatedReanimated.View style={[swipeAnimatedStyle]}>
-              {/* Kart container - background her zaman solid + press animation */}
+                <AnimatedReanimated.View style={[swipeAnimatedStyle]}>
+              {/* Flat list-style item (no card): press scale kept but background removed */}
               <Animated.View style={{ transform: [{ scale: pressScale }] }}>
                 <Pressable
                   style={[
                     styles.milestoneItemClickable,
-                    hasChildren && styles.parentMilestoneClickable,
-                    {
-                      backgroundColor: milestone.parentId 
-                        ? (theme.name === 'dark' ? '#353538' : '#F3F0F8')  // Child: solid light purple
-                        : (theme.name === 'dark' ? '#2C2C2E' : '#F8F6FB'), // Parent: solid very light purple
-                      borderWidth: theme.name === 'dark' ? 0 : 1,
-                      borderColor: milestone.parentId
-                        ? (theme.name === 'dark' ? 'transparent' : 'rgba(142, 125, 190, 0.15)')  // Child border
-                        : (theme.name === 'dark' ? 'transparent' : 'rgba(142, 125, 190, 0.12)'), // Parent border
-                    },
-                    // Attach mode border
-                    isAttachMode && isSelectableForAttach && {
-                      borderWidth: 2,
-                      borderColor: '#007AFF',
-                      borderStyle: 'dashed',
-                    },
-                    // Attach mode opacity - sadece bu durumda şeffaflaşsın
-                    isAttachMode && !isSelectableForAttach && {
-                      opacity: 0.4,
-                    },
+                    // background and borderRadius removed for all milestones
+                    isAttachMode && !isSelectableForAttach ? { opacity: 0.45 } : null,
                   ]}
                   disabled={editable || (isAttachMode && !isSelectableForAttach)}
                   onPress={handlePress}
@@ -627,95 +619,36 @@ function MileStone({
               }
             ]}>
               {hasChildren ? (
-                // Parent milestone icon - SVG Circular Progress Bar (Time-based, Two Colors)
+                // Parent milestone - use simplified icon like MyDay ProjectCard
                 <View style={styles.parentIconWrapper}>
-                  {/* SVG Circular Progress Ring - Modernized */}
-                  <View style={styles.circularProgressContainer}>
-                    <Svg width={52} height={52} viewBox="0 0 52 52">
-                      {/* Background Circle (Empty/Unfilled) - Daha soft */}
-                      <Circle
-                        cx="26"
-                        cy="26"
-                        r="22"
-                        stroke={theme.name === 'dark' ? 'rgba(142, 142, 147, 0.2)' : 'rgba(142, 125, 190, 0.15)'}
-                        strokeWidth="5"
-                        fill="none"
-                      />
-                      
-                      {/* Progress Circle (Filled) - Milestone rengi with glow */}
-                      <Circle
-                        cx="26"
-                        cy="26"
-                        r="22"
-                        stroke={isCompleted ? "#888" : iconBgColor}
-                        strokeWidth="5"
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 22}`}
-                        strokeDashoffset={`${2 * Math.PI * 22 * (1 - progressPercentage / 100)}`}
-                        strokeLinecap="round"
-                        rotation="-90"
-                        origin="26, 26"
-                        opacity={0.9}
-                      />
-                    </Svg>
-                    
-                    {/* Center Content - Date Range (Overlay) */}
-                    <View style={styles.progressCircleCenter}>
-                      {(() => {
-                        const startDateFormatted = formatCompactDate(milestone.startDate);
-                        const endDateFormatted = formatCompactDate(milestone.endDate);
-                        
-                        // Check if months are different
-                        const startDate = new Date(milestone.startDate);
-                        const endDate = new Date(milestone.endDate);
-                        const isDifferentMonth = startDate.getMonth() !== endDate.getMonth() || 
-                                                startDate.getFullYear() !== endDate.getFullYear();
-                        
-                        return (
-                          <>
-                            {/* Start Date - Day (+ Month if different) */}
-                            <View style={styles.startDateContainer}>
-                              <Text style={[
-                                styles.circleStartDayText,
-                                { color: isCompleted ? "#888" : (theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F') }
-                              ]}>
-                                {startDateFormatted.day}
-                              </Text>
-                              {isDifferentMonth && (
-                                <Text style={[
-                                  styles.circleStartMonthText,
-                                  { color: isCompleted ? "#888" : (theme.name === 'dark' ? '#AEAEB2' : '#8E8E93') }
-                                ]}>
-                                  {startDateFormatted.month}
-                                </Text>
-                              )}
-                            </View>
-                            
-                            {/* Separator */}
-                            <Text style={[
-                              styles.circleSeparator,
-                              { color: theme.name === 'dark' ? '#8E8E93' : '#AEAEB2' }
-                            ]}>
-                              ―
-                            </Text>
-                            
-                            {/* End Date - Full (Day + Month) */}
-                            <Text style={[
-                              styles.circleEndDateText,
-                              { color: isCompleted ? "#888" : (theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F') }
-                            ]}>
-                              {endDateFormatted.day} {endDateFormatted.month}
-                            </Text>
-                          </>
-                        );
-                      })()}
-                    </View>
-                  </View>
-                  
-                  {/* Badge and Collapse button row */}
+                  <Pressable
+                    onPress={() => {
+                      // Toggle complete / reopen
+                      try {
+                        if (isCompleted) {
+                          onSetActive?.();
+                        } else {
+                          onComplete?.();
+                          // Haptic feedback on complete
+                          triggerHaptic?.(Haptics.ImpactFeedbackStyle.Medium);
+                        }
+                      } catch (e) {
+                        console.error('Milestone icon press error:', e);
+                      }
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons
+                      name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={28}
+                      color={isCompleted ? '#34C759' : getMilestoneColor(safeMilestone, theme.name)}
+                    />
+                  </Pressable>
+
+                  {/* Child counter badge (kept) */}
                   {!editable && (
                     <View style={styles.badgeCollapseRow}>
-                      {/* Child counter badge */}
                       <View style={[
                         styles.childBadgeInline,
                         { 
@@ -743,26 +676,32 @@ function MileStone({
                   )}
                 </View>
               ) : (
-                // Child milestone icon - Simple dot
+                // Child milestone icon - same simplified style
                 <View style={styles.childIconWrapper}>
-                  <View style={[
-                    styles.iconFrame,
-                    {
-                      borderColor: isCompleted ? '#555' : iconBgColor,
-                    }
-                  ]}>
-                    <Pressable
-                      onLongPress={onStartDrag}
-                      delayLongPress={120}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons 
-                        name="ellipse" 
-                        size={10} 
-                        color={isCompleted ? "#555" : iconBgColor} 
-                      />
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    onPress={() => {
+                      // For children, behave same: complete or reopen
+                      try {
+                        if (isCompleted) {
+                          onSetActive?.();
+                        } else {
+                          onComplete?.();
+                          triggerHaptic?.(Haptics.ImpactFeedbackStyle.Medium);
+                        }
+                      } catch (e) {
+                        console.error('Milestone icon press error:', e);
+                      }
+                    }}
+                    onLongPress={onStartDrag}
+                    delayLongPress={120}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons
+                      name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={20}
+                      color={isCompleted ? '#34C759' : getMilestoneColor(safeMilestone, theme.name)}
+                    />
+                  </Pressable>
                 </View>
               )}
             </View>
@@ -825,26 +764,51 @@ function MileStone({
               )}
             </View>
 
-            {/* Attach/Detach Button - Top Right Corner */}
-            {/* Parent milestone'larda (hasChildren) gizle */}
-            {!editable && !isCompleted && !isAttachMode && !hasChildren && (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  {
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                    opacity: pressed ? 0.8 : 1,
-                  }
-                ]}
-                onPress={handleSwipeAttach}
-              >
-                <Ionicons 
-                  name={milestone.parentId ? "remove-circle-outline" : "link-outline"}
-                  size={20} 
-                  color={theme.name === 'dark' ? '#007AFF' : '#007AFF'} 
-                />
-              </Pressable>
-            )}
+            {/* Top-right buttons column (attach + add-child) - stacked inside milestone area */}
+            <View style={styles.topRightButtonsColumn} pointerEvents="box-none">
+              {!editable && !isCompleted && !isAttachMode && !milestone.parentId && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.addChildButton,
+                    {
+                      alignSelf: 'flex-end', // Sağ tarafa yasla
+                      marginRight: 24, // Header'daki butonla aynı margin
+                      marginTop: 0,
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      borderWidth: 1,
+                      borderColor: pressed ? '#FFA726' : '#FFB84D',
+                      backgroundColor: 'transparent',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      transform: [{ scale: pressed ? 0.92 : 1 }],
+                    }
+                  ]}
+                  onPress={() => {
+                    try {
+                      onEditToggle?.({ parentId: milestone.id, taskId: milestone.taskId || currentTask?.id, projectTitle: milestone.projectTitle || currentTask?.title || '', title: '' });
+                    } catch (e) {
+                      console.error('Add child milestone error:', e);
+                    }
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('addChildMilestone') || 'Add child milestone'}
+                  accessibilityHint={t('addChildMilestoneHint') || 'Tap to add a new milestone as a child of this one'}
+                >
+                  <Ionicons
+                    name="add"
+                    size={14}
+                    color={theme.name === 'dark' ? '#FFD580' : '#FF8F00'}
+                    style={{
+                      textAlign: 'center',
+                      textAlignVertical: 'center',
+                      backgroundColor: 'transparent',
+                    }}
+                  />
+                </Pressable>
+              )}
+            </View>
 
             {/* Create Button - Top Right Corner (same position as Edit button) */}
             {editable && title.trim() && (
@@ -863,9 +827,10 @@ function MileStone({
             )}
           </Pressable>
 
-          {/* Long press menü kaldırıldı - 4-way swipe kullan */}
-                </Animated.View>
-            </AnimatedReanimated.View>
+      {/* Ince ayırıcı çizgi (divider) */}
+        </Animated.View>
+                <View style={[styles.divider, { backgroundColor: theme.name === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+              </AnimatedReanimated.View>
           </GestureDetector>
         </View>
       </Pressable>
@@ -943,14 +908,14 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
   },
-  // ➡️ Right swipe: COMPLETE - Sağ tarafta görünsün
+  // ➡️ Right swipe: ATTACH - Sağ tarafta görünsün
   completeAction: {
     position: 'absolute',
-    left: 0, // Sağa swipe → Solda kaldığı için COMPLETE burada
+    left: 0, // Sağa swipe → Solda kaldığı için ATTACH burada
     top: 0,
     bottom: 0,
     width: 100,
-    backgroundColor: '#34C759',
+    backgroundColor: '#FFB84D', // soft orange
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -965,18 +930,19 @@ const styles = StyleSheet.create({
   milestoneItemClickable: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 6,
     justifyContent: 'flex-start',
     zIndex: 2, // Action'ların üzerinde olmalı (zIndex: 0)
-    // Dinamik height - başlık uzunluğuna göre
+    // Flat list item - no card background
   },
   parentMilestoneClickable: {
     paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   iconContainer: {
-    width: 30,
+    width: 64, // fixed width so parent/child icon area doesn't change and shift text
     alignItems: "center",
     justifyContent: "flex-start",
     flexDirection: 'column',
@@ -984,7 +950,7 @@ const styles = StyleSheet.create({
     paddingTop: 2, // Slight top padding for alignment
   },
   parentIconContainer: {
-    width: 74, // Wider for larger icon (52px circle + margins)
+    // width intentionally not set to avoid layout shifts when toggling parent/child state
     marginTop: 0,
     justifyContent: "center", // Parent icons centered
   },
@@ -1099,9 +1065,20 @@ const styles = StyleSheet.create({
   milestoneContent: {
     flex: 1,
     flexDirection: "column",
-    marginLeft: 8,
+    marginLeft: 10,
     minWidth: 0,
     maxWidth: '100%',
+  },
+
+  divider: {
+    height: 1,
+    marginLeft: 68, // leave space for icon
+    marginRight: 8,
+  },
+
+  parentBackground: {
+    borderRadius: 8,
+    paddingHorizontal: 6,
   },
   titleRow: {
     flexDirection: 'row',
@@ -1231,16 +1208,37 @@ const styles = StyleSheet.create({
     color: "#545454",
   },
   attachButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    flexDirection: "row",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    padding: 0,
     zIndex: 5,
+  },
+  addChildButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#FFB84D',
+    backgroundColor: 'transparent', // İç kısım tamamen şeffaf
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 6,
+  },
+
+  topRightButtonsColumn: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 8,
+    width: 40,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    padding: 2,
   },
   attachButtonText: {
     fontSize: 11,

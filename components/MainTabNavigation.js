@@ -196,35 +196,38 @@ const MainTabNavigation = ({
       >
         {/* My Day Screen (left) */}
         <View style={{ width }}>
-          <AnimatedReanimated.ScrollView 
+          <AnimatedReanimated.FlatList
             ref={myDayScrollRef}
-            style={styles.myDayScrollView}
+            data={[{ key: 'myday' }]}
+            keyExtractor={(item) => item.key}
+            renderItem={() => (
+              <MyDayScreen 
+                navigation={navigation}
+                selectedCard={myDaySelectedCard}
+                setSelectedCard={setMyDaySelectedCard}
+                selectedMilestone={myDaySelectedMilestone}
+                setSelectedMilestone={setMyDaySelectedMilestone}
+                addMilestoneModalVisible={myDayAddMilestoneModalVisible}
+                setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
+                selectedProjectForMilestone={myDaySelectedProjectForMilestone}
+                setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                onOpenJournal={onMyDayOpenJournal}
+                onAddProject={onMyDayAddProject}
+              />
+            )}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 40 }}
             onScroll={activeIndex === 0 && statusTabsOffset && collapseProgress ? scrollHandler : undefined}
             scrollEnabled={activeIndex === 0}
             scrollEventThrottle={16}
             removeClippedSubviews={false}
-            bounces={true}
-            overScrollMode="auto"
-            decelerationRate="normal"
-          >
-            <MyDayScreen 
-              navigation={navigation}
-              selectedCard={myDaySelectedCard}
-              setSelectedCard={setMyDaySelectedCard}
-              selectedMilestone={myDaySelectedMilestone}
-              setSelectedMilestone={setMyDaySelectedMilestone}
-              addMilestoneModalVisible={myDayAddMilestoneModalVisible}
-              setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
-              selectedProjectForMilestone={myDaySelectedProjectForMilestone}
-              setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              onOpenJournal={onMyDayOpenJournal}
-              onAddProject={onMyDayAddProject}
-            />
-          </AnimatedReanimated.ScrollView>
+            windowSize={5}
+            maxToRenderPerBatch={5}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={1}
+          />
         </View>
 
         {/* Active list (right) */}

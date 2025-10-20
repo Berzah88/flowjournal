@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../constants";
 import { useLanguage } from "../context/LanguageContext";
 import { useEducation } from "../context/EducationContext";
+import permissionManager from '../services/PermissionManager';
 
 const { width, height } = Dimensions.get("window");
 
@@ -164,13 +165,20 @@ export default function TutorialScreen({ navigation }) {
     ]).start();
   }, [currentStep]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < tutorialSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Tutorial bittiğinde education'ı başlat ve Main'e geç
+      // Tutorial bittiğinde education'ı başlat, izinleri sor ve Main'e geç
       console.log('🎓 Tutorial completed, starting education...');
       startEducation();
+
+      try {
+        await permissionManager.requestAllPermissions();
+      } catch (e) {
+        console.warn('Permission request failed:', e);
+      }
+
       navigation?.replace("Main");
     }
   };
@@ -181,10 +189,17 @@ export default function TutorialScreen({ navigation }) {
     }
   };
 
-  const handleSkip = () => {
-    // Skip'te de education'ı başlat
+  const handleSkip = async () => {
+    // Skip'te de education'ı başlat, izinleri sor ve Main'e git
     console.log('🎓 Tutorial skipped, starting education...');
     startEducation();
+
+    try {
+      await permissionManager.requestAllPermissions();
+    } catch (e) {
+      console.warn('Permission request failed on skip:', e);
+    }
+
     navigation?.replace("Main");
   };
 

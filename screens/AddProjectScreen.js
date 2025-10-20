@@ -10,6 +10,7 @@ import {
   Keyboard,
   BackHandler,
   TouchableWithoutFeedback,
+  Dimensions,
 } from "react-native";
 import { useTaskActions } from "../hooks/useTaskContext";
 import { usePerformanceMonitor } from "../hooks/usePerformanceMonitor";
@@ -27,7 +28,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 
-
+const { width } = Dimensions.get('window');
 export default function AddProjectScreen({ visible, onClose }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -197,16 +198,24 @@ export default function AddProjectScreen({ visible, onClose }) {
 const styles = StyleSheet.create({
   modalOverlay: {
     position: "absolute",
+    top: 0,
+    left: 0,
     width: "100%",
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
+    // Ensure this modal overlay is above other UI (StatusTabs, headers, etc.)
+    zIndex: 100000,
+    elevation: 100000,
   },
   overlay: {
     flex: 1,
     width: "100%",
     height: "100%",
     backgroundColor: "rgba(0,0,0,0.0)",
+    // Match overlay stacking with modalOverlay
+    zIndex: 100000,
+    elevation: 100000,
   },
   modalContent: {
     marginBottom: 20,
@@ -214,8 +223,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 30,
     alignItems: "center",
-    width: 340,
-    elevation:20,
+    width: Math.min(340, width - 40), // Responsive: max 340 or screen width - 40px padding
+    maxWidth: '90%', // Never exceed 90% of screen width
+    elevation: 50,
+    // Ensure the modal content itself is above other components
+    zIndex: 100001,
   },
   inputOverlay: {
     width: "100%",

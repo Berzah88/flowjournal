@@ -55,7 +55,8 @@
           "color": "#ffffff",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "owner": "mberzah88",
     "extra": {

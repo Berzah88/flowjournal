@@ -105,7 +105,7 @@ export default function Journal({
 }) {
 
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const insets = useSafeAreaInsets();
   const { 
     addProjectJournalEntry,
@@ -179,7 +179,8 @@ export default function Journal({
   const [hasMedia, setHasMedia] = useState(false);
   const [hasMoodSuggestions, setHasMoodSuggestions] = useState(false);
 
-  const todayText = new Date().toLocaleDateString("en-US", {
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+  const todayText = new Date().toLocaleDateString(locale, {
     day: "2-digit",
     month: "short", // "long" yerine "short" - ay kısaltması
   });
@@ -189,24 +190,31 @@ export default function Journal({
   const [locationText, setLocationText] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   
-  // Reverse geocoding ile şehir/ilçe bilgisi al
+  // Reverse geocoding ile şehir/ilçe bilgisi al - İzin kontrolü ile birlikte çalışır
   const getLocationText = useCallback(async () => {
     const locationSource = locationData || currentLocation;
     if (!locationSource) return null;
     const coords = locationSource.content?.coords || locationSource.coords || locationSource;
     if (coords) {
       try {
+        // Önce konum izinlerini kontrol et
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Location permission not granted for reverse geocoding');
+          return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
+        }
+
         const reverseGeocode = await Location.reverseGeocodeAsync({
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
-        
+
         if (reverseGeocode && reverseGeocode.length > 0) {
           const location = reverseGeocode[0];
           // Şehir ve ilçe bilgisini al
           const city = location.city || location.subregion || location.region;
           const district = location.district || location.subLocality;
-          
+
           if (city && district && city !== district) {
             return `${district}, ${city}`;
           } else if (city) {
@@ -524,9 +532,14 @@ export default function Journal({
       setIsPickingMedia(true); // Medya seçme başladı - preview'i engelle
       
       // Check permission status first
-      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
-      
-      if (status === 'denied') {
+      let { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      // If permission has not been requested/granted, request it explicitly
+      if (status !== 'granted') {
+        const req = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        status = req.status;
+      }
+
+      if (status !== 'granted') {
         // İzin reddedilmişse açıklama göster
         Alert.alert(
           t('permissionRequired') || 'İzin Gerekli',
@@ -537,9 +550,14 @@ export default function Journal({
         return;
       }
       
+      // Prefer the newer ImagePicker.MediaType (strings like 'images'),
+      // fallback to an array of media types to avoid using deprecated MediaTypeOptions.
+      const mediaTypesOption =
+        (ImagePicker.MediaType && ImagePicker.MediaType.Images) ||
+        ['images'];
       const result = await ImagePicker.launchImageLibraryAsync({
         quality: 0.7,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Sadece resim
+        mediaTypes: mediaTypesOption, // Sadece resim
       });
       let uri = null;
       if (result?.assets && result.assets.length > 0) uri = result.assets[0].uri;
@@ -973,7 +991,13 @@ export default function Journal({
                   color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F',
                 }
               ]}
-              placeholder={(milestone?.title ? milestone.title + ": " : "") + t('writeYourThoughts')}
+              placeholder={
+                milestone?.isProjectBased && currentTask?.title
+                  ? `${currentTask.title} ${t('aboutWriteExperience')}`
+                  : milestone?.title 
+                    ? `${milestone.title}: ${t('writeYourThoughts')}` 
+                    : t('writeYourThoughts')
+              }
               multiline
               underlineColorAndroid="transparent"
               placeholderTextColor={theme.name === 'dark' ? '#6E6E73' : '#999'}

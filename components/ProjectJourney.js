@@ -18,7 +18,8 @@ export default function ProjectJourney({
   refreshKey = 0 // Refresh trigger
 }) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
   const { addProjectJournalEntry } = useTaskActions();
 
 
@@ -36,12 +37,12 @@ export default function ProjectJourney({
   const groupedEntries = useMemo(() => {
     const groups = {};
     getAllJournalEntries.forEach(entry => {
-      const date = new Date(entry.createdAt);
-      const dateKey = date.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
+        const date = new Date(entry.createdAt);
+        const dateKey = date.toLocaleDateString(locale, {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        });
       
       if (!groups[dateKey]) {
         groups[dateKey] = [];

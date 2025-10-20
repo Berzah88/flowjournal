@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Keyboard,
+  ScrollView,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -27,9 +29,9 @@ import { useLanguage } from "../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
-export default function AddMilestoneModal({ visible, onClose, onSave, editingMilestone = null, existingMilestones = [] }) {
+export default function AddTaskModal({ visible, onClose, onSave, editingTask = null, existingTasks = [] }) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [title, setTitle] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -37,6 +39,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [isSelectingRange, setIsSelectingRange] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Determine modal color - Theme aware
   const getModalColor = () => {
@@ -47,15 +50,34 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
   const { translateY, opacity, scale } = useSpringAnimation(visible);
   const inputRef = useRef(null);
 
-  // Cleanup animations on unmount - handled by hooks
-
-  // Update form when editingMilestone changes
+  // Keyboard listener for dynamic positioning
   useEffect(() => {
-    if (editingMilestone) {
-      setTitle(editingMilestone.title || "");
-      setSelectedDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : new Date());
-      setStartDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : null);
-      setEndDate(editingMilestone.endDate ? new Date(editingMilestone.endDate) : null);
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
+
+  // Update form when editingTask changes
+  useEffect(() => {
+    if (editingTask) {
+      setTitle(editingTask.title || "");
+      setSelectedDate(editingTask.startDate ? new Date(editingTask.startDate) : new Date());
+      setStartDate(editingTask.startDate ? new Date(editingTask.startDate) : null);
+      setEndDate(editingTask.endDate ? new Date(editingTask.endDate) : null);
       setIsEditing(true);
     } else {
       setTitle("");
@@ -64,16 +86,16 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
       setEndDate(null);
       setIsEditing(false);
     }
-  }, [editingMilestone]);
+  }, [editingTask]);
 
   useEffect(() => {
     if (visible) {
-      // Reset form or load editing milestone
-      if (editingMilestone) {
-        setTitle(editingMilestone.title || "");
-        setSelectedDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : new Date());
-        setStartDate(editingMilestone.startDate ? new Date(editingMilestone.startDate) : null);
-        setEndDate(editingMilestone.endDate ? new Date(editingMilestone.endDate) : null);
+      // Reset form or load editing task
+      if (editingTask) {
+        setTitle(editingTask.title || "");
+        setSelectedDate(editingTask.startDate ? new Date(editingTask.startDate) : new Date());
+        setStartDate(editingTask.startDate ? new Date(editingTask.startDate) : null);
+        setEndDate(editingTask.endDate ? new Date(editingTask.endDate) : null);
         setIsEditing(true);
       } else {
         setTitle("");
@@ -93,7 +115,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
       // Reset editing state when modal closes
       setIsEditing(false);
     }
-  }, [visible, editingMilestone]);
+  }, [visible, editingTask]);
 
   const handleCloseModal = () => {
     // Close modal - animation handled by useSpringAnimation hook
@@ -128,17 +150,21 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     const finalEndDateFixed = fixTimezone(finalEndDate);
 
 
-    const milestoneData = {
-      ...(editingMilestone && { id: editingMilestone.id }), // Only provide ID in edit mode
+    const taskData = {
+      ...(editingTask && { id: editingTask.id }), // Only provide ID in edit mode
+      // If editingTask was passed to prefill (e.g., when adding a child), preserve parent/task fields
+      ...(editingTask && editingTask.parentId ? { parentId: editingTask.parentId } : {}),
+      ...(editingTask && editingTask.taskId ? { taskId: editingTask.taskId } : {}),
+      ...(editingTask && editingTask.projectTitle ? { projectTitle: editingTask.projectTitle } : {}),
       title: title.trim(),
       startDate: finalStartDateFixed.toISOString(),
       endDate: finalEndDateFixed.toISOString(),
-      completed: editingMilestone ? editingMilestone.completed : false,
-      journalEntries: editingMilestone ? editingMilestone.journalEntries : [],
+      completed: editingTask ? !!editingTask.completed : false,
+      journalEntries: editingTask && Array.isArray(editingTask.journalEntries) ? editingTask.journalEntries : [],
     };
 
-    // Save milestone and close modal - animation handled by useSpringAnimation hook
-    onSave(milestoneData);
+    // Save task and close modal - animation handled by useSpringAnimation hook
+    onSave(taskData);
     onClose();
   };
 
@@ -152,8 +178,12 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
   };
 
   const formatMonthYear = (date) => {
-    const locale = t('language') === 'tr' ? 'tr-TR' : 'en-US';
-    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+    const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+    try {
+      return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+    } catch (e) {
+      return date.toLocaleString();
+    }
   };
 
   const navigateMonth = (direction) => {
@@ -202,28 +232,28 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
     setIsSelectingRange(true);
   };
 
-  // Check if a date is part of any existing milestone (excluding the one being edited)
-  const isDateInMilestone = (date) => {
-    if (!existingMilestones || existingMilestones.length === 0) return false;
+  // Check if a date is part of any existing task (excluding the one being edited)
+  const isDateInTask = (date) => {
+    if (!existingTasks || existingTasks.length === 0) return false;
     
-    return existingMilestones.some(milestone => {
-      // Skip the milestone being edited
-      if (editingMilestone && milestone.id === editingMilestone.id) return false;
+    return existingTasks.some(task => {
+      // Skip the task being edited
+      if (editingTask && task.id === editingTask.id) return false;
       
-      if (!milestone.startDate || !milestone.endDate) return false;
+      if (!task.startDate || !task.endDate) return false;
       
-      const milestoneStart = new Date(milestone.startDate);
-      const milestoneEnd = new Date(milestone.endDate);
+      const taskStart = new Date(task.startDate);
+      const taskEnd = new Date(task.endDate);
       
       // Set to start of day for comparison
-      milestoneStart.setHours(0, 0, 0, 0);
-      milestoneEnd.setHours(0, 0, 0, 0);
+      taskStart.setHours(0, 0, 0, 0);
+      taskEnd.setHours(0, 0, 0, 0);
       const checkDate = new Date(date);
       checkDate.setHours(0, 0, 0, 0);
       
       const dateTime = checkDate.getTime();
-      const startTime = milestoneStart.getTime();
-      const endTime = milestoneEnd.getTime();
+      const startTime = taskStart.getTime();
+      const endTime = taskEnd.getTime();
       
       return dateTime >= startTime && dateTime <= endTime;
     });
@@ -247,7 +277,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
       const isStartDate = startDate && isSameDay(dayDate, startDate);
       const isEndDate = endDate && isSameDay(dayDate, endDate);
       const isInRange = isDateInRange(dayDate, startDate, endDate);
-      const isInExistingMilestone = isDateInMilestone(dayDate);
+      const isInExistingTask = isDateInTask(dayDate);
       
       days.push(
         <TouchableOpacity
@@ -259,7 +289,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
             isStartDate && styles.rangeStartDay,
             isEndDate && styles.rangeEndDay,
             isInRange && !isStartDate && !isEndDate && styles.rangeDay,
-            isInExistingMilestone && !isInRange && !isStartDate && !isEndDate && {
+            isInExistingTask && !isInRange && !isStartDate && !isEndDate && {
               backgroundColor: theme.name === 'dark' ? 'rgba(174, 174, 178, 0.3)' : 'rgba(142, 142, 147, 0.2)',
               borderRadius: 16,
               borderWidth: 1,
@@ -276,7 +306,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
             isToday && !isSelected && !isInRange && styles.todayDayText,
             (isStartDate || isEndDate) && styles.rangeEndDayText,
             isInRange && !isStartDate && !isEndDate && styles.rangeDayText,
-            isInExistingMilestone && !isInRange && !isStartDate && !isEndDate && {
+            isInExistingTask && !isInRange && !isStartDate && !isEndDate && {
               color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93',
               fontFamily: FONTS.SEMI_BOLD,
               fontSize: 13,
@@ -311,17 +341,28 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
       />
       
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoid}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <Animated.View style={[
           styles.milestoneCard, 
           isEditing && styles.editMilestoneCard,
-          { backgroundColor: getModalColor() },
+          { 
+            backgroundColor: getModalColor(),
+            position: 'absolute',
+            bottom: keyboardHeight > 0 ? keyboardHeight : 20, // Klavyenin tam üstüne hizala
+            maxHeight: keyboardHeight > 0 ? height - keyboardHeight - 60 : height * 0.85, // Klavye açıkken dinamik yükseklik
+          },
           animatedStyle
         ]}>
-          {/* Title Input with Action Buttons */}
-          <View style={styles.titleSection}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            {/* Title Input with Action Buttons */}
+            <View style={styles.titleSection}>
             <View style={styles.titleRow}>
               {/* Calendar Icon */}
               <View style={styles.iconWrapper}>
@@ -336,7 +377,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
                 ]}
                 value={title}
                 onChangeText={setTitle}
-                placeholder={t('enterMilestoneTitle')}
+                placeholder={t('enterTaskTitle')}
                 placeholderTextColor={theme.name === 'dark' ? '#8E8E93' : '#999'}
                 returnKeyType="done"
                 onSubmitEditing={handleSave}
@@ -415,6 +456,7 @@ export default function AddMilestoneModal({ visible, onClose, onSave, editingMil
               {renderCalendar()}
             </View>
           </View>
+          </ScrollView>
 
         </Animated.View>
       </KeyboardAvoidingView>
@@ -430,7 +472,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1000,
+    zIndex: 9999, // Increased from 1000 to ensure modal appears above all other elements
   },
   backdrop: {
     position: 'absolute',
@@ -449,16 +491,18 @@ const styles = StyleSheet.create({
     // Yeni layout - column direction
     flexDirection: "column",
     borderRadius: 16,
-    marginHorizontal: 10, // Less margin - wider modal
-    marginBottom: height * 0.05, // Show 5% from bottom of screen - higher up
+    marginHorizontal: Math.max(10, width * 0.025), // Responsive margin: minimum 10, max 2.5% of width
+    // marginBottom removed - now dynamically set based on keyboard state
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 12,
     // backgroundColor determined dynamically
-    width: width - 20, // Wider modal
+    width: width - Math.max(20, width * 0.05), // Responsive width with padding
     minHeight: 400, // Minimum height - larger for calendar
+    overflow: 'hidden', // Prevent content overflow
+    zIndex: 9999, // Ensure modal content appears above all other elements
   },
   editMilestoneCard: {
     // backgroundColor dinamik olarak belirleniyor
@@ -596,28 +640,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   dayHeaderText: {
-    width: (width - 96) / 7, // Same width as day cells
+    flex: 1, // Use flex for equal distribution
+    maxWidth: `${100/7}%`, // 7 equal columns
     textAlign: 'center',
     fontSize: 11, // Reduced day headers
     fontFamily: FONTS.REGULAR,
     color: '#7f8c8d',
     marginBottom: 4, // Less spacing
-    marginHorizontal: 0.5, // Same margin as day cells
+    paddingHorizontal: 2, // Small padding instead of margin
   },
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 12,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between', // Better distribution
     width: '100%',
   },
   calendarDay: {
-    width: (width - 96) / 7, // 7 columns, including container padding
-    height: 32, // Reduced day cells
+    width: `${100/7 - 1}%`, // 7 columns with small gap (14.28% - 1% = ~13.28%)
+    aspectRatio: 1, // Keep cells square regardless of width
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4, // Less spacing
-    marginHorizontal: 0.5, // Minimal side spacing
   },
   selectedDay: {
     backgroundColor: '#5AC8FA', // Soft Apple blue

@@ -1,0 +1,1000 @@
+{"id":"synth_0001","text":"I'm furious about the meeting","label":"angry"}
+{"id":"synth_0002","text":"Akşam I'm furious about the meeting","label":"angry"}
+{"id":"synth_0003","text":"I'm furious about the meeting sanırım.","label":"angry"}
+{"id":"synth_0004","text":"I'm furious about the meeting 😊","label":"angry"}
+{"id":"synth_0005","text":"I'm furious about the meeting 😞","label":"angry"}
+{"id":"synth_0006","text":"I'm furious about the meeting I'm furious about","label":"angry"}
+{"id":"synth_0007","text":"I'm furious about the meeting bunu söylemek istedim","label":"angry"}
+{"id":"synth_0008","text":"I'm furious about the meeting very happy","label":"angry"}
+{"id":"synth_0009","text":"Pleased with today's progress","label":"happy"}
+{"id":"synth_0010","text":"Bugün Pleased with today's progress","label":"happy"}
+{"id":"synth_0011","text":"Pleased with today's progress bir süredir böyle.","label":"happy"}
+{"id":"synth_0012","text":"Pleased with today's progress 😊","label":"happy"}
+{"id":"synth_0013","text":"Pleased with today's progress 😞","label":"happy"}
+{"id":"synth_0014","text":"Pleased with today's progress Pleased with today's","label":"happy"}
+{"id":"synth_0015","text":"Pleased with today's progress bilinçli olarak","label":"happy"}
+{"id":"synth_0016","text":"Pleased with today's progress feeling good","label":"happy"}
+{"id":"synth_0017","text":"I feel outraged","label":"angry"}
+{"id":"synth_0018","text":"Dün I feel outraged","label":"angry"}
+{"id":"synth_0019","text":"I feel outraged sanırım.","label":"angry"}
+{"id":"synth_0020","text":"I feel outraged 😊","label":"angry"}
+{"id":"synth_0021","text":"I feel outraged 😞","label":"angry"}
+{"id":"synth_0022","text":"I feel outraged I feel outraged","label":"angry"}
+{"id":"synth_0023","text":"I feel outraged sanki","label":"angry"}
+{"id":"synth_0024","text":"I feel outraged excited","label":"angry"}
+{"id":"synth_0025","text":"I feel empty","label":"sad"}
+{"id":"synth_0026","text":"Akşam I feel empty","label":"sad"}
+{"id":"synth_0027","text":"I feel empty sanırım.","label":"sad"}
+{"id":"synth_0028","text":"I feel empty 😊","label":"sad"}
+{"id":"synth_0029","text":"I feel empty 😞","label":"sad"}
+{"id":"synth_0030","text":"I feel empty I feel empty","label":"sad"}
+{"id":"synth_0031","text":"I feel empty bunu söylemek istedim","label":"sad"}
+{"id":"synth_0032","text":"I feel empty a bit sad","label":"sad"}
+{"id":"synth_0033","text":"Mutluyum çünkü bugünü değerlendirdim","label":"happy"}
+{"id":"synth_0034","text":"Dün Mutluyum çünkü bugünü değerlendirdim","label":"happy"}
+{"id":"synth_0035","text":"Mutluyum çünkü bugünü değerlendirdim :)","label":"happy"}
+{"id":"synth_0036","text":"Mutluyum çünkü bugünü değerlendirdim 😊","label":"happy"}
+{"id":"synth_0037","text":"Mutluyum çünkü bugünü değerlendirdim 😞","label":"happy"}
+{"id":"synth_0038","text":"Mutluyum çünkü bugünü değerlendirdim Mutluyum çünkü bugünü","label":"happy"}
+{"id":"synth_0039","text":"Mutluyum çünkü bugünü değerlendirdim aslında","label":"happy"}
+{"id":"synth_0040","text":"Mutluyum çünkü bugünü değerlendirdim feeling good","label":"happy"}
+{"id":"synth_0041","text":"Feeling great after finishing the task","label":"happy"}
+{"id":"synth_0042","text":"Şimdi Feeling great after finishing the task","label":"happy"}
+{"id":"synth_0043","text":"Feeling great after finishing the task :(","label":"happy"}
+{"id":"synth_0044","text":"Feeling great after finishing the task 😊","label":"happy"}
+{"id":"synth_0045","text":"Feeling great after finishing the task 😞","label":"happy"}
+{"id":"synth_0046","text":"Feeling great after finishing the task Feeling great after","label":"happy"}
+{"id":"synth_0047","text":"Feeling great after finishing the task sanki","label":"happy"}
+{"id":"synth_0048","text":"Feeling great after finishing the task excited","label":"happy"}
+{"id":"synth_0049","text":"Üzgünüm, yalnız hissediyorum","label":"sad"}
+{"id":"synth_0050","text":"Bugün Üzgünüm, yalnız hissediyorum","label":"sad"}
+{"id":"synth_0051","text":"Üzgünüm, yalnız hissediyorum sanırım.","label":"sad"}
+{"id":"synth_0052","text":"Üzgünüm, yalnız hissediyorum 😊","label":"sad"}
+{"id":"synth_0053","text":"Üzgünüm, yalnız hissediyorum 😞","label":"sad"}
+{"id":"synth_0054","text":"Üzgünüm, yalnız hissediyorum Üzgünüm, yalnız hissediyorum","label":"sad"}
+{"id":"synth_0055","text":"Üzgünüm, yalnız hissediyorum bilinçli olarak","label":"sad"}
+{"id":"synth_0056","text":"Üzgünüm, yalnız hissediyorum so tired","label":"sad"}
+{"id":"synth_0057","text":"Calm and neutral","label":"neutral"}
+{"id":"synth_0058","text":"Şimdi Calm and neutral","label":"neutral"}
+{"id":"synth_0059","text":"Calm and neutral bir süredir böyle.","label":"neutral"}
+{"id":"synth_0060","text":"Calm and neutral 😊","label":"neutral"}
+{"id":"synth_0061","text":"Calm and neutral 😞","label":"neutral"}
+{"id":"synth_0062","text":"Calm and neutral Calm and neutral","label":"neutral"}
+{"id":"synth_0063","text":"Calm and neutral bilinçli olarak","label":"neutral"}
+{"id":"synth_0064","text":"Calm and neutral very happy","label":"neutral"}
+{"id":"synth_0065","text":"Normal bir gündü, değişen bir şey yok","label":"neutral"}
+{"id":"synth_0066","text":"Akşam Normal bir gündü, değişen bir şey yok","label":"neutral"}
+{"id":"synth_0067","text":"Normal bir gündü, değişen bir şey yok - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0068","text":"Normal bir gündü, değişen bir şey yok 😊","label":"neutral"}
+{"id":"synth_0069","text":"Normal bir gündü, değişen bir şey yok 😞","label":"neutral"}
+{"id":"synth_0070","text":"Normal bir gündü, değişen bir şey yok Normal bir gündü,","label":"neutral"}
+{"id":"synth_0071","text":"Normal bir gündü, değişen bir şey yok bilinçli olarak","label":"neutral"}
+{"id":"synth_0072","text":"Normal bir gündü, değişen bir şey yok so tired","label":"neutral"}
+{"id":"synth_0073","text":"No strong feelings","label":"neutral"}
+{"id":"synth_0074","text":"Bugün No strong feelings","label":"neutral"}
+{"id":"synth_0075","text":"No strong feelings - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0076","text":"No strong feelings 😊","label":"neutral"}
+{"id":"synth_0077","text":"No strong feelings 😞","label":"neutral"}
+{"id":"synth_0078","text":"No strong feelings No strong feelings","label":"neutral"}
+{"id":"synth_0079","text":"No strong feelings aslında","label":"neutral"}
+{"id":"synth_0080","text":"No strong feelings feeling good","label":"neutral"}
+{"id":"synth_0081","text":"A little sad but coping","label":"sad"}
+{"id":"synth_0082","text":"Akşam A little sad but coping","label":"sad"}
+{"id":"synth_0083","text":"A little sad but coping, ama idare eder.","label":"sad"}
+{"id":"synth_0084","text":"A little sad but coping 😊","label":"sad"}
+{"id":"synth_0085","text":"A little sad but coping 😞","label":"sad"}
+{"id":"synth_0086","text":"A little sad but coping A little sad","label":"sad"}
+{"id":"synth_0087","text":"A little sad but coping bunu söylemek istedim","label":"sad"}
+{"id":"synth_0088","text":"A little sad but coping excited","label":"sad"}
+{"id":"synth_0089","text":"Full of energy today","label":"excited"}
+{"id":"synth_0090","text":"Akşam Full of energy today","label":"excited"}
+{"id":"synth_0091","text":"Full of energy today bir süredir böyle.","label":"excited"}
+{"id":"synth_0092","text":"Full of energy today 😊","label":"excited"}
+{"id":"synth_0093","text":"Full of energy today 😞","label":"excited"}
+{"id":"synth_0094","text":"Full of energy today Full of energy","label":"excited"}
+{"id":"synth_0095","text":"Full of energy today bunu söylemek istedim","label":"excited"}
+{"id":"synth_0096","text":"Full of energy today a bit sad","label":"excited"}
+{"id":"synth_0097","text":"Yorgun ama mutluyum","label":"happy"}
+{"id":"synth_0098","text":"Dün Yorgun ama mutluyum","label":"happy"}
+{"id":"synth_0099","text":"Yorgun ama mutluyum bir süredir böyle.","label":"happy"}
+{"id":"synth_0100","text":"Yorgun ama memnunyum","label":"happy"}
+{"id":"synth_0101","text":"Yorgun ama mutluyum 😊","label":"happy"}
+{"id":"synth_0102","text":"Yorgun ama mutluyum 😞","label":"happy"}
+{"id":"synth_0103","text":"Yorgun ama mutluyum Yorgun ama mutluyum","label":"happy"}
+{"id":"synth_0104","text":"Yorgun ama mutluyum bunu söylemek istedim","label":"happy"}
+{"id":"synth_0105","text":"Yorgun ama mutluyum excited","label":"happy"}
+{"id":"synth_0106","text":"Low energy today","label":"tired"}
+{"id":"synth_0107","text":"Bugün Low energy today","label":"tired"}
+{"id":"synth_0108","text":"Low energy today bir süredir böyle.","label":"tired"}
+{"id":"synth_0109","text":"Low energy today 😊","label":"tired"}
+{"id":"synth_0110","text":"Low energy today 😞","label":"tired"}
+{"id":"synth_0111","text":"Low energy today Low energy today","label":"tired"}
+{"id":"synth_0112","text":"Low energy today sanki","label":"tired"}
+{"id":"synth_0113","text":"Low energy today feeling good","label":"tired"}
+{"id":"synth_0114","text":"I feel content and satisfied","label":"happy"}
+{"id":"synth_0115","text":"Sabah I feel content and satisfied","label":"happy"}
+{"id":"synth_0116","text":"I feel content and satisfied sanırım.","label":"happy"}
+{"id":"synth_0117","text":"I feel content and satisfied 😊","label":"happy"}
+{"id":"synth_0118","text":"I feel content and satisfied 😞","label":"happy"}
+{"id":"synth_0119","text":"I feel content and satisfied I feel content","label":"happy"}
+{"id":"synth_0120","text":"I feel content and satisfied aslında","label":"happy"}
+{"id":"synth_0121","text":"I feel content and satisfied feeling good","label":"happy"}
+{"id":"synth_0122","text":"Upset but controlled","label":"angry"}
+{"id":"synth_0123","text":"Not: Upset but controlled","label":"angry"}
+{"id":"synth_0124","text":"Upset but controlled - gerçekten böyle hissettim.","label":"angry"}
+{"id":"synth_0125","text":"Upset but controlled 😊","label":"angry"}
+{"id":"synth_0126","text":"Upset but controlled 😞","label":"angry"}
+{"id":"synth_0127","text":"Upset but controlled Upset but controlled","label":"angry"}
+{"id":"synth_0128","text":"Upset but controlled aslında","label":"angry"}
+{"id":"synth_0129","text":"Upset but controlled so tired","label":"angry"}
+{"id":"synth_0130","text":"Beni sinirlendiren bir haber aldım","label":"angry"}
+{"id":"synth_0131","text":"Bugün Beni sinirlendiren bir haber aldım","label":"angry"}
+{"id":"synth_0132","text":"Beni sinirlendiren bir haber aldım sanırım.","label":"angry"}
+{"id":"synth_0133","text":"Beni sinirlendiren bir haber aldım 😊","label":"angry"}
+{"id":"synth_0134","text":"Beni sinirlendiren bir haber aldım 😞","label":"angry"}
+{"id":"synth_0135","text":"Beni sinirlendiren bir haber aldım Beni sinirlendiren bir","label":"angry"}
+{"id":"synth_0136","text":"Beni sinirlendiren bir haber aldım bunu söylemek istedim","label":"angry"}
+{"id":"synth_0137","text":"Beni sinirlendiren bir haber aldım excited","label":"angry"}
+{"id":"synth_0138","text":"Yorgun ama mutlu","label":"happy"}
+{"id":"synth_0139","text":"Not: Yorgun ama mutlu","label":"happy"}
+{"id":"synth_0140","text":"Yorgun ama mutlu bir süredir böyle.","label":"happy"}
+{"id":"synth_0141","text":"Yorgun ama happy","label":"happy"}
+{"id":"synth_0142","text":"Yorgun ama mutlu 😊","label":"happy"}
+{"id":"synth_0143","text":"Yorgun ama mutlu 😞","label":"happy"}
+{"id":"synth_0144","text":"Yorgun ama mutlu Yorgun ama mutlu","label":"happy"}
+{"id":"synth_0145","text":"Yorgun ama mutlu bilinçli olarak","label":"happy"}
+{"id":"synth_0146","text":"Yorgun ama mutlu excited","label":"happy"}
+{"id":"synth_0147","text":"This situation makes me angry","label":"angry"}
+{"id":"synth_0148","text":"Dün This situation makes me angry","label":"angry"}
+{"id":"synth_0149","text":"This situation makes me angry - gerçekten böyle hissettim.","label":"angry"}
+{"id":"synth_0150","text":"This situation makes me angry 😊","label":"angry"}
+{"id":"synth_0151","text":"This situation makes me angry 😞","label":"angry"}
+{"id":"synth_0152","text":"This situation makes me angry This situation makes","label":"angry"}
+{"id":"synth_0153","text":"This situation makes me angry aslında","label":"angry"}
+{"id":"synth_0154","text":"This situation makes me angry feeling good","label":"angry"}
+{"id":"synth_0155","text":"Falling asleep at my desk","label":"tired"}
+{"id":"synth_0156","text":"Şimdi Falling asleep at my desk","label":"tired"}
+{"id":"synth_0157","text":"Falling asleep at my desk :(","label":"tired"}
+{"id":"synth_0158","text":"Falling asleep at my desk 😊","label":"tired"}
+{"id":"synth_0159","text":"Falling asleep at my desk 😞","label":"tired"}
+{"id":"synth_0160","text":"Falling asleep at my desk Falling asleep at","label":"tired"}
+{"id":"synth_0161","text":"Falling asleep at my desk aslında","label":"tired"}
+{"id":"synth_0162","text":"Falling asleep at my desk very happy","label":"tired"}
+{"id":"synth_0163","text":"Sad about some news but okay overall","label":"neutral"}
+{"id":"synth_0164","text":"Şimdi Sad about some news but okay overall","label":"neutral"}
+{"id":"synth_0165","text":"Sad about some news but okay overall bir süredir böyle.","label":"neutral"}
+{"id":"synth_0166","text":"Sad about some news but okay overall 😊","label":"neutral"}
+{"id":"synth_0167","text":"Sad about some news but okay overall 😞","label":"neutral"}
+{"id":"synth_0168","text":"Sad about some news but okay overall Sad about some","label":"neutral"}
+{"id":"synth_0169","text":"Sad about some news but okay overall sanki","label":"neutral"}
+{"id":"synth_0170","text":"Sad about some news but okay overall feeling good","label":"neutral"}
+{"id":"synth_0171","text":"Kızgınım ama sakin kalıyorum","label":"angry"}
+{"id":"synth_0172","text":"Dün Kızgınım ama sakin kalıyorum","label":"angry"}
+{"id":"synth_0173","text":"Kızgınım ama sakin kalıyorum, ama idare eder.","label":"angry"}
+{"id":"synth_0174","text":"Kızgınım ama sakin kalıyorum 😊","label":"angry"}
+{"id":"synth_0175","text":"Kızgınım ama sakin kalıyorum 😞","label":"angry"}
+{"id":"synth_0176","text":"Kızgınım ama sakin kalıyorum Kızgınım ama sakin","label":"angry"}
+{"id":"synth_0177","text":"Kızgınım ama sakin kalıyorum sanki","label":"angry"}
+{"id":"synth_0178","text":"Kızgınım ama sakin kalıyorum a bit sad","label":"angry"}
+{"id":"synth_0179","text":"Çok sinirliyim, her şey ters gidiyor","label":"angry"}
+{"id":"synth_0180","text":"Şimdi Çok sinirliyim, her şey ters gidiyor","label":"angry"}
+{"id":"synth_0181","text":"Çok sinirliyim, her şey ters gidiyor bir süredir böyle.","label":"angry"}
+{"id":"synth_0182","text":"Çok öfkeliyim, her şey ters gidiyor","label":"angry"}
+{"id":"synth_0183","text":"Çok sinirliyim, her şey ters gidiyor 😊","label":"angry"}
+{"id":"synth_0184","text":"Çok sinirliyim, her şey ters gidiyor 😞","label":"angry"}
+{"id":"synth_0185","text":"Çok sinirliyim, her şey ters gidiyor Çok sinirliyim, her","label":"angry"}
+{"id":"synth_0186","text":"Çok sinirliyim, her şey ters gidiyor sanki","label":"angry"}
+{"id":"synth_0187","text":"Çok sinirliyim, her şey ters gidiyor excited","label":"angry"}
+{"id":"synth_0188","text":"Kafam karışık, duygularım karışık","label":"neutral"}
+{"id":"synth_0189","text":"Dün Kafam karışık, duygularım karışık","label":"neutral"}
+{"id":"synth_0190","text":"Kafam karışık, duygularım karışık, ama idare eder.","label":"neutral"}
+{"id":"synth_0191","text":"Kafam karışık, duygularım karışık 😊","label":"neutral"}
+{"id":"synth_0192","text":"Kafam karışık, duygularım karışık 😞","label":"neutral"}
+{"id":"synth_0193","text":"Kafam karışık, duygularım karışık Kafam karışık, duygularım","label":"neutral"}
+{"id":"synth_0194","text":"Kafam karışık, duygularım karışık sanki","label":"neutral"}
+{"id":"synth_0195","text":"Kafam karışık, duygularım karışık excited","label":"neutral"}
+{"id":"synth_0196","text":"I aced my meeting and feel proud","label":"happy"}
+{"id":"synth_0197","text":"Bugün I aced my meeting and feel proud","label":"happy"}
+{"id":"synth_0198","text":"I aced my meeting and feel proud bir süredir böyle.","label":"happy"}
+{"id":"synth_0199","text":"I aced my meeting and feel proud 😊","label":"happy"}
+{"id":"synth_0200","text":"I aced my meeting and feel proud 😞","label":"happy"}
+{"id":"synth_0201","text":"I aced my meeting and feel proud I aced my","label":"happy"}
+{"id":"synth_0202","text":"I aced my meeting and feel proud bilinçli olarak","label":"happy"}
+{"id":"synth_0203","text":"I aced my meeting and feel proud so tired","label":"happy"}
+{"id":"synth_0204","text":"Ne hissettiğimi bilmiyorum","label":"neutral"}
+{"id":"synth_0205","text":"Şimdi Ne hissettiğimi bilmiyorum","label":"neutral"}
+{"id":"synth_0206","text":"Ne hissettiğimi bilmiyorum - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0207","text":"Ne hissettiğimi bilmiyorum 😊","label":"neutral"}
+{"id":"synth_0208","text":"Ne hissettiğimi bilmiyorum 😞","label":"neutral"}
+{"id":"synth_0209","text":"Ne hissettiğimi bilmiyorum Ne hissettiğimi bilmiyorum","label":"neutral"}
+{"id":"synth_0210","text":"Ne hissettiğimi bilmiyorum bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0211","text":"Ne hissettiğimi bilmiyorum excited","label":"neutral"}
+{"id":"synth_0212","text":"Mutluyum çünkü hedefe ulaştım","label":"happy"}
+{"id":"synth_0213","text":"Not: Mutluyum çünkü hedefe ulaştım","label":"happy"}
+{"id":"synth_0214","text":"Mutluyum çünkü hedefe ulaştım, ama idare eder.","label":"happy"}
+{"id":"synth_0215","text":"Mutluyum çünkü hedefe ulaştım 😊","label":"happy"}
+{"id":"synth_0216","text":"Mutluyum çünkü hedefe ulaştım 😞","label":"happy"}
+{"id":"synth_0217","text":"Mutluyum çünkü hedefe ulaştım Mutluyum çünkü hedefe","label":"happy"}
+{"id":"synth_0218","text":"Mutluyum çünkü hedefe ulaştım aslında","label":"happy"}
+{"id":"synth_0219","text":"Mutluyum çünkü hedefe ulaştım so tired","label":"happy"}
+{"id":"synth_0220","text":"Duygularım karışık, nötrüm","label":"neutral"}
+{"id":"synth_0221","text":"Not: Duygularım karışık, nötrüm","label":"neutral"}
+{"id":"synth_0222","text":"Duygularım karışık, nötrüm - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0223","text":"Duygularım karışık, nötrüm 😊","label":"neutral"}
+{"id":"synth_0224","text":"Duygularım karışık, nötrüm 😞","label":"neutral"}
+{"id":"synth_0225","text":"Duygularım karışık, nötrüm Duygularım karışık, nötrüm","label":"neutral"}
+{"id":"synth_0226","text":"Duygularım karışık, nötrüm aslında","label":"neutral"}
+{"id":"synth_0227","text":"Duygularım karışık, nötrüm very happy","label":"neutral"}
+{"id":"synth_0228","text":"So tired, can't focus","label":"tired"}
+{"id":"synth_0229","text":"Dün So tired, can't focus","label":"tired"}
+{"id":"synth_0230","text":"So tired, can't focus :(","label":"tired"}
+{"id":"synth_0231","text":"So tired, can't focus 😊","label":"tired"}
+{"id":"synth_0232","text":"So tired, can't focus 😞","label":"tired"}
+{"id":"synth_0233","text":"So tired, can't focus So tired, can't","label":"tired"}
+{"id":"synth_0234","text":"So tired, can't focus aslında","label":"tired"}
+{"id":"synth_0235","text":"So tired, can't focus feeling good","label":"tired"}
+{"id":"synth_0236","text":"Heyecanlıyım ama endişeliyim","label":"excited"}
+{"id":"synth_0237","text":"Dün Heyecanlıyım ama endişeliyim","label":"excited"}
+{"id":"synth_0238","text":"Heyecanlıyım ama endişeliyim, ama idare eder.","label":"excited"}
+{"id":"synth_0239","text":"Heyecanlıyım ama endişeliyi kim","label":"excited"}
+{"id":"synth_0240","text":"Heyecanlıyım ama endişeliyim 😊","label":"excited"}
+{"id":"synth_0241","text":"Heyecanlıyım ama endişeliyim 😞","label":"excited"}
+{"id":"synth_0242","text":"Heyecanlıyım ama endişeliyim Heyecanlıyım ama endişeliyim","label":"excited"}
+{"id":"synth_0243","text":"Heyecanlıyım ama endişeliyim aslında","label":"excited"}
+{"id":"synth_0244","text":"Heyecanlıyım ama endişeliyim a bit sad","label":"excited"}
+{"id":"synth_0245","text":"Kalbim kırıldı, ağlamak istiyorum","label":"sad"}
+{"id":"synth_0246","text":"Akşam Kalbim kırıldı, ağlamak istiyorum","label":"sad"}
+{"id":"synth_0247","text":"Kalbim kırıldı, ağlamak istiyorum - gerçekten böyle hissettim.","label":"sad"}
+{"id":"synth_0248","text":"Kalbim kırıldı, ağlamak istiyorum 😊","label":"sad"}
+{"id":"synth_0249","text":"Kalbim kırıldı, ağlamak istiyorum 😞","label":"sad"}
+{"id":"synth_0250","text":"Kalbim kırıldı, ağlamak istiyorum Kalbim kırıldı, ağlamak","label":"sad"}
+{"id":"synth_0251","text":"Kalbim kırıldı, ağlamak istiyorum sanki","label":"sad"}
+{"id":"synth_0252","text":"Kalbim kırıldı, ağlamak istiyorum feeling good","label":"sad"}
+{"id":"synth_0253","text":"Biraz moralim bozuk ama idare ediyorum","label":"neutral"}
+{"id":"synth_0254","text":"Akşam Biraz moralim bozuk ama idare ediyorum","label":"neutral"}
+{"id":"synth_0255","text":"Biraz moralim bozuk ama idare ediyorum bir süredir böyle.","label":"neutral"}
+{"id":"synth_0256","text":"Biraz moralim bozuk ama idare ediyorum 😊","label":"neutral"}
+{"id":"synth_0257","text":"Biraz moralim bozuk ama idare ediyorum 😞","label":"neutral"}
+{"id":"synth_0258","text":"Biraz moralim bozuk ama idare ediyorum Biraz moralim bozuk","label":"neutral"}
+{"id":"synth_0259","text":"Biraz moralim bozuk ama idare ediyorum aslında","label":"neutral"}
+{"id":"synth_0260","text":"Biraz moralim bozuk ama idare ediyorum excited","label":"neutral"}
+{"id":"synth_0261","text":"Yorgun ama rahatlamış hissediyorum","label":"tired"}
+{"id":"synth_0262","text":"Not: Yorgun ama rahatlamış hissediyorum","label":"tired"}
+{"id":"synth_0263","text":"Yorgun ama rahatlamış hissediyorum bir süredir böyle.","label":"tired"}
+{"id":"synth_0264","text":"Yorgun ama sakinlamış hissediyorum","label":"tired"}
+{"id":"synth_0265","text":"Yorgun ama rahatlamış hissediyorum 😊","label":"tired"}
+{"id":"synth_0266","text":"Yorgun ama rahatlamış hissediyorum 😞","label":"tired"}
+{"id":"synth_0267","text":"Yorgun ama rahatlamış hissediyorum Yorgun ama rahatlamış","label":"tired"}
+{"id":"synth_0268","text":"Yorgun ama rahatlamış hissediyorum sanki","label":"tired"}
+{"id":"synth_0269","text":"Yorgun ama rahatlamış hissediyorum excited","label":"tired"}
+{"id":"synth_0270","text":"Haksızlığa tahammülüm kalmadı","label":"angry"}
+{"id":"synth_0271","text":"Akşam Haksızlığa tahammülüm kalmadı","label":"angry"}
+{"id":"synth_0272","text":"Haksızlığa tahammülüm kalmadı bir süredir böyle.","label":"angry"}
+{"id":"synth_0273","text":"Haksızlığa tahammülüm kalmadı 😊","label":"angry"}
+{"id":"synth_0274","text":"Haksızlığa tahammülüm kalmadı 😞","label":"angry"}
+{"id":"synth_0275","text":"Haksızlığa tahammülüm kalmadı Haksızlığa tahammülüm kalmadı","label":"angry"}
+{"id":"synth_0276","text":"Haksızlığa tahammülüm kalmadı sanki","label":"angry"}
+{"id":"synth_0277","text":"Haksızlığa tahammülüm kalmadı so tired","label":"angry"}
+{"id":"synth_0278","text":"Sinirliyim ve hayal kırıklığına uğradım","label":"angry"}
+{"id":"synth_0279","text":"Bugün Sinirliyim ve hayal kırıklığına uğradım","label":"angry"}
+{"id":"synth_0280","text":"Sinirliyim ve hayal kırıklığına uğradım :(","label":"angry"}
+{"id":"synth_0281","text":"Sinirliyi kim ve hayal kırıklığına uğradım","label":"angry"}
+{"id":"synth_0282","text":"Sinirliyim ve hayal kırıklığına uğradım 😊","label":"angry"}
+{"id":"synth_0283","text":"Sinirliyim ve hayal kırıklığına uğradım 😞","label":"angry"}
+{"id":"synth_0284","text":"Sinirliyim ve hayal kırıklığına uğradım Sinirliyim ve hayal","label":"angry"}
+{"id":"synth_0285","text":"Sinirliyim ve hayal kırıklığına uğradım bilinçli olarak","label":"angry"}
+{"id":"synth_0286","text":"Sinirliyim ve hayal kırıklığına uğradım excited","label":"angry"}
+{"id":"synth_0287","text":"Thrilled about the opportunity","label":"excited"}
+{"id":"synth_0288","text":"Not: Thrilled about the opportunity","label":"excited"}
+{"id":"synth_0289","text":"Thrilled about the opportunity, ama idare eder.","label":"excited"}
+{"id":"synth_0290","text":"Thrilled about the opportunity 😊","label":"excited"}
+{"id":"synth_0291","text":"Thrilled about the opportunity 😞","label":"excited"}
+{"id":"synth_0292","text":"Thrilled about the opportunity Thrilled about the","label":"excited"}
+{"id":"synth_0293","text":"Thrilled about the opportunity aslında","label":"excited"}
+{"id":"synth_0294","text":"Thrilled about the opportunity feeling good","label":"excited"}
+{"id":"synth_0295","text":"Üzgünüm ama ilerleme kaydettim","label":"neutral"}
+{"id":"synth_0296","text":"Şimdi Üzgünüm ama ilerleme kaydettim","label":"neutral"}
+{"id":"synth_0297","text":"Üzgünüm ama ilerleme kaydettim - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0298","text":"Üzgünüm ama ilerleme kaydettim 😊","label":"neutral"}
+{"id":"synth_0299","text":"Üzgünüm ama ilerleme kaydettim 😞","label":"neutral"}
+{"id":"synth_0300","text":"Üzgünüm ama ilerleme kaydettim Üzgünüm ama ilerleme","label":"neutral"}
+{"id":"synth_0301","text":"Üzgünüm ama ilerleme kaydettim bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0302","text":"Üzgünüm ama ilerleme kaydettim feeling good","label":"neutral"}
+{"id":"synth_0303","text":"Bir kayıp yaşadım ve üzgünüm","label":"sad"}
+{"id":"synth_0304","text":"Dün Bir kayıp yaşadım ve üzgünüm","label":"sad"}
+{"id":"synth_0305","text":"Bir kayıp yaşadım ve üzgünüm sanırım.","label":"sad"}
+{"id":"synth_0306","text":"Bir kayıp yaşadım ve kederliüm","label":"sad"}
+{"id":"synth_0307","text":"Bir kayıp yaşadım ve üzgünüm 😊","label":"sad"}
+{"id":"synth_0308","text":"Bir kayıp yaşadım ve üzgünüm 😞","label":"sad"}
+{"id":"synth_0309","text":"Bir kayıp yaşadım ve üzgünüm Bir kayıp yaşadım","label":"sad"}
+{"id":"synth_0310","text":"Bir kayıp yaşadım ve üzgünüm sanki","label":"sad"}
+{"id":"synth_0311","text":"Bir kayıp yaşadım ve üzgünüm feeling good","label":"sad"}
+{"id":"synth_0312","text":"Angry and upset","label":"angry"}
+{"id":"synth_0313","text":"Akşam Angry and upset","label":"angry"}
+{"id":"synth_0314","text":"Angry and upset :(","label":"angry"}
+{"id":"synth_0315","text":"Angry and upset 😊","label":"angry"}
+{"id":"synth_0316","text":"Angry and upset 😞","label":"angry"}
+{"id":"synth_0317","text":"Angry and upset Angry and upset","label":"angry"}
+{"id":"synth_0318","text":"Angry and upset bilinçli olarak","label":"angry"}
+{"id":"synth_0319","text":"Angry and upset very happy","label":"angry"}
+{"id":"synth_0320","text":"Yeni bir şey öğrendim, heyecanlıyım","label":"excited"}
+{"id":"synth_0321","text":"Bugün Yeni bir şey öğrendim, heyecanlıyım","label":"excited"}
+{"id":"synth_0322","text":"Yeni bir şey öğrendim, heyecanlıyım :(","label":"excited"}
+{"id":"synth_0323","text":"Yeni bir şey öğrendim, excitedyım","label":"excited"}
+{"id":"synth_0324","text":"Yeni bir şey öğrendim, heyecanlıyım 😊","label":"excited"}
+{"id":"synth_0325","text":"Yeni bir şey öğrendim, heyecanlıyım 😞","label":"excited"}
+{"id":"synth_0326","text":"Yeni bir şey öğrendim, heyecanlıyım Yeni bir şey","label":"excited"}
+{"id":"synth_0327","text":"Yeni bir şey öğrendim, heyecanlıyım sanki","label":"excited"}
+{"id":"synth_0328","text":"Yeni bir şey öğrendim, heyecanlıyım very happy","label":"excited"}
+{"id":"synth_0329","text":"Tired but grateful","label":"happy"}
+{"id":"synth_0330","text":"Not: Tired but grateful","label":"happy"}
+{"id":"synth_0331","text":"Tired but grateful, ama idare eder.","label":"happy"}
+{"id":"synth_0332","text":"Tired but grateful 😊","label":"happy"}
+{"id":"synth_0333","text":"Tired but grateful 😞","label":"happy"}
+{"id":"synth_0334","text":"Tired but grateful Tired but grateful","label":"happy"}
+{"id":"synth_0335","text":"Tired but grateful bunu söylemek istedim","label":"happy"}
+{"id":"synth_0336","text":"Tired but grateful so tired","label":"happy"}
+{"id":"synth_0337","text":"İyi hissetmiyorum ama umutluyum","label":"neutral"}
+{"id":"synth_0338","text":"Akşam İyi hissetmiyorum ama umutluyum","label":"neutral"}
+{"id":"synth_0339","text":"İyi hissetmiyorum ama umutluyum sanırım.","label":"neutral"}
+{"id":"synth_0340","text":"İyi hissetmiyorum ama uhappyyum","label":"neutral"}
+{"id":"synth_0341","text":"İyi hissetmiyorum ama umutluyum 😊","label":"neutral"}
+{"id":"synth_0342","text":"İyi hissetmiyorum ama umutluyum 😞","label":"neutral"}
+{"id":"synth_0343","text":"İyi hissetmiyorum ama umutluyum İyi hissetmiyorum ama","label":"neutral"}
+{"id":"synth_0344","text":"İyi hissetmiyorum ama umutluyum aslında","label":"neutral"}
+{"id":"synth_0345","text":"İyi hissetmiyorum ama umutluyum very happy","label":"neutral"}
+{"id":"synth_0346","text":"Bugün nötrüm, özel bir şey yok","label":"neutral"}
+{"id":"synth_0347","text":"Dün Bugün nötrüm, özel bir şey yok","label":"neutral"}
+{"id":"synth_0348","text":"Bugün nötrüm, özel bir şey yok - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0349","text":"Bugün nötrüm, özel bir şey yok 😊","label":"neutral"}
+{"id":"synth_0350","text":"Bugün nötrüm, özel bir şey yok 😞","label":"neutral"}
+{"id":"synth_0351","text":"Bugün nötrüm, özel bir şey yok Bugün nötrüm, özel","label":"neutral"}
+{"id":"synth_0352","text":"Bugün nötrüm, özel bir şey yok sanki","label":"neutral"}
+{"id":"synth_0353","text":"Bugün nötrüm, özel bir şey yok excited","label":"neutral"}
+{"id":"synth_0354","text":"I'm mad and fed up","label":"angry"}
+{"id":"synth_0355","text":"Not: I'm mad and fed up","label":"angry"}
+{"id":"synth_0356","text":"I'm mad and fed up :)","label":"angry"}
+{"id":"synth_0357","text":"I'm mad and fed up 😊","label":"angry"}
+{"id":"synth_0358","text":"I'm mad and fed up 😞","label":"angry"}
+{"id":"synth_0359","text":"I'm mad and fed up I'm mad and","label":"angry"}
+{"id":"synth_0360","text":"I'm mad and fed up sanki","label":"angry"}
+{"id":"synth_0361","text":"I'm mad and fed up so tired","label":"angry"}
+{"id":"synth_0362","text":"Tired but finished my work","label":"tired"}
+{"id":"synth_0363","text":"Şimdi Tired but finished my work","label":"tired"}
+{"id":"synth_0364","text":"Tired but finished my work bir süredir böyle.","label":"tired"}
+{"id":"synth_0365","text":"Tired but finished my work 😊","label":"tired"}
+{"id":"synth_0366","text":"Tired but finished my work 😞","label":"tired"}
+{"id":"synth_0367","text":"Tired but finished my work Tired but finished","label":"tired"}
+{"id":"synth_0368","text":"Tired but finished my work bunu söylemek istedim","label":"tired"}
+{"id":"synth_0369","text":"Tired but finished my work feeling good","label":"tired"}
+{"id":"synth_0370","text":"Nothing special today","label":"neutral"}
+{"id":"synth_0371","text":"Sabah Nothing special today","label":"neutral"}
+{"id":"synth_0372","text":"Nothing special today :)","label":"neutral"}
+{"id":"synth_0373","text":"Nothing special today 😊","label":"neutral"}
+{"id":"synth_0374","text":"Nothing special today 😞","label":"neutral"}
+{"id":"synth_0375","text":"Nothing special today Nothing special today","label":"neutral"}
+{"id":"synth_0376","text":"Nothing special today bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0377","text":"Nothing special today very happy","label":"neutral"}
+{"id":"synth_0378","text":"Bugün kendimi yalnız hissediyorum","label":"sad"}
+{"id":"synth_0379","text":"Sabah Bugün kendimi yalnız hissediyorum","label":"sad"}
+{"id":"synth_0380","text":"Bugün kendimi yalnız hissediyorum :(","label":"sad"}
+{"id":"synth_0381","text":"Bugün kendimi yalnız hissediyorum 😊","label":"sad"}
+{"id":"synth_0382","text":"Bugün kendimi yalnız hissediyorum 😞","label":"sad"}
+{"id":"synth_0383","text":"Bugün kendimi yalnız hissediyorum Bugün kendimi yalnız","label":"sad"}
+{"id":"synth_0384","text":"Bugün kendimi yalnız hissediyorum aslında","label":"sad"}
+{"id":"synth_0385","text":"Bugün kendimi yalnız hissediyorum so tired","label":"sad"}
+{"id":"synth_0386","text":"Annoyed but handling it","label":"angry"}
+{"id":"synth_0387","text":"Bugün Annoyed but handling it","label":"angry"}
+{"id":"synth_0388","text":"Annoyed but handling it bir süredir böyle.","label":"angry"}
+{"id":"synth_0389","text":"Annoyed but handling it 😊","label":"angry"}
+{"id":"synth_0390","text":"Annoyed but handling it 😞","label":"angry"}
+{"id":"synth_0391","text":"Annoyed but handling it Annoyed but handling","label":"angry"}
+{"id":"synth_0392","text":"Annoyed but handling it bunu söylemek istedim","label":"angry"}
+{"id":"synth_0393","text":"Annoyed but handling it very happy","label":"angry"}
+{"id":"synth_0394","text":"Mutluyum ama biraz tedirginim","label":"happy"}
+{"id":"synth_0395","text":"Bugün Mutluyum ama biraz tedirginim","label":"happy"}
+{"id":"synth_0396","text":"Mutluyum ama biraz tedirginim bir süredir böyle.","label":"happy"}
+{"id":"synth_0397","text":"Mutluyum ama biraz tedirginim 😊","label":"happy"}
+{"id":"synth_0398","text":"Mutluyum ama biraz tedirginim 😞","label":"happy"}
+{"id":"synth_0399","text":"Mutluyum ama biraz tedirginim Mutluyum ama biraz","label":"happy"}
+{"id":"synth_0400","text":"Mutluyum ama biraz tedirginim bunu söylemek istedim","label":"happy"}
+{"id":"synth_0401","text":"Mutluyum ama biraz tedirginim feeling good","label":"happy"}
+{"id":"synth_0402","text":"Yorgun ve biraz üzgünüm","label":"tired"}
+{"id":"synth_0403","text":"Akşam Yorgun ve biraz üzgünüm","label":"tired"}
+{"id":"synth_0404","text":"Yorgun ve biraz üzgünüm, ama idare eder.","label":"tired"}
+{"id":"synth_0405","text":"Yorgun ve biraz sadüm","label":"tired"}
+{"id":"synth_0406","text":"Yorgun ve biraz üzgünüm 😊","label":"tired"}
+{"id":"synth_0407","text":"Yorgun ve biraz üzgünüm 😞","label":"tired"}
+{"id":"synth_0408","text":"Yorgun ve biraz üzgünüm Yorgun ve biraz","label":"tired"}
+{"id":"synth_0409","text":"Yorgun ve biraz üzgünüm aslında","label":"tired"}
+{"id":"synth_0410","text":"Yorgun ve biraz üzgünüm feeling good","label":"tired"}
+{"id":"synth_0411","text":"Calm and collected","label":"neutral"}
+{"id":"synth_0412","text":"Dün Calm and collected","label":"neutral"}
+{"id":"synth_0413","text":"Calm and collected bir süredir böyle.","label":"neutral"}
+{"id":"synth_0414","text":"Calm and collected 😊","label":"neutral"}
+{"id":"synth_0415","text":"Calm and collected 😞","label":"neutral"}
+{"id":"synth_0416","text":"Calm and collected Calm and collected","label":"neutral"}
+{"id":"synth_0417","text":"Calm and collected sanki","label":"neutral"}
+{"id":"synth_0418","text":"Calm and collected excited","label":"neutral"}
+{"id":"synth_0419","text":"Sad but hopeful","label":"neutral"}
+{"id":"synth_0420","text":"Bugün Sad but hopeful","label":"neutral"}
+{"id":"synth_0421","text":"Sad but hopeful :)","label":"neutral"}
+{"id":"synth_0422","text":"Sad but hopeful 😊","label":"neutral"}
+{"id":"synth_0423","text":"Sad but hopeful 😞","label":"neutral"}
+{"id":"synth_0424","text":"Sad but hopeful Sad but hopeful","label":"neutral"}
+{"id":"synth_0425","text":"Sad but hopeful aslında","label":"neutral"}
+{"id":"synth_0426","text":"Sad but hopeful a bit sad","label":"neutral"}
+{"id":"synth_0427","text":"Yeni başlangıç beni heyecanlandırdı","label":"excited"}
+{"id":"synth_0428","text":"Bugün Yeni başlangıç beni heyecanlandırdı","label":"excited"}
+{"id":"synth_0429","text":"Yeni başlangıç beni heyecanlandırdı sanırım.","label":"excited"}
+{"id":"synth_0430","text":"Yeni başlangıç beni heyecanlandırdı 😊","label":"excited"}
+{"id":"synth_0431","text":"Yeni başlangıç beni heyecanlandırdı 😞","label":"excited"}
+{"id":"synth_0432","text":"Yeni başlangıç beni heyecanlandırdı Yeni başlangıç beni","label":"excited"}
+{"id":"synth_0433","text":"Yeni başlangıç beni heyecanlandırdı sanki","label":"excited"}
+{"id":"synth_0434","text":"Yeni başlangıç beni heyecanlandırdı a bit sad","label":"excited"}
+{"id":"synth_0435","text":"Kötü haber aldım ama yine de umutluyum","label":"neutral"}
+{"id":"synth_0436","text":"Şimdi Kötü haber aldım ama yine de umutluyum","label":"neutral"}
+{"id":"synth_0437","text":"Kötü haber aldım ama yine de umutluyum - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0438","text":"Kötü haber aldım ama yine de usevinçliyum","label":"neutral"}
+{"id":"synth_0439","text":"Kötü haber aldım ama yine de umutluyum 😊","label":"neutral"}
+{"id":"synth_0440","text":"Kötü haber aldım ama yine de umutluyum 😞","label":"neutral"}
+{"id":"synth_0441","text":"Kötü haber aldım ama yine de umutluyum Kötü haber aldım","label":"neutral"}
+{"id":"synth_0442","text":"Kötü haber aldım ama yine de umutluyum aslında","label":"neutral"}
+{"id":"synth_0443","text":"Kötü haber aldım ama yine de umutluyum excited","label":"neutral"}
+{"id":"synth_0444","text":"Uyumak istiyorum, enerji yok","label":"tired"}
+{"id":"synth_0445","text":"Not: Uyumak istiyorum, enerji yok","label":"tired"}
+{"id":"synth_0446","text":"Uyumak istiyorum, enerji yok - gerçekten böyle hissettim.","label":"tired"}
+{"id":"synth_0447","text":"Uyumak istiyorum, enerji yok 😊","label":"tired"}
+{"id":"synth_0448","text":"Uyumak istiyorum, enerji yok 😞","label":"tired"}
+{"id":"synth_0449","text":"Uyumak istiyorum, enerji yok Uyumak istiyorum, enerji","label":"tired"}
+{"id":"synth_0450","text":"Uyumak istiyorum, enerji yok bilinçli olarak","label":"tired"}
+{"id":"synth_0451","text":"Uyumak istiyorum, enerji yok a bit sad","label":"tired"}
+{"id":"synth_0452","text":"Yorgun ve biraz üzgün","label":"tired"}
+{"id":"synth_0453","text":"Dün Yorgun ve biraz üzgün","label":"tired"}
+{"id":"synth_0454","text":"Yorgun ve biraz üzgün - gerçekten böyle hissettim.","label":"tired"}
+{"id":"synth_0455","text":"Yorgun ve biraz kederli","label":"tired"}
+{"id":"synth_0456","text":"Yorgun ve biraz üzgün 😊","label":"tired"}
+{"id":"synth_0457","text":"Yorgun ve biraz üzgün 😞","label":"tired"}
+{"id":"synth_0458","text":"Yorgun ve biraz üzgün Yorgun ve biraz","label":"tired"}
+{"id":"synth_0459","text":"Yorgun ve biraz üzgün aslında","label":"tired"}
+{"id":"synth_0460","text":"Yorgun ve biraz üzgün excited","label":"tired"}
+{"id":"synth_0461","text":"Excited and nervous","label":"excited"}
+{"id":"synth_0462","text":"Sabah Excited and nervous","label":"excited"}
+{"id":"synth_0463","text":"Excited and nervous, ama idare eder.","label":"excited"}
+{"id":"synth_0464","text":"Excited and nervous 😊","label":"excited"}
+{"id":"synth_0465","text":"Excited and nervous 😞","label":"excited"}
+{"id":"synth_0466","text":"Excited and nervous Excited and nervous","label":"excited"}
+{"id":"synth_0467","text":"Excited and nervous aslında","label":"excited"}
+{"id":"synth_0468","text":"Excited and nervous excited","label":"excited"}
+{"id":"synth_0469","text":"Kalbim pır pır, heyecanlıyım","label":"excited"}
+{"id":"synth_0470","text":"Sabah Kalbim pır pır, heyecanlıyım","label":"excited"}
+{"id":"synth_0471","text":"Kalbim pır pır, heyecanlıyım sanırım.","label":"excited"}
+{"id":"synth_0472","text":"Kalbim pır pır, excitedyım","label":"excited"}
+{"id":"synth_0473","text":"Kalbim pır pır, heyecanlıyım 😊","label":"excited"}
+{"id":"synth_0474","text":"Kalbim pır pır, heyecanlıyım 😞","label":"excited"}
+{"id":"synth_0475","text":"Kalbim pır pır, heyecanlıyım Kalbim pır pır,","label":"excited"}
+{"id":"synth_0476","text":"Kalbim pır pır, heyecanlıyım bunu söylemek istedim","label":"excited"}
+{"id":"synth_0477","text":"Kalbim pır pır, heyecanlıyım so tired","label":"excited"}
+{"id":"synth_0478","text":"Happy today despite the past","label":"happy"}
+{"id":"synth_0479","text":"Not: Happy today despite the past","label":"happy"}
+{"id":"synth_0480","text":"Happy today despite the past, ama idare eder.","label":"happy"}
+{"id":"synth_0481","text":"Happy today despite the past 😊","label":"happy"}
+{"id":"synth_0482","text":"Happy today despite the past 😞","label":"happy"}
+{"id":"synth_0483","text":"Happy today despite the past Happy today despite","label":"happy"}
+{"id":"synth_0484","text":"Happy today despite the past bilinçli olarak","label":"happy"}
+{"id":"synth_0485","text":"Happy today despite the past excited","label":"happy"}
+{"id":"synth_0486","text":"Çok üzgünüm, kötü haber aldım","label":"sad"}
+{"id":"synth_0487","text":"Sabah Çok üzgünüm, kötü haber aldım","label":"sad"}
+{"id":"synth_0488","text":"Çok üzgünüm, kötü haber aldım bir süredir böyle.","label":"sad"}
+{"id":"synth_0489","text":"Çok sadüm, bad haber aldım","label":"sad"}
+{"id":"synth_0490","text":"Çok üzgünüm, kötü haber aldım 😊","label":"sad"}
+{"id":"synth_0491","text":"Çok üzgünüm, kötü haber aldım 😞","label":"sad"}
+{"id":"synth_0492","text":"Çok üzgünüm, kötü haber aldım Çok üzgünüm, kötü","label":"sad"}
+{"id":"synth_0493","text":"Çok üzgünüm, kötü haber aldım bilinçli olarak","label":"sad"}
+{"id":"synth_0494","text":"Çok üzgünüm, kötü haber aldım so tired","label":"sad"}
+{"id":"synth_0495","text":"Happy but tired","label":"happy"}
+{"id":"synth_0496","text":"Dün Happy but tired","label":"happy"}
+{"id":"synth_0497","text":"Happy but tired :)","label":"happy"}
+{"id":"synth_0498","text":"Happy but tired 😊","label":"happy"}
+{"id":"synth_0499","text":"Happy but tired 😞","label":"happy"}
+{"id":"synth_0500","text":"Happy but tired Happy but tired","label":"happy"}
+{"id":"synth_0501","text":"Happy but tired bunu söylemek istedim","label":"happy"}
+{"id":"synth_0502","text":"Happy but tired excited","label":"happy"}
+{"id":"synth_0503","text":"Today is better than yesterday","label":"happy"}
+{"id":"synth_0504","text":"Akşam Today is better than yesterday","label":"happy"}
+{"id":"synth_0505","text":"Today is better than yesterday :)","label":"happy"}
+{"id":"synth_0506","text":"Today is better than yesterday 😊","label":"happy"}
+{"id":"synth_0507","text":"Today is better than yesterday 😞","label":"happy"}
+{"id":"synth_0508","text":"Today is better than yesterday Today is better","label":"happy"}
+{"id":"synth_0509","text":"Today is better than yesterday bunu söylemek istedim","label":"happy"}
+{"id":"synth_0510","text":"Today is better than yesterday so tired","label":"happy"}
+{"id":"synth_0511","text":"There's injustice and I'm angry","label":"angry"}
+{"id":"synth_0512","text":"Akşam There's injustice and I'm angry","label":"angry"}
+{"id":"synth_0513","text":"There's injustice and I'm angry sanırım.","label":"angry"}
+{"id":"synth_0514","text":"There's injustice and I'm angry 😊","label":"angry"}
+{"id":"synth_0515","text":"There's injustice and I'm angry 😞","label":"angry"}
+{"id":"synth_0516","text":"There's injustice and I'm angry There's injustice and","label":"angry"}
+{"id":"synth_0517","text":"There's injustice and I'm angry bilinçli olarak","label":"angry"}
+{"id":"synth_0518","text":"There's injustice and I'm angry a bit sad","label":"angry"}
+{"id":"synth_0519","text":"Gün boyunca uykuya meyilliyim","label":"tired"}
+{"id":"synth_0520","text":"Not: Gün boyunca uykuya meyilliyim","label":"tired"}
+{"id":"synth_0521","text":"Gün boyunca uykuya meyilliyim, ama idare eder.","label":"tired"}
+{"id":"synth_0522","text":"Gün boyunca uykuya meyillgüzelm","label":"tired"}
+{"id":"synth_0523","text":"Gün boyunca uykuya meyilliyim 😊","label":"tired"}
+{"id":"synth_0524","text":"Gün boyunca uykuya meyilliyim 😞","label":"tired"}
+{"id":"synth_0525","text":"Gün boyunca uykuya meyilliyim Gün boyunca uykuya","label":"tired"}
+{"id":"synth_0526","text":"Gün boyunca uykuya meyilliyim aslında","label":"tired"}
+{"id":"synth_0527","text":"Gün boyunca uykuya meyilliyim a bit sad","label":"tired"}
+{"id":"synth_0528","text":"Excited about the trip","label":"excited"}
+{"id":"synth_0529","text":"Şimdi Excited about the trip","label":"excited"}
+{"id":"synth_0530","text":"Excited about the trip - gerçekten böyle hissettim.","label":"excited"}
+{"id":"synth_0531","text":"Excited about the trip 😊","label":"excited"}
+{"id":"synth_0532","text":"Excited about the trip 😞","label":"excited"}
+{"id":"synth_0533","text":"Excited about the trip Excited about the","label":"excited"}
+{"id":"synth_0534","text":"Excited about the trip bunu söylemek istedim","label":"excited"}
+{"id":"synth_0535","text":"Excited about the trip feeling good","label":"excited"}
+{"id":"synth_0536","text":"Bugün tarafsızım","label":"neutral"}
+{"id":"synth_0537","text":"Sabah Bugün tarafsızım","label":"neutral"}
+{"id":"synth_0538","text":"Bugün tarafsızım bir süredir böyle.","label":"neutral"}
+{"id":"synth_0539","text":"Bugün tarafsızım 😊","label":"neutral"}
+{"id":"synth_0540","text":"Bugün tarafsızım 😞","label":"neutral"}
+{"id":"synth_0541","text":"Bugün tarafsızım Bugün tarafsızım","label":"neutral"}
+{"id":"synth_0542","text":"Bugün tarafsızım bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0543","text":"Bugün tarafsızım feeling good","label":"neutral"}
+{"id":"synth_0544","text":"Bugün çok enerji doluyum","label":"excited"}
+{"id":"synth_0545","text":"Dün Bugün çok enerji doluyum","label":"excited"}
+{"id":"synth_0546","text":"Bugün çok enerji doluyum :)","label":"excited"}
+{"id":"synth_0547","text":"Bugün çok enerji doluyum 😊","label":"excited"}
+{"id":"synth_0548","text":"Bugün çok enerji doluyum 😞","label":"excited"}
+{"id":"synth_0549","text":"Bugün çok enerji doluyum Bugün çok enerji","label":"excited"}
+{"id":"synth_0550","text":"Bugün çok enerji doluyum bunu söylemek istedim","label":"excited"}
+{"id":"synth_0551","text":"Bugün çok enerji doluyum feeling good","label":"excited"}
+{"id":"synth_0552","text":"Bugün sınavdan önce çok heyecanlıydım","label":"excited"}
+{"id":"synth_0553","text":"Akşam Bugün sınavdan önce çok heyecanlıydım","label":"excited"}
+{"id":"synth_0554","text":"Bugün sınavdan önce çok heyecanlıydım, ama idare eder.","label":"excited"}
+{"id":"synth_0555","text":"Bugün sınavdan önce çok excitedydım","label":"excited"}
+{"id":"synth_0556","text":"Bugün sınavdan önce çok heyecanlıydım 😊","label":"excited"}
+{"id":"synth_0557","text":"Bugün sınavdan önce çok heyecanlıydım 😞","label":"excited"}
+{"id":"synth_0558","text":"Bugün sınavdan önce çok heyecanlıydım Bugün sınavdan önce","label":"excited"}
+{"id":"synth_0559","text":"Bugün sınavdan önce çok heyecanlıydım bilinçli olarak","label":"excited"}
+{"id":"synth_0560","text":"Bugün sınavdan önce çok heyecanlıydım so tired","label":"excited"}
+{"id":"synth_0561","text":"Can't wait to start","label":"excited"}
+{"id":"synth_0562","text":"Not: Can't wait to start","label":"excited"}
+{"id":"synth_0563","text":"Can't wait to start - gerçekten böyle hissettim.","label":"excited"}
+{"id":"synth_0564","text":"Can't wait to start 😊","label":"excited"}
+{"id":"synth_0565","text":"Can't wait to start 😞","label":"excited"}
+{"id":"synth_0566","text":"Can't wait to start Can't wait to","label":"excited"}
+{"id":"synth_0567","text":"Can't wait to start bunu söylemek istedim","label":"excited"}
+{"id":"synth_0568","text":"Can't wait to start a bit sad","label":"excited"}
+{"id":"synth_0569","text":"I'm exhausted after the long trip","label":"tired"}
+{"id":"synth_0570","text":"Sabah I'm exhausted after the long trip","label":"tired"}
+{"id":"synth_0571","text":"I'm exhausted after the long trip :(","label":"tired"}
+{"id":"synth_0572","text":"I'm exhausted after the long trip 😊","label":"tired"}
+{"id":"synth_0573","text":"I'm exhausted after the long trip 😞","label":"tired"}
+{"id":"synth_0574","text":"I'm exhausted after the long trip I'm exhausted after","label":"tired"}
+{"id":"synth_0575","text":"I'm exhausted after the long trip aslında","label":"tired"}
+{"id":"synth_0576","text":"I'm exhausted after the long trip feeling good","label":"tired"}
+{"id":"synth_0577","text":"Sinirim geçmiyor, çok kızgınım","label":"angry"}
+{"id":"synth_0578","text":"Bugün Sinirim geçmiyor, çok kızgınım","label":"angry"}
+{"id":"synth_0579","text":"Sinirim geçmiyor, çok kızgınım :(","label":"angry"}
+{"id":"synth_0580","text":"Sinirim geçmiyor, çok kızgınım 😊","label":"angry"}
+{"id":"synth_0581","text":"Sinirim geçmiyor, çok kızgınım 😞","label":"angry"}
+{"id":"synth_0582","text":"Sinirim geçmiyor, çok kızgınım Sinirim geçmiyor, çok","label":"angry"}
+{"id":"synth_0583","text":"Sinirim geçmiyor, çok kızgınım aslında","label":"angry"}
+{"id":"synth_0584","text":"Sinirim geçmiyor, çok kızgınım feeling good","label":"angry"}
+{"id":"synth_0585","text":"Exhausted and a little sad","label":"tired"}
+{"id":"synth_0586","text":"Sabah Exhausted and a little sad","label":"tired"}
+{"id":"synth_0587","text":"Exhausted and a little sad :)","label":"tired"}
+{"id":"synth_0588","text":"Exhausted and a little sad 😊","label":"tired"}
+{"id":"synth_0589","text":"Exhausted and a little sad 😞","label":"tired"}
+{"id":"synth_0590","text":"Exhausted and a little sad Exhausted and a","label":"tired"}
+{"id":"synth_0591","text":"Exhausted and a little sad bunu söylemek istedim","label":"tired"}
+{"id":"synth_0592","text":"Exhausted and a little sad very happy","label":"tired"}
+{"id":"synth_0593","text":"I feel melancholic today","label":"sad"}
+{"id":"synth_0594","text":"Dün I feel melancholic today","label":"sad"}
+{"id":"synth_0595","text":"I feel melancholic today :)","label":"sad"}
+{"id":"synth_0596","text":"I feel melancholic today 😊","label":"sad"}
+{"id":"synth_0597","text":"I feel melancholic today 😞","label":"sad"}
+{"id":"synth_0598","text":"I feel melancholic today I feel melancholic","label":"sad"}
+{"id":"synth_0599","text":"I feel melancholic today bilinçli olarak","label":"sad"}
+{"id":"synth_0600","text":"I feel melancholic today excited","label":"sad"}
+{"id":"synth_0601","text":"I'm feeling down today","label":"sad"}
+{"id":"synth_0602","text":"Not: I'm feeling down today","label":"sad"}
+{"id":"synth_0603","text":"I'm feeling down today :(","label":"sad"}
+{"id":"synth_0604","text":"I'm feeling down today 😊","label":"sad"}
+{"id":"synth_0605","text":"I'm feeling down today 😞","label":"sad"}
+{"id":"synth_0606","text":"I'm feeling down today I'm feeling down","label":"sad"}
+{"id":"synth_0607","text":"I'm feeling down today sanki","label":"sad"}
+{"id":"synth_0608","text":"I'm feeling down today feeling good","label":"sad"}
+{"id":"synth_0609","text":"Excited with ideas","label":"excited"}
+{"id":"synth_0610","text":"Şimdi Excited with ideas","label":"excited"}
+{"id":"synth_0611","text":"Excited with ideas, ama idare eder.","label":"excited"}
+{"id":"synth_0612","text":"Excited with ideas 😊","label":"excited"}
+{"id":"synth_0613","text":"Excited with ideas 😞","label":"excited"}
+{"id":"synth_0614","text":"Excited with ideas Excited with ideas","label":"excited"}
+{"id":"synth_0615","text":"Excited with ideas aslında","label":"excited"}
+{"id":"synth_0616","text":"Excited with ideas a bit sad","label":"excited"}
+{"id":"synth_0617","text":"İçimde boşluk var, mutsuzum","label":"sad"}
+{"id":"synth_0618","text":"Dün İçimde boşluk var, mutsuzum","label":"sad"}
+{"id":"synth_0619","text":"İçimde boşluk var, mutsuzum :(","label":"sad"}
+{"id":"synth_0620","text":"İçimde boşluk var, mutsuzum 😊","label":"sad"}
+{"id":"synth_0621","text":"İçimde boşluk var, mutsuzum 😞","label":"sad"}
+{"id":"synth_0622","text":"İçimde boşluk var, mutsuzum İçimde boşluk var,","label":"sad"}
+{"id":"synth_0623","text":"İçimde boşluk var, mutsuzum bilinçli olarak","label":"sad"}
+{"id":"synth_0624","text":"İçimde boşluk var, mutsuzum a bit sad","label":"sad"}
+{"id":"synth_0625","text":"Dünden daha iyi hissediyorum","label":"happy"}
+{"id":"synth_0626","text":"Dün Dünden daha iyi hissediyorum","label":"happy"}
+{"id":"synth_0627","text":"Dünden daha iyi hissediyorum - gerçekten böyle hissettim.","label":"happy"}
+{"id":"synth_0628","text":"Dünden daha güzel hissediyorum","label":"happy"}
+{"id":"synth_0629","text":"Dünden daha iyi hissediyorum 😊","label":"happy"}
+{"id":"synth_0630","text":"Dünden daha iyi hissediyorum 😞","label":"happy"}
+{"id":"synth_0631","text":"Dünden daha iyi hissediyorum Dünden daha iyi","label":"happy"}
+{"id":"synth_0632","text":"Dünden daha iyi hissediyorum bunu söylemek istedim","label":"happy"}
+{"id":"synth_0633","text":"Dünden daha iyi hissediyorum excited","label":"happy"}
+{"id":"synth_0634","text":"Çok yorgunum, uyumak istiyorum","label":"tired"}
+{"id":"synth_0635","text":"Not: Çok yorgunum, uyumak istiyorum","label":"tired"}
+{"id":"synth_0636","text":"Çok yorgunum, uyumak istiyorum - gerçekten böyle hissettim.","label":"tired"}
+{"id":"synth_0637","text":"Çok halsizum, uyumak istiyorum","label":"tired"}
+{"id":"synth_0638","text":"Çok yorgunum, uyumak istiyorum 😊","label":"tired"}
+{"id":"synth_0639","text":"Çok yorgunum, uyumak istiyorum 😞","label":"tired"}
+{"id":"synth_0640","text":"Çok yorgunum, uyumak istiyorum Çok yorgunum, uyumak","label":"tired"}
+{"id":"synth_0641","text":"Çok yorgunum, uyumak istiyorum aslında","label":"tired"}
+{"id":"synth_0642","text":"Çok yorgunum, uyumak istiyorum a bit sad","label":"tired"}
+{"id":"synth_0643","text":"Scared but excited","label":"excited"}
+{"id":"synth_0644","text":"Dün Scared but excited","label":"excited"}
+{"id":"synth_0645","text":"Scared but excited - gerçekten böyle hissettim.","label":"excited"}
+{"id":"synth_0646","text":"Scared but excited 😊","label":"excited"}
+{"id":"synth_0647","text":"Scared but excited 😞","label":"excited"}
+{"id":"synth_0648","text":"Scared but excited Scared but excited","label":"excited"}
+{"id":"synth_0649","text":"Scared but excited sanki","label":"excited"}
+{"id":"synth_0650","text":"Scared but excited so tired","label":"excited"}
+{"id":"synth_0651","text":"Lost my energy and feel sad","label":"sad"}
+{"id":"synth_0652","text":"Bugün Lost my energy and feel sad","label":"sad"}
+{"id":"synth_0653","text":"Lost my energy and feel sad sanırım.","label":"sad"}
+{"id":"synth_0654","text":"Lost my energy and feel sad 😊","label":"sad"}
+{"id":"synth_0655","text":"Lost my energy and feel sad 😞","label":"sad"}
+{"id":"synth_0656","text":"Lost my energy and feel sad Lost my energy","label":"sad"}
+{"id":"synth_0657","text":"Lost my energy and feel sad sanki","label":"sad"}
+{"id":"synth_0658","text":"Lost my energy and feel sad excited","label":"sad"}
+{"id":"synth_0659","text":"Lonely and sad","label":"sad"}
+{"id":"synth_0660","text":"Not: Lonely and sad","label":"sad"}
+{"id":"synth_0661","text":"Lonely and sad sanırım.","label":"sad"}
+{"id":"synth_0662","text":"Lonely and sad 😊","label":"sad"}
+{"id":"synth_0663","text":"Lonely and sad 😞","label":"sad"}
+{"id":"synth_0664","text":"Lonely and sad Lonely and sad","label":"sad"}
+{"id":"synth_0665","text":"Lonely and sad bunu söylemek istedim","label":"sad"}
+{"id":"synth_0666","text":"Lonely and sad so tired","label":"sad"}
+{"id":"synth_0667","text":"Disappointed and angry","label":"angry"}
+{"id":"synth_0668","text":"Bugün Disappointed and angry","label":"angry"}
+{"id":"synth_0669","text":"Disappointed and angry :(","label":"angry"}
+{"id":"synth_0670","text":"Disappointed and angry 😊","label":"angry"}
+{"id":"synth_0671","text":"Disappointed and angry 😞","label":"angry"}
+{"id":"synth_0672","text":"Disappointed and angry Disappointed and angry","label":"angry"}
+{"id":"synth_0673","text":"Disappointed and angry sanki","label":"angry"}
+{"id":"synth_0674","text":"Disappointed and angry very happy","label":"angry"}
+{"id":"synth_0675","text":"Neither good nor bad","label":"neutral"}
+{"id":"synth_0676","text":"Not: Neither good nor bad","label":"neutral"}
+{"id":"synth_0677","text":"Neither good nor bad, ama idare eder.","label":"neutral"}
+{"id":"synth_0678","text":"Neither good nor bad 😊","label":"neutral"}
+{"id":"synth_0679","text":"Neither good nor bad 😞","label":"neutral"}
+{"id":"synth_0680","text":"Neither good nor bad Neither good nor","label":"neutral"}
+{"id":"synth_0681","text":"Neither good nor bad sanki","label":"neutral"}
+{"id":"synth_0682","text":"Neither good nor bad feeling good","label":"neutral"}
+{"id":"synth_0683","text":"Kendimi boş hissediyorum","label":"sad"}
+{"id":"synth_0684","text":"Dün Kendimi boş hissediyorum","label":"sad"}
+{"id":"synth_0685","text":"Kendimi boş hissediyorum bir süredir böyle.","label":"sad"}
+{"id":"synth_0686","text":"Kendimi boş hissediyorum 😊","label":"sad"}
+{"id":"synth_0687","text":"Kendimi boş hissediyorum 😞","label":"sad"}
+{"id":"synth_0688","text":"Kendimi boş hissediyorum Kendimi boş hissediyorum","label":"sad"}
+{"id":"synth_0689","text":"Kendimi boş hissediyorum bunu söylemek istedim","label":"sad"}
+{"id":"synth_0690","text":"Kendimi boş hissediyorum a bit sad","label":"sad"}
+{"id":"synth_0691","text":"Outraged by the news","label":"angry"}
+{"id":"synth_0692","text":"Dün Outraged by the news","label":"angry"}
+{"id":"synth_0693","text":"Outraged by the news :)","label":"angry"}
+{"id":"synth_0694","text":"Outraged by the news 😊","label":"angry"}
+{"id":"synth_0695","text":"Outraged by the news 😞","label":"angry"}
+{"id":"synth_0696","text":"Outraged by the news Outraged by the","label":"angry"}
+{"id":"synth_0697","text":"Outraged by the news bilinçli olarak","label":"angry"}
+{"id":"synth_0698","text":"Outraged by the news very happy","label":"angry"}
+{"id":"synth_0699","text":"A bit upset but okay","label":"neutral"}
+{"id":"synth_0700","text":"Sabah A bit upset but okay","label":"neutral"}
+{"id":"synth_0701","text":"A bit upset but okay :)","label":"neutral"}
+{"id":"synth_0702","text":"A bit upset but okay 😊","label":"neutral"}
+{"id":"synth_0703","text":"A bit upset but okay 😞","label":"neutral"}
+{"id":"synth_0704","text":"A bit upset but okay A bit upset","label":"neutral"}
+{"id":"synth_0705","text":"A bit upset but okay aslında","label":"neutral"}
+{"id":"synth_0706","text":"A bit upset but okay excited","label":"neutral"}
+{"id":"synth_0707","text":"Not feeling great but fine","label":"neutral"}
+{"id":"synth_0708","text":"Sabah Not feeling great but fine","label":"neutral"}
+{"id":"synth_0709","text":"Not feeling great but fine :)","label":"neutral"}
+{"id":"synth_0710","text":"Not feeling great but fine 😊","label":"neutral"}
+{"id":"synth_0711","text":"Not feeling great but fine 😞","label":"neutral"}
+{"id":"synth_0712","text":"Not feeling great but fine Not feeling great","label":"neutral"}
+{"id":"synth_0713","text":"Not feeling great but fine bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0714","text":"Not feeling great but fine very happy","label":"neutral"}
+{"id":"synth_0715","text":"Çok sinirlendim, adalet istiyorum","label":"angry"}
+{"id":"synth_0716","text":"Sabah Çok sinirlendim, adalet istiyorum","label":"angry"}
+{"id":"synth_0717","text":"Çok sinirlendim, adalet istiyorum, ama idare eder.","label":"angry"}
+{"id":"synth_0718","text":"Çok sinirlendim, adalet istiyorum 😊","label":"angry"}
+{"id":"synth_0719","text":"Çok sinirlendim, adalet istiyorum 😞","label":"angry"}
+{"id":"synth_0720","text":"Çok sinirlendim, adalet istiyorum Çok sinirlendim, adalet","label":"angry"}
+{"id":"synth_0721","text":"Çok sinirlendim, adalet istiyorum aslında","label":"angry"}
+{"id":"synth_0722","text":"Çok sinirlendim, adalet istiyorum excited","label":"angry"}
+{"id":"synth_0723","text":"I can't keep my eyes open","label":"tired"}
+{"id":"synth_0724","text":"Dün I can't keep my eyes open","label":"tired"}
+{"id":"synth_0725","text":"I can't keep my eyes open :(","label":"tired"}
+{"id":"synth_0726","text":"I can't keep my eyes open 😊","label":"tired"}
+{"id":"synth_0727","text":"I can't keep my eyes open 😞","label":"tired"}
+{"id":"synth_0728","text":"I can't keep my eyes open I can't keep","label":"tired"}
+{"id":"synth_0729","text":"I can't keep my eyes open bunu söylemek istedim","label":"tired"}
+{"id":"synth_0730","text":"I can't keep my eyes open excited","label":"tired"}
+{"id":"synth_0731","text":"Tired yet content","label":"happy"}
+{"id":"synth_0732","text":"Not: Tired yet content","label":"happy"}
+{"id":"synth_0733","text":"Tired yet content bir süredir böyle.","label":"happy"}
+{"id":"synth_0734","text":"Tired yet content 😊","label":"happy"}
+{"id":"synth_0735","text":"Tired yet content 😞","label":"happy"}
+{"id":"synth_0736","text":"Tired yet content Tired yet content","label":"happy"}
+{"id":"synth_0737","text":"Tired yet content bilinçli olarak","label":"happy"}
+{"id":"synth_0738","text":"Tired yet content so tired","label":"happy"}
+{"id":"synth_0739","text":"Sinirliyim ama kontrolümdeyim","label":"angry"}
+{"id":"synth_0740","text":"Bugün Sinirliyim ama kontrolümdeyim","label":"angry"}
+{"id":"synth_0741","text":"Sinirliyim ama kontrolümdeyim bir süredir böyle.","label":"angry"}
+{"id":"synth_0742","text":"Sinirlfinem ama kontrolümdeyim","label":"angry"}
+{"id":"synth_0743","text":"Sinirliyim ama kontrolümdeyim 😊","label":"angry"}
+{"id":"synth_0744","text":"Sinirliyim ama kontrolümdeyim 😞","label":"angry"}
+{"id":"synth_0745","text":"Sinirliyim ama kontrolümdeyim Sinirliyim ama kontrolümdeyim","label":"angry"}
+{"id":"synth_0746","text":"Sinirliyim ama kontrolümdeyim bunu söylemek istedim","label":"angry"}
+{"id":"synth_0747","text":"Sinirliyim ama kontrolümdeyim so tired","label":"angry"}
+{"id":"synth_0748","text":"Drained after work","label":"tired"}
+{"id":"synth_0749","text":"Şimdi Drained after work","label":"tired"}
+{"id":"synth_0750","text":"Drained after work :)","label":"tired"}
+{"id":"synth_0751","text":"Drained after work 😊","label":"tired"}
+{"id":"synth_0752","text":"Drained after work 😞","label":"tired"}
+{"id":"synth_0753","text":"Drained after work Drained after work","label":"tired"}
+{"id":"synth_0754","text":"Drained after work sanki","label":"tired"}
+{"id":"synth_0755","text":"Drained after work feeling good","label":"tired"}
+{"id":"synth_0756","text":"Learning something new made my day","label":"excited"}
+{"id":"synth_0757","text":"Not: Learning something new made my day","label":"excited"}
+{"id":"synth_0758","text":"Learning something new made my day :(","label":"excited"}
+{"id":"synth_0759","text":"Learning something new made my day 😊","label":"excited"}
+{"id":"synth_0760","text":"Learning something new made my day 😞","label":"excited"}
+{"id":"synth_0761","text":"Learning something new made my day Learning something new","label":"excited"}
+{"id":"synth_0762","text":"Learning something new made my day bunu söylemek istedim","label":"excited"}
+{"id":"synth_0763","text":"Learning something new made my day excited","label":"excited"}
+{"id":"synth_0764","text":"Çok yorgunum, bütün gün ayakta kaldım","label":"tired"}
+{"id":"synth_0765","text":"Sabah Çok yorgunum, bütün gün ayakta kaldım","label":"tired"}
+{"id":"synth_0766","text":"Çok yorgunum, bütün gün ayakta kaldım :(","label":"tired"}
+{"id":"synth_0767","text":"Çok bitkinum, bütün gün ayakta kaldım","label":"tired"}
+{"id":"synth_0768","text":"Çok yorgunum, bütün gün ayakta kaldım 😊","label":"tired"}
+{"id":"synth_0769","text":"Çok yorgunum, bütün gün ayakta kaldım 😞","label":"tired"}
+{"id":"synth_0770","text":"Çok yorgunum, bütün gün ayakta kaldım Çok yorgunum, bütün","label":"tired"}
+{"id":"synth_0771","text":"Çok yorgunum, bütün gün ayakta kaldım sanki","label":"tired"}
+{"id":"synth_0772","text":"Çok yorgunum, bütün gün ayakta kaldım very happy","label":"tired"}
+{"id":"synth_0773","text":"Not sure how I feel","label":"neutral"}
+{"id":"synth_0774","text":"Şimdi Not sure how I feel","label":"neutral"}
+{"id":"synth_0775","text":"Not sure how I feel, ama idare eder.","label":"neutral"}
+{"id":"synth_0776","text":"Not sure how I feel 😊","label":"neutral"}
+{"id":"synth_0777","text":"Not sure how I feel 😞","label":"neutral"}
+{"id":"synth_0778","text":"Not sure how I feel Not sure how","label":"neutral"}
+{"id":"synth_0779","text":"Not sure how I feel bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0780","text":"Not sure how I feel a bit sad","label":"neutral"}
+{"id":"synth_0781","text":"Heyecanlıyım, yeni fikirlerim var","label":"excited"}
+{"id":"synth_0782","text":"Not: Heyecanlıyım, yeni fikirlerim var","label":"excited"}
+{"id":"synth_0783","text":"Heyecanlıyım, yeni fikirlerim var bir süredir böyle.","label":"excited"}
+{"id":"synth_0784","text":"Heyecanlıyım, yeni fikirlerim var 😊","label":"excited"}
+{"id":"synth_0785","text":"Heyecanlıyım, yeni fikirlerim var 😞","label":"excited"}
+{"id":"synth_0786","text":"Heyecanlıyım, yeni fikirlerim var Heyecanlıyım, yeni fikirlerim","label":"excited"}
+{"id":"synth_0787","text":"Heyecanlıyım, yeni fikirlerim var bunu söylemek istedim","label":"excited"}
+{"id":"synth_0788","text":"Heyecanlıyım, yeni fikirlerim var so tired","label":"excited"}
+{"id":"synth_0789","text":"Heyecan içindeyim, çok enerjim var","label":"excited"}
+{"id":"synth_0790","text":"Bugün Heyecan içindeyim, çok enerjim var","label":"excited"}
+{"id":"synth_0791","text":"Heyecan içindeyim, çok enerjim var :(","label":"excited"}
+{"id":"synth_0792","text":"Heyecan içindeyim, çok enerjim var 😊","label":"excited"}
+{"id":"synth_0793","text":"Heyecan içindeyim, çok enerjim var 😞","label":"excited"}
+{"id":"synth_0794","text":"Heyecan içindeyim, çok enerjim var Heyecan içindeyim, çok","label":"excited"}
+{"id":"synth_0795","text":"Heyecan içindeyim, çok enerjim var bunu söylemek istedim","label":"excited"}
+{"id":"synth_0796","text":"Heyecan içindeyim, çok enerjim var so tired","label":"excited"}
+{"id":"synth_0797","text":"Çok sinirliyim, haksızlık var","label":"angry"}
+{"id":"synth_0798","text":"Akşam Çok sinirliyim, haksızlık var","label":"angry"}
+{"id":"synth_0799","text":"Çok sinirliyim, haksızlık var bir süredir böyle.","label":"angry"}
+{"id":"synth_0800","text":"Çok angryyim, haksızlık var","label":"angry"}
+{"id":"synth_0801","text":"Çok sinirliyim, haksızlık var 😊","label":"angry"}
+{"id":"synth_0802","text":"Çok sinirliyim, haksızlık var 😞","label":"angry"}
+{"id":"synth_0803","text":"Çok sinirliyim, haksızlık var Çok sinirliyim, haksızlık","label":"angry"}
+{"id":"synth_0804","text":"Çok sinirliyim, haksızlık var bilinçli olarak","label":"angry"}
+{"id":"synth_0805","text":"Çok sinirliyim, haksızlık var feeling good","label":"angry"}
+{"id":"synth_0806","text":"Sakinim, huzurluyum","label":"neutral"}
+{"id":"synth_0807","text":"Sabah Sakinim, huzurluyum","label":"neutral"}
+{"id":"synth_0808","text":"Sakinim, huzurluyum :(","label":"neutral"}
+{"id":"synth_0809","text":"Sakinim, huzurluyum 😊","label":"neutral"}
+{"id":"synth_0810","text":"Sakinim, huzurluyum 😞","label":"neutral"}
+{"id":"synth_0811","text":"Sakinim, huzurluyum Sakinim, huzurluyum","label":"neutral"}
+{"id":"synth_0812","text":"Sakinim, huzurluyum bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0813","text":"Sakinim, huzurluyum excited","label":"neutral"}
+{"id":"synth_0814","text":"Yorgun ama işleri bitirdim","label":"tired"}
+{"id":"synth_0815","text":"Bugün Yorgun ama işleri bitirdim","label":"tired"}
+{"id":"synth_0816","text":"Yorgun ama işleri bitirdim :(","label":"tired"}
+{"id":"synth_0817","text":"Yorgun ama işleri bitirdim 😊","label":"tired"}
+{"id":"synth_0818","text":"Yorgun ama işleri bitirdim 😞","label":"tired"}
+{"id":"synth_0819","text":"Yorgun ama işleri bitirdim Yorgun ama işleri","label":"tired"}
+{"id":"synth_0820","text":"Yorgun ama işleri bitirdim bunu söylemek istedim","label":"tired"}
+{"id":"synth_0821","text":"Yorgun ama işleri bitirdim excited","label":"tired"}
+{"id":"synth_0822","text":"Vücudum çok yoruldu bugün","label":"tired"}
+{"id":"synth_0823","text":"Bugün Vücudum çok yoruldu bugün","label":"tired"}
+{"id":"synth_0824","text":"Vücudum çok yoruldu bugün :(","label":"tired"}
+{"id":"synth_0825","text":"Vücudum çok yoruldu bugün 😊","label":"tired"}
+{"id":"synth_0826","text":"Vücudum çok yoruldu bugün 😞","label":"tired"}
+{"id":"synth_0827","text":"Vücudum çok yoruldu bugün Vücudum çok yoruldu","label":"tired"}
+{"id":"synth_0828","text":"Vücudum çok yoruldu bugün bunu söylemek istedim","label":"tired"}
+{"id":"synth_0829","text":"Vücudum çok yoruldu bugün excited","label":"tired"}
+{"id":"synth_0830","text":"Güzel haberler aldım, yüzüm gülüyor","label":"happy"}
+{"id":"synth_0831","text":"Akşam Güzel haberler aldım, yüzüm gülüyor","label":"happy"}
+{"id":"synth_0832","text":"Güzel haberler aldım, yüzüm gülüyor :)","label":"happy"}
+{"id":"synth_0833","text":"Güzel haberler aldım, yüzüm gülüyor 😊","label":"happy"}
+{"id":"synth_0834","text":"Güzel haberler aldım, yüzüm gülüyor 😞","label":"happy"}
+{"id":"synth_0835","text":"Güzel haberler aldım, yüzüm gülüyor Güzel haberler aldım,","label":"happy"}
+{"id":"synth_0836","text":"Güzel haberler aldım, yüzüm gülüyor sanki","label":"happy"}
+{"id":"synth_0837","text":"Güzel haberler aldım, yüzüm gülüyor a bit sad","label":"happy"}
+{"id":"synth_0838","text":"Sad but making progress","label":"neutral"}
+{"id":"synth_0839","text":"Bugün Sad but making progress","label":"neutral"}
+{"id":"synth_0840","text":"Sad but making progress - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0841","text":"Sad but making progress 😊","label":"neutral"}
+{"id":"synth_0842","text":"Sad but making progress 😞","label":"neutral"}
+{"id":"synth_0843","text":"Sad but making progress Sad but making","label":"neutral"}
+{"id":"synth_0844","text":"Sad but making progress bunu söylemek istedim","label":"neutral"}
+{"id":"synth_0845","text":"Sad but making progress excited","label":"neutral"}
+{"id":"synth_0846","text":"Üzgünüm ama umutluyum","label":"neutral"}
+{"id":"synth_0847","text":"Not: Üzgünüm ama umutluyum","label":"neutral"}
+{"id":"synth_0848","text":"Üzgünüm ama umutluyum - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0849","text":"Üzgünüm ama uhappyyum","label":"neutral"}
+{"id":"synth_0850","text":"Üzgünüm ama umutluyum 😊","label":"neutral"}
+{"id":"synth_0851","text":"Üzgünüm ama umutluyum 😞","label":"neutral"}
+{"id":"synth_0852","text":"Üzgünüm ama umutluyum Üzgünüm ama umutluyum","label":"neutral"}
+{"id":"synth_0853","text":"Üzgünüm ama umutluyum sanki","label":"neutral"}
+{"id":"synth_0854","text":"Üzgünüm ama umutluyum excited","label":"neutral"}
+{"id":"synth_0855","text":"Bugün çok yorgundum ama güzel bir şey oldu","label":"happy"}
+{"id":"synth_0856","text":"Not: Bugün çok yorgundum ama güzel bir şey oldu","label":"happy"}
+{"id":"synth_0857","text":"Bugün çok yorgundum ama güzel bir şey oldu :(","label":"happy"}
+{"id":"synth_0858","text":"Bugün çok bitkindum ama güzel bir şey oldu","label":"happy"}
+{"id":"synth_0859","text":"Bugün çok yorgundum ama güzel bir şey oldu 😊","label":"happy"}
+{"id":"synth_0860","text":"Bugün çok yorgundum ama güzel bir şey oldu 😞","label":"happy"}
+{"id":"synth_0861","text":"Bugün çok yorgundum ama g","label":"happy"}
+{"id":"synth_0862","text":"Bugün çok yorgundum ama güzel bir şey oldu Bugün çok yorgundum","label":"happy"}
+{"id":"synth_0863","text":"Bugün çok yorgundum ama güzel bir şey oldu aslında","label":"happy"}
+{"id":"synth_0864","text":"Bugün çok yorgundum ama güzel bir şey oldu very happy","label":"happy"}
+{"id":"synth_0865","text":"Sinirlerim bozuldu, çok sinirliyim","label":"angry"}
+{"id":"synth_0866","text":"Dün Sinirlerim bozuldu, çok sinirliyim","label":"angry"}
+{"id":"synth_0867","text":"Sinirlerim bozuldu, çok sinirliyim sanırım.","label":"angry"}
+{"id":"synth_0868","text":"Sinirlerim bozuldu, çok öfkeliyim","label":"angry"}
+{"id":"synth_0869","text":"Sinirlerim bozuldu, çok sinirliyim 😊","label":"angry"}
+{"id":"synth_0870","text":"Sinirlerim bozuldu, çok sinirliyim 😞","label":"angry"}
+{"id":"synth_0871","text":"Sinirlerim bozuldu, çok sinirliyim Sinirlerim bozuldu, çok","label":"angry"}
+{"id":"synth_0872","text":"Sinirlerim bozuldu, çok sinirliyim aslında","label":"angry"}
+{"id":"synth_0873","text":"Sinirlerim bozuldu, çok sinirliyim feeling good","label":"angry"}
+{"id":"synth_0874","text":"So excited for what's next","label":"excited"}
+{"id":"synth_0875","text":"Akşam So excited for what's next","label":"excited"}
+{"id":"synth_0876","text":"So excited for what's next :)","label":"excited"}
+{"id":"synth_0877","text":"So excited for what's next 😊","label":"excited"}
+{"id":"synth_0878","text":"So excited for what's next 😞","label":"excited"}
+{"id":"synth_0879","text":"So excited for what's next So excited for","label":"excited"}
+{"id":"synth_0880","text":"So excited for what's next bunu söylemek istedim","label":"excited"}
+{"id":"synth_0881","text":"So excited for what's next so tired","label":"excited"}
+{"id":"synth_0882","text":"Bugün sinirliyim ama kontrol altındayım","label":"angry"}
+{"id":"synth_0883","text":"Akşam Bugün sinirliyim ama kontrol altındayım","label":"angry"}
+{"id":"synth_0884","text":"Bugün sinirliyim ama kontrol altındayım :(","label":"angry"}
+{"id":"synth_0885","text":"Bugün angryyim ama kontrol altındayım","label":"angry"}
+{"id":"synth_0886","text":"Bugün sinirliyim ama kontrol altındayım 😊","label":"angry"}
+{"id":"synth_0887","text":"Bugün sinirliyim ama kontrol altındayım 😞","label":"angry"}
+{"id":"synth_0888","text":"Bugün sinirliyim ama kontrol altındayım Bugün sinirliyim ama","label":"angry"}
+{"id":"synth_0889","text":"Bugün sinirliyim ama kontrol altındayım bilinçli olarak","label":"angry"}
+{"id":"synth_0890","text":"Bugün sinirliyim ama kontrol altındayım so tired","label":"angry"}
+{"id":"synth_0891","text":"Biraz üzüntülüyüm ama dayanıyorum","label":"sad"}
+{"id":"synth_0892","text":"Not: Biraz üzüntülüyüm ama dayanıyorum","label":"sad"}
+{"id":"synth_0893","text":"Biraz üzüntülüyüm ama dayanıyorum bir süredir böyle.","label":"sad"}
+{"id":"synth_0894","text":"Biraz üzüntülüyüm ama dayanıyorum 😊","label":"sad"}
+{"id":"synth_0895","text":"Biraz üzüntülüyüm ama dayanıyorum 😞","label":"sad"}
+{"id":"synth_0896","text":"Biraz üzüntülüyüm ama dayanıyorum Biraz üzüntülüyüm ama","label":"sad"}
+{"id":"synth_0897","text":"Biraz üzüntülüyüm ama dayanıyorum sanki","label":"sad"}
+{"id":"synth_0898","text":"Biraz üzüntülüyüm ama dayanıyorum so tired","label":"sad"}
+{"id":"synth_0899","text":"Just an ordinary day","label":"neutral"}
+{"id":"synth_0900","text":"Akşam Just an ordinary day","label":"neutral"}
+{"id":"synth_0901","text":"Just an ordinary day :)","label":"neutral"}
+{"id":"synth_0902","text":"Just an ordinary day 😊","label":"neutral"}
+{"id":"synth_0903","text":"Just an ordinary day 😞","label":"neutral"}
+{"id":"synth_0904","text":"Just an ordinary day Just an ordinary","label":"neutral"}
+{"id":"synth_0905","text":"Just an ordinary day aslında","label":"neutral"}
+{"id":"synth_0906","text":"Just an ordinary day excited","label":"neutral"}
+{"id":"synth_0907","text":"Bugün çok heyecanlıyım, yeni projeye başladım","label":"excited"}
+{"id":"synth_0908","text":"Akşam Bugün çok heyecanlıyım, yeni projeye başladım","label":"excited"}
+{"id":"synth_0909","text":"Bugün çok heyecanlıyım, yeni projeye başladım :(","label":"excited"}
+{"id":"synth_0910","text":"Bugün çok excitedyım, yeni projeye başladım","label":"excited"}
+{"id":"synth_0911","text":"Bugün çok heyecanlıyım, yeni projeye başladım 😊","label":"excited"}
+{"id":"synth_0912","text":"Bugün çok heyecanlıyım, yeni projeye başladım 😞","label":"excited"}
+{"id":"synth_0913","text":"Bugün çok heyecanlıyım, yen","label":"excited"}
+{"id":"synth_0914","text":"Bugün çok heyecanlıyım, yeni projeye başladım Bugün çok heyecanlıyım,","label":"excited"}
+{"id":"synth_0915","text":"Bugün çok heyecanlıyım, yeni projeye başladım bunu söylemek istedim","label":"excited"}
+{"id":"synth_0916","text":"Bugün çok heyecanlıyım, yeni projeye başladım feeling good","label":"excited"}
+{"id":"synth_0917","text":"A calm neutral day","label":"neutral"}
+{"id":"synth_0918","text":"Sabah A calm neutral day","label":"neutral"}
+{"id":"synth_0919","text":"A calm neutral day :(","label":"neutral"}
+{"id":"synth_0920","text":"A calm neutral day 😊","label":"neutral"}
+{"id":"synth_0921","text":"A calm neutral day 😞","label":"neutral"}
+{"id":"synth_0922","text":"A calm neutral day A calm neutral","label":"neutral"}
+{"id":"synth_0923","text":"A calm neutral day bilinçli olarak","label":"neutral"}
+{"id":"synth_0924","text":"A calm neutral day feeling good","label":"neutral"}
+{"id":"synth_0925","text":"Enerjim yüksek, heyecanlıyım","label":"excited"}
+{"id":"synth_0926","text":"Dün Enerjim yüksek, heyecanlıyım","label":"excited"}
+{"id":"synth_0927","text":"Enerjim yüksek, heyecanlıyım :)","label":"excited"}
+{"id":"synth_0928","text":"Enerjim yüksek, excitedyım","label":"excited"}
+{"id":"synth_0929","text":"Enerjim yüksek, heyecanlıyım 😊","label":"excited"}
+{"id":"synth_0930","text":"Enerjim yüksek, heyecanlıyım 😞","label":"excited"}
+{"id":"synth_0931","text":"Enerjim yüksek, heyecanlıyım Enerjim yüksek, heyecanlıyım","label":"excited"}
+{"id":"synth_0932","text":"Enerjim yüksek, heyecanlıyım aslında","label":"excited"}
+{"id":"synth_0933","text":"Enerjim yüksek, heyecanlıyım very happy","label":"excited"}
+{"id":"synth_0934","text":"Achieved my goal, feeling great","label":"happy"}
+{"id":"synth_0935","text":"Akşam Achieved my goal, feeling great","label":"happy"}
+{"id":"synth_0936","text":"Achieved my goal, feeling great - gerçekten böyle hissettim.","label":"happy"}
+{"id":"synth_0937","text":"Achieved my goal, feeling great 😊","label":"happy"}
+{"id":"synth_0938","text":"Achieved my goal, feeling great 😞","label":"happy"}
+{"id":"synth_0939","text":"Achieved my goal, feeling great Achieved my goal,","label":"happy"}
+{"id":"synth_0940","text":"Achieved my goal, feeling great sanki","label":"happy"}
+{"id":"synth_0941","text":"Achieved my goal, feeling great excited","label":"happy"}
+{"id":"synth_0942","text":"Mostly neutral today","label":"neutral"}
+{"id":"synth_0943","text":"Bugün Mostly neutral today","label":"neutral"}
+{"id":"synth_0944","text":"Mostly neutral today - gerçekten böyle hissettim.","label":"neutral"}
+{"id":"synth_0945","text":"Mostly neutral today 😊","label":"neutral"}
+{"id":"synth_0946","text":"Mostly neutral today 😞","label":"neutral"}
+{"id":"synth_0947","text":"Mostly neutral today Mostly neutral today","label":"neutral"}
+{"id":"synth_0948","text":"Mostly neutral today sanki","label":"neutral"}
+{"id":"synth_0949","text":"Mostly neutral today a bit sad","label":"neutral"}
+{"id":"synth_0950","text":"I need a nap","label":"tired"}
+{"id":"synth_0951","text":"Şimdi I need a nap","label":"tired"}
+{"id":"synth_0952","text":"I need a nap :)","label":"tired"}
+{"id":"synth_0953","text":"I need a nap 😊","label":"tired"}
+{"id":"synth_0954","text":"I need a nap 😞","label":"tired"}
+{"id":"synth_0955","text":"I need a nap I need a","label":"tired"}
+{"id":"synth_0956","text":"I need a nap aslında","label":"tired"}
+{"id":"synth_0957","text":"I need a nap so tired","label":"tired"}
+{"id":"synth_0958","text":"Sevdiklerimle vakit geçirmek beni mutlu etti","label":"happy"}
+{"id":"synth_0959","text":"Şimdi Sevdiklerimle vakit geçirmek beni mutlu etti","label":"happy"}
+{"id":"synth_0960","text":"Sevdiklerimle vakit geçirmek beni mutlu etti :(","label":"happy"}
+{"id":"synth_0961","text":"Sevdiklerimle vakit geçirmek beni memnun etti","label":"happy"}
+{"id":"synth_0962","text":"Sevdiklerimle vakit geçirmek beni mutlu etti 😊","label":"happy"}
+{"id":"synth_0963","text":"Sevdiklerimle vakit geçirmek beni mutlu etti 😞","label":"happy"}
+{"id":"synth_0964","text":"Sevdiklerimle vakit geçirm","label":"happy"}
+{"id":"synth_0965","text":"Sevdiklerimle vakit geçirmek beni mutlu etti Sevdiklerimle vakit geçirmek","label":"happy"}
+{"id":"synth_0966","text":"Sevdiklerimle vakit geçirmek beni mutlu etti bilinçli olarak","label":"happy"}
+{"id":"synth_0967","text":"Sevdiklerimle vakit geçirmek beni mutlu etti a bit sad","label":"happy"}
+{"id":"synth_0968","text":"Sakin ve nötrüm","label":"neutral"}
+{"id":"synth_0969","text":"Şimdi Sakin ve nötrüm","label":"neutral"}
+{"id":"synth_0970","text":"Sakin ve nötrüm :)","label":"neutral"}
+{"id":"synth_0971","text":"Sakin ve nötrüm 😊","label":"neutral"}
+{"id":"synth_0972","text":"Sakin ve nötrüm 😞","label":"neutral"}
+{"id":"synth_0973","text":"Sakin ve nötrüm Sakin ve nötrüm","label":"neutral"}
+{"id":"synth_0974","text":"Sakin ve nötrüm aslında","label":"neutral"}
+{"id":"synth_0975","text":"Sakin ve nötrüm a bit sad","label":"neutral"}
+{"id":"synth_0976","text":"Finally finished and proud","label":"happy"}
+{"id":"synth_0977","text":"Dün Finally finished and proud","label":"happy"}
+{"id":"synth_0978","text":"Finally finished and proud :)","label":"happy"}
+{"id":"synth_0979","text":"Finally finished and proud 😊","label":"happy"}
+{"id":"synth_0980","text":"Finally finished and proud 😞","label":"happy"}
+{"id":"synth_0981","text":"Finally finished and proud Finally finished and","label":"happy"}
+{"id":"synth_0982","text":"Finally finished and proud bilinçli olarak","label":"happy"}
+{"id":"synth_0983","text":"Finally finished and proud very happy","label":"happy"}
+{"id":"synth_0984","text":"Yorgunum ama mutlu da hissediyorum","label":"happy"}
+{"id":"synth_0985","text":"Not: Yorgunum ama mutlu da hissediyorum","label":"happy"}
+{"id":"synth_0986","text":"Yorgunum ama mutlu da hissediyorum :(","label":"happy"}
+{"id":"synth_0987","text":"Yorgunum ama happy da hissediyorum","label":"happy"}
+{"id":"synth_0988","text":"Yorgunum ama mutlu da hissediyorum 😊","label":"happy"}
+{"id":"synth_0989","text":"Yorgunum ama mutlu da hissediyorum 😞","label":"happy"}
+{"id":"synth_0990","text":"Yorgunum ama mutlu da hissediyorum Yorgunum ama mutlu","label":"happy"}
+{"id":"synth_0991","text":"Yorgunum ama mutlu da hissediyorum bilinçli olarak","label":"happy"}
+{"id":"synth_0992","text":"Yorgunum ama mutlu da hissediyorum a bit sad","label":"happy"}
+{"id":"synth_0993","text":"I had a bad day but learned a lot","label":"neutral"}
+{"id":"synth_0994","text":"Sabah I had a bad day but learned a lot","label":"neutral"}
+{"id":"synth_0995","text":"I had a bad day but learned a lot sanırım.","label":"neutral"}
+{"id":"synth_0996","text":"I had a bad day but learned a lot 😊","label":"neutral"}
+{"id":"synth_0997","text":"I had a bad day but learned a lot 😞","label":"neutral"}
+{"id":"synth_0998","text":"I had a bad day but learned a lot I had a","label":"neutral"}
+{"id":"synth_0999","text":"I had a bad day but learned a lot sanki","label":"neutral"}
+{"id":"synth_1000","text":"I had a bad day but learned a lot so tired","label":"neutral"}

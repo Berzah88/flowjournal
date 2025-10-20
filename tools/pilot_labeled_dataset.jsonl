@@ -1,0 +1,164 @@
+{"id":"p001","text":"Bugün harika hissediyorum, çok mutluyum","label":"happy","language":"tr"}
+{"id":"p002","text":"I aced my meeting and feel proud","label":"happy","language":"en"}
+{"id":"p003","text":"Kahvemi içerken çok mutluyum","label":"happy","language":"tr"}
+{"id":"p004","text":"Feeling great after finishing the task","label":"happy","language":"en"}
+{"id":"p005","text":"Mutlu ve huzurluyum bugün","label":"happy","language":"tr"}
+{"id":"p006","text":"My day was wonderful and I'm thankful","label":"happy","language":"en"}
+{"id":"p007","text":"Sevdiklerimle vakit geçirmek beni mutlu etti","label":"happy","language":"tr"}
+{"id":"p008","text":"This small win made me so happy","label":"happy","language":"en"}
+{"id":"p009","text":"Güzel haberler aldım, yüzüm gülüyor","label":"happy","language":"tr"}
+{"id":"p010","text":"I feel content and satisfied","label":"happy","language":"en"}
+
+{"id":"p011","text":"Çok yorgunum, bütün gün ayakta kaldım","label":"tired","language":"tr"}
+{"id":"p012","text":"I'm exhausted after the long trip","label":"tired","language":"en"}
+{"id":"p013","text":"Uyumak istiyorum, enerji yok","label":"tired","language":"tr"}
+{"id":"p014","text":"So tired, can't focus","label":"tired","language":"en"}
+{"id":"p015","text":"Vücudum çok yoruldu bugün","label":"tired","language":"tr"}
+{"id":"p016","text":"Drained after work","label":"tired","language":"en"}
+{"id":"p017","text":"Kafam bulanıyor, sadece dinlenmek istiyorum","label":"tired","language":"tr"}
+{"id":"p018","text":"Falling asleep at my desk","label":"tired","language":"en"}
+{"id":"p019","text":"Gün boyunca uykuya meyilliyim","label":"tired","language":"tr"}
+{"id":"p020","text":"I need a nap","label":"tired","language":"en"}
+
+{"id":"p021","text":"Çok üzgünüm, kötü haber aldım","label":"sad","language":"tr"}
+{"id":"p022","text":"I'm feeling down today","label":"sad","language":"en"}
+{"id":"p023","text":"Kalbim kırıldı, ağlamak istiyorum","label":"sad","language":"tr"}
+{"id":"p024","text":"Feeling low and unmotivated","label":"sad","language":"en"}
+{"id":"p025","text":"Bugün kendimi yalnız hissediyorum","label":"sad","language":"tr"}
+{"id":"p026","text":"Lost my energy and feel sad","label":"sad","language":"en"}
+{"id":"p027","text":"Bir kayıp yaşadım ve üzgünüm","label":"sad","language":"tr"}
+{"id":"p028","text":"Grieving and tired emotionally","label":"sad","language":"en"}
+{"id":"p029","text":"İçimde boşluk var, mutsuzum","label":"sad","language":"tr"}
+{"id":"p030","text":"I feel melancholic today","label":"sad","language":"en"}
+
+{"id":"p031","text":"Çok sinirliyim, her şey ters gidiyor","label":"angry","language":"tr"}
+{"id":"p032","text":"I'm furious about the meeting","label":"angry","language":"en"}
+{"id":"p033","text":"Sinirim geçmiyor, çok kızgınım","label":"angry","language":"tr"}
+{"id":"p034","text":"This situation makes me angry","label":"angry","language":"en"}
+{"id":"p035","text":"Haksızlığa tahammülüm kalmadı","label":"angry","language":"tr"}
+{"id":"p036","text":"I feel outraged","label":"angry","language":"en"}
+{"id":"p037","text":"Sinirlerim bozuldu, çok sinirliyim","label":"angry","language":"tr"}
+{"id":"p038","text":"I'm mad and fed up","label":"angry","language":"en"}
+{"id":"p039","text":"Beni sinirlendiren bir haber aldım","label":"angry","language":"tr"}
+{"id":"p040","text":"Angry and upset","label":"angry","language":"en"}
+
+{"id":"p041","text":"Bugün nötrüm, özel bir şey yok","label":"neutral","language":"tr"}
+{"id":"p042","text":"Just an ordinary day","label":"neutral","language":"en"}
+{"id":"p043","text":"Ne hissettiğimi bilmiyorum","label":"neutral","language":"tr"}
+{"id":"p044","text":"Nothing special today","label":"neutral","language":"en"}
+{"id":"p045","text":"Normal bir gündü, değişen bir şey yok","label":"neutral","language":"tr"}
+{"id":"p046","text":"So-so day","label":"neutral","language":"en"}
+{"id":"p047","text":"Duygularım karışık, nötrüm","label":"neutral","language":"tr"}
+{"id":"p048","text":"Neither good nor bad","label":"neutral","language":"en"}
+{"id":"p049","text":"Bugün tarafsızım","label":"neutral","language":"tr"}
+{"id":"p050","text":"No strong feelings","label":"neutral","language":"en"}
+
+{"id":"p051","text":"Bugün çok heyecanlıyım, yeni projeye başladım","label":"excited","language":"tr"}
+{"id":"p052","text":"Can't wait for the trip, so excited","label":"excited","language":"en"}
+{"id":"p053","text":"Heyecan içindeyim, çok enerjim var","label":"excited","language":"tr"}
+{"id":"p054","text":"Thrilled about the opportunity","label":"excited","language":"en"}
+{"id":"p055","text":"Yeni başlangıç beni heyecanlandırdı","label":"excited","language":"tr"}
+{"id":"p056","text":"Pumped and ready","label":"excited","language":"en"}
+{"id":"p057","text":"Enerjim yüksek, heyecanlıyım","label":"excited","language":"tr"}
+{"id":"p058","text":"So excited for what's next","label":"excited","language":"en"}
+{"id":"p059","text":"Kalbim pır pır, heyecanlıyım","label":"excited","language":"tr"}
+{"id":"p060","text":"Can't wait to start","label":"excited","language":"en"}
+
+{"id":"p061","text":"Biraz üzgün ama genel olarak iyiyim","label":"neutral","language":"tr"}
+{"id":"p062","text":"Yorgunum ama mutlu da hissediyorum","label":"happy","language":"tr"}
+{"id":"p063","text":"Mutluyum ama biraz tedirginim","label":"happy","language":"tr"}
+{"id":"p064","text":"Happy but tired","label":"happy","language":"en"}
+{"id":"p065","text":"Kötü haber aldım ama yine de umutluyum","label":"neutral","language":"tr"}
+{"id":"p066","text":"I had a bad day but learned a lot","label":"neutral","language":"en"}
+{"id":"p067","text":"Bugün çok yorgundum ama güzel bir şey oldu","label":"happy","language":"tr"}
+{"id":"p068","text":"Sad about some news but okay overall","label":"neutral","language":"en"}
+{"id":"p069","text":"Biraz moralim bozuk ama idare ediyorum","label":"neutral","language":"tr"}
+{"id":"p070","text":"Mixed feelings today","label":"neutral","language":"en"}
+
+{"id":"p071","text":"Bugün sinirliyim ama kontrol altındayım","label":"angry","language":"tr"}
+{"id":"p072","text":"Annoyed but handling it","label":"angry","language":"en"}
+{"id":"p073","text":"Yorgun ve biraz üzgünüm","label":"tired","language":"tr"}
+{"id":"p074","text":"Exhausted and sad","label":"tired","language":"en"}
+{"id":"p075","text":"İyi hissetmiyorum ama umutluyum","label":"neutral","language":"tr"}
+{"id":"p076","text":"Not feeling great but fine","label":"neutral","language":"en"}
+{"id":"p077","text":"Bugün sınavdan önce çok heyecanlıydım","label":"excited","language":"tr"}
+{"id":"p078","text":"Scared but excited","label":"excited","language":"en"}
+{"id":"p079","text":"Uzun sürdü ama sonunda mutluyum","label":"happy","language":"tr"}
+{"id":"p080","text":"Finally finished and proud","label":"happy","language":"en"}
+
+{"id":"p081","text":"Dünden daha iyi hissediyorum","label":"happy","language":"tr"}
+{"id":"p082","text":"Today is better than yesterday","label":"happy","language":"en"}
+{"id":"p083","text":"Kendimi boş hissediyorum","label":"sad","language":"tr"}
+{"id":"p084","text":"I feel empty","label":"sad","language":"en"}
+{"id":"p085","text":"Çok sinirlendim, adalet istiyorum","label":"angry","language":"tr"}
+{"id":"p086","text":"Outraged by the news","label":"angry","language":"en"}
+{"id":"p087","text":"Sakinim, huzurluyum","label":"neutral","language":"tr"}
+{"id":"p088","text":"Calm and collected","label":"neutral","language":"en"}
+{"id":"p089","text":"Yorgun ama rahatlamış hissediyorum","label":"tired","language":"tr"}
+{"id":"p090","text":"Tired but relieved","label":"tired","language":"en"}
+
+{"id":"p091","text":"Mutluyum çünkü hedefe ulaştım","label":"happy","language":"tr"}
+{"id":"p092","text":"Couldn't be happier","label":"happy","language":"en"}
+{"id":"p093","text":"Üzgünüm çünkü birini kaybettim","label":"sad","language":"tr"}
+{"id":"p094","text":"Grieving and sorrowful","label":"sad","language":"en"}
+{"id":"p095","text":"Sinirliyim ve hayal kırıklığına uğradım","label":"angry","language":"tr"}
+{"id":"p096","text":"Disappointed and angry","label":"angry","language":"en"}
+{"id":"p097","text":"Bugün çok enerji doluyum","label":"excited","language":"tr"}
+{"id":"p098","text":"Full of energy today","label":"excited","language":"en"}
+{"id":"p099","text":"Yorgun ama mutlu","label":"happy","language":"tr"}
+{"id":"p100","text":"Tired yet content","label":"happy","language":"en"}
+
+{"id":"p101","text":"Kafam karışık, duygularım karışık","label":"neutral","language":"tr"}
+{"id":"p102","text":"Not sure how I feel","label":"neutral","language":"en"}
+{"id":"p103","text":"Biraz kırgınım ama iyiyim","label":"neutral","language":"tr"}
+{"id":"p104","text":"A bit upset but okay","label":"neutral","language":"en"}
+{"id":"p105","text":"Bugün mutluyum, ama geçmişi düşünüyorum","label":"happy","language":"tr"}
+{"id":"p106","text":"Happy today despite the past","label":"happy","language":"en"}
+{"id":"p107","text":"Çok yorgunum, uyumak istiyorum","label":"tired","language":"tr"}
+{"id":"p108","text":"I can't keep my eyes open","label":"tired","language":"en"}
+{"id":"p109","text":"Üzgünüm ama ilerleme kaydettim","label":"neutral","language":"tr"}
+{"id":"p110","text":"Sad but making progress","label":"neutral","language":"en"}
+
+{"id":"p111","text":"Heyecanlıyım ama endişeliyim","label":"excited","language":"tr"}
+{"id":"p112","text":"Excited and nervous","label":"excited","language":"en"}
+{"id":"p113","text":"Kızgınım ama sakin kalıyorum","label":"angry","language":"tr"}
+{"id":"p114","text":"Angry but composed","label":"angry","language":"en"}
+{"id":"p115","text":"Yorgun hissediyorum, enerji düşük","label":"tired","language":"tr"}
+{"id":"p116","text":"Low energy today","label":"tired","language":"en"}
+{"id":"p117","text":"Mutluyum çünkü bugünü değerlendirdim","label":"happy","language":"tr"}
+{"id":"p118","text":"Pleased with today's progress","label":"happy","language":"en"}
+{"id":"p119","text":"Üzgünüm, yalnız hissediyorum","label":"sad","language":"tr"}
+{"id":"p120","text":"Lonely and sad","label":"sad","language":"en"}
+
+{"id":"p121","text":"Yeni bir şey öğrendim, heyecanlıyım","label":"excited","language":"tr"}
+{"id":"p122","text":"Learning something new made my day","label":"excited","language":"en"}
+{"id":"p123","text":"Çok sinirliyim, haksızlık var","label":"angry","language":"tr"}
+{"id":"p124","text":"There's injustice and I'm angry","label":"angry","language":"en"}
+{"id":"p125","text":"Yorgun ama mutluyum","label":"happy","language":"tr"}
+{"id":"p126","text":"Tired but grateful","label":"happy","language":"en"}
+{"id":"p127","text":"Bugün duygularım genelde nötr","label":"neutral","language":"tr"}
+{"id":"p128","text":"Mostly neutral today","label":"neutral","language":"en"}
+{"id":"p129","text":"Üzgünüm ama umutluyum","label":"neutral","language":"tr"}
+{"id":"p130","text":"Sad but hopeful","label":"neutral","language":"en"}
+
+{"id":"p131","text":"Heyecanlıyım çünkü seyahat planladım","label":"excited","language":"tr"}
+{"id":"p132","text":"Excited about the trip","label":"excited","language":"en"}
+{"id":"p133","text":"Mutluyum, başarı elde ettim","label":"happy","language":"tr"}
+{"id":"p134","text":"Achieved my goal, feeling great","label":"happy","language":"en"}
+{"id":"p135","text":"Yorgun ve biraz üzgün","label":"tired","language":"tr"}
+{"id":"p136","text":"Exhausted and a little sad","label":"tired","language":"en"}
+{"id":"p137","text":"Sakin ve nötrüm","label":"neutral","language":"tr"}
+{"id":"p138","text":"Calm and neutral","label":"neutral","language":"en"}
+{"id":"p139","text":"Sinirliyim ama kontrolümdeyim","label":"angry","language":"tr"}
+{"id":"p140","text":"Upset but controlled","label":"angry","language":"en"}
+
+{"id":"p141","text":"Mutluyum, küçük bir kutlama yaptım","label":"happy","language":"tr"}
+{"id":"p142","text":"Small celebration, I'm happy","label":"happy","language":"en"}
+{"id":"p143","text":"Yorgun ama işleri bitirdim","label":"tired","language":"tr"}
+{"id":"p144","text":"Tired but finished my work","label":"tired","language":"en"}
+{"id":"p145","text":"Biraz üzüntülüyüm ama dayanıyorum","label":"sad","language":"tr"}
+{"id":"p146","text":"A little sad but coping","label":"sad","language":"en"}
+{"id":"p147","text":"Heyecanlıyım, yeni fikirlerim var","label":"excited","language":"tr"}
+{"id":"p148","text":"Excited with ideas","label":"excited","language":"en"}
+{"id":"p149","text":"Nötr hissediyorum, sakin bir gün","label":"neutral","language":"tr"}
+{"id":"p150","text":"A calm neutral day","label":"neutral","language":"en"}

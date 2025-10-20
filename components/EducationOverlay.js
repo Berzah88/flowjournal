@@ -104,6 +104,11 @@ export default function EducationOverlay({ onAddProject, onAddMilestone, hideOve
     skipEducation();
   };
 
+  const handleClose = () => {
+    // Kullanıcı kapatmak istediğinde eğitim tamamen kapatılıyor
+    completeEducation();
+  };
+
   if (!isEducationActive || !currentStep) {
     return null;
   }
@@ -156,6 +161,19 @@ export default function EducationOverlay({ onAddProject, onAddMilestone, hideOve
             backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
           }
         ]}>
+          {/* Close Button - Sağ üst köşede */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleClose}
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
+            <Ionicons
+              name="close"
+              size={18}
+              color={theme.name === 'dark' ? '#8E8E93' : '#7f8c8d'}
+            />
+          </TouchableOpacity>
+
           {/* Icon */}
           <View style={[styles.tooltipIconContainer, { backgroundColor: config.color + '20' }]}>
             <Ionicons name={config.icon} size={24} color={config.color} />
@@ -217,6 +235,18 @@ const styles = StyleSheet.create({
     elevation: 20,
     width: '100%', // Tam genişlik
     minHeight: 160, // Sabit minimum yükseklik
+    position: 'relative', // Position relative ekliyorum
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   tooltipIconContainer: {
     width: 40,

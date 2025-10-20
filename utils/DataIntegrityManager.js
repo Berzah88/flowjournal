@@ -7,12 +7,11 @@ class DataIntegrityManager {
     try {
       const timestamp = Date.now();
       const backupKey = `${STORAGE_KEYS.TASKS}_backup_${timestamp}`;
-      
-      // Veriyi şifrele (basit base64 encoding)
-      const encryptedData = btoa(JSON.stringify(data));
-      
-      // Backup oluştur
-      await AsyncStorage.setItem(backupKey, encryptedData);
+      // Store as plain JSON (btoa may not exist in all RN runtimes)
+      const serialized = JSON.stringify(data);
+      await AsyncStorage.setItem(backupKey, serialized);
+      // Also write a compatibility backup without timestamp which TaskContext expects
+      await AsyncStorage.setItem(`${STORAGE_KEYS.TASKS}_backup`, serialized);
       
       // Eski backup'ları temizle (son 5 backup'ı sakla)
       await this.cleanOldBackups();
@@ -44,7 +43,16 @@ class DataIntegrityManager {
   static async validateDataIntegrity() {
     try {
       const mainData = await AsyncStorage.getItem(STORAGE_KEYS.TASKS);
-      const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+      // Try compatibility backup first, then look for latest timestamped backup
+      let backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+      if (!backupData) {
+        const keys = await AsyncStorage.getAllKeys();
+        const backupKeys = keys.filter(k => k.startsWith(`${STORAGE_KEYS.TASKS}_backup_`));
+        if (backupKeys.length > 0) {
+          const latest = backupKeys.sort().reverse()[0];
+          backupData = await AsyncStorage.getItem(latest);
+        }
+      }
       
       if (!mainData && !backupData) {
         return { isValid: true, hasData: false };
@@ -65,7 +73,18 @@ class DataIntegrityManager {
         if (backupData) JSON.parse(backupData);
         backupValid = true;
       } catch (e) {
-        console.warn('Backup data corrupted');
+        // Maybe backup was created with old base64 encoding (btoa). Try to detect and decode.
+        try {
+          if (backupData) {
+            // atob may not exist in RN, provide fallback
+            const atob = (str) => Buffer.from(str, 'base64').toString('utf8');
+            const decoded = atob(backupData);
+            JSON.parse(decoded);
+            backupValid = true;
+          }
+        } catch (e2) {
+          console.warn('Backup data corrupted or unknown encoding');
+        }
       }
       
       return {
@@ -89,7 +108,16 @@ class DataIntegrityManager {
       }
       
       // Try to recover from backup
-      const backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+      // Try compatibility backup first, then the latest timestamped backup
+      let backupData = await AsyncStorage.getItem(`${STORAGE_KEYS.TASKS}_backup`);
+      if (!backupData) {
+        const keys = await AsyncStorage.getAllKeys();
+        const backupKeys = keys.filter(k => k.startsWith(`${STORAGE_KEYS.TASKS}_backup_`));
+        if (backupKeys.length > 0) {
+          const latest = backupKeys.sort().reverse()[0];
+          backupData = await AsyncStorage.getItem(latest);
+        }
+      }
       if (backupData) {
         try {
           const parsedBackup = JSON.parse(backupData);

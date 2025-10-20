@@ -9,6 +9,7 @@ const MainHeader = ({
   headerAnimatedStyle, 
   headerElementsStyle, 
   titleAnimatedStyle, 
+  menuButtonStyle,
   onMenuPress 
 }) => {
   return (
@@ -32,7 +33,7 @@ const MainHeader = ({
             </AnimatedReanimated.View>
           </View>
           <View style={styles.headerActions}>
-            <AnimatedReanimated.View style={headerElementsStyle}>
+            <AnimatedReanimated.View style={menuButtonStyle}>
               <TouchableOpacity 
                 style={[
                   styles.menuButton,

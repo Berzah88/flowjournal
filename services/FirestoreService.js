@@ -111,16 +111,20 @@ class FirestoreService {
         return;
       }
 
+      // Undefined değerleri temizle
+      const cleanProject = this.removeUndefinedFields(project);
+
       const projectData = {
-        id: project.id,
-        title: project.title,
-        startDate: Timestamp.fromDate(new Date(project.startDate)),
-        endDate: Timestamp.fromDate(new Date(project.endDate)),
-        status: project.done ? 'completed' : 'active',
-        milestones: project.milestones || [],
-        journals: project.journals || [],
-        color: project.color || '#4CAF50',
-        icon: project.icon || '📋',
+        id: cleanProject.id,
+        title: cleanProject.title,
+        startDate: Timestamp.fromDate(new Date(cleanProject.startDate)),
+        endDate: Timestamp.fromDate(new Date(cleanProject.endDate)),
+        status: cleanProject.done ? 'completed' : 'active',
+        milestones: cleanProject.milestones || [],
+        journalEntries: cleanProject.journalEntries || [],
+        color: cleanProject.color || '#4CAF50',
+        icon: cleanProject.icon || '📋',
+        done: cleanProject.done || false,
         notificationsSent: {
           projectDeadlines: true,
           milestoneReminders: true
@@ -129,12 +133,13 @@ class FirestoreService {
         updatedAt: serverTimestamp()
       };
 
-      const projectDocRef = doc(this.db, 'users', this.currentUserId, 'projects', project.id.toString());
+      const projectDocRef = doc(this.db, 'users', this.currentUserId, 'projects', cleanProject.id.toString());
       await setDoc(projectDocRef, projectData);
 
-      console.log('✅ Firestore: Proje kaydedildi:', project.title);
+      console.log('✅ Firestore: Proje kaydedildi:', cleanProject.title);
     } catch (error) {
       console.error('❌ Firestore: Proje kaydetme hatası:', error);
+      console.error('❌ Hata detayı:', error.message);
       throw error;
     }
   }
@@ -165,17 +170,23 @@ class FirestoreService {
         return;
       }
 
+      // Undefined değerleri temizle (Firestore undefined kabul etmez)
+      const cleanUpdates = this.removeUndefinedFields(updates);
+
       const updateData = {
-        ...updates,
+        ...cleanUpdates,
         updatedAt: serverTimestamp()
       };
 
       // Tarih alanlarını Timestamp'e çevir
-      if (updates.startDate) {
-        updateData.startDate = Timestamp.fromDate(new Date(updates.startDate));
+      if (cleanUpdates.startDate) {
+        updateData.startDate = Timestamp.fromDate(new Date(cleanUpdates.startDate));
       }
-      if (updates.endDate) {
-        updateData.endDate = Timestamp.fromDate(new Date(updates.endDate));
+      if (cleanUpdates.endDate) {
+        updateData.endDate = Timestamp.fromDate(new Date(cleanUpdates.endDate));
+      }
+      if (cleanUpdates.completedAt) {
+        updateData.completedAt = Timestamp.fromDate(new Date(cleanUpdates.completedAt));
       }
 
       // set() with merge kullan - document yoksa oluşturur, varsa günceller
@@ -185,9 +196,37 @@ class FirestoreService {
       console.log('✅ Firestore: Proje güncellendi');
     } catch (error) {
       console.error('❌ Firestore: Proje güncelleme hatası:', error);
+      console.error('❌ Hata detayı:', error.message);
       // Hata olsa bile devam et - AsyncStorage'da zaten güncellendi
       console.warn('⚠️ Firestore sync başarısız ama AsyncStorage güncel');
     }
+  }
+
+  // Helper: Undefined alanları recursive olarak temizle
+  removeUndefinedFields(obj) {
+    if (obj === null || obj === undefined) {
+      return null;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.removeUndefinedFields(item)).filter(item => item !== null && item !== undefined);
+    }
+
+    if (typeof obj === 'object') {
+      const cleaned = {};
+      Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        if (value !== undefined) {
+          const cleanedValue = this.removeUndefinedFields(value);
+          if (cleanedValue !== null && cleanedValue !== undefined) {
+            cleaned[key] = cleanedValue;
+          }
+        }
+      });
+      return cleaned;
+    }
+
+    return obj;
   }
 
   // Tüm projeleri Firestore'dan al
@@ -210,35 +249,168 @@ class FirestoreService {
         };
       });
 
-      console.log('✅ Firestore: Projeler alındı:', projects.length);
-      return projects;
+      // SADECE AKTİF PROJELERİ DÖNDÜR
+      // Basit ve net filtreleme mantığı:
+      // - status: 'completed' olanları hariç tut
+      // - completed: true olanları hariç tut
+      // - Diğer tüm projeleri aktif kabul et
+      const activeProjects = projects.filter(p => {
+        // status alanı varsa completed mı kontrol et
+        if (p.status === 'completed') return false;
+
+        // status alanı yoksa completed field'ına bak
+        if (p.completed === true) return false;
+
+        // Diğer tüm projeleri aktif kabul et
+        return true;
+      });
+
+      console.log('✅ Firestore: Aktif projeler alındı:', activeProjects.length, '(Toplam:', projects.length, ')');
+
+      // Cache problemi kontrolü için timestamp bilgisi
+      console.log('🕒 Veri yükleme zamanı:', new Date().toISOString());
+
+      // Detaylı debug bilgisi
+      console.log('📋 Tüm proje detayları:');
+      projects.forEach((p, index) => {
+        console.log(`  ${index + 1}. ${p.title} - status: ${p.status}, completed: ${p.completed}`);
+      });
+
+      console.log('📋 Aktif proje başlıkları:', activeProjects.map(p => `${p.title}(${p.status || 'no-status'}, ${p.completed})`).join(', '));
+
+      // Cache temizleme önerisi
+      if (activeProjects.length !== 2) {
+        console.warn('⚠️ Cache problemi olabilir! Firestore hala eski veriyi döndürüyor.');
+        console.log('💡 Çözüm: Uygulamayı yeniden başlatın veya birkaç dakika bekleyin.');
+      }
+       // Return the active projects for callers
+       return activeProjects;
     } catch (error) {
       console.error('❌ Firestore: Projeler alma hatası:', error);
       return [];
     }
   }
 
-  // Kullanıcı bilgilerini al
-  async getUserInfo() {
+  // Tüm milestone'ları Firestore'dan al
+  async getAllMilestones() {
     try {
       if (!this.currentUserId) {
         console.warn('⚠️ Firestore: Kullanıcı ID yok');
-        return null;
+        return [];
       }
 
-      const userDocRef = doc(this.db, 'users', this.currentUserId);
-      const docSnapshot = await getDoc(userDocRef);
+      const milestonesCollectionRef = collection(this.db, 'users', this.currentUserId, 'milestones');
+      const snapshot = await getDocs(milestonesCollectionRef);
 
-      if (docSnapshot.exists()) {
-        console.log('✅ Firestore: Kullanıcı bilgileri alındı');
-        return docSnapshot.data();
-      }
+      const milestones = snapshot.docs.map(docSnapshot => {
+        const data = docSnapshot.data();
+        return {
+          ...data,
+          startDate: data.startDate?.toDate?.()?.toISOString() || data.startDate,
+          endDate: data.endDate?.toDate?.()?.toISOString() || data.endDate,
+          completedAt: data.completedAt?.toDate?.()?.toISOString() || data.completedAt,
+        };
+      });
 
-      console.log('⚠️ Firestore: Kullanıcı bulunamadı');
-      return null;
+      console.log('✅ Firestore: Milestone\'lar alındı:', milestones.length);
+      return milestones;
     } catch (error) {
-      console.error('❌ Firestore: Kullanıcı bilgileri alma hatası:', error);
-      return null;
+      console.error('❌ Firestore: Milestone\'lar alma hatası:', error);
+      return [];
+    }
+  }
+
+  // Milestone'ı Firestore'a kaydet
+  async saveMilestone(milestone, taskId) {
+    try {
+      if (!this.currentUserId) {
+        console.warn('⚠️ Firestore: Kullanıcı ID yok');
+        return;
+      }
+
+      // Undefined değerleri temizle
+      const cleanMilestone = this.removeUndefinedFields(milestone);
+
+      const milestoneData = {
+        id: cleanMilestone.id,
+        title: cleanMilestone.title,
+        description: cleanMilestone.description || '',
+        startDate: cleanMilestone.startDate ? Timestamp.fromDate(new Date(cleanMilestone.startDate)) : null,
+        endDate: cleanMilestone.endDate ? Timestamp.fromDate(new Date(cleanMilestone.endDate)) : null,
+        completed: cleanMilestone.completed || false,
+        completedAt: cleanMilestone.completedAt ? Timestamp.fromDate(new Date(cleanMilestone.completedAt)) : null,
+        parentId: cleanMilestone.parentId || null,
+        taskId: taskId || null,
+        journalEntries: cleanMilestone.journalEntries || [],
+        media: cleanMilestone.media || [],
+        location: cleanMilestone.location || null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      const milestoneDocRef = doc(this.db, 'users', this.currentUserId, 'milestones', cleanMilestone.id.toString());
+      await setDoc(milestoneDocRef, milestoneData);
+
+      console.log('✅ Firestore: Milestone kaydedildi:', cleanMilestone.title);
+    } catch (error) {
+      console.error('❌ Firestore: Milestone kaydetme hatası:', error);
+      console.error('❌ Hata detayı:', error.message);
+      throw error;
+    }
+  }
+
+  // Milestone'ı güncelle
+  async updateMilestone(milestoneId, updates) {
+    try {
+      if (!this.currentUserId) {
+        console.warn('⚠️ Firestore: Kullanıcı ID yok');
+        return;
+      }
+
+      // Undefined değerleri temizle
+      const cleanUpdates = this.removeUndefinedFields(updates);
+
+      const updateData = {
+        ...cleanUpdates,
+        updatedAt: serverTimestamp()
+      };
+
+      // Tarih alanlarını Timestamp'e çevir
+      if (cleanUpdates.startDate) {
+        updateData.startDate = Timestamp.fromDate(new Date(cleanUpdates.startDate));
+      }
+      if (cleanUpdates.endDate) {
+        updateData.endDate = Timestamp.fromDate(new Date(cleanUpdates.endDate));
+      }
+      if (cleanUpdates.completedAt) {
+        updateData.completedAt = Timestamp.fromDate(new Date(cleanUpdates.completedAt));
+      }
+
+      const milestoneDocRef = doc(this.db, 'users', this.currentUserId, 'milestones', milestoneId.toString());
+      await setDoc(milestoneDocRef, updateData, { merge: true });
+
+      console.log('✅ Firestore: Milestone güncellendi');
+    } catch (error) {
+      console.error('❌ Firestore: Milestone güncelleme hatası:', error);
+      console.error('❌ Hata detayı:', error.message);
+    }
+  }
+
+  // Milestone'ı sil
+  async deleteMilestone(milestoneId) {
+    try {
+      if (!this.currentUserId) {
+        console.warn('⚠️ Firestore: Kullanıcı ID yok');
+        return;
+      }
+
+      const milestoneDocRef = doc(this.db, 'users', this.currentUserId, 'milestones', milestoneId.toString());
+      await deleteDoc(milestoneDocRef);
+
+      console.log('✅ Firestore: Milestone silindi');
+    } catch (error) {
+      console.error('❌ Firestore: Milestone silme hatası:', error);
+      throw error;
     }
   }
 }

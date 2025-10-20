@@ -1,0 +1,308 @@
+{
+  "total": 30,
+  "correct": 15,
+  "accuracy": 0.5,
+  "perLang": {
+    "en": {
+      "total": 16,
+      "correct": 7
+    },
+    "tr": {
+      "total": 14,
+      "correct": 8
+    }
+  },
+  "confusion": {
+    "happy": {
+      "proud": 1,
+      "happy": 1,
+      "sad": 1
+    },
+    "tired": {
+      "tired": 2,
+      "sad": 1
+    },
+    "angry": {
+      "angry": 1,
+      "neutral": 1
+    },
+    "natural": {
+      "neutral": 3
+    },
+    "anxious": {
+      "anxious": 2
+    },
+    "proud": {
+      "proud": 1,
+      "happy": 1
+    },
+    "lonely": {
+      "happy": 1,
+      "lonely": 1
+    },
+    "excited": {
+      "excited": 2,
+      "anxious": 1
+    },
+    "sad": {
+      "sad": 2,
+      "neutral": 1
+    },
+    "relieved": {
+      "neutral": 1,
+      "hopeful": 1
+    },
+    "frustrated": {
+      "angry": 1,
+      "frustrated": 1
+    },
+    "grateful": {
+      "grateful": 2
+    },
+    "curious": {
+      "neutral": 1
+    }
+  },
+  "results": [
+    {
+      "id": 1,
+      "text": "I'm really happy today, I accomplished a lot.",
+      "gold": "happy",
+      "pred": "proud",
+      "confidence": 0.5,
+      "lang": "en"
+    },
+    {
+      "id": 2,
+      "text": "I feel exhausted and burnt out from work.",
+      "gold": "tired",
+      "pred": "tired",
+      "confidence": 0.2,
+      "lang": "en"
+    },
+    {
+      "id": 3,
+      "text": "Everything is terrible, I hate it all.",
+      "gold": "angry",
+      "pred": "angry",
+      "confidence": 0.4,
+      "lang": "en"
+    },
+    {
+      "id": 4,
+      "text": "Not much happened today, it was normal.",
+      "gold": "natural",
+      "pred": "neutral",
+      "confidence": null,
+      "lang": "en"
+    },
+    {
+      "id": 5,
+      "text": "I'm anxious about the exam tomorrow.",
+      "gold": "anxious",
+      "pred": "anxious",
+      "confidence": 0.48,
+      "lang": "en"
+    },
+    {
+      "id": 6,
+      "text": "Can't believe I nailed that presentation, so proud!",
+      "gold": "proud",
+      "pred": "proud",
+      "confidence": 0.5,
+      "lang": "en"
+    },
+    {
+      "id": 7,
+      "text": "Feeling a bit lonely lately.",
+      "gold": "lonely",
+      "pred": "happy",
+      "confidence": 0.18000000000000002,
+      "lang": "en"
+    },
+    {
+      "id": 8,
+      "text": "I'm excited for the trip next week!",
+      "gold": "excited",
+      "pred": "excited",
+      "confidence": 0.2,
+      "lang": "en"
+    },
+    {
+      "id": 9,
+      "text": "I'm sad about the news.",
+      "gold": "sad",
+      "pred": "sad",
+      "confidence": 0.4,
+      "lang": "en"
+    },
+    {
+      "id": 10,
+      "text": "I'm relieved the meeting is over.",
+      "gold": "relieved",
+      "pred": "neutral",
+      "confidence": null,
+      "lang": "en"
+    },
+    {
+      "id": 11,
+      "text": "Bugün çok mutluyum, her şeyi hallettim.",
+      "gold": "happy",
+      "pred": "happy",
+      "confidence": 0.5,
+      "lang": "tr"
+    },
+    {
+      "id": 12,
+      "text": "İşten çok yoruldum, tükenmiş hissediyorum.",
+      "gold": "tired",
+      "pred": "tired",
+      "confidence": 0.54,
+      "lang": "tr"
+    },
+    {
+      "id": 13,
+      "text": "Her şey berbat, nefret ediyorum.",
+      "gold": "angry",
+      "pred": "neutral",
+      "confidence": null,
+      "lang": "tr"
+    },
+    {
+      "id": 14,
+      "text": "Bugün normaldi, özel bir şey yok.",
+      "gold": "natural",
+      "pred": "neutral",
+      "confidence": null,
+      "lang": "tr"
+    },
+    {
+      "id": 15,
+      "text": "Yarınki sınav için endişeliyim.",
+      "gold": "anxious",
+      "pred": "anxious",
+      "confidence": 0.2700000000000001,
+      "lang": "tr"
+    },
+    {
+      "id": 16,
+      "text": "Sunumu çok iyi yaptım, gururluyum.",
+      "gold": "proud",
+      "pred": "happy",
+      "confidence": 0.17500000000000002,
+      "lang": "tr"
+    },
+    {
+      "id": 17,
+      "text": "Son zamanlarda kendimi yalnız hissediyorum.",
+      "gold": "lonely",
+      "pred": "lonely",
+      "confidence": 0.75,
+      "lang": "tr"
+    },
+    {
+      "id": 18,
+      "text": "Gelecek seyahat için çok heyecanlıyım!",
+      "gold": "excited",
+      "pred": "excited",
+      "confidence": 0.45,
+      "lang": "tr"
+    },
+    {
+      "id": 19,
+      "text": "Haberlere üzgün oldum.",
+      "gold": "sad",
+      "pred": "sad",
+      "confidence": 0.08000000000000002,
+      "lang": "tr"
+    },
+    {
+      "id": 20,
+      "text": "Toplantı bitince rahatladım.",
+      "gold": "relieved",
+      "pred": "hopeful",
+      "confidence": 0.24000000000000005,
+      "lang": "tr"
+    },
+    {
+      "id": 21,
+      "text": "I was sad but now I'm feeling better, finally.",
+      "gold": "happy",
+      "pred": "sad",
+      "confidence": 0.288,
+      "lang": "en"
+    },
+    {
+      "id": 22,
+      "text": "I am not happy with the results.",
+      "gold": "sad",
+      "pred": "neutral",
+      "confidence": null,
+      "lang": "en"
+    },
+    {
+      "id": 23,
+      "text": "Çok mutsuz değilim ama biraz yorgunum.",
+      "gold": "tired",
+      "pred": "sad",
+      "confidence": 0.205,
+      "lang": "tr"
+    },
+    {
+      "id": 24,
+      "text": "I feel nothing special.",
+      "gold": "natural",
+      "pred": "neutral",
+      "confidence": null,
+      "lang": "en"
+    },
+    {
+      "id": 25,
+      "text": "Heyecanlıyım ama biraz endişeliyim.",
+      "gold": "excited",
+      "pred": "anxious",
+      "confidence": 0.36,
+      "lang": "tr"
+    },
+    {
+      "id": 26,
+      "text": "So frustrated with this bug, can't deal.",
+      "gold": "frustrated",
+      "pred": "angry",
+      "confidence": 0.65,
+      "lang": "en"
+    },
+    {
+      "id": 27,
+      "text": "Bıktım artık, çok sinirliyim.",
+      "gold": "frustrated",
+      "pred": "frustrated",
+      "confidence": 0.65,
+      "lang": "tr"
+    },
+    {
+      "id": 28,
+      "text": "I am thankful and grateful today.",
+      "gold": "grateful",
+      "pred": "grateful",
+      "confidence": 0.30000000000000004,
+      "lang": "en"
+    },
+    {
+      "id": 29,
+      "text": "Şükürler olsun, minnettarım.",
+      "gold": "grateful",
+      "pred": "grateful",
+      "confidence": 0.30000000000000004,
+      "lang": "tr"
+    },
+    {
+      "id": 30,
+      "text": "I'm curious about the new feature.",
+      "gold": "curious",
+      "pred": "neutral",
+      "confidence": null,
+      "lang": "en"
+    }
+  ]
+}

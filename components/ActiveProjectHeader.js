@@ -9,15 +9,33 @@ import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get("window");
 
-// Format date range as "23 Mar 2025 - 24 Mar 2025"
-const formatDateRange = (startDate, endDate) => {
+// Tab configuration with icons and labels
+const tabs = [
+  {
+    id: 0,
+    key: 'tasks',
+    icon: 'list',
+    label: 'Tasks',
+    color: '#4A90E2'
+  },
+  {
+    id: 1,
+    key: 'journey',
+    icon: 'analytics',
+    label: 'Journey',
+    color: '#50C878'
+  }
+];
+
+// Format date range as "23 Mar 2025 - 24 Mar 2025" using a locale
+const formatDateRange = (startDate, endDate, locale = 'en-US') => {
   const formatDate = (date) => {
     const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const month = date.toLocaleDateString(locale, { month: 'short' });
     const year = date.getFullYear();
     return `${day} ${month} ${year}`;
   };
-  
+
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 };
 
@@ -31,7 +49,8 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   panGesture
 }) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
   const start = currentTask?.startDate ? new Date(currentTask.startDate) : null;
   const end = currentTask?.endDate ? new Date(currentTask.endDate) : null;
 
@@ -55,8 +74,8 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   // Interpolate colors for tabs
   const milestonesColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: theme.name === 'dark' 
-      ? ["#FFFFFF", "#8E8E93"] 
+    outputRange: theme.name === 'dark'
+      ? ["#FFFFFF", "#8E8E93"]
       : ["#1D1D1F", "#8E8E93"],
   });
   const journeyColor = progress.interpolate({
@@ -69,8 +88,16 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   // Sliding indicator position
   const indicatorTranslate = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 136], // Half of maxWidth (280/2) 
+    outputRange: [0, 136], // Half of maxWidth (280/2)
   });
+
+  // Icon scale animation for active tab
+  const iconScale = (tabIndex) => {
+    return progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: tabIndex === 0 ? [1.2, 1] : [1, 1.2],
+    });
+  };
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -86,7 +113,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
           {/* Project Title Section */}
           <View style={styles.titleSection}>
             <Text style={[
-              styles.modernTitle, 
+              styles.modernTitle,
               { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
               isCompleted && styles.completedText
             ]}>
@@ -94,16 +121,16 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
             </Text>
             {start && end && (
               <Text style={[
-                styles.dateRange, 
+                styles.dateRange,
                 { color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93' },
                 isCompleted && styles.completedDateText
               ]}>
-                {formatDateRange(start, end)}
+                {formatDateRange(start, end, locale)}
               </Text>
             )}
           </View>
-          
-          {/* Tab Switcher with Animated Indicator */}
+
+          {/* Enhanced Tab Switcher with Icons and Better UX */}
           <View style={[
             styles.tabSwitcher,
             {
@@ -123,26 +150,42 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
                 },
               ]}
             />
-            
-            <TouchableOpacity 
-              style={styles.tabButton} 
-              onPress={() => handleTabSwitch(0)}
-              activeOpacity={0.8}
-            >
-              <RNAnimated.Text style={[styles.tabButtonText, { color: milestonesColor }]}>
-                {t('milestones')}
-              </RNAnimated.Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.tabButton} 
-              onPress={() => handleTabSwitch(1)}
-              activeOpacity={0.8}
-            >
-              <RNAnimated.Text style={[styles.tabButtonText, { color: journeyColor }]}>
-                {t('journey')}
-              </RNAnimated.Text>
-            </TouchableOpacity>
+
+            {tabs.map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                style={styles.tabButton}
+                onPress={() => handleTabSwitch(tab.id)}
+                activeOpacity={0.8}
+              >
+                <RNAnimated.View style={[
+                  styles.tabContent,
+                  { transform: [{ scale: iconScale(tab.id) }] }
+                ]}>
+                  <RNAnimated.View style={styles.iconContainer}>
+                    <Ionicons
+                      name={tab.icon}
+                      size={16}
+                      color={
+                        activeTab === tab.id
+                          ? theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F'
+                          : theme.name === 'dark' ? '#8E8E93' : '#8E8E93'
+                      }
+                    />
+                  </RNAnimated.View>
+                  <RNAnimated.Text style={[
+                    styles.tabButtonText,
+                    {
+                      color: activeTab === tab.id
+                        ? (theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F')
+                        : (theme.name === 'dark' ? '#8E8E93' : '#8E8E93')
+                    }
+                  ]}>
+                    {t(tab.key)}
+                  </RNAnimated.Text>
+                </RNAnimated.View>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -165,7 +208,7 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flexDirection: 'column',
-    gap: 12,
+    gap: 12, // Reduced gap since no hints
   },
   titleSection: {
     flexDirection: 'column',
@@ -187,7 +230,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 12,
     paddingHorizontal: 4,
-    height: 42,
+    height: 48, // Increased height for better touch target
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 0.5,
@@ -213,13 +256,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6, // Space between icon and text
+  },
+  iconContainer: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabButtonText: {
-    fontSize: 14,
+    fontSize: 13, // Slightly smaller for icon + text
     fontFamily: "Poppins_600SemiBold",
     letterSpacing: -0.1,
   },
-  completedText: { 
-    color: "#FFFFFF" 
+  completedText: {
+    color: "#FFFFFF"
   },
   completedDateText: {
     color: "#A0A0A0",

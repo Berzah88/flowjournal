@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     backgroundColor: "rgba(0,0,0,0.0)",
     justifyContent: "flex-end",
-    zIndex: 1000,
+    zIndex: 9999, // Increased to match other modals for consistency
   },
   container: {
     height: modalHeight,

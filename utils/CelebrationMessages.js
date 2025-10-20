@@ -8,7 +8,7 @@ const MILESTONE_MESSAGES = {
     "Tebrikler! Bu başarıyı günlüğüne kaydetmek değerli olabilir.",
     "Müthiş! Bu yolculukta neler hissettin?",
     "Bir adım daha tamamlandı! Duygularını paylaşmak ister misin?",
-    "Bu milestone'u bitirirken zorlandığın veya keyif aldığın anlar oldu mu?",
+    "Bu görevi bitirirken zorlandığın veya keyif aldığın anlar oldu mu?",
     "Tebrikler! Bu deneyimi gelecekte hatırlamak için yazmak ister misin?",
     "Harika iş! Bu süreçteki düşüncelerini kaydetmek ister misin?",
     "Bir başarı daha! Bu yolda neler yaşadın?",
@@ -20,7 +20,7 @@ const MILESTONE_MESSAGES = {
     "Congratulations! Recording this achievement could be valuable.",
     "Awesome! How did this journey feel?",
     "Another step completed! Want to share your emotions?",
-    "Were there challenging or enjoyable moments while completing this milestone?",
+    "Were there challenging or enjoyable moments while completing this task?",
     "Congratulations! Want to write about this experience for future reflection?",
     "Great work! Would you like to record your thoughts about this process?",
     "Another success! What did you experience along the way?",
@@ -83,14 +83,14 @@ export const getContextualMessage = (completion, activeTasks, completedTasks, la
   // Contextual messages
   const contextMessages = {
     tr: {
-      // İlk milestone
-      firstMilestone: "İlk adımı attın! Bu başlangıç nasıl hissettirdi?",
+  // İlk görev
+  firstMilestone: "İlk adımı attın! Bu başlangıç nasıl hissettirdi?",
       
       // Yarıda
       halfway: `Harika! Projenin %${progressPercentage}'ini tamamladın. Bu ivmeyi kaybetme!`,
       
-      // Son milestone
-      lastMilestone: "Son adımı tamamladın! Başarı çok yakın, duygularını kaydet.",
+  // Son görev
+  lastMilestone: "Son adımı tamamladın! Başarı çok yakın, duygularını kaydet.",
       
       // Proje tamamlandı - ilk proje
       firstProject: "İlk projenin! Bu muhteşem bir başlangıç. Tüm süreci özetlemek ister misin?",
@@ -102,9 +102,9 @@ export const getContextualMessage = (completion, activeTasks, completedTasks, la
       quickCompletion: "Hızlısın! Bu başarıyı kazanma sürecini yazmak ister misin?",
     },
     en: {
-      firstMilestone: "First step taken! How did this beginning feel?",
+  firstMilestone: "First step taken! How did this beginning feel?",
       halfway: `Great! You've completed ${progressPercentage}% of the project. Keep this momentum!`,
-      lastMilestone: "Last step completed! Success is so close, record your emotions.",
+  lastMilestone: "Last step completed! Success is so close, record your emotions.",
       firstProject: "Your first project! This is an amazing start. Want to summarize the entire process?",
       experiencedUser: `You've completed your ${totalCompletedProjects + 1}th project! Share your experience.`,
       quickCompletion: "You're fast! Want to write about how you achieved this success?",

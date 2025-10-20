@@ -1,5 +1,5 @@
 // components/CelebrationModal.js
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,13 +26,19 @@ const CelebrationModal = ({
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const panAnim = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(visible && !!completion);
+  const autoCloseTimerRef = useRef(null);
 
   useEffect(() => {
-    if (visible) {
-      // Reset pan animation
+    // Mount when we should show (ensure content is present before animating)
+    if (visible && completion) {
+      setMounted(true);
+      // Reset pan and starting positions so animation is consistent
       panAnim.setValue(0);
-      
-      // Slide in animation - Motive ile TAM AYNI
+      slideAnim.setValue(-100);
+      opacityAnim.setValue(0);
+
+      // Slide in animation
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
@@ -46,14 +52,21 @@ const CelebrationModal = ({
         }),
       ]).start();
 
-      // Auto close after 10 seconds
-      const timer = setTimeout(() => {
-        handleClose();
+      // Auto close after 10 seconds (debounced)
+      if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = setTimeout(() => {
+        // Ask parent to close; the effect below will run exit animation
+        onClose();
       }, 10000);
+    }
 
-      return () => clearTimeout(timer);
-    } else {
-      // Slide out animation - Motive ile TAM AYNI
+    // When visible becomes false but component still mounted, run exit animation and unmount on completion
+    if (!visible && mounted) {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: -100,
@@ -65,30 +78,26 @@ const CelebrationModal = ({
           duration: 250,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        // Reset values and unmount
+        panAnim.setValue(0);
+        slideAnim.setValue(-100);
+        opacityAnim.setValue(0);
+        setMounted(false);
+      });
     }
-  }, [visible]);
+
+    return () => {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current);
+        autoCloseTimerRef.current = null;
+      }
+    };
+  }, [visible, completion, mounted]);
 
   const handleClose = () => {
-    // Motive ile TAM AYNI animasyon
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Reset animations for next time
-      panAnim.setValue(0);
-      slideAnim.setValue(-100);
-      opacityAnim.setValue(0);
-      onClose();
-    });
+    // Delegate closing to parent; MainScreen effect will run exit animation and unmount.
+    onClose();
   };
 
   const handleJournalPress = () => {
@@ -110,27 +119,10 @@ const CelebrationModal = ({
         // Only allow upward or downward swipe
         panAnim.setValue(gestureState.dy);
       },
-      onPanResponderRelease: (_, gestureState) => {
-        // If swiped more than 50px up or down, close
+          onPanResponderRelease: (_, gestureState) => {
+        // If swiped more than 50px up or down, ask parent to close (effect will animate out)
         if (Math.abs(gestureState.dy) > 50) {
-          // Dismiss animation
-          Animated.parallel([
-            Animated.timing(panAnim, {
-              toValue: gestureState.dy > 0 ? 300 : -300,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            panAnim.setValue(0);
-            slideAnim.setValue(-100);
-            opacityAnim.setValue(0);
-            onClose();
-          });
+          onClose();
         } else {
           // Spring back to original position
           Animated.spring(panAnim, {
@@ -144,7 +136,7 @@ const CelebrationModal = ({
     })
   ).current;
 
-  if (!visible || !completion) return null;
+  if (!mounted || !completion) return null;
 
   // AI destekli motivasyonel mesaj
   const aiMessage = getContextualMessage(
@@ -156,30 +148,43 @@ const CelebrationModal = ({
 
   return (
     <Animated.View
+      {...panResponder.panHandlers}
+      // Rasterize the animated layer to reduce shadow/paint flicker on iOS/Android
+      renderToHardwareTextureAndroid={true}
+      shouldRasterizeIOS={true}
       style={[
         styles.container,
         {
           transform: [
-            { translateY: slideAnim }
+            { translateY: Animated.add(slideAnim, panAnim) }
           ],
           opacity: opacityAnim,
+          // Move shadow to the same animated layer so it moves with the modal and
+          // is captured by the rasterized texture.
+          shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
+          elevation: 8,
+          borderRadius: 20,
         }
       ]}
     >
-      <Animated.View
-        {...panResponder.panHandlers}
-        style={[
-          styles.content,
-          {
-            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
-            borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
-            shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-            transform: [
-              { translateY: panAnim }
-            ],
-          }
-        ]}
-      >
+      <View style={styles.contentWrapper}>
+        <View
+          style={[
+            styles.content,
+            {
+              backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
+              borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+              shadowColor: theme.name === 'dark' ? '#000000' : '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 8,
+            }
+          ]}
+        >
         {/* Close Button */}
         <TouchableOpacity
           style={[
@@ -243,7 +248,8 @@ const CelebrationModal = ({
             {t('writeJournal') || 'Günlük Yaz'}
           </Text>
         </TouchableOpacity>
-      </Animated.View>
+        </View>
+      </View>
     </Animated.View>
   );
 };
@@ -254,18 +260,34 @@ const styles = StyleSheet.create({
     top: 50, // Biraz daha aşağı
     left: 16,
     right: 16,
-    zIndex: 1000,
+    zIndex: 9999, // Increased to match AddTaskModal for consistency
   },
   content: {
     borderRadius: 20, // Daha modern rounded corners
     paddingVertical: 20, // Optimized padding
     paddingHorizontal: 20,
-    borderWidth: 0,
+    alignItems: 'center',
+  },
+  contentWrapper: {
+    borderRadius: 20,
+    // Ensure the wrapper does not clip shadows; keep it same size as content
+    overflow: 'visible',
+    marginBottom: 0,
+  },
+  shadowLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    borderRadius: 20,
+    height: '100%',
+    // Static shadow - will not be animated
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 8,
-    alignItems: 'center',
+    borderWidth: 0,
+    zIndex: -1,
   },
   emojiContainer: {
     width: 48,

@@ -1,13 +1,13 @@
-// components/ActiveProjectMilestones.js
+// components/ActiveProjectTasks.js
 import React, { memo, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import MileStone from './MileStone';
-import CompletedMilestonesList from './CompletedMilestonesList';
+import CompletedTasksList from './CompletedTasksList';
 
-function ActiveProjectMilestones({
+function ActiveProjectTasks({
   currentTask,
   allMilestones,
   activeMilestones,
@@ -31,8 +31,13 @@ function ActiveProjectMilestones({
   // Attach mode state
   const [attachMode, setAttachMode] = useState(null); // null veya { milestoneId: string }
 
-  // Prepare active milestones data with hierarchy - OPTIMIZED
+  // Prepare active milestones data with hierarchy - OPTIMIZED with early return
   const activeMilestonesWithLatest = useMemo(() => {
+    // Early return for empty array
+    if (!activeMilestones || activeMilestones.length === 0) {
+      return [];
+    }
+    
     const milestones = activeMilestones.map((milestone, index) => ({
       ...milestone,
       taskId: currentTask.id,
@@ -44,7 +49,7 @@ function ActiveProjectMilestones({
     const organized = [];
     const childrenMap = {};
     
-    // Group children by parent
+    // Group children by parent - single pass
     milestones.forEach(ms => {
       if (ms.parentId) {
         if (!childrenMap[ms.parentId]) {
@@ -54,7 +59,7 @@ function ActiveProjectMilestones({
       }
     });
     
-    // Add parents and their children
+    // Add parents and their children - single pass
     milestones.forEach(ms => {
       if (!ms.parentId) {
         organized.push(ms);
@@ -72,18 +77,22 @@ function ActiveProjectMilestones({
     });
     
     return organized;
-  }, [activeMilestones, currentTask?.id]);
+  }, [activeMilestones]); // Removed currentTask?.id dependency
 
-  // Prepare completed milestones data - OPTIMIZED
-  const completedMilestonesWithLatest = useMemo(() => 
-    completedMilestones.map((milestone, index) => ({
+  // Prepare completed milestones data - OPTIMIZED with early return
+  const completedMilestonesWithLatest = useMemo(() => {
+    if (!completedMilestones || completedMilestones.length === 0) {
+      return [];
+    }
+    
+    return completedMilestones.map((milestone, index) => ({
       ...milestone,
       taskId: currentTask.id,
       isLatest: index === completedMilestones.length - 1,
       title: milestone.title || '',
       id: milestone.id || `completed-${index}`
-    }))
-  , [completedMilestones, currentTask?.id]);
+    }));
+  }, [completedMilestones]); // Removed currentTask?.id dependency
 
   // Attach mode handlers
   const handleStartAttachMode = (milestoneId) => {
@@ -220,7 +229,7 @@ function ActiveProjectMilestones({
           })}
 
           {/* Completed Milestones */}
-          <CompletedMilestonesList
+          <CompletedTasksList
             completedMilestones={completedMilestonesWithLatest}
             refreshKey={refreshKey}
             theme={theme}
@@ -247,7 +256,7 @@ function ActiveProjectMilestones({
   );
 }
 
-export default memo(ActiveProjectMilestones);
+export default memo(ActiveProjectTasks);
 
 const styles = StyleSheet.create({
   // Modern Milestones Container

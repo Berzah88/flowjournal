@@ -1,18 +1,25 @@
 // components/MoodStatement.js
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MOODS } from '../utils/AIMoodPredictor';
+// Lazy import of JS predictor for on-device inference
+let jsPredictor = null;
+try {
+  // require is fine in RN packager; in Node eval harness this will resolve too
+  jsPredictor = require('../native_ml/predictor').default;
+} catch (e) {
+  jsPredictor = null;
+}
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-
-// Helper: Semantic analiz ile mood pattern'leri tespit et
 const analyzeSemanticPatterns = (allMoods) => {
   if (allMoods.length < 2) return null;
   
@@ -273,6 +280,16 @@ const MoodStatement = React.memo(({
                     '| Entries:', todayMoods.length);
       }
     }
+    // --- New: try JS predictor override (non-blocking effect will set state below) ---
+    // We'll store a provisional override key on the returned object for the effect to consume
+    const provisional = { __predicted_text_for_js: null, __predicted_mood: null, __predicted_conf: null };
+    if (allTimestamps && allTimestamps.length > 0) {
+      // take the most recent entry text to ask JS predictor
+      const latest = todayMoods[todayMoods.length - 1];
+      if (latest && latest.text && jsPredictor) {
+        provisional.__predicted_text_for_js = String(latest.text);
+      }
+    }
     
     // ✨ YENİ: Dünkü mood'u hesapla (Trend Analysis) - OPTIMIZE
     const yesterday = new Date(today);
@@ -388,6 +405,7 @@ const MoodStatement = React.memo(({
     
     return {
       dominantMood,
+      provisional,
       totalEntries: todayMoods.length + (hasCompletedProjectToday ? 1 : 0),
       allMoods: todayMoods,
       hasCompletedProjectToday,
@@ -401,6 +419,45 @@ const MoodStatement = React.memo(({
       semanticPattern, // ✨ Gün içi pattern analizi
     };
   }, [allJournalEntries, completedTasks, selectedDate]); // ✅ SADECE JOURNAL DEĞİŞTİĞİNDE!
+
+  // State: override from JS predictor (non-blocking)
+  const [jsOverride, setJsOverride] = useState(null);
+
+  // Effect: when memo produces a provisional prediction text, call JS predictor async
+  useEffect(() => {
+    let active = true;
+    const prov = todayMoodData?.provisional;
+    if (prov && prov.__predicted_text_for_js && jsPredictor) {
+      // Run predictor asynchronously (non-blocking to UI)
+      setTimeout(() => {
+        try {
+          const res = jsPredictor.predict(prov.__predicted_text_for_js);
+          if (!active) return;
+          if (res && res.mood && res.probs) {
+            const conf = res.probs[res.topIndex] || Math.max(...res.probs);
+            // apply override only if confidence >= 0.6
+            if (conf >= 0.6) {
+              setJsOverride({ moodKey: res.mood, confidence: conf });
+            } else {
+              setJsOverride(null);
+            }
+          }
+        } catch (e) {
+          // ignore predictor errors
+          console.warn('JS predictor error:', e.message || e);
+        }
+      }, 0);
+    } else {
+      setJsOverride(null);
+    }
+    return () => { active = false; };
+  }, [todayMoodData?.provisional]);
+
+  // If JS override exists, use it to replace dominantMood for display (no UI structure changes)
+  const displayMood = jsOverride && jsOverride.moodKey ? (
+    // find mood object
+    MOODS.find(m => m.key === jsOverride.moodKey) || require('../utils/AIMoodPredictor').EXTENDED_MOODS.find(m => m.key === jsOverride.moodKey) || { key: jsOverride.moodKey, label: jsOverride.moodKey }
+  ) : todayMoodData.dominantMood;
 
   // ----- Quick Tips: Emotional Journal ile aynı mapping -----
   const generateQuickTip = useCallback((moodKey) => {
@@ -440,11 +497,41 @@ const MoodStatement = React.memo(({
     return t(list[Math.floor(Math.random() * list.length)]);
   }, [t]);
 
-  // QuickTip: EmotionalJournal'daki önerilerle birebir uyumlu kısa ipuçları
-  const quickTip = useMemo(() => {
-    const moodKey = todayMoodData?.dominantMood?.key || 'default';
-    return generateQuickTip(moodKey);
+  // Günlük mesaj cache'i (AsyncStorage'den)
+  const [dailyTip, setDailyTip] = useState('');
+
+  useEffect(() => {
+    const loadDailyTip = async () => {
+      try {
+        const today = new Date().toDateString();
+        const cachedTip = await AsyncStorage.getItem(`daily_tip_${today}`);
+
+        if (cachedTip) {
+          setDailyTip(cachedTip);
+        } else {
+          // Yeni gün için rastgele mesaj oluştur
+          const moodKey = todayMoodData?.dominantMood?.key || 'default';
+          const newTip = generateQuickTip(moodKey);
+
+          // Cache'e kaydet
+          await AsyncStorage.setItem(`daily_tip_${today}`, newTip);
+          setDailyTip(newTip);
+        }
+      } catch (error) {
+        console.error('Daily tip loading error:', error);
+        // Hata durumunda normal mesaj kullan
+        const moodKey = todayMoodData?.dominantMood?.key || 'default';
+        setDailyTip(generateQuickTip(moodKey));
+      }
+    };
+
+    loadDailyTip();
   }, [todayMoodData?.dominantMood?.key, generateQuickTip]);
+
+  // QuickTip: Günlük mesajları kullan
+  const quickTip = useMemo(() => {
+    return dailyTip || 'Günlük mesaj yükleniyor...';
+  }, [dailyTip]);
   
   // Sadece bugün için göster - selectedDate verilmemişse her zaman göster
   if (selectedDate) {
@@ -512,17 +599,17 @@ const MoodStatement = React.memo(({
               { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
             ]} numberOfLines={1} ellipsizeMode="tail">
               {hasNoProjects ? 
-                t('startYourJourney') || 'İlk projeni oluşturarak başla' :
-                (todayMoodData.dominantMood ? 
-                  `${t('todayYourMoodIs')} ${t(todayMoodData.dominantMood.key) || todayMoodData.dominantMood.label || todayMoodData.dominantMood.key}${t('like') ? ' ' + t('like') : ''}` :
-                  t('howAreYouFeelingToday')
-                )
-              }
+                    t('startYourJourney') || 'İlk projeni oluşturarak başla' :
+                    (displayMood ? 
+                      `${t('todayYourMoodIs')} ${t(displayMood.key) || displayMood.label || displayMood.key}${t('like') ? ' ' + t('like') : ''}` :
+                      t('howAreYouFeelingToday')
+                    )
+                  }
             </Text>
             
             {/* ✨ Streak Badge - Sadece proje varsa */}
             {!hasNoProjects && todayMoodData.journalStreak.current >= 3 && (
-              <View style={[styles.streakBadge, { backgroundColor: todayMoodData.dominantMood?.color || '#FF9500', marginLeft: 6 }]}> 
+              <View style={[styles.streakBadge, { backgroundColor: displayMood?.color || '#FF9500', marginLeft: 6 }]}> 
                 <Text style={styles.streakText}>🔥 {todayMoodData.journalStreak.current}</Text>
               </View>
             )}

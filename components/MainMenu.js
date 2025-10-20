@@ -105,23 +105,6 @@ const MainMenu = ({
             </View>
           </TouchableOpacity>
 
-          {/* Mood Tracker */}
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              onClose();
-              navigation.navigate('EmotionalJournal');
-            }}
-            accessible={true}
-            accessibilityLabel="Open emotional journal"
-            accessibilityRole="button"
-          >
-            <View style={styles.menuItemContent}>
-              <Ionicons name="heart-outline" size={20} color="#FF6B6B" />
-              <Text style={[styles.menuItemText, { color: theme.colors.text }]}>{t('journal')}</Text>
-            </View>
-          </TouchableOpacity>
-
           {/* Theme Toggle */}
           <ThemeToggle />
 

@@ -1,6 +1,7 @@
 // context/LanguageContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Localization from 'expo-localization';
 
 // Translation data
 const translations = {
@@ -21,7 +22,7 @@ const translations = {
     'noActiveProjects': 'No projects yet! 🚀',
     'startYourJourney': 'Start an amazing journey by creating your first project',
     'goBack': 'Go Back',
-    'activeMilestones': 'Active Milestones',
+  'activeMilestones': 'Active Tasks',
     'entriesToday': 'Entries Today',
     'wordsToday': 'Words Today',
     'currentStreak': 'Current Streak',
@@ -60,6 +61,7 @@ const translations = {
     'journal': 'Mood Tracker',
     'howAreYouFeeling': 'How are you feeling?',
     'writeYourThoughts': 'Write your thoughts...',
+    'aboutWriteExperience': 'write about your experiences',
     'addPhoto': 'Add Photo',
     'addLocation': 'Add Location',
     'photo': 'Photo',
@@ -80,12 +82,29 @@ const translations = {
     'delete': 'Delete',
     'deleteJournal': 'Delete Journal?',
     'deleteJournalMessage': 'All entries and media will be permanently deleted.',
-    'milestone': 'Milestone',
-    'milestones': 'Milestones',
-    'enterMilestoneTitle': 'Enter milestone title',
-    'completedMilestones': 'Completed Milestones',
-    'deleteMilestoneConfirm': 'Are you sure? 🤔',
-    'deleteMilestoneMessage': 'This milestone and all its memories will be permanently deleted.',
+    
+  // Tasks
+  'task': 'Task',
+  'tasks': 'Tasks',
+  'enterTaskTitle': 'Enter task title',
+  'completedTasks': 'Completed Tasks',
+  'deleteTaskConfirm': 'Are you sure? 🤔',
+  'deleteTaskMessage': 'This task and all its memories will be permanently deleted.',
+  'activeTasks': 'Active Tasks',
+  'selectParentTask': 'Select Parent Task',
+  'noAvailableTasks': 'No available tasks',
+  'parentMustBeActiveFirst': 'Parent task is completed. Please reopen the parent first.',
+  'addTasks': 'Add Tasks',
+  'addTasksDescription': 'Add step-by-step tasks to your project and track your progress',
+    
+  // Legacy Milestone support (keep for backwards compatibility)
+  // Note: UI now uses 'task' keys. Legacy keys remain but map to 'Task' wording.
+  'milestone': 'Task',
+  'milestones': 'Tasks',
+  'enterMilestoneTitle': 'Enter task title',
+  'completedMilestones': 'Completed Tasks',
+  'deleteMilestoneConfirm': 'Are you sure? 🤔',
+  'deleteMilestoneMessage': 'This task and all its memories will be permanently deleted.',
     'journey': 'Journey',
     'moodCalendar': 'Mood Calendar',
     'attach': 'Attach',
@@ -104,8 +123,8 @@ const translations = {
     'tutorial': 'Tutorial',
     'createProject': 'Create Project',
     'createProjectDescription': 'Add a new project and set start-end dates',
-    'addMilestones': 'Add Milestones',
-    'addMilestonesDescription': 'Add step-by-step milestones to your project and track your progress',
+  'addMilestones': 'Add Tasks',
+  'addMilestonesDescription': 'Add step-by-step tasks to your project and track your progress',
     'emotionJournal': 'Emotion Journal',
     'emotionJournalDescription': 'Write journals and record your emotions. Transform your experiences throughout your projects into valuable memories',
     'viewProgress': 'View Progress',
@@ -145,7 +164,7 @@ const translations = {
     'todayYourMoodIs': "Today you're feeling",
     'like': '',
     'viewMoreDetails': 'View more details',
-    'clickMilestoneStartWriting': 'Click on a Milestone right away and start writing your journal',
+  'clickMilestoneStartWriting': 'Click on a Task right away and start writing your journal',
     'startJournalingToday': 'Start journaling today',
     'improvingFromYesterday': '✨ You\'re feeling better than yesterday!',
     'worseningFromYesterday': '💙 Today might be a tough day, take care of yourself',
@@ -193,9 +212,9 @@ const translations = {
     'todayMoodContent': 'Today you feel content and satisfied',
     'todayMoodConfident': 'Today you feel confident and self-assured',
     'todayMoodSad': 'Today you feel a bit down',
-    'todayMoodAngry': 'Today you feel frustrated and angry',
+  'todayMoodAngry': 'Today you feel angry',
     'todayMoodTired': 'Today you feel a bit exhausted',
-    'todayMoodFrustrated': 'Today you feel frustrated and stuck',
+  'todayMoodFrustrated': 'Today you feel frustrated and stuck',
     'todayMoodAnxious': 'Today you feel anxious and worried',
     'todayMoodOverwhelmed': 'Today you feel overwhelmed and stressed',
     'todayMoodLonely': 'Today you feel a bit lonely',
@@ -233,8 +252,8 @@ const translations = {
     'locationPermissionMessage': 'Location permission is required to add your location to the journal. Please grant permission in settings.',
     'galleryPermissionMessage': 'Gallery access permission is required to add photos. Please grant permission in settings.',
     
-    // Add Milestone Modal
-    'enterMilestoneTitle': 'Enter milestone title...',
+  // Add Milestone Modal
+  'enterMilestoneTitle': 'Enter task title...',
     
     'resetAIFeedback': 'Reset AI Feedback',
     'resetAIFeedbackDescription': 'This will reset the AI feedback system and allow it to show again on next app start. Continue?',
@@ -246,8 +265,8 @@ const translations = {
     // Card
     'untitled': 'Untitled',
     
-    // MileStone
-    'deleteMilestoneConfirm': 'Are you sure? Deleted Milestone cannot be recovered',
+  // MileStone
+  'deleteMilestoneConfirm': 'Are you sure? Deleted task cannot be recovered',
     
     // Theme Toggle
     'switchToLightTheme': 'Switch to light theme',
@@ -286,18 +305,18 @@ const translations = {
     
     // Project Analysis
     'projectAnalysis': 'Project Analysis',
-    'milestoneReminder': 'Milestone Reminder',
+  'milestoneReminder': 'Task Reminder',
     'projectDeadlineApproaching': 'Project Deadline Approaching!',
     'lastDay': 'Last Day!',
     'completedToday': 'Completed Today',
     'pastDateRestriction': 'Past Date',
     'futureDateRestriction': 'Future Date',
-    'cannotModifyPast': 'You cannot modify milestones in the past. You can only complete/uncomplete milestones for today.',
-    'cannotModifyFuture': 'You cannot complete milestones in advance. You can only take action for today.',
+  'cannotModifyPast': 'You cannot modify tasks in the past. You can only complete/uncomplete tasks for today.',
+  'cannotModifyFuture': 'You cannot complete tasks in advance. You can only take action for today.',
     'focused': 'Focused',
     'congratulations': 'Congratulations',
     'projectCompletedToday': 'project completed today',
-    'milestoneCompletedToday': 'milestone completed today',
+  'milestoneCompletedToday': 'task completed today',
     'wouldYouLikeToJournal': 'Would you like to journal about your experience?',
     'writeJournal': 'Write Journal',
     'later': 'Later',
@@ -334,13 +353,36 @@ const translations = {
     'journeyOverview': 'Journey Overview',
     'progressTracking': 'Progress Tracking',
     'basedOnLast7Days': 'Based on your last 7 days of mood entries',
+    'startTrackingMood': 'Start Tracking Your Mood',
+  'trackProjectsWriteJournal': 'Track your projects and write in your journal to see your mood trends',
+  'writeJournalMoreDays': 'Write in your journal on more days',
+  'needMoreJournalDays': 'Try writing in your journal on at least 3 different days this week to see your mood trends',
     'youHaveJournalEntries': 'You have {count} journal entries - add mood tags to track your emotional journey!',
+    'youHaveMilestones': 'You have {count} milestones - start writing journal entries with mood tags!',
+    'thoughtsValuable': 'Your thoughts are valuable! Adding mood tags will help you understand your emotional patterns and growth.',
+    'journeyBegins': 'Every journey begins with a single step. Start documenting your progress and feelings today!',
     'youHaveMilestones': 'You have {count} milestones - start writing journal entries with mood tags!',
     'thoughtsValuable': 'Your thoughts are valuable! Adding mood tags will help you understand your emotional patterns and growth.',
     'journeyBegins': 'Every journey begins with a single step. Start documenting your progress and feelings today!',
     'moodImproving': 'Your mood is improving!',
     'moodDeclining': 'Your mood seems to be declining',
     'moodStable': 'Your mood is stable',
+    'last7Days': 'Last 7 days',
+    'noMoodData': 'No mood data yet',
+    'startJournalingToTrackMood': 'Start journaling to track your mood',
+    'moodEntries': 'mood entries',
+    'fromLastWeek': 'from last week',
+    'moodDistribution': 'Mood Distribution',
+    'positive': 'Positive',
+    'neutral': 'Neutral',
+    'negative': 'Negative',
+    'dailyBreakdown': 'Daily Breakdown',
+    'topMoods': 'Top Moods',
+    'times': 'times',
+    'recentHistory': 'Recent History',
+    'last7Weeks': 'Last 7 Weeks',
+    'weeklyMoodCalendar': 'Weekly Mood Calendar',
+    'moodRadar': 'Mood Analysis',
     
     // Motivation Messages
     'motivationHappy1': "Your happiness is your greatest asset - let it guide you to even more success!",
@@ -551,11 +593,11 @@ const translations = {
     'subscribedToDailyReminders': 'You have subscribed to daily reminders!\n\nNotifications will be delivered via PythonAnywhere + FCM.',
     'unsubscribedFromDailyReminders': 'You have unsubscribed from daily reminders.',
     
-    // MyDay Screen
+  // MyDay Screen
     'lastDay': 'Last Day',
     'overdue1Day': '1 Day Overdue',
     'overdueDays': '{days} Days Overdue',
-    'addMilestone': 'Milestone',
+  'addMilestone': 'Task',
     'addJournal': 'Journal',
     'addProject': 'Add Project',
     
@@ -705,6 +747,16 @@ const translations = {
     'january': 'January',
     'february': 'February',
     'march': 'March',
+  // Weekly summary templates (English)
+  'thisWeek_quite_and': 'This week was largely {top} and {second} {verb}.',
+  'thisWeek_very': 'This week was very {top} {verb}.',
+  'thisWeek_some_and': 'This week had some {top} and {second} {verb}.',
+  'thisWeek_some': 'This week had some {top} {verb}.',
+  'thisWeek_mostly': 'This week was mostly {top} {verb}.',
+  'thisWeek_balanced': 'This week felt balanced {verb}.',
+  // verbs for tense substitution (English)
+  'past': 'was',
+  'present': 'is',
     'april': 'April',
     'may': 'May',
     'june': 'June',
@@ -713,7 +765,15 @@ const translations = {
     'september': 'September',
     'october': 'October',
     'november': 'November',
-    'december': 'December'
+    'december': 'December',
+
+    // Parent Date Notifications
+    'dateChangeWarning': 'Date Change Warning',
+    'parentDateAffectedMessage': 'Adding this subtask affects {parentMilestoneName} dates. It may impact project deadlines.',
+
+    // Child Milestone Actions
+    'addChildMilestone': 'Add Child Milestone',
+    'addChildMilestoneHint': 'Add a new milestone as a child of this one',
   },
   
   tr: {
@@ -733,7 +793,7 @@ const translations = {
     'noActiveProjects': 'Henüz hiçbir proje yok! 🚀',
     'startYourJourney': 'İlk projeni oluşturarak harika bir yolculuğa başla',
   'goBack': 'Geri Dön',
-  'activeMilestones': 'Aktif Kilometre Taşları',
+  'activeMilestones': 'Aktif Görevler',
   'entriesToday': 'Bugünkü Girişler',
   'wordsToday': 'Bugünkü Kelimeler',
   'currentStreak': 'Mevcut Seri',
@@ -772,6 +832,7 @@ const translations = {
     'journal': 'Mood Tracker',
     'howAreYouFeeling': 'Nasıl hissediyorsun?',
     'writeYourThoughts': 'Düşüncelerini yaz...',
+    'aboutWriteExperience': 'hakkında deneyimlerinizi yazın',
     'addPhoto': 'Fotoğraf Ekle',
     'addLocation': 'Konum Ekle',
     'photo': 'Fotoğraf',
@@ -792,6 +853,22 @@ const translations = {
     'delete': 'Sil',
     'deleteJournal': 'Günlüğü Sil?',
     'deleteJournalMessage': 'Tüm girişler ve medya kalıcı olarak silinecek.',
+    
+    // Tasks (formerly Milestones)
+    'task': 'Görev',
+    'tasks': 'Görevler',
+    'enterTaskTitle': 'Görev başlığını girin',
+    'completedTasks': 'Tamamlanan Görevler',
+    'deleteTaskConfirm': 'Emin misin? 🤔',
+    'deleteTaskMessage': 'Bu görev ve tüm anıları kalıcı olarak silinecek.',
+    'activeTasks': 'Aktif Görevler',
+    'selectParentTask': 'Ana Görev Seç',
+    'noAvailableTasks': 'Uygun görev yok',
+    'parentMustBeActiveFirst': 'Ana görev tamamlanmış. Lütfen önce ana görevi yeniden açın.',
+    'addTasks': 'Görev Ekle',
+    'addTasksDescription': 'Projenize adım adım görevler ekleyin ve ilerlemenizi takip edin',
+    
+    // Legacy Milestone support (keep for backwards compatibility)
     'milestone': 'Görev',
     'milestones': 'Görevler',
     'enterMilestoneTitle': 'Görev başlığını girin',
@@ -816,8 +893,8 @@ const translations = {
     'tutorial': 'Eğitim',
     'createProject': 'Proje Oluştur',
     'createProjectDescription': 'Yeni bir proje ekle ve başlangıç-bitiş tarihlerini belirle',
-    'addMilestones': 'Kilometre Taşları Ekle',
-    'addMilestonesDescription': 'Projene adım adım kilometre taşları ekle ve ilerlemeni takip et',
+  'addMilestones': 'Görev Ekle',
+  'addMilestonesDescription': 'Projene adım adım görevler ekle ve ilerlemeni takip et',
     'emotionJournal': 'Duygusal Günlük',
     'emotionJournalDescription': 'Günlük yaz ve duygularını kaydet. Projelerin boyunca deneyimlerini değerli anılara dönüştür',
     'viewProgress': 'İlerlemeyi Görüntüle',
@@ -857,7 +934,7 @@ const translations = {
     'todayYourMoodIs': 'Bugün moodunuz biraz',
     'like': 'gibi',
     'viewMoreDetails': 'Daha fazla detay görüntüle',
-    'clickMilestoneStartWriting': 'Hemen bir Kilometre Taşına tıklayın ve günlüğünüzü yazmaya başlayın',
+  'clickMilestoneStartWriting': 'Hemen bir Göreve tıklayın ve günlüğünüzü yazmaya başlayın',
     'startJournalingToday': 'Bugünü kaydetmeye başlayın',
     'improvingFromYesterday': '✨ Dünden daha iyi hissediyorsun!',
     'worseningFromYesterday': '💙 Bugün zor bir gün olabilir, kendine iyi bak',
@@ -946,7 +1023,7 @@ const translations = {
     'galleryPermissionMessage': 'Fotoğraf eklemek için galeri erişim izni gerekli. Lütfen ayarlardan izin verin.',
     
     // Add Milestone Modal
-    'enterMilestoneTitle': 'Kilometre taşı başlığını girin...',
+  'enterMilestoneTitle': 'Görev başlığını girin...',
     
     'resetAIFeedback': 'AI Geri Bildirimini Sıfırla',
     'resetAIFeedbackDescription': 'Bu, AI geri bildirim sistemini sıfırlayacak ve bir sonraki uygulama başlatıldığında tekrar göstermesine izin verecek. Devam edilsin mi?',
@@ -959,7 +1036,7 @@ const translations = {
     'untitled': 'Başlıksız',
     
     // MileStone
-    'deleteMilestoneConfirm': 'Emin misiniz? Silinen Kilometre Taşı geri alınamaz',
+  'deleteMilestoneConfirm': 'Emin misiniz? Silinen görev geri alınamaz',
     
     // Theme Toggle
     'switchToLightTheme': 'Açık temaya geç',
@@ -971,20 +1048,36 @@ const translations = {
     'completed': 'Tamamlandı',
     
     // Moods
-    'happy': 'Mutlu',
-    'excited': 'Heyecanlı',
-    'tired': 'Yorgun',
-    'sad': 'Üzgün',
-    'angry': 'Kızgın',
-    'frustrated': 'Sinirli',
-    'anxious': 'Endişeli',
-    'grateful': 'Müteşekkir',
-    'hopeful': 'Umutlu',
-    'proud': 'Gururlu',
-    'calm': 'Sakin',
-    'overwhelmed': 'Bunalmış',
-    'natural': 'Doğal',
-    'neutral': 'Nötr',
+  'happy': 'Mutlu',
+  'excited': 'Heyecanlı',
+  'tired': 'Yorgun',
+  'sad': 'Üzgün',
+  'angry': 'Kızgın',
+  'frustrated': 'Hayal kırıklığı',
+  'anxious': 'Endişeli',
+  'grateful': 'Minnettar',
+  'hopeful': 'Umutlu',
+  'proud': 'Gururlu',
+  'calm': 'Sakin',
+  'overwhelmed': 'Bunalmış',
+  'natural': 'Doğal',
+  'neutral': 'Nötr',
+  'relieved': 'Rahatlamış',
+  'motivated': 'Motive olmuş',
+  'confused': 'Kafası karışık',
+  'disappointed': 'Hayal kırıklığına uğramış',
+  'nostalgic': 'Nostaljik',
+  'peaceful': 'Huzurlu',
+  'curious': 'Meraklı',
+  'bored': 'Sıkılmış',
+  'surprised': 'Şaşırmış',
+  'content': 'Memnun',
+  'worried': 'Endişeli',
+  'stressed': 'Stresli',
+  'exhausted': 'Bitkin',
+  'focused': 'Odaklanmış',
+  'confident': 'Kendine güvenen',
+  'energetic': 'Enerjik',
     
     'journalTime': 'Günlük Zamanı!',
     'howAboutRecording': 'Bugünkü deneyimlerini ve duygularını kaydetmeye ne dersin?',
@@ -998,18 +1091,18 @@ const translations = {
     
     // Project Analysis
     'projectAnalysis': 'Proje Analizi',
-    'milestoneReminder': 'Kilometre Taşı Hatırlatıcısı',
+  'milestoneReminder': 'Görev Hatırlatıcısı',
     'projectDeadlineApproaching': 'Proje Son Tarihi Yaklaşıyor!',
     'lastDay': 'Son Gün!',
     'completedToday': 'Bugün Tamamlandı',
     'pastDateRestriction': 'Geçmiş Tarih',
     'futureDateRestriction': 'Gelecek Tarih',
-    'cannotModifyPast': 'Geçmişteki milestone\'ları değiştiremezsiniz. Sadece bugün için complete/uncomplete yapabilirsiniz.',
-    'cannotModifyFuture': 'Gelecekteki milestone\'ları şimdiden complete edemezsiniz. Sadece bugün için işlem yapabilirsiniz.',
+  'cannotModifyPast': 'Geçmişteki görevleri değiştiremezsiniz. Sadece bugün için tamamla/geri al işlemi yapabilirsiniz.',
+  'cannotModifyFuture': 'Gelecekteki görevleri şimdiden tamamlayamazsınız. Sadece bugün için işlem yapabilirsiniz.',
     'focused': 'Odaklanıldı',
     'congratulations': 'Tebrikler',
     'projectCompletedToday': 'projesini bugün tamamladınız',
-    'milestoneCompletedToday': 'adımını bugün tamamladınız',
+  'milestoneCompletedToday': 'görevini bugün tamamladınız',
     'wouldYouLikeToJournal': 'Deneyimlerinizi yazmak ister misiniz?',
     'writeJournal': 'Günlük Yaz',
     'later': 'Sonra',
@@ -1045,14 +1138,44 @@ const translations = {
     'emotionalInsights': 'Duygusal İçgörüler',
     'journeyOverview': 'Genel Bakış',
     'progressTracking': 'İlerleme Takibi',
-    'basedOnLast7Days': 'Son 7 günlük mood girişlerinize dayanarak',
+  'basedOnLast7Days': 'Son 7 günlük mood girişlerinize dayanarak',
+  'startTrackingMood': 'Moodunu Takip Etmeye Başla',
+  'trackProjectsWriteJournal': 'Mood trendlerini görmek için projelerini takip et ve günlük yaz',
+  'writeJournalMoreDays': 'Günlük yazmayı daha fazla güne yay',
+  'needMoreJournalDays': 'Mood trendlerini görmek için bu hafta en az 3 farklı günde günlük yazmayı deneyin',
     'youHaveJournalEntries': '{count} günlük girişiniz var - duygusal yolculuğunuzu takip etmek için mood etiketleri ekleyin!',
-    'youHaveMilestones': '{count} kilometre taşınız var - mood etiketleriyle günlük girişleri yazmaya başlayın!',
+  'youHaveMilestones': '{count} göreviniz var - mood etiketleriyle günlük girişleri yazmaya başlayın!',
     'thoughtsValuable': 'Düşünceleriniz değerli! Mood etiketleri eklemek duygusal kalıplarınızı ve gelişiminizi anlamanıza yardımcı olacak.',
     'journeyBegins': 'Her yolculuk tek bir adımla başlar. Bugün ilerlemenizi ve duygularınızı belgelemeye başlayın!',
     'moodImproving': 'Moodunuz iyileşiyor!',
     'moodDeclining': 'Moodunuz düşüyor gibi görünüyor',
     'moodStable': 'Moodunuz stabil',
+    'last7Days': 'Son 7 gün',
+    'noMoodData': 'Henüz mood verisi yok',
+    'startJournalingToTrackMood': 'Moodunuzu takip etmek için günlük tutmaya başlayın',
+    'moodEntries': 'mood girişi',
+    'fromLastWeek': 'geçen haftadan',
+    'moodDistribution': 'Mood Dağılımı',
+    'positive': 'Pozitif',
+    'neutral': 'Nötr',
+    'negative': 'Negatif',
+    'dailyBreakdown': 'Günlük Dağılım',
+    'topMoods': 'En Çok Hissedilenler',
+    'times': 'kez',
+    'recentHistory': 'Son Kayıtlar',
+    'last7Weeks': 'Son 7 Hafta',
+    'weeklyMoodCalendar': 'Haftalık Mood Takvimi',
+    'moodRadar': 'Mood Analizi',
+  // Weekly summary templates (Turkish)
+  'thisWeek_quite_and': 'Bu hafta sizin için çoğunlukla {top} ve {second} {verb}.',
+  'thisWeek_very': 'Bu hafta sizin için çok {top} {verb}.',
+  'thisWeek_some_and': 'Bu hafta sizin için biraz {top} ve {second} {verb}.',
+  'thisWeek_some': 'Bu hafta sizin için biraz {top} {verb}.',
+  'thisWeek_mostly': 'Bu hafta sizin için çoğunlukla {top} {verb}.',
+  'thisWeek_balanced': 'Bu hafta genel olarak dengeli {verb}.',
+  // verbs for tense substitution (Turkish)
+  'past': 'geçti',
+  'present': 'geçiyor',
     
     // Motivation Messages - Turkish
     'motivationHappy1': "Mutluluğunuz en büyük varlığınız - sizi daha da büyük başarılara yönlendirsin!",
@@ -1383,7 +1506,7 @@ const translations = {
     'upcoming': 'Yaklaşan',
     'past': 'Geçmiş',
     'future': 'Gelecek',
-    'present': 'Şimdi',
+    'present': 'geçiyor',
     'today': 'Bugün',
     'yesterday': 'Dün',
     'tomorrow': 'Yarın',
@@ -1425,34 +1548,70 @@ const translations = {
     'september': 'Eylül',
     'october': 'Ekim',
     'november': 'Kasım',
-    'december': 'Aralık'
+    'december': 'Aralık',
+
+    // Parent Date Notifications
+    'dateChangeWarning': 'Tarih Değişikliği Uyarısı',
+    'parentDateAffectedMessage': 'Eklemek istediğiniz alt görev {parentMilestoneName} tarihinizi etkiliyor. Proje teslim tarihlerine etki edebilir.',
+
+    // Child Milestone Actions
+    'addChildMilestone': 'Alt Görev Ekle',
+    'addChildMilestoneHint': 'Bu görevin altına yeni bir alt görev ekleyin',
   }
 };
 
 // Language Context
 const LanguageContext = createContext();
 
+// Get system language and determine default language
+const getDefaultLanguage = () => {
+  try {
+    // Prefer the first entry in Localization.locales if available, otherwise use Localization.locale
+    const firstLocale = (Localization.locales && Localization.locales.length) ? Localization.locales[0] : Localization.locale;
+    const systemLanguage = (firstLocale || 'en').toLowerCase();
+
+    // If system language is Turkish, default to Turkish, otherwise English
+    return systemLanguage.startsWith('tr') ? 'tr' : 'en';
+  } catch (error) {
+    console.error('Localization error:', error);
+    return 'en'; // Fallback to English
+  }
+};
+
 // Language Provider
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguage] = useState('en');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load language from storage
+  // Load language from storage or use system default
   useEffect(() => {
     const loadLanguage = async () => {
       try {
         const savedLanguage = await AsyncStorage.getItem('app_language');
+
         if (savedLanguage && translations[savedLanguage]) {
+          // Use saved language if it exists
           setLanguage(savedLanguage);
+        } else {
+          // Use system language as default if no saved language
+          const systemLanguage = getDefaultLanguage();
+          setLanguage(systemLanguage);
+          // Do NOT automatically persist the system language.
+          // Persisting should only happen when the user explicitly chooses a language (changeLanguage).
         }
       } catch (error) {
         console.error('Language loading error:', error);
+        // Fallback to English on error
+        setLanguage('en');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadLanguage();
+
+    // Listen for system locale changes (Expo doesn't have built-in listener, so we'll skip this)
+    // Users can manually change language through settings
   }, []);
 
   // Change language

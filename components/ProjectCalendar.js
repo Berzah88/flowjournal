@@ -13,7 +13,8 @@ const CELL_HEIGHT = CELL_SIZE + 10; // Reduce cell height
 
 export default function ProjectCalendar({ milestones = [], projectStartDate, projectEndDate }) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
   const [currentDate, setCurrentDate] = useState(new Date());
   const tasks = useTasks(); // Get all tasks
   
@@ -152,7 +153,7 @@ export default function ProjectCalendar({ milestones = [], projectStartDate, pro
 
   // Tarih formatı
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString(locale, {
       month: 'long',
       year: 'numeric'
     });

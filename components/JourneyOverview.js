@@ -1,6 +1,6 @@
 // components/JourneyOverview.js
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useMemo, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableWithoutFeedback, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { COLORS, ELEVATION } from '../constants';
@@ -12,10 +12,59 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
   const { theme } = useTheme();
   const { t } = useLanguage();
 
-  const ContainerComponent = onPress ? TouchableOpacity : View;
-  const containerProps = onPress
-    ? { activeOpacity: 0.85, onPress }
-    : {};
+  // Smooth touch animations - ONLY for the card
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+
+  const handleCardPressIn = useCallback(() => {
+    if (!onPress) return; // No animation if not clickable
+    
+    scaleAnim.stopAnimation();
+    opacityAnim.stopAnimation();
+    
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.97,
+        useNativeDriver: true,
+        friction: 10,
+        tension: 120,
+      }),
+      Animated.spring(opacityAnim, {
+        toValue: 0.85,
+        useNativeDriver: true,
+        friction: 10,
+        tension: 120,
+      }),
+    ]).start();
+  }, [scaleAnim, opacityAnim, onPress]);
+
+  const handleCardPressOut = useCallback(() => {
+    if (!onPress) return;
+    
+    scaleAnim.stopAnimation();
+    opacityAnim.stopAnimation();
+    
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100,
+      }),
+      Animated.spring(opacityAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100,
+      }),
+    ]).start();
+  }, [scaleAnim, opacityAnim, onPress]);
+
+  const handleCardPress = useCallback(() => {
+    if (onPress) {
+      onPress();
+    }
+  }, [onPress]);
 
   // Mood rengini solid hale getir
   const getSolidMoodColor = (originalColor) => {
@@ -108,7 +157,8 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
   }, [activeTasks, completedTasks, selectedDate]);
 
   return (
-    <ContainerComponent style={styles.container} {...containerProps}>
+  <View style={styles.container}> 
+      {/* Header - NO touch feedback */}
       <View style={styles.header}>
         <Text style={[
           styles.title,
@@ -116,52 +166,62 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
         ]}>
           {t('journeyOverview')}
         </Text>
-        <View style={styles.headerRight}>
+        <View style={styles.headerRightRow}>
+          {/* chevron left of icon */}
+          {onPress ? (
+            <Ionicons name="chevron-forward" size={16} color={theme.name === 'dark' ? '#8E8E93' : '#8E8E93'} style={{ marginRight: 8 }} />
+          ) : null}
           <View style={[
             styles.icon,
-            { backgroundColor: theme.name === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.1)' }
+            { backgroundColor: theme.name === 'dark' ? 'rgba(255,68,68,0.08)' : 'rgba(255,68,68,0.08)' }
           ]}>
             <MaterialIcons 
               name="analytics" 
               size={18} 
-              color={theme.name === 'dark' ? '#1976D2' : '#1976D2'} 
+              color={COLORS.ERROR} 
             />
           </View>
-          {onPress && (
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={theme.name === 'dark' ? '#8E8E93' : '#1D1D1F'}
-              style={styles.chevron}
-            />
-          )}
         </View>
       </View>
       
-      <View style={[
-        styles.card,
-        { 
-          borderLeftColor: todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : COLORS.PRIMARY,
-          backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
-          shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
-          shadowOpacity: theme.name === 'dark' ? 0 : 0.03,
-          shadowRadius: theme.name === 'dark' ? 0 : 4,
-          elevation: theme.name === 'dark' ? 0 : 1,
-          borderWidth: theme.name === 'dark' ? 1 : 0,
-          borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-        }
-      ]}>
-        <View style={styles.grid}>
+      {/* Card - WITH touch feedback */}
+      <TouchableWithoutFeedback
+        onPressIn={handleCardPressIn}
+        onPressOut={handleCardPressOut}
+        onPress={handleCardPress}
+        disabled={!onPress}
+      >
+        <Animated.View style={[
+          styles.card,
+          { 
+            borderLeftColor: todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : COLORS.PRIMARY,
+            backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
+            shadowColor: theme.name === 'dark' ? '#000000' : COLORS.BLACK,
+            shadowOpacity: theme.name === 'dark' ? 0 : 0.03,
+            shadowRadius: theme.name === 'dark' ? 0 : 4,
+            elevation: theme.name === 'dark' ? 0 : 1,
+            borderWidth: theme.name === 'dark' ? 1 : 0,
+            borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+            transform: [{ scale: scaleAnim }],
+            opacity: opacityAnim,
+          }
+        ]}>
+        {/* Card header: place chevron here (same spot as MoodTrend) */}
+        <View style={styles.cardHeader} pointerEvents="none">
+          <View style={{ flex: 1 }} />
+        </View>
+
+  <View style={styles.grid}>
           {/* Active Projects */}
           <View style={styles.item}>
             <View style={[
-              styles.itemIcon, 
-              { backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(33, 150, 243, 0.1)' }
+              styles.itemIcon,
+              { backgroundColor: 'rgba(33, 150, 243, 0.10)' }
             ]}>
               <Ionicons 
                 name="play-circle-outline" 
                 size={16} 
-                color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#2196F3'} 
+                color={'#2196F3'} 
               />
             </View>
             <Text style={[
@@ -182,12 +242,12 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
           <View style={styles.item}>
             <View style={[
               styles.itemIcon,
-              { backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(76, 175, 80, 0.1)' }
+              { backgroundColor: 'rgba(76, 175, 80, 0.10)' }
             ]}>
               <Ionicons 
                 name="checkmark-circle-outline" 
                 size={16} 
-                color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#4CAF50'} 
+                color={'#4CAF50'} 
               />
             </View>
             <Text style={[
@@ -208,12 +268,12 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
           <View style={styles.item}>
             <View style={[
               styles.itemIcon,
-              { backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(25, 118, 210, 0.1)' }
+              { backgroundColor: 'rgba(25, 118, 210, 0.10)' }
             ]}>
               <Ionicons 
                 name="document-text-outline" 
                 size={16} 
-                color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#1976D2'} 
+                color={'#1976D2'} 
               />
             </View>
             <Text style={[
@@ -234,12 +294,12 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
           <View style={styles.item}>
             <View style={[
               styles.itemIcon,
-              { backgroundColor: todayDominantMood ? `${getSolidMoodColor(todayDominantMood.color)}15` : 'rgba(255, 152, 0, 0.1)' }
+              { backgroundColor: 'rgba(255, 152, 0, 0.10)' }
             ]}>
               <Ionicons 
                 name="create-outline" 
                 size={16} 
-                color={todayDominantMood ? getSolidMoodColor(todayDominantMood.color) : '#FF9800'} 
+                color={'#FF9800'} 
               />
             </View>
             <Text style={[
@@ -256,8 +316,9 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
             </Text>
           </View>
         </View>
-      </View>
-    </ContainerComponent>
+        </Animated.View>
+      </TouchableWithoutFeedback>
+    </View>
   );
 };
 
@@ -298,37 +359,50 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     shadowOffset: { width: 0, height: 1 },
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 4,
+    marginBottom: 6,
+  },
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   grid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start', // icons align at top
   },
   item: {
     width: '25%',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
     paddingVertical: 8,
+    minWidth: 60,
   },
   itemIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   number: {
-    fontSize: 13,
+    fontSize: 16,
     fontFamily: 'Poppins_700Bold',
-    marginBottom: 0,
     textAlign: 'center',
+    marginBottom: 4,
   },
   label: {
-    fontSize: 8,
+    fontSize: 11,
     fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
-    lineHeight: 10,
+    lineHeight: 14,
   },
 });
 

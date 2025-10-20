@@ -2,9 +2,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class ProjectAnalyzer {
-  constructor() {
+  constructor(languageOverride = null) {
     this.confidenceThreshold = 0.6; // Minimum confidence to show feedback (increased for quality)
     this.dailyDisplayKey = 'project_analyzer_daily_display';
+    this.languageOverride = languageOverride; // optional override for synchronous language selection
   }
 
   /**
@@ -13,11 +14,12 @@ class ProjectAnalyzer {
    */
   async getCurrentLanguage() {
     try {
+      if (this.languageOverride) return this.languageOverride;
       const language = await AsyncStorage.getItem('app_language');
       return language || 'en';
     } catch (error) {
       console.warn('Failed to get language:', error);
-      return 'en';
+      return this.languageOverride || 'en';
     }
   }
 
@@ -946,8 +948,8 @@ class ProjectAnalyzer {
    * @param {boolean} forceShow - Force show analysis (for testing)
    * @returns {Object} Daily analysis result
    */
-  static async getDailyAnalysis(activeProjects = [], completedProjects = [], forceShow = false) {
-    const analyzer = new ProjectAnalyzer();
+  static async getDailyAnalysis(activeProjects = [], completedProjects = [], forceShow = false, language = null) {
+    const analyzer = new ProjectAnalyzer(language);
     
     if (forceShow) {
       // For testing - force show analysis

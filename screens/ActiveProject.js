@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing, InteractionManager } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
@@ -11,11 +11,11 @@ import EditModal from "../components/EditModal";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
 import ProjectCalendar from "../components/ProjectCalendar";
-import AddMilestoneModal from "../components/AddMilestoneModal";
+import AddTaskModal from "../components/AddTaskModal";
 import ActiveProjectHeader from "../components/ActiveProjectHeader";
-import ActiveProjectMilestones from "../components/ActiveProjectMilestones";
+import ActiveProjectTasks from "../components/ActiveProjectTasks";
 import ProjectJourney from "../components/ProjectJourney";
-import AIMilestoneSuggestion from "../components/AIMilestoneSuggestion";
+import AITaskSuggestion from "../components/AITaskSuggestion";
 // Education removed from ActiveProject
 import AnimatedReanimated, {
   useSharedValue,
@@ -60,6 +60,9 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   // AI Milestone Suggestion states
   const [aiSuggestionVisible, setAiSuggestionVisible] = useState(false);
   const [hasAnalyzedJournals, setHasAnalyzedJournals] = useState(false);
+  
+  // Performance: Delay heavy computations until animation completes
+  const [isReady, setIsReady] = useState(false);
 
   // Horizontal tab switching animations (like MainScreen)
   const panX = useRef(new Animated.Value(0)).current;
@@ -144,6 +147,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
   const dragY = useSharedValue(0);
+  const backdropOpacity = useSharedValue(0);
   const isModalOpenShared = useSharedValue(false);
   
   // Update shared value when modal state changes
@@ -205,19 +209,40 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   ).current;
 
   useEffect(() => {
-    // Fast, smooth opening animation - optimized for speed
-    translateY.value = withTiming(0, { 
-      duration: 250,
-      easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1) // Smooth easing curve
+    // ULTRA-OPTIMIZED: Use requestAnimationFrame for smoother start
+    requestAnimationFrame(() => {
+      // Fast, staggered animations for smoothness
+      backdropOpacity.value = withTiming(1, {
+        duration: 200,
+        easing: ReanimatedEasing.out(ReanimatedEasing.ease)
+      });
+      
+      opacity.value = withTiming(1, { 
+        duration: 150, // Fastest - immediate visibility
+        easing: ReanimatedEasing.out(ReanimatedEasing.ease)
+      });
+      
+      translateY.value = withTiming(0, { 
+        duration: 320, // Smooth slide
+        easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
+      });
+      
+      scale.value = withTiming(1, { 
+        duration: 320,
+        easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
+      });
     });
-    scale.value = withTiming(1, { 
-      duration: 250,
-      easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
+    
+    // PERFORMANCE: Delay heavy computations until animation completes
+    // Animation duration is 320ms, add small buffer for smooth transition
+    const handle = InteractionManager.runAfterInteractions(() => {
+      // Add small delay to ensure backdrop animation completes smoothly
+      setTimeout(() => {
+        setIsReady(true);
+      }, 50); // Minimal delay just to ensure paint completes
     });
-    opacity.value = withTiming(1, { 
-      duration: 250,
-      easing: ReanimatedEasing.bezier(0.25, 0.1, 0.25, 1)
-    });
+    
+    return () => handle.cancel();
   }, []);
 
   useEffect(() => {
@@ -279,9 +304,13 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   }, []); // Empty deps - sadece mount/unmount'ta çalış
 
   const handleClose = useCallback(() => {
+    backdropOpacity.value = withTiming(0, {
+      duration: 200,
+      easing: ReanimatedEasing.in(ReanimatedEasing.ease)
+    });
     translateY.value = withTiming(height, { 
       duration: 300,
-      easing: ReanimatedEasing.bezier(0.4, 0, 0.6, 1) // Accelerated easing
+      easing: ReanimatedEasing.bezier(0.4, 0, 0.6, 1)
     });
     opacity.value = withTiming(0, { 
       duration: 300,
@@ -289,7 +318,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     }, () => {
       if (onClose) runOnJS(onClose)();
     });
-  }, [onClose]);
+  }, [onClose, backdropOpacity, translateY, opacity]);
 
   const handleDelete = useCallback(() => {
     if (!currentTask?.id) return;
@@ -571,39 +600,49 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
             >
               {/* Milestones Tab (left) */}
               <View style={{ width }}>
-                <ActiveProjectMilestones
-                  key={refreshKey} // Refresh trigger
-                  currentTask={currentTask}
-                  allMilestones={allMilestones}
-                  activeMilestones={activeMilestones}
-                  completedMilestones={completedMilestones}
-                  onUpdateMilestone={updateMilestone}
-                  onCompleteMilestone={completeMilestone}
-                  onDeleteMilestone={deleteMilestone}
-                  onSetActiveMilestone={setActiveMilestone}
-                  onOpenMilestoneDetail={setSelectedMilestone}
-                  onOpenJournalEditor={setSelectedJournalMilestone}
-                  onEditToggle={(milestone) => {
-                    setEditingMilestone(milestone);
-                    setAddMilestoneModalVisible(true);
-                  }}
-                  onAddMilestone={handleAddMilestone}
-                  onOpenJournal={handleOpenJournal}
-                  onAttachMilestone={attachMilestone}
-                  navigation={navigation}
-                  refreshKey={refreshKey}
-                />
+                {/* PERFORMANCE: Only render milestones after animation completes */}
+                {isReady ? (
+                  <ActiveProjectTasks
+                    key={refreshKey} // Refresh trigger
+                    currentTask={currentTask}
+                    allMilestones={allMilestones}
+                    activeMilestones={activeMilestones}
+                    completedMilestones={completedMilestones}
+                    onUpdateMilestone={updateMilestone}
+                    onCompleteMilestone={completeMilestone}
+                    onDeleteMilestone={deleteMilestone}
+                    onSetActiveMilestone={setActiveMilestone}
+                    onOpenMilestoneDetail={setSelectedMilestone}
+                    onOpenJournalEditor={setSelectedJournalMilestone}
+                    onEditToggle={(milestone) => {
+                      setEditingMilestone(milestone);
+                      setAddMilestoneModalVisible(true);
+                    }}
+                    onAddMilestone={handleAddMilestone}
+                    onOpenJournal={handleOpenJournal}
+                    onAttachMilestone={attachMilestone}
+                    navigation={navigation}
+                    refreshKey={refreshKey}
+                  />
+                ) : (
+                  <LoadingPlaceholder theme={theme} />
+                )}
               </View>
 
               {/* Journey Tab (right) */}
               <View style={{ width }}>
-                <ProjectJourney 
-                  currentTask={currentTask}
-                  onOpenJournal={handleOpenJournal}
-                  navigation={navigation}
-                  availableMilestones={allMilestones}
-                  refreshKey={refreshKey}
-                />
+                {/* PERFORMANCE: Only render journey after animation completes */}
+                {isReady ? (
+                  <ProjectJourney 
+                    currentTask={currentTask}
+                    onOpenJournal={handleOpenJournal}
+                    navigation={navigation}
+                    availableMilestones={allMilestones}
+                    refreshKey={refreshKey}
+                  />
+                ) : (
+                  <LoadingPlaceholder theme={theme} />
+                )}
               </View>
             </Animated.View>
           </View>
@@ -633,15 +672,15 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 currentTask={currentTask}
                 isProjectBased={true}
               />}
-              <AddMilestoneModal 
+              <AddTaskModal 
                 visible={addMilestoneModalVisible} 
                 onClose={() => {
                   setAddMilestoneModalVisible(false);
                   setEditingMilestone(null);
                 }} 
                 onSave={handleSaveMilestone}
-                editingMilestone={editingMilestone}
-                existingMilestones={allMilestones}
+                editingTask={editingMilestone}
+                existingTasks={allMilestones}
               />
 
           {/* Education: Removed - no education overlay in ActiveProject */}
@@ -731,3 +770,39 @@ const styles = StyleSheet.create({
   },
 });
 
+// Minimalist Circle Loading Animation
+const LoadingPlaceholder = ({ theme }) => {
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [spinAnim]);
+
+  const rotate = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Animated.View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          borderWidth: 3,
+          borderColor: 'transparent',
+          borderTopColor: theme.name === 'dark' ? '#FFFFFF' : '#000000',
+          transform: [{ rotate }],
+        }}
+      />
+    </View>
+  );
+};

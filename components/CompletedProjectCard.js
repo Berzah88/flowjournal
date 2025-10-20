@@ -18,7 +18,7 @@ const CompletedProjectCard = memo(({
   task = null // Task prop'u eklendi
 }) => {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   
   // Milestone istatistikleri
@@ -33,12 +33,17 @@ const CompletedProjectCard = memo(({
   // Tarih formatı
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
-    });
+    const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString(locale, { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      });
+    } catch (e) {
+      return '';
+    }
   };
 
   // Proje süresi hesaplama
@@ -274,7 +279,6 @@ const CompletedProjectCard = memo(({
             color={theme.name === 'dark' ? '#8E8E93' : '#C7C7CC'} 
           />
         </View>
-      </View>
     </Pressable>
     </Animated.View>
   );

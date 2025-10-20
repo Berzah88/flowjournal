@@ -3,15 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StatusBar, View, Button, Text } from 'react-native';
+import { StatusBar } from 'react-native';
 import TutorialScreen from './screens/TutorialScreen';
 import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
 import ActiveProject from './screens/ActiveProject';
 import JournalDetailScreen from './screens/JournalDetailScreen';
 import CompletedProjectsScreen from './screens/CompletedProjectsScreen';
-import EmotionalJournalScreen from './screens/EmotionalJournalScreen';
 import OverviewScreen from './screens/overview';
+import MoodTrendScreen from './screens/MoodTrendScreen';
 import { TaskProvider } from './context/TaskContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -88,15 +88,16 @@ function AppNavigator() {
           name="ActiveProject" 
           component={ActiveProject} 
           options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-            headerShown: false
+            presentation: 'transparentModal',
+            animation: 'none',
+            headerShown: false,
+            cardStyle: { backgroundColor: 'transparent' }
           }}
         />
         <Stack.Screen name="JournalDetail" component={JournalDetailScreen} />
         <Stack.Screen name="CompletedProjects" component={CompletedProjectsScreen} />
-        <Stack.Screen name="EmotionalJournal" component={EmotionalJournalScreen} />
         <Stack.Screen name="Overview" component={OverviewScreen} />
+        <Stack.Screen name="MoodTrend" component={MoodTrendScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

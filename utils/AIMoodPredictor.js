@@ -208,6 +208,19 @@ const STORAGE_KEYS = {
   CONFIDENCE_HISTORY: 'smart_mood_confidence_history'
 };
 
+// Normalize text for consistent matching (Turkish-aware)
+const normalizeText = (text = '') => {
+  if (!text) return '';
+  // Lowercase and remove punctuation while keeping Turkish characters
+  // Replace non-letter/number/space characters with space, then collapse whitespace
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/[^a-z0-9ğüşöçıİĞÜŞÖÇ\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 // Semantic Analyzer - Advanced Context Understanding
 class SemanticAnalyzer {
   constructor() {
@@ -262,9 +275,35 @@ class SemanticAnalyzer {
     };
   }
 
+  // Quick keyword -> extended mood hints (added to improve coverage)
+  static extendedMoodKeywords() {
+    // Curated high-precision keyword hints (filtered from TF-IDF + manual cleanup)
+    return {
+      'motivated': ['ilham', 'heves', 'motivated', 'motive', 'enerji', 'hevesli'],
+      'grateful': ['minnettar', 'teşekkür', 'şükür', 'müteşekkir', 'thankful'],
+      'nostalgic': ['nostalji', 'özlem', 'hatırlıyorum', 'remember'],
+      'lonely': ['yalnız', 'tek başıma', 'kimse yok', 'lonely'],
+      'frustrated': ['sıkıldım', 'bıktım', 'sinir', 'sinirliyim', 'frustrated', 'bıktım artık', 'yeter artık'],
+      'anxious': ['endişeli', 'kaygı', 'kaygılı', 'endiş', 'anxious'],
+      'hopeful': ['umutlu', 'umarım', 'inşallah', 'hopeful', 'umudum var', 'iyi olacak'],
+      'proud': ['gururluyum', 'başardım', 'gurur duyuyorum', 'proud'],
+      'relieved': ['kurtuldum', 'rahatladım', 'rahat', 'relieved', 'ferahladım'],
+      'overwhelmed': ['bunaldım', 'çok fazla', 'fazla geldi', 'overwhelmed'],
+      'curious': ['merak', 'merak ediyorum', 'curious', 'meraklı'],
+      'content': ['memnunum', 'tatmin', 'content', 'iyi hissediyorum'],
+      'peaceful': ['huzurlu', 'sakin', 'peaceful', 'dingin', 'huzur'],
+      'confused': ['kafam karıştı', 'anlamıyorum', 'confused'],
+      'disappointed': ['hayal kırıklığı', 'hayal kırıklığına', 'üzüldüm', 'disappointed', 'kırgınım'],
+      'bored': ['sıkıldım', 'sıkıcı', 'bored'],
+      'surprised': ['şaşkınım', 'beklenmedik', 'surprised', 'şaşırdım'],
+      'worried': ['endişeli', 'endiş', 'kaygılı', 'worried', 'kaygılanıyorum'],
+      'natural': ['calm', 'sakin', 'normal']
+    };
+  }
+
   // Analyze co-occurrence to understand context better
   analyzeCoOccurrence(text, detectedMood) {
-    const lowerText = text.toLowerCase();
+    const lowerText = normalizeText(text);
     let contextAdjustment = 0;
     let contextReason = '';
 
@@ -301,7 +340,7 @@ class SemanticAnalyzer {
 
   // Analyze sentiment flow - how mood changes within text
   analyzeSentimentFlow(text) {
-    const lowerText = text.toLowerCase();
+    const lowerText = normalizeText(text);
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
     
     if (sentences.length < 2) {
@@ -355,11 +394,11 @@ class SemanticAnalyzer {
 
   // Detect temporal context
   detectTemporalContext(text) {
-    const lowerText = text.toLowerCase();
-    
-    const hasPast = this.temporalMarkers.past.some(marker => lowerText.includes(marker));
-    const hasPresent = this.temporalMarkers.present.some(marker => lowerText.includes(marker));
-    const hasFuture = this.temporalMarkers.future.some(marker => lowerText.includes(marker));
+    const lowerText = normalizeText(text);
+
+    const hasPast = this.temporalMarkers.past.some(marker => lowerText.includes(normalizeText(marker)));
+    const hasPresent = this.temporalMarkers.present.some(marker => lowerText.includes(normalizeText(marker)));
+    const hasFuture = this.temporalMarkers.future.some(marker => lowerText.includes(normalizeText(marker)));
 
     if (hasPresent && (hasPast || hasFuture)) {
       return {
@@ -537,7 +576,7 @@ class SmartPatternMatcher {
 
   // N-gram analysis for better pattern matching
   extractNGrams(text, n = 2) {
-    const words = text.toLowerCase().split(/\s+/);
+    const words = normalizeText(text).split(/\s+/);
     const ngrams = [];
     
     for (let i = 0; i <= words.length - n; i++) {
@@ -549,13 +588,13 @@ class SmartPatternMatcher {
 
   // Smart pattern matching with context awareness
   matchPatterns(text) {
-    const lowerText = text.toLowerCase();
+    const lowerText = normalizeText(text);
     const words = lowerText.split(/\s+/);
     const ngrams = this.extractNGrams(lowerText);
     const matches = [];
 
-    // Check for negation
-    const hasNegation = this.negationWords.some(neg => lowerText.includes(neg));
+  // Check for negation
+  const hasNegation = this.negationWords.some(neg => lowerText.includes(normalizeText(neg)));
     
     // Check for intensity modifiers
     const intensity = this.detectIntensity(lowerText);
@@ -569,17 +608,19 @@ class SmartPatternMatcher {
         let score = 0;
         let matchedPatterns = [];
         
-        // Check single word patterns
-        data.patterns.forEach(pattern => {
-          if (words.includes(pattern)) {
-            score += 1;
-            matchedPatterns.push(pattern);
-          }
-        });
+            // Check single word patterns (normalize pattern before matching)
+            data.patterns.forEach(pattern => {
+              const p = normalizeText(pattern);
+              if (words.includes(p)) {
+                score += 1;
+                matchedPatterns.push(pattern);
+              }
+            });
         
         // Check N-gram patterns
         data.ngrams.forEach(ngram => {
-          if (ngrams.includes(ngram)) {
+          const n = normalizeText(ngram);
+          if (ngrams.includes(n)) {
             score += 2; // N-grams get higher weight
             matchedPatterns.push(ngram);
           }
@@ -587,7 +628,8 @@ class SmartPatternMatcher {
         
         // Check context patterns
         data.context.forEach(context => {
-          if (lowerText.includes(context)) {
+          const c = normalizeText(context);
+          if (lowerText.includes(c)) {
             score += 0.5;
             matchedPatterns.push(context);
           }
@@ -632,6 +674,7 @@ class SmartPatternMatcher {
 
   // Enhanced pattern detection for better accuracy
   detectAdvancedPatterns(text, matches, intensity, hasNegation) {
+    const lowerText = normalizeText(text);
     // Turkish specific patterns - mood-specific only, no generic intensifiers
     const turkishPatterns = {
       'frustrated': [
@@ -674,7 +717,7 @@ class SmartPatternMatcher {
     // Check for Turkish patterns
     Object.entries(turkishPatterns).forEach(([mood, patterns]) => {
       patterns.forEach(pattern => {
-        if (text.includes(pattern)) {
+        if (lowerText.includes(normalizeText(pattern))) {
           let score = 2.0; // High score for specific patterns
           
           // Apply intensity modifier
@@ -748,7 +791,7 @@ class SmartPatternMatcher {
     // Check for English patterns
     Object.entries(englishPatterns).forEach(([mood, patterns]) => {
       patterns.forEach(pattern => {
-        if (text.includes(pattern)) {
+        if (lowerText.includes(normalizeText(pattern))) {
           let score = 2.0; // High score for specific patterns
           
           // Apply intensity modifier
@@ -773,6 +816,23 @@ class SmartPatternMatcher {
 
     // Enhanced phrase matching for English
     this.detectEnglishPhrases(text, matches, intensity, hasNegation);
+
+    // Keyword hints for extended moods (generic match)
+    try {
+      const kwMap = SemanticAnalyzer.extendedMoodKeywords();
+      Object.entries(kwMap).forEach(([mood, keywords]) => {
+        keywords.forEach(k => {
+          if (lowerText.includes(normalizeText(k))) {
+            let score = 1.4;
+            if (hasNegation) score *= -0.7;
+            score *= intensity.multiplier;
+            matches.push({ mood, category: 'keyword_hint', score, matchedPatterns: [k], intensity: intensity.level, hasNegation });
+          }
+        });
+      });
+    } catch (e) {
+      // ignore if extended keywords not available
+    }
   }
 
   // Enhanced English phrase detection
@@ -818,7 +878,7 @@ class SmartPatternMatcher {
     // Check for phrase patterns
     Object.entries(englishPhrases).forEach(([mood, phrases]) => {
       phrases.forEach(phrase => {
-        if (lowerText.includes(phrase)) {
+        if (lowerText.includes(normalizeText(phrase))) {
           let score = 3.0; // Higher score for phrases (more specific)
           
           // Apply intensity modifier
@@ -907,8 +967,9 @@ class ContextAnalyzer {
     const weightedMatches = [];
     
     patternMatches.forEach(match => {
+      const firstPattern = normalizeText(match.matchedPatterns[0] || '');
       const context = contexts.find(c => 
-        c.sentence.toLowerCase().includes(match.matchedPatterns[0])
+        normalizeText(c.sentence).includes(firstPattern)
       );
       
       if (context) {
@@ -969,7 +1030,7 @@ class UserLearningSystem {
 
   // Extract patterns from user text
   extractUserPatterns(text) {
-    const words = text.toLowerCase().split(/\s+/);
+    const words = normalizeText(text).split(/\s+/);
     const patterns = [];
     
     // Single words

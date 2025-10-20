@@ -9,9 +9,9 @@ import { useLanguage } from "../context/LanguageContext";
 import EditModal from "../components/EditModal";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
-import AddMilestoneModal from "../components/AddMilestoneModal";
+import AddTaskModal from "../components/AddTaskModal";
 import ActiveProjectHeader from "../components/ActiveProjectHeader";
-import ActiveProjectMilestones from "../components/ActiveProjectMilestones";
+import ActiveProjectTasks from "../components/ActiveProjectTasks";
 import JournalCard from "../components/JournalCard";
 import AnimatedReanimated, {
   useSharedValue,
@@ -28,7 +28,8 @@ const { width, height } = Dimensions.get("window");
 export default function CompletedActiveProject({ selectedCard, onClose, setMainActiveTab, navigation }) {
   const tasks = useTasks();
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
   const {
     deleteTask,
     completeTask,
@@ -335,7 +336,7 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
               <Text style={styles.projectTitle}>{currentTask.title}</Text>
               <View style={styles.dateFrame}>
                 <Text style={styles.dateRange}>
-                  {new Date(currentTask.startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })} - {new Date(currentTask.endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  {new Date(currentTask.startDate).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })} - {new Date(currentTask.endDate).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}
                 </Text>
               </View>
             </View>
@@ -402,7 +403,7 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
                           const dateGroups = {};
                           milestoneGroup.entries.forEach(entry => {
                             const date = new Date(entry.createdAt);
-                            const dateKey = date.toLocaleDateString('en-US', {
+                            const dateKey = date.toLocaleDateString(locale, {
                               day: '2-digit',
                               month: 'long',
                               year: 'numeric'
@@ -482,7 +483,7 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
                                 const dateGroups = {};
                                 ungroupedJournals.forEach(entry => {
                                   const date = new Date(entry.createdAt);
-                                  const dateKey = date.toLocaleDateString('en-US', {
+                                  const dateKey = date.toLocaleDateString(locale, {
                                     day: '2-digit',
                                     month: 'long',
                                     year: 'numeric'
@@ -556,15 +557,15 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
             }}
             fromActiveProject={true}
           />}
-          <AddMilestoneModal 
+          <AddTaskModal 
             visible={addMilestoneModalVisible} 
             onClose={() => {
               setAddMilestoneModalVisible(false);
               setEditingMilestone(null);
             }} 
             onSave={handleSaveMilestone}
-            editingMilestone={editingMilestone}
-            existingMilestones={allMilestones}
+            editingTask={editingMilestone}
+            existingTasks={allMilestones}
           />
         </View>
         </LinearGradient>

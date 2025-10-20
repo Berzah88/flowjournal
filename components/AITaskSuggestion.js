@@ -12,7 +12,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const AIMilestoneSuggestion = ({
+const AITaskSuggestion = ({
   journalEntries = [],
   existingMilestones = [],
   onSuggestionAccept,
@@ -559,4 +559,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AIMilestoneSuggestion;
+export default AITaskSuggestion;

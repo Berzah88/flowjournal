@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { View, Text } from 'react-native';
 import MileStone from './MileStone';
 
-function CompletedMilestonesList({
+function CompletedTasksList({
   completedMilestones,
   refreshKey,
   theme,
@@ -93,6 +93,6 @@ function CompletedMilestonesList({
   );
 }
 
-export default memo(CompletedMilestonesList);
+export default memo(CompletedTasksList);
 
 

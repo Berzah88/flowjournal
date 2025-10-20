@@ -1,5 +1,6 @@
 // components/ProjectCard.js
 import React, { memo, useRef, useCallback } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, Vibration, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -28,7 +29,7 @@ const ProjectCard = memo(function ProjectCard({
   onProjectLongPress,
   getProjectEmotionalProgress,
 }) {
-  // Smooth touch animations
+  // Smooth touch animations (like JourneyOverview)
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
   const longPressTimer = useRef(null);
@@ -43,18 +44,22 @@ const ProjectCard = memo(function ProjectCard({
       clearTimeout(longPressTimer.current);
     }
     
-    // Smooth scale down animation
+    // Smooth spring animation (same as JourneyOverview)
+    scaleAnim.stopAnimation();
+    opacityAnim.stopAnimation();
+    
     Animated.parallel([
       Animated.spring(scaleAnim, {
-        toValue: 0.98,
+        toValue: 0.97,
         useNativeDriver: true,
-        friction: 8,
-        tension: 100,
+        friction: 10,
+        tension: 120,
       }),
-      Animated.timing(opacityAnim, {
-        toValue: 0.9,
-        duration: 100,
+      Animated.spring(opacityAnim, {
+        toValue: 0.85,
         useNativeDriver: true,
+        friction: 10,
+        tension: 120,
       }),
     ]).start();
     
@@ -66,19 +71,22 @@ const ProjectCard = memo(function ProjectCard({
       // Haptic feedback
       Vibration.vibrate(50);
       
-      // Smooth spring back
+      // Animate back
+      scaleAnim.stopAnimation();
+      opacityAnim.stopAnimation();
+      
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
           useNativeDriver: true,
-          friction: 6,
-          tension: 80,
+          friction: 8,
+          tension: 100,
         }),
         Animated.spring(opacityAnim, {
           toValue: 1,
           useNativeDriver: true,
-          friction: 6,
-          tension: 80,
+          friction: 8,
+          tension: 100,
         }),
       ]).start();
       
@@ -94,20 +102,23 @@ const ProjectCard = memo(function ProjectCard({
       longPressTimer.current = null;
     }
     
-    // Smooth spring back (only if not already animated by long press)
+    // Animate back (only if not long press)
     if (!isLongPress.current) {
+      scaleAnim.stopAnimation();
+      opacityAnim.stopAnimation();
+      
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
           useNativeDriver: true,
-          friction: 6,
-          tension: 80,
+          friction: 8,
+          tension: 100,
         }),
         Animated.spring(opacityAnim, {
           toValue: 1,
           useNativeDriver: true,
-          friction: 6,
-          tension: 80,
+          friction: 8,
+          tension: 100,
         }),
       ]).start();
     }
@@ -120,6 +131,19 @@ const ProjectCard = memo(function ProjectCard({
     }
   }, [setSelectedCard, project]);
   
+  const { language } = useLanguage();
+
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+
+  const formatShort = (dateStr) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString(locale, { day: '2-digit', month: 'short' });
+    } catch (e) {
+      return '';
+    }
+  };
+
   return (
     <TouchableWithoutFeedback
       onPressIn={handlePressIn}
@@ -221,7 +245,7 @@ const ProjectCard = memo(function ProjectCard({
                   color: theme.name === 'dark' ? '#FF6666' : '#FF4444',
                 }
               ]}>
-                {new Date(project.startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(project.endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+                {formatShort(project.startDate)} - {formatShort(project.endDate)}
               </Text>
             </View>
             {project.isLastDay && (
@@ -418,7 +442,7 @@ const ProjectCard = memo(function ProjectCard({
               project.journalEntries.forEach(entry => {
                 if (entry.createdAt) {
                   const date = new Date(entry.createdAt);
-                  const dateKey = date.toLocaleDateString('en-US', {
+                  const dateKey = date.toLocaleDateString(locale, {
                     day: '2-digit',
                     month: 'long',
                     year: 'numeric'

@@ -15,8 +15,8 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
 
   useEffect(() => {
     progress.value = withTiming(activeIndex === 0 ? 0 : 1, {
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
+      duration: 350, // 220 → 350 (daha yavaş ve yumuşak)
+      easing: Easing.bezier(0.25, 0.46, 0.45, 0.94), // Daha doğal easing eğrisi
     });
   }, [activeIndex]);
 
@@ -24,17 +24,19 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
     color: interpolateColor(progress.value, [0, 1],
       theme.name === 'dark' ? ["#FFFFFF", "#8E8E93"] : ["#1D1D1F", "#8E8E93"]
     ),
+    transform: [{ scale: interpolate(progress.value, [0, 1], [1.05, 1]) }], // Aktif tab hafif büyüyor
   }));
 
   const completedTextStyle = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1],
       theme.name === 'dark' ? ["#8E8E93", "#FFFFFF"] : ["#8E8E93", "#1D1D1F"]
     ),
+    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.05]) }], // Aktif olmayan tab hafif büyüyor
   }));
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{
-      translateX: interpolate(progress.value, [0, 1], [0, width * 0.5 - 20])
+      translateX: interpolate(progress.value, [0, 1], [0, width * 0.5 - 16]) // 20 → 16 (yeni margin)
     }],
   }));
 
@@ -75,8 +77,8 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginHorizontal: 20,
-    marginTop: 3, // 8 → 3 (yaklaşık %62.5 azaltım) - MoodStatement ile arasındaki boşluğu daha da azalt
+    marginHorizontal: 16, // 20 → 16 (daha az yatay boşluk)
+    marginTop: 3,
     marginBottom: 0,
     paddingHorizontal: 0,
   },
@@ -86,7 +88,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: 48,
     justifyContent: "space-between",
-    paddingHorizontal: 6,
+    paddingHorizontal: 4, // 6 → 4 (daha az iç boşluk)
     elevation: 0,
     overflow: "hidden",
     borderWidth: 0.5,
@@ -105,10 +107,10 @@ const styles = StyleSheet.create({
   },
   indicator: {
     position: "absolute",
-    left: 6,
+    left: 4, // 6 → 4 (yeni padding değerine göre)
     top: 6,
     bottom: 6,
-    width: (width - 40) / 2 - 12, // half minus paddings
+    width: (width - 32) / 2 - 8, // Güncel margin (16*2=32) ve padding (4*2=8) değerleri
     borderRadius: 12,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,

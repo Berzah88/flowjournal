@@ -16,7 +16,6 @@ import { AppState } from 'react-native';
 
 const STORAGE_KEYS = {
   FCM_TOKEN: 'fcmToken',
-  DAILY_REMINDER_TIME: 'dailyReminderTime',
 };
 
 class FCMService {
@@ -219,12 +218,20 @@ class FCMService {
 
         console.log('📱 FCM foreground bildirim alındı:', remoteMessage);
         
-        // ÖNEMLİ: Sadece uygulama GERÇEKTEN foreground'dayken local bildirim göster
+        // ÖNEMLİ: Sadece uygulama GERÇEKTEN foreground'dayken VE kritik bildirimler için local notification göster
         const appState = AppState.currentState;
         console.log('📊 App durumu:', appState);
-        
-        if (appState === 'active' && remoteMessage.notification) {
-          // Sadece uygulama aktifken local bildirim göster
+
+        // Debug için kritik bildirim kontrolü
+        const isCritical = this.isCriticalNotification(remoteMessage);
+        console.log('🔍 Kritik bildirim kontrolü:', {
+          isCritical,
+          dataType: remoteMessage.data?.type,
+          hasNotification: !!remoteMessage.notification
+        });
+
+        if (appState === 'active' && remoteMessage.notification && isCritical) {
+          // Sadece uygulama aktifken VE kritik bildirimler için local notification göster
           try {
             await Notifications.scheduleNotificationAsync({
               content: {
@@ -236,13 +243,19 @@ class FCMService {
               },
               trigger: null, // Hemen göster
             });
-            
-            console.log('✅ Local bildirim gösterildi');
+
+            console.log('✅ Kritik bildirim için local notification gösterildi');
           } catch (error) {
-            console.error('❌ Local bildirim hatası:', error);
+            console.error('❌ Local notification hatası:', error);
           }
-        } else if (appState !== 'active') {
-          console.log('ℹ️ App arka planda - local bildirim gösterilmedi (sistem gösterecek)');
+        } else {
+          if (appState !== 'active') {
+            console.log('ℹ️ App arka planda - local notification gösterilmedi (sistem gösterecek)');
+          } else if (!isCritical) {
+            console.log('ℹ️ Kritik olmayan bildirim - sadece native notification gösterilecek');
+          } else if (!remoteMessage.notification) {
+            console.log('ℹ️ Notification payload yok - local notification gösterilmeyecek');
+          }
         }
         
         if (typeof this.onNotificationReceived === 'function') {
@@ -286,60 +299,6 @@ class FCMService {
     return unsubscribe;
   }
 
-  // Günlük bildirim planla (Native scheduled notification ile)
-  async scheduleDailyReminder(hour = 19, minute = 0) {
-    try {
-      // If the user is subscribed to topic-based daily reminders (server-side),
-      // skip scheduling a client-side local reminder to avoid duplicate notifications.
-      try {
-        const subscribed = await AsyncStorage.getItem('fcm_daily_reminders_subscribed');
-        if (subscribed === 'true') {
-          console.log('ℹ️ Kullanıcı server-side daily_reminders topicine abone — local schedule atlanıyor');
-          return null;
-        }
-      } catch (e) {
-        // If AsyncStorage fails, continue and attempt scheduling (fail-open)
-        console.warn('⚠️ AsyncStorage okunamadı, local daily reminder scheduling denenecek:', e);
-      }
-
-      // Önceki bildirimleri iptal et
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      
-      // Hedef zamanı hesapla
-      const now = new Date();
-      const targetTime = new Date();
-      targetTime.setHours(hour, minute, 0, 0);
-      
-      // Eğer bugünün hedef saati geçmişse, yarın için planla
-      if (targetTime <= now) {
-        targetTime.setDate(targetTime.getDate() + 1);
-      }
-      
-      // Zamanı AsyncStorage'a kaydet
-      await AsyncStorage.setItem(STORAGE_KEYS.DAILY_REMINDER_TIME, JSON.stringify({ hour, minute }));
-      
-      // Native scheduled notification kullan - arka planda da çalışır!
-      const timeUntilTarget = targetTime.getTime() - now.getTime();
-      
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '📖 Günlük Hatırlatma',
-          body: 'Bugün neler hissettin? Günlüğüne birkaç satır ekle 💭',
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: {
-          seconds: Math.round(timeUntilTarget / 1000), // Kalan süre saniye cinsinden
-        },
-      });
-      
-      return notificationId;
-    } catch (error) {
-      console.error('❌ Native günlük bildirim planlanamadı:', error);
-      throw error;
-    }
-  }
-
   // Local notification gönder
   async sendLocalNotification({ title, body, data = {} }) {
     try {
@@ -357,20 +316,6 @@ class FCMService {
       console.error('❌ FCM local notification gönderilemedi:', error);
     }
   }
-
-  // Test bildirimi gönder (Local)
-  async sendTestNotification() {
-    try {
-      await this.sendLocalNotification({
-        title: '🧪 FCM Local Test',
-        body: 'Local notification çalışıyor!',
-        data: { type: 'test' },
-      });
-    } catch (error) {
-      console.error('❌ FCM local test bildirimi gönderilemedi:', error);
-    }
-  }
-
 
   // FCM token'ı al
   async getToken() {
@@ -406,9 +351,32 @@ class FCMService {
   // Tüm bildirimleri iptal et
   async cancelAllNotifications() {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.DAILY_REMINDER_TIME);
+      await AsyncStorage.removeItem(STORAGE_KEYS.FCM_TOKEN);
     } catch (error) {
       console.error('❌ FCM bildirimleri iptal edilemedi:', error);
+    }
+  }
+
+  // Manuel test için kritik bildirim fonksiyonu
+  async testCriticalNotification() {
+    console.log('🧪 Manuel test başlatılıyor...');
+
+    const testMessage = {
+      notification: {
+        title: '⏰ Test Deadline Bildirimi',
+        body: 'Bu bir test kritik bildirimidir!'
+      },
+      data: {
+        type: 'project_deadline',
+        project_id: 'test-123'
+      }
+    };
+
+    // Manuel olarak foreground handler logic'ini çalıştır
+    if (globalThis.__fcmForegroundHandler) {
+      await globalThis.__fcmForegroundHandler(testMessage);
+    } else {
+      console.error('❌ Foreground handler bulunamadı');
     }
   }
 }

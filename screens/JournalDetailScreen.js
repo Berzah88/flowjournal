@@ -39,7 +39,8 @@ const JournalDetailScreen = ({
   navigation
 }) => {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
   const { selectedMediaData: initialMediaData } = route.params;
   const activeTasks = useActiveTasks();
   const { updateProjectJournalEntry } = useTaskActions();
@@ -82,11 +83,11 @@ const JournalDetailScreen = ({
     const targetDate = initialMediaData.date;
     const filteredEntries = projectJournalEntries.filter(entry => {
       const entryDate = new Date(entry.createdAt);
-      const entryDateString = entryDate.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
+        const entryDateString = entryDate.toLocaleDateString(locale, {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        });
       return entryDateString === targetDate;
     });
     
@@ -285,32 +286,39 @@ const JournalDetailScreen = ({
 
   // Konum bilgisini al - sadece bir kez çalışır
   const [locationLoaded, setLocationLoaded] = useState(false);
-  
+
   useEffect(() => {
     if (locationLoaded) return; // Prevent multiple calls
-    
+
     const getLocationText = async () => {
       if (selectedMediaData.location) {
         const coords = selectedMediaData.location.coords || selectedMediaData.location;
         if (coords && coords.latitude && coords.longitude) {
           try {
+            // Önce konum izinlerini kontrol et
+            const { status } = await Location.getForegroundPermissionsAsync();
+            if (status !== 'granted') {
+              console.warn('Location permission not granted for reverse geocoding');
+              return;
+            }
+
             const result = await Location.reverseGeocodeAsync({
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
-            
+
             if (result && result.length > 0) {
               const location = result[0];
               const city = location.city || location.subregion || location.region;
               const district = location.district || location.subLocality;
-              
+
               let locationText = t('location');
               if (city && district && city !== district) {
                 locationText = `${district}, ${city}`;
               } else if (city) {
                 locationText = city;
               }
-              
+
               setLocationText(locationText);
             }
           } catch (error) {

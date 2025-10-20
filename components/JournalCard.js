@@ -471,17 +471,17 @@ const JournalCard = memo(function JournalCard({
           {
             // Consistent solid backgrounds
             backgroundColor: theme.name === 'dark' 
-              ? '#2A2A2E' 
+              ? '#2A2E30' 
               : '#FFFFFF',
             borderColor: theme.name === 'dark' 
               ? 'rgba(255, 255, 255, 0.1)' 
               : 'rgba(0, 0, 0, 0.05)',
-            // Enhanced shadows for modern look
+            // Reduced shadows for a softer look
             shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-            shadowOpacity: theme.name === 'dark' ? 0.3 : 0.1,
-            shadowRadius: theme.name === 'dark' ? 12 : 8,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: theme.name === 'dark' ? 8 : 4,
+            shadowOpacity: theme.name === 'dark' ? 0.12 : 0.07, // reduced
+            shadowRadius: theme.name === 'dark' ? 4 : 2, // reduced
+            shadowOffset: { width: 0, height: 2 }, // softer
+            elevation: theme.name === 'dark' ? 2 : 1, // reduced
           }
         ]}
       >

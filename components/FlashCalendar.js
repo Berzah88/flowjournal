@@ -9,7 +9,7 @@ import {
   TouchableWithoutFeedback,
   Platform,
 } from "react-native";
-import { Calendar } from "react-native-calendars";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -25,7 +25,21 @@ export default function FlashCalendar({
   minDate, // Date (optional)
 }) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  // Configure locale for react-native-calendars
+  useEffect(() => {
+    LocaleConfig.locales['tr'] = {
+      monthNames: ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'],
+      monthNamesShort: ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'],
+      dayNames: ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'],
+      dayNamesShort: ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'],
+      today: 'Bugün'
+    };
+
+    // Set default locale based on app language
+    LocaleConfig.defaultLocale = language === 'tr' ? 'tr' : LocaleConfig.defaultLocale || 'en';
+  }, [language]);
   const [localStart, setLocalStart] = useState(initialStart ? new Date(initialStart) : null);
   const [localEnd, setLocalEnd] = useState(initialEnd ? new Date(initialEnd) : null);
 

@@ -1,4 +1,4 @@
-﻿// screens/MyDayScreen.js
+// screens/MyDayScreen.js
 import React, { useState, useRef, useMemo, useEffect, useCallback, memo } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -24,13 +24,13 @@ import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ActiveProject from "./ActiveProject";
-import AddMilestoneModal from "../components/AddMilestoneModal";
+import AddTaskModal from "../components/AddTaskModal";
 import MoodTrend from "../components/MoodTrend";
 import MoodCalendar from "../components/MoodCalendar";
 import HorizontalCalendar from "../components/HorizontalCalendar";
 import ProjectCard from "../components/ProjectCard";
 import JourneyOverview from "../components/JourneyOverview";
-import ActivityTimeline from "../components/ActivityTimeline";
+import TodaysSummary from "../components/TodaysSummary";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 const { width } = Dimensions.get("window");
@@ -725,171 +725,29 @@ const MyDayScreen = memo(function MyDayScreen({
         />
         
         {/* Today's Summary with Progress and Projects */}
-        <View style={styles.todaysSummaryContainer}>
-          {/* Today's Summary Header */}
-          <View style={styles.summaryHeaderContainer}>
-            <View style={styles.summaryHeaderContent}>
-              <Text
-                style={[
-                  styles.summaryHeaderTitle,
-                  { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
-                ]}
-              >
-                {t('todaysSummary')}
-              </Text>
-              <View
-                style={[
-                  styles.counterBadge,
-                  {
-                    backgroundColor:
-                      theme.name === 'dark'
-                        ? 'rgba(33, 150, 243, 0.12)'
-                        : 'rgba(33, 150, 243, 0.1)',
-                    borderColor:
-                      theme.name === 'dark'
-                        ? 'rgba(33,150,243,0.25)'
-                        : 'rgba(33,150,243,0.15)',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.counterText,
-                    { color: theme.name === 'dark' ? '#2196F3' : '#1976D2' },
-                  ]}
-                >
-                  {selectedDateActiveTasks.length}
-                </Text>
-              </View>
-            </View>
-          </View>
-          
-          {/* Progress Status - Integrated */}
-          {(() => {
-            // Calculate today's progress
-            const today = new Date();
-            const selectedDateObj = new Date(safeSelectedDate);
-            today.setHours(0, 0, 0, 0);
-            selectedDateObj.setHours(0, 0, 0, 0);
-            
-            // Only show for today
-            if (selectedDateObj.getTime() !== today.getTime()) {
-              return null;
-            }
-            
-            const totalMilestones = selectedDateActiveTasks.reduce((total, project) => {
-              return total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, safeSelectedDate)).length || 0);
-            }, 0);
-
-            const completedMilestones = selectedDateActiveTasks.reduce((total, project) => {
-              return total + (project.milestones?.filter(m => isMilestoneCompletedToday(m, safeSelectedDate)).length || 0);
-            }, 0);
-
-            const total = totalMilestones + completedMilestones;
-            const percentage = total > 0 ? Math.round((completedMilestones / total) * 100) : 0;
-            
-            if (total === 0) return null;
-            
-            return (
-              <View style={[
-                styles.progressStatus,
-                {
-                  backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.05)',
-                  borderLeftColor: theme.name === 'dark' ? '#34C759' : '#34C759'
-                }
-              ]}>
-                <View style={styles.progressIconContainer}>
-                  <Ionicons name="trending-up" size={16} color="#34C759" />
-                </View>
-                
-                <View style={styles.progressContent}>
-                  <View style={styles.progressHeader}>
-                    <Text style={[
-                      styles.progressText,
-                      { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-                    ]}>{t('progressStatus')}</Text>
-                    <Text style={[
-                      styles.progressPercentage,
-                      { 
-                        color: theme.name === 'dark' ? '#34C759' : '#34C759',
-                        backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.1)'
-                      }
-                    ]}>{percentage}%</Text>
-                  </View>
-                  
-                  <View style={styles.progressBarContainer}>
-                    <View style={[
-                      styles.progressBar,
-                      { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.3)' : 'rgba(52, 199, 89, 0.2)' }
-                    ]}>
-                      <View style={[
-                        styles.progressBarFill,
-                        { width: `${percentage}%` }
-                      ]}>
-                        <LinearGradient
-                          colors={['#34C759', '#30D158']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.progressGradient}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            );
-          })()}
-          
-          {/* Today's Projects Section */}
-          <View style={styles.summaryContainer}>
-            {selectedDateActiveTasks.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
-                <Text style={styles.emptyTitle}>{t('noProjectOnThisDate')}</Text>
-                <Text style={styles.emptyText}>
-                  {(() => {
-                    const today = new Date();
-                    const selected = new Date(selectedDate);
-                    today.setHours(0, 0, 0, 0);
-                    selected.setHours(0, 0, 0, 0);
-                    
-                    if (selected < today) {
-                      return t('noProjectOnThisDate');
-                    } else {
-                      return t('noActiveProjectOnSelectedDate');
-                    }
-                  })()}
-                </Text>
-              </View>
-            ) : (
-              selectedDateActiveTasks.map((project, index) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  index={index}
-                  isLastProject={index >= selectedDateActiveTasks.length - 1}
-                  theme={theme}
-                  t={t}
-                  setSelectedCard={setSelectedCard}
-                  setSelectedProjectForMilestone={setSelectedProjectForMilestone}
-                  setAddMilestoneModalVisible={setAddMilestoneModalVisible}
-                  completingMilestones={completingMilestones}
-                  selectedDate={safeSelectedDate}
-                  isMilestoneActiveToday={isMilestoneActiveToday}
-                  isMilestoneOverdue={isMilestoneOverdue}
-                  isMilestoneLastDay={isMilestoneLastDay}
-                  openMilestone={openMilestone}
-                  handleMilestoneToggle={handleMilestoneToggle}
-                  onOpenJournal={onOpenJournal}
-                  isMilestoneCompletedToday={isMilestoneCompletedToday}
-                  isFocused={focusedProject === project.id}
-                  onProjectLongPress={handleProjectLongPress}
-                  getProjectEmotionalProgress={getProjectEmotionalProgress}
-                />
-              ))
-            )}
-          </View>
-        </View>
+        <TodaysSummary
+          selectedDateActiveTasks={selectedDateActiveTasks}
+          selectedDate={safeSelectedDate}
+          activeTasks={activeTasks}
+          completedTasks={completedTasks}
+          navigation={navigation}
+          onAddProject={onAddProject}
+          ProjectCard={ProjectCard}
+          setSelectedCard={setSelectedCard}
+          setSelectedProjectForMilestone={setSelectedProjectForMilestone}
+          setAddMilestoneModalVisible={setAddMilestoneModalVisible}
+          completingMilestones={completingMilestones}
+          isMilestoneActiveToday={isMilestoneActiveToday}
+          isMilestoneOverdue={isMilestoneOverdue}
+          isMilestoneLastDay={isMilestoneLastDay}
+          openMilestone={openMilestone}
+          handleMilestoneToggle={handleMilestoneToggle}
+          onOpenJournal={onOpenJournal}
+          isMilestoneCompletedToday={isMilestoneCompletedToday}
+          focusedProjects={new Set(focusedProject ? [focusedProject] : [])}
+          handleProjectLongPress={handleProjectLongPress}
+          getProjectEmotionalProgress={getProjectEmotionalProgress}
+        />
         
         {/* Journey Overview */}
         <View style={styles.componentSpacing}>
@@ -907,14 +765,6 @@ const MyDayScreen = memo(function MyDayScreen({
             activeTasks={activeTasks}
             completedTasks={completedTasks}
             selectedDate={selectedDate}
-          />
-        </View>
-        
-        {/* Activity Timeline */}
-        <View style={styles.componentSpacing}>
-          <ActivityTimeline
-            activeTasks={activeTasks}
-            completedTasks={completedTasks}
           />
         </View>
         
@@ -966,7 +816,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   summaryHeaderContainer: {
-    marginHorizontal: 24,
+    marginHorizontal: 30,
     marginTop: 12,
     marginBottom: 4,
   },
@@ -981,9 +831,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   counterBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

@@ -25,17 +25,27 @@ const hexToRgb = (hex) => {
 // Mood tag'lerini render eden fonksiyon - basit ve temiz
 const MoodTags = memo(({ project, theme }) => {
   const recentMoods = useMemo(() => {
-    if (!project || !project.journalEntries || project.journalEntries.length === 0) {
+    // Early return for performance
+    if (!project?.journalEntries || project.journalEntries.length === 0) {
       return [];
     }
 
-    // Son 3 mood'u al (en yeni önce)
-    return project.journalEntries
-      ?.slice()
-      ?.sort((a, b) => b.id - a.id) // En yeni entry'ler önce
-      ?.filter(entry => entry.mood || entry.moodIcon || entry.moodColor) // Sadece mood'u olan entry'ler
-      ?.slice(0, 3); // En fazla 3 mood göster
-  }, [project.journalEntries]);
+    // Cache length to avoid repeated property access
+    const entries = project.journalEntries;
+    const entriesCount = entries.length;
+    
+    // If only a few entries, no need to sort/filter extensively
+    if (entriesCount <= 3) {
+      return entries.filter(entry => entry.mood || entry.moodIcon || entry.moodColor);
+    }
+
+    // Son 3 mood'u al (en yeni önce) - optimize with slice before sort
+    return entries
+      .slice(-10) // Only check last 10 entries for performance
+      .sort((a, b) => b.id - a.id) // En yeni entry'ler önce
+      .filter(entry => entry.mood || entry.moodIcon || entry.moodColor) // Sadece mood'u olan entry'ler
+      .slice(0, 3); // En fazla 3 mood göster
+  }, [project?.journalEntries?.length]); // Only recompute when length changes
 
   // Eğer mood yoksa hiçbir şey gösterme
   if (recentMoods.length === 0) {
@@ -88,9 +98,19 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
   
   // Theme context
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
+  const formatShort = (dateStr) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString(locale, { day: '2-digit', month: 'short' });
+    } catch (e) {
+      return '';
+    }
+  };
   
-  // Smooth touch animations
+  // Smooth touch animations (like JourneyOverview)
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
   
@@ -140,46 +160,53 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
     onMilestonePress?.(milestone);
   }, [onMilestonePress]);
 
-  // Smooth touch interaction handlers
+  // Smooth touch interaction handlers (same as JourneyOverview)
   const handlePressIn = useCallback(() => {
+    scaleAnim.stopAnimation();
+    opacityAnim.stopAnimation();
+    
     Animated.parallel([
       Animated.spring(scaleAnim, {
-        toValue: 0.98,
+        toValue: 0.97,
         useNativeDriver: true,
-        friction: 8,
-        tension: 100,
+        friction: 10,
+        tension: 120,
       }),
-      Animated.timing(opacityAnim, {
-        toValue: 0.9,
-        duration: 100,
+      Animated.spring(opacityAnim, {
+        toValue: 0.85,
         useNativeDriver: true,
+        friction: 10,
+        tension: 120,
       }),
     ]).start();
   }, [scaleAnim, opacityAnim]);
 
   const handlePressOut = useCallback(() => {
+    scaleAnim.stopAnimation();
+    opacityAnim.stopAnimation();
+    
     Animated.parallel([
       Animated.spring(scaleAnim, {
         toValue: 1,
         useNativeDriver: true,
-        friction: 6,
-        tension: 80,
+        friction: 8,
+        tension: 100,
       }),
       Animated.spring(opacityAnim, {
         toValue: 1,
         useNativeDriver: true,
-        friction: 6,
-        tension: 80,
+        friction: 8,
+        tension: 100,
       }),
     ]).start();
   }, [scaleAnim, opacityAnim]);
 
   const handlePress = useCallback(() => {
-    const onPressTime = performance.now();
-    console.log('⏱️ [PERFORMANCE] Card onPress triggered at:', onPressTime.toFixed(2), 'ms');
-    console.log('👆 Card PRESSED (onPress):', title);
-    onPress?.();
-  }, [onPress, title]);
+    // CRITICAL: Immediately trigger navigation without any delay
+    if (onPress) {
+      onPress();
+    }
+  }, [onPress]);
 
   useEffect(() => {
     Animated.timing(animatedValue, {
@@ -222,7 +249,6 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
             shadowOpacity: theme.name === 'dark' ? 0.3 : 0.05,
             shadowRadius: theme.name === 'dark' ? 12 : 8,
             elevation: theme.name === 'dark' ? 8 : 1,
-            // Smooth scale and opacity animations
             transform: [{ scale: scaleAnim }],
             opacity: opacityAnim,
           },
@@ -254,7 +280,7 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
               { color: theme.name === 'dark' ? '#8E8E93' : theme.colors.textSecondary },
               completed && styles.modernCompletedDateText
             ]}>
-              {new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - {new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+              {formatShort(startDate)} - {formatShort(endDate)}
             </Text>
           </View>
           

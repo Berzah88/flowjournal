@@ -66,6 +66,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [celebrationVisible, setCelebrationVisible] = useState(false);
   const [celebrationData, setCelebrationData] = useState(null);
   const celebrationDataRef = useRef(null);
+
+  // Parent date notifications için state'ler
+  const [parentDateNotificationVisible, setParentDateNotificationVisible] = useState(false);
+  const [parentDateNotifications, setParentDateNotifications] = useState([]);
   
   
   // MyDay screen states
@@ -119,10 +123,33 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Title animation - separate and more conservative
   const titleAnimatedStyle = useAnimatedStyle(() => {
     const p = collapseProgress.value;
-    const scale = 1 - 0.12 * p;
+    const scale = 1 - 0.20 * p; // Increased scaling from 0.12 to 0.20 (20% shrink)
     const translateY = -1.5 * p;
-    return { 
-      transform: [{ scale }, { translateY }],
+    // Move title to the left more aggressively to close the gap
+    const translateX = -30 * p; // Increased from -20 to -30 for more aggressive movement
+    return {
+      transform: [{ scale }, { translateY }, { translateX }],
+    };
+  });
+
+  // Menu button opacity animation (fades out like mood statement)
+  const menuButtonStyle = useAnimatedStyle(() => {
+    const p = collapseProgress.value;
+    // Immediate fade out - disappears as soon as scroll starts
+    const opacity = p > 0.15 ? 0 : 1; // If scroll progress > 15%, completely invisible
+    return {
+      opacity,
+    };
+  });
+
+  // Combined logo and title animation for better spacing
+  const logoTitleContainerStyle = useAnimatedStyle(() => {
+    const p = collapseProgress.value;
+    const scaleReduction = 0.12 * p;
+    const originalMargin = 16;
+    const translateX = -(scaleReduction * originalMargin * 0.8);
+    return {
+      transform: [{ translateX }],
     };
   });
 
@@ -206,20 +233,38 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   }, [activeIndex]);
 
 
-  // Celebration için global trigger sistemi
+  // Parent date notifications için global trigger sistemi
   useEffect(() => {
-    global.triggerCelebration = (completion) => {
-      if (!celebrationDataRef.current || celebrationDataRef.current.completedAt !== completion.completedAt) {
-        celebrationDataRef.current = completion;
-        setCelebrationData(completion);
+    global.triggerParentDateNotification = (notifications) => {
+      console.log('📢 Parent date notifications received:', notifications);
+      // Modal'ı göster - MainModalManager'a state ekle
+      setParentDateNotifications(notifications);
+      setParentDateNotificationVisible(true);
+    };
+
+    return () => {
+      global.triggerParentDateNotification = null;
+    };
+  }, []);
+
+  // Global trigger for celebration modal (used by MyDayScreen when milestone completed)
+  useEffect(() => {
+    global.triggerCelebration = (data) => {
+      try {
+        // Store data and show modal
+        setCelebrationData(data || null);
         setCelebrationVisible(true);
+        // Keep a ref copy if other parts of app need it
+        if (celebrationDataRef) celebrationDataRef.current = data || null;
+      } catch (err) {
+        console.warn('Failed to trigger celebration:', err);
       }
     };
-    
+
     return () => {
       global.triggerCelebration = null;
     };
-  }, []);
+  }, [setCelebrationData, setCelebrationVisible]);
 
 
   // Additional safety check
@@ -244,6 +289,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           headerAnimatedStyle={headerAnimatedStyle}
           headerElementsStyle={headerElementsStyle}
           titleAnimatedStyle={titleAnimatedStyle}
+          menuButtonStyle={menuButtonStyle}
           onMenuPress={() => setMainMenuVisible(true)}
         />
 
@@ -258,7 +304,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
             }
           }}
         >
-          <MoodStatement 
+          <MoodStatement
             activeTasks={activeTasks}
             completedTasks={completedTasks}
             onCreateFirstProject={() => setAddVisible(true)} // Proje yoksa AddProject aç
@@ -266,7 +312,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         </AnimatedReanimated.View>
 
         {/* Status Tabs - Konumunu ölç */}
-        <AnimatedReanimated.View 
+        <AnimatedReanimated.View
           style={statusTabsAnimatedStyle}
           onLayout={(e) => {
             const y = e.nativeEvent.layout.y;
@@ -386,6 +432,11 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           completedTasks={completedTasks}
           navigation={navigation}
           t={t}
+          // Parent Date Notification props
+          parentDateNotificationVisible={parentDateNotificationVisible}
+          setParentDateNotificationVisible={setParentDateNotificationVisible}
+          parentDateNotifications={parentDateNotifications}
+          setParentDateNotifications={setParentDateNotifications}
         />
 
       {/* Education Overlay */}

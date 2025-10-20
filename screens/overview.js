@@ -1,6 +1,6 @@
 // screens/overview.js
 import React, { useMemo, useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +9,8 @@ import { useActiveTasks, useCompletedTasks } from '../hooks/useTaskContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+
+const { width } = Dimensions.get('window');
 
 const OverviewScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
@@ -393,10 +395,10 @@ const OverviewScreen = ({ navigation, route }) => {
       iconBackground: isDark ? 'rgba(10,132,255,0.22)' : 'rgba(25,118,210,0.12)',
     },
     {
-      key: 'activeMilestones',
+      key: 'activeTasks',
       icon: 'checkbox-outline',
       value: activeMilestonesCount,
-      label: translate('activeMilestones', 'Active Milestones'),
+      label: translate('activeTasks', 'Active Tasks'),
       iconColor: '#34C759',
       iconBackground: isDark ? 'rgba(52,199,89,0.22)' : 'rgba(52,199,89,0.12)',
     },
@@ -420,10 +422,10 @@ const OverviewScreen = ({ navigation, route }) => {
       iconBackground: isDark ? 'rgba(255,149,0,0.22)' : 'rgba(255,149,0,0.12)',
     },
     {
-      key: 'completedMilestones',
+      key: 'completedTasks',
       icon: 'checkmark-done-outline',
       value: completedMilestonesToday,
-      label: translate('completedToday', 'Completed Today'),
+      label: translate('completedTasks', 'Completed Tasks'),
       iconColor: '#5AC8FA',
       iconBackground: isDark ? 'rgba(90,200,250,0.22)' : 'rgba(90,200,250,0.12)',
     },
@@ -535,7 +537,7 @@ const OverviewScreen = ({ navigation, route }) => {
             });
           }, 6000);
         }
-      }, 2000);
+      }, 1000); // ✅ 1 saniye gecikme (2000'den 1000'e düşürüldü)
 
       return () => {
         clearTimeout(delayTimer);
@@ -567,26 +569,23 @@ const OverviewScreen = ({ navigation, route }) => {
         ]}
       >
         <View style={styles.topBarTitleContainer}>
-          <Text style={[styles.topBarTitle, { color: textPrimary, marginLeft: 28 }]}
-          >
-            {formattedWeekday}
-          </Text>
-          <View style={[styles.topBarSubtitleRow, { alignItems: 'center', gap: 8 }]}> 
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity
-                onPress={() => navigation?.goBack?.()}
-                style={styles.inlineBackButton}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={translate('goBack', 'Go Back')}
-              >
-                <Ionicons name="chevron-back" size={18} color={textPrimary} />
-              </TouchableOpacity>
-              <Text style={[styles.topBarSubtitle, { color: textSecondary, marginLeft: 2 }]}>
-                {formattedShortDate}
-              </Text>
-            </View>
+          <View style={styles.topBarSubtitleRow}>
+            <TouchableOpacity
+              onPress={() => navigation?.goBack?.()}
+              style={styles.inlineBackButton}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={translate('goBack', 'Go Back')}
+            >
+              <Ionicons name="chevron-back" size={18} color={textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.topBarTitle, { color: textPrimary }]}>
+              {formattedWeekday}
+            </Text>
           </View>
+          <Text style={[styles.topBarSubtitle, { color: textSecondary, marginLeft: 40 }]}>
+            {formattedShortDate}
+          </Text>
         </View>
       </View>
 
@@ -615,7 +614,7 @@ const OverviewScreen = ({ navigation, route }) => {
                     <CountUp
                       key={`streak-${streakVersion}-${selectedStreakCardIndex}`}
                       value={selectedStreakCard.value}
-                      duration={1500}
+                      duration={1800}
                       style={styles.streakHeroNumber}
                       formatter={(n) => `${n}`}
                     />
@@ -668,7 +667,7 @@ const OverviewScreen = ({ navigation, route }) => {
                       <CountUp
                         key={`top-${item.key}-${focusVersion}`}
                         value={item.value}
-                        duration={1200}
+                        duration={1600}
                         style={[styles.highlightValue, { color: textPrimary }]}
                         formatter={(n) => formatNumber(n)}
                       />
@@ -700,7 +699,7 @@ const OverviewScreen = ({ navigation, route }) => {
                       <CountUp
                         key={`bottom-${item.key}-${focusVersion}`}
                         value={item.value}
-                        duration={1200}
+                        duration={1600}
                         style={[styles.highlightValueSmall, { color: textPrimary }]}
                         formatter={(n) => formatNumber(n)}
                       />
@@ -767,8 +766,7 @@ const styles = StyleSheet.create({
   topBarSubtitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 2,
+    gap: 4,
   },
   inlineBackButton: {
     width: 28,
@@ -776,13 +774,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 6,
   },
   scrollContent: {
     paddingBottom: 24,
   },
   highlightsModernContainer: {
-    marginHorizontal: 30,
+    marginHorizontal: Math.max(20, width * 0.05), // Responsive margin: minimum 20, max 5% of screen width
     marginTop: 12,
   },
   highlightCard: {
@@ -797,9 +794,11 @@ const styles = StyleSheet.create({
   highlightRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 8, // Use gap instead of margin for better spacing
   },
   highlightItemLarge: {
-    width: '48%',
+    flex: 1, // Use flex instead of fixed percentage
+    maxWidth: '48%', // Maximum width constraint
     borderRadius: 16,
     borderWidth: 1,
     paddingVertical: 16,
@@ -808,7 +807,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   highlightItemSmall: {
-    width: '31%',
+    flex: 1, // Use flex for equal distribution
+    minWidth: 90, // Minimum width to prevent squishing
+    maxWidth: '31%', // Maximum width constraint
     borderRadius: 14,
     borderWidth: 1,
     paddingVertical: 12,
@@ -855,13 +856,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   streakHeroContainer: {
-    marginHorizontal: 30,
+    marginHorizontal: Math.max(20, width * 0.05), // Responsive margin
     marginTop: 12,
   },
   streakHeroCard: {
     borderRadius: 18,
     paddingVertical: 16,
     paddingHorizontal: 16,
+    overflow: 'hidden', // Prevent content overflow
   },
   streakHeroHeader: {
     flexDirection: 'row',
@@ -905,6 +907,7 @@ const styles = StyleSheet.create({
   streakHeroBadges: {
     flexDirection: 'row',
     marginTop: 12,
+    flexWrap: 'wrap', // Allow badges to wrap on small screens
   },
   streakBadge: {
     flexDirection: 'row',
@@ -913,6 +916,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginRight: 8,
+    marginBottom: 4, // Add bottom margin for wrapped items
   },
   streakBadgeText: {
     color: '#FFFFFF',
@@ -924,7 +928,7 @@ const styles = StyleSheet.create({
 
 export default OverviewScreen;
 
-// Simple reusable count-up component
+// Smooth reusable count-up component with improved easing
 const CountUp = ({ value, duration = 1200, style, formatter }) => {
   const [display, setDisplay] = useState(0);
   const endValue = typeof value === 'number' ? value : 0;
@@ -935,39 +939,44 @@ const CountUp = ({ value, duration = 1200, style, formatter }) => {
       return;
     }
 
-    // Ballım smooth: ease-in-out, min step delay, gentle bounce at the end
-    const minStepDelay = 35; // ms
-    const steps = Math.max(endValue, 1);
+    // OPTIMIZED: Smoother animation with ease-out-cubic
+    const fps = 60; // Target 60 FPS
+    const totalFrames = Math.ceil((duration / 1000) * fps);
+    const frameDelay = 1000 / fps; // ~16.67ms per frame
+    
+    let currentFrame = 0;
+    let animationFrameId;
+    let lastTimestamp = performance.now();
 
-    const stepDelays = Array.from({ length: steps }, (_, index) => {
-      const t = index / steps;
-      const eased = t < 0.5
-        ? 4 * t * t * t // ease-in
-        : 1 - Math.pow(-2 * t + 2, 3) / 2; // ease-out
-      const bounceFactor = index === steps - 1 ? 1.1 : 1; // tiny bounce on last step
-      return Math.max(minStepDelay, (duration * eased) / steps) * bounceFactor;
-    });
-
-    let current = 0;
-    let timeoutId;
-
-    const tick = () => {
-      const next = current + 1;
-      setDisplay(next);
-      current = next;
-
-      if (current < steps) {
-        timeoutId = setTimeout(tick, stepDelays[current]);
+    const animate = (timestamp) => {
+      const elapsed = timestamp - lastTimestamp;
+      
+      if (elapsed >= frameDelay) {
+        currentFrame++;
+        lastTimestamp = timestamp;
+        
+        // Ease-out-cubic for smooth deceleration
+        const progress = Math.min(currentFrame / totalFrames, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        
+        const currentValue = Math.round(eased * endValue);
+        setDisplay(currentValue);
+        
+        if (currentFrame < totalFrames) {
+          animationFrameId = requestAnimationFrame(animate);
+        } else {
+          setDisplay(endValue); // Ensure exact final value
+        }
       } else {
-        setDisplay(endValue);
+        animationFrameId = requestAnimationFrame(animate);
       }
     };
 
-    timeoutId = setTimeout(tick, stepDelays[0]);
+    animationFrameId = requestAnimationFrame(animate);
 
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
   }, [endValue, duration]);
