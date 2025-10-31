@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing, InteractionManager } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
+import logger from '../utils/logger';
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
@@ -67,6 +68,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
   // Horizontal tab switching animations (like MainScreen)
   const panX = useRef(new Animated.Value(0)).current;
   const offsetRef = useRef(0);
+  // Header collapse animated value (0..1) driven by inner scroll
+  const headerCollapse = useRef(new Animated.Value(0)).current;
   
   // Use ref for isModalOpen to avoid closure issues in PanResponder
   const isModalOpenRef = useRef(false);
@@ -109,11 +112,14 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
       // some RN versions may throw if no offset - ignore
     }
 
-    Animated.timing(panX, {
+    // Use a spring for a more natural, smooth feel
+    Animated.spring(panX, {
       toValue: target,
       useNativeDriver: true,
-      duration: 300, // Faster, smoother transition
-      easing: Easing.bezier(0.4, 0.0, 0.2, 1), // Material Design easing
+      stiffness: 200,
+      damping: 25,
+      mass: 1,
+      overshootClamping: true,
     }).start(() => {
       // commit final state-cleanly
       offsetRef.current = target;
@@ -185,15 +191,28 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
         try {
           panX.flattenOffset();
         } catch (e) {}
-        const currentOffset = offsetRef.current; // either 0 or -width
-        const threshold = width * 0.35; // 35% of screen width (increased for more deliberate swipes)
 
-        // Decide navigation based on gesture.dx (not clamped) and current offset
+        const currentOffset = offsetRef.current; // either 0 or -width
+        const threshold = width * 0.25; // 25% of screen width - more responsive
+
+        // If user flicked quickly, use velocity to decide
+        const vx = gesture.vx || 0;
+        if (Math.abs(vx) > 0.5) {
+          // fast flick
+          if (vx < 0 && currentOffset === 0) {
+            animateToTab(1);
+            return;
+          }
+          if (vx > 0 && currentOffset === -width) {
+            animateToTab(0);
+            return;
+          }
+        }
+
+        // Otherwise use distance threshold
         if (gesture.dx <= -threshold && currentOffset === 0) {
-          // swipe left enough from milestones -> go to journey (index 1)
           animateToTab(1);
         } else if (gesture.dx >= threshold && currentOffset === -width) {
-          // swipe right enough from journey -> go to milestones (index 0)
           animateToTab(0);
         } else {
           // snap back to the current page
@@ -375,6 +394,21 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
     }
   }, [currentTask?.id, currentTask?.title, dummyMilestone]);
 
+  // Inner scroll handler from child ScrollViews to drive header collapse
+  const handleInnerScroll = useCallback((y) => {
+    try {
+      const max = 120; // collapse after 120px
+      const clamped = Math.max(0, Math.min(y, max));
+      Animated.timing(headerCollapse, {
+        toValue: clamped / max,
+        duration: 120,
+        useNativeDriver: true,
+      }).start();
+    } catch (e) {
+      // ignore
+    }
+  }, [headerCollapse]);
+
   const handleSaveMilestone = useCallback((milestoneData) => {
     if (!currentTask?.id) return;
     
@@ -543,6 +577,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
           onMenuPress={() => setMenuVisible((s) => !s)}
           isModalOpen={isModalOpen}
           panGesture={panGesture}
+          headerCollapse={headerCollapse}
         />
 
         {/* Menu Button - Visible in both tabs */}
@@ -552,15 +587,15 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                 try {
                   // Try Expo Haptics first - Medium for more noticeable feedback
                   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  console.log('✅ Expo Haptic triggered (MEDIUM)!');
+                  logger.debug('Expo Haptic triggered (MEDIUM)');
                 } catch (error) {
-                  console.error('❌ Expo Haptic error:', error);
+                  logger.error('Expo Haptic error:', error);
                   // Fallback to native Vibration
                   try {
                     Vibration.vibrate(50); // 50ms vibration - more noticeable
-                    console.log('✅ Native Vibration triggered (STRONGER)!');
+                    logger.debug('Native Vibration triggered (STRONGER)');
                   } catch (vibError) {
-                    console.error('❌ Native Vibration error:', vibError);
+                    logger.error('Native Vibration error:', vibError);
                   }
                 }
                 setMenuVisible((s) => !s);
@@ -623,6 +658,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
                     onAttachMilestone={attachMilestone}
                     navigation={navigation}
                     refreshKey={refreshKey}
+                    onInnerScroll={handleInnerScroll}
                   />
                 ) : (
                   <LoadingPlaceholder theme={theme} />

@@ -6,6 +6,7 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity,
+  Pressable,
   Dimensions,
 } from 'react-native';
 import AnimatedReanimated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, withRepeat, interpolate } from 'react-native-reanimated';
@@ -61,7 +62,7 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
   
   // 5 categories for pentagon shape with distinct color tones
   const categories = [
-    { label: t('positive') || 'Positive', iconName: 'sentiment-very-satisfied', value: moodData.positive || 0, angle: -Math.PI / 2, color: '#9333EA' },
+    { label: t('positive') || 'Positive', iconName: 'sentiment-very-satisfied', value: moodData.positive || 0, angle: -Math.PI / 2, color: '#16A34A' },
     { label: t('peaceful') || 'Peaceful', iconName: 'spa', value: moodData.peaceful || 0, angle: -Math.PI / 2 + angleStep, color: '#06B6D4' },
     { label: t('balanced') || 'Balanced', iconName: 'wb-sunny', value: moodData.balanced || 0, angle: -Math.PI / 2 + angleStep * 2, color: '#F59E0B' },
     { label: t('neutral') || 'Neutral', iconName: 'sentiment-neutral', value: moodData.neutral || 0, angle: -Math.PI / 2 + angleStep * 3, color: '#6B7280' },
@@ -69,24 +70,30 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
   ];
 
   // Reduced baseline so polygon reflects real variance better
-  const minBaseline = 0.25; // was 0.5, now 25%
+  // Optimized scaling: smaller baseline and slightly larger maxScale to give
+  // more dynamic range. We also compute a dynamic floor based on the data mean
+  // so small datasets are not flattened by a large fixed floor.
+  const minBaseline = 0.12; // baseline so smallest values are still visible
+  const maxScale = 0.9; // allow polygon to get a bit closer to outer radius for better fill
 
-  // Dynamic scaling: use the highest category value as reference so the chart
-  // fills relative to the highest observed value instead of always 100.
-  // To avoid tiny max values blowing up the chart, enforce a floor (displayMaxFloor).
+  // Dynamic scaling: derive an adaptive floor from the average of values so
+  // tiny datasets still show variance, but large datasets are not over-amplified.
   const values = categories.map(c => c.value || 0);
   const maxValue = Math.max(...values, 0);
-  const displayMaxFloor = 30; // If max is very small, treat it as at least this to avoid over-amplification
-  const displayMax = Math.max(maxValue, displayMaxFloor);
+  const avgValue = values.length ? (values.reduce((s, v) => s + v, 0) / values.length) : 0;
+  const baseFloor = 10; // absolute minimum floor
+  const dynamicFloor = Math.max(baseFloor, Math.round(avgValue * 2));
+  const displayMax = Math.max(maxValue, dynamicFloor);
 
   // Memoize heavy calculations
   const { dataPoints, polygonPoints, glowPoints, baseColor, avgFillOpacity, pathD, glowD } = React.useMemo(() => {
-    const pts = categories.map(cat => {
-      // Normalize relative to displayMax (dynamic) rather than fixed 100
-      const rawRatio = displayMax > 0 ? (cat.value / displayMax) : 0;
-      const clampedRatio = Math.max(0, Math.min(1, rawRatio));
-      const normalizedValue = minBaseline + (clampedRatio * (1 - minBaseline));
-      const radius = normalizedValue * maxRadius;
+  const pts = categories.map(cat => {
+  // Normalize relative to displayMax (dynamic) rather than fixed 100
+  const rawRatio = displayMax > 0 ? (cat.value / displayMax) : 0;
+  const clampedRatio = Math.max(0, Math.min(1, rawRatio));
+  // Use maxScale to ensure the polygon never reaches the outermost grid line
+  const normalizedValue = minBaseline + (clampedRatio * (maxScale - minBaseline));
+  const radius = normalizedValue * maxRadius;
       const x = center + radius * Math.cos(cat.angle);
       const y = center + radius * Math.sin(cat.angle);
       return { x, y, radius, value: cat.value, label: cat.label, angle: cat.angle, color: cat.color };
@@ -96,7 +103,7 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
 
   // Create smooth closed path using local Catmull-Rom to Bezier converter
   const pointPairs = pts.map(p => [p.x, p.y]);
-  const path = catmullRom2bezier(pointPairs, true, 36); // higher divisor -> less smoothing
+  const path = catmullRom2bezier(pointPairs, true, 140); // higher divisor -> less smoothing (more angular)
 
     // Glow polygon: very slightly larger radius for a subtle, tight glow
     // Remove the larger additive offset so the glow doesn't form a visible rim
@@ -111,7 +118,7 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
       const glowRadius = Math.min(maxRadius, p.radius * 1.03 + 2);
       return [center + glowRadius * Math.cos(p.angle), center + glowRadius * Math.sin(p.angle)];
     });
-  const glowPath = catmullRom2bezier(glowPairs, true, 36);
+  const glowPath = catmullRom2bezier(glowPairs, true, 140);
 
     // Derive base color (dominant) fallback
     const total = categories.reduce((s, c) => s + c.value, 0);
@@ -125,20 +132,28 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
   }, [categories, center, maxRadius, minBaseline, displayMax]);
 
   // In dark theme use a near-white gray for grid circles so they read against the very dark background
-  const gridColor = theme.name === 'dark' ? 'rgba(230, 230, 230, 0.18)' : 'rgba(0, 0, 0, 0.10)';
+  // Make grid lines a bit more visible in both themes
+  const gridColor = theme.name === 'dark' ? 'rgba(230, 230, 230, 0.28)' : 'rgba(0, 0, 0, 0.14)';
 
   // Determine top two dominant categories for gradient
   const sortedByValue = [...categories].sort((a, b) => b.value - a.value);
   const top1 = sortedByValue[0] || { color: baseColor };
   const top2 = sortedByValue[1] || top1;
-  // Gradient id unique per render to avoid conflicts
-  const gradId = `radarGrad-${top1.color.replace('#', '')}-${top2.color.replace('#', '')}`;
+  // Two radial gradient ids unique per render (one per top category)
+  const radTop1Id = `radTop1-${top1.color.replace('#', '')}-${top2.color.replace('#', '')}`;
+  const radTop2Id = `radTop2-${top1.color.replace('#', '')}-${top2.color.replace('#', '')}`;
+  // Find second point coordinates from dataPoints to compute directional overlay vector
+  const secondPoint = (dataPoints && dataPoints.length) ? (dataPoints.find(p => p.label === top2.label) || dataPoints[1] || dataPoints[0]) : null;
+  const sxPercent = secondPoint ? Math.round((secondPoint.x / size) * 100) : 60;
+  const syPercent = secondPoint ? Math.round((secondPoint.y / (size + 20)) * 100) : 45;
   // 5 point shared values used for glow pulse only
   const p0 = useSharedValue(0);
   const p1 = useSharedValue(0);
   const p2 = useSharedValue(0);
   const p3 = useSharedValue(0);
   const p4 = useSharedValue(0);
+  // Chart-level opacity for a subtle fade-in when component mounts
+  const chartOpacity = useSharedValue(0);
 
   useEffect(() => {
     // start repeating glow pulses for each point with small stagger
@@ -149,6 +164,9 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
     p3.value = withDelay(230, withRepeat(withTiming(1, { duration: 760 }), -1, true));
     p4.value = withDelay(290, withRepeat(withTiming(1, { duration: 780 }), -1, true));
 
+  // Fade in chart container slightly after mount for a gentle entrance
+  chartOpacity.value = withDelay(40, withTiming(1, { duration: 320 }));
+
     return () => {
       // stop pulses
       p0.value = 0;
@@ -156,6 +174,7 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
       p2.value = 0;
       p3.value = 0;
       p4.value = 0;
+      chartOpacity.value = 0;
     };
   }, [p0, p1, p2, p3, p4]);
 
@@ -169,28 +188,56 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
   const p3GlowStyle = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(p3.value, [0, 1], [0.9, 1.16]) }], opacity: interpolate(p3.value, [0, 1], [0, 0.18]) }));
   const p4GlowStyle = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(p4.value, [0, 1], [0.9, 1.16]) }], opacity: interpolate(p4.value, [0, 1], [0, 0.18]) }));
 
+  // Animated style for chart container opacity (fade-in)
+  const chartAnimStyle = useAnimatedStyle(() => ({ opacity: chartOpacity.value }));
+
+  // Popup state for showing percentage on point tap
+  const [popup, setPopup] = useState({ visible: false, x: 0, y: 0, label: '', value: 0, index: -1 });
+
+  // Determine focal point for radial gradient using the highest data point
+  const dominantPoint = dataPoints && dataPoints.length ? dataPoints.reduce((a, b) => (b.value > a.value ? b : a), dataPoints[0]) : null;
+  const fxPercent = dominantPoint ? Math.round((dominantPoint.x / size) * 100) : 50;
+  const fyPercent = dominantPoint ? Math.round((dominantPoint.y / (size + 20)) * 100) : 45;
+  // We'll use two localized radial gradients (one for each of the top two categories)
+  // radTop1Id and radTop2Id are computed above and will be defined in <Defs>
+
   return (
-    <View style={{ width: size, height: size + 20, position: 'relative' }}>
+    <Pressable onPress={() => setPopup({ visible: false, x: 0, y: 0, label: '', value: 0, index: -1 })}>
+      <AnimatedReanimated.View style={[{ width: size, height: size + 20, position: 'relative' }, chartAnimStyle]}>
       <Svg width={size} height={size + 20}>
         <Defs>
-          <SvgLinearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          {/* Radial gradient focal point positioned at the dominant category point so color "radiates" from that category */}
+          {/* Radial gradient focused on dominant category with a 35/65 handoff to secondary color */}
+          {/* Localized radial for the primary top category (dominant) */}
+          <RadialGradient id={radTop1Id} cx={`${fxPercent}%`} cy={`${fyPercent}%`} r="78%" fx={`${fxPercent}%`} fy={`${fyPercent}%`}>
+            {/* Softer radial palette: reduced opacities and gentler falloff for a calmer visual */}
             <Stop offset="0%" stopColor={top1.color} stopOpacity="0.72" />
-            <Stop offset="70%" stopColor={top2.color} stopOpacity="0.45" />
-          </SvgLinearGradient>
+            <Stop offset="30%" stopColor={top1.color} stopOpacity="0.42" />
+            <Stop offset="60%" stopColor={top1.color} stopOpacity="0.18" />
+            <Stop offset="100%" stopColor={top1.color} stopOpacity="0.06" />
+          </RadialGradient>
+
+          {/* Localized radial for the secondary top category (runner-up) */}
+          <RadialGradient id={radTop2Id} cx={`${sxPercent}%`} cy={`${syPercent}%`} r="78%" fx={`${sxPercent}%`} fy={`${syPercent}%`}>
+            {/* Softer secondary radial */}
+            <Stop offset="0%" stopColor={top2.color} stopOpacity="0.56" />
+            <Stop offset="28%" stopColor={top2.color} stopOpacity="0.36" />
+            <Stop offset="62%" stopColor={top2.color} stopOpacity="0.16" />
+            <Stop offset="100%" stopColor={top2.color} stopOpacity="0.06" />
+          </RadialGradient>
         </Defs>
 
-        {/* Grid circles */}
+        {/* Pentagon concentric rings (replace circular grid with polygon rings) */}
         {[...Array(levels)].map((_, i) => {
           const radius = ((i + 1) / levels) * maxRadius;
-          // Make grid circles more prominent: higher opacity and stroke for outer circles
-          const opacity = 0.6 - (i * 0.12);
-          const strokeW = i === levels - 1 ? "2" : "1.4";
+          const ringPoints = categories.map(cat => ({ x: center + radius * Math.cos(cat.angle), y: center + radius * Math.sin(cat.angle) }));
+          const pathD = ringPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
+          const opacity = 0.36 - (i * 0.06);
+          const strokeW = i === levels - 1 ? 1.8 : 1.2;
           return (
-            <Circle
-              key={`circle-${i}`}
-              cx={center}
-              cy={center}
-              r={radius}
+            <Path
+              key={`ring-${i}`}
+              d={pathD}
               stroke={gridColor}
               strokeWidth={strokeW}
               fill="none"
@@ -199,28 +246,40 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
           );
         })}
 
-        {/* Glow path under the main shape for subtle outer glow */}
+        {/* Glow path under the main shape for subtle outer glow (use computed glowD) */}
         {glowD && (
           <Path
             d={glowD}
             fill={baseColor}
-            // keep glow extremely subtle to avoid strong colored rim
-            fillOpacity={0.008}
+            // make glow slightly subtler for soft look
+            fillOpacity={0.02}
             stroke="none"
           />
         )}
 
-        {/* Main smooth polygon with gradient fill and subtle stroke in dark mode */}
+        {/* Draw polygon filled with localized radial for primary category, then overlay secondary radial for dual influence */}
         {pathD && (
           <Path
             d={pathD}
-            fill={`url(#${gradId})`}
-            // In dark mode make polygon solid (no transparency)
-            fillOpacity={theme && theme.name === 'dark' ? 1 : Math.min(avgFillOpacity, 0.78)}
-            // remove stroke so no faint rim appears around the polygon
+            fill={`url(#${radTop1Id})`}
+            // slightly reduce overall fill opacity so gradient looks softer over background
+            fillOpacity={0.92}
             stroke={baseColor}
-            strokeOpacity={0}
-            strokeWidth={0}
+            strokeOpacity={theme && theme.name === 'dark' ? 0.18 : 0.12}
+            strokeWidth={1.2}
+            strokeLinejoin="miter"
+            strokeLinecap="butt"
+          />
+        )}
+
+        {/* Inverted subtle crescent overlay (mirrored side) to soften hilal effect */}
+        {pathD && (
+          <Path
+            d={pathD}
+            fill={`url(#${radTop2Id})`}
+            // make overlay subtler so the secondary color reads as soft/pale
+            fillOpacity={0.22}
+            stroke="none"
           />
         )}
 
@@ -257,54 +316,40 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
                 glowStyle
               ]}
             />
-            <AnimatedReanimated.View
-              style={[
-                {
-                  position: 'absolute',
-                  left: p.x - 4,
-                  top: p.y - 4,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
+            {/* Tappable small dot: Pressable so we can show a tiny popup with percentage */}
+            <Pressable
+              onPress={(e) => {
+                e && e.stopPropagation && e.stopPropagation();
+                setPopup({ visible: true, x: p.x, y: p.y, label: p.label, value: Math.round(p.value || 0), index: idx });
+              }}
+              style={{ position: 'absolute', left: p.x - 10, top: p.y - 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <AnimatedReanimated.View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
                   backgroundColor: theme.name === 'dark' ? '#FFF' : '#FFFFFF',
                   borderWidth: 1,
                   borderColor: p.color,
-                }
-              ]}
-            />
+                }}
+              />
+            </Pressable>
           </React.Fragment>
         );
       })}
 
-      {/* Category Labels positioned outside the chart border */}
-      {categories.map((cat, index) => {
-        const labelRadius = maxRadius * 1.15; // 15% daha dışarıda
-        const labelX = center + labelRadius * Math.cos(cat.angle);
-        const labelY = center + labelRadius * Math.sin(cat.angle);
-        
-        return (
-          <View
-            key={`label-${index}`}
-            style={{
-              position: 'absolute',
-              left: labelX - 25,
-              top: labelY - 10,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{
-              fontSize: 11,
-              fontWeight: '700',
-              color: cat.color,
-              textAlign: 'center',
-            }}>
-              {cat.label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
+      {/* Popup showing percentage when a point is tapped */}
+      {popup.visible && (
+        <View style={{ position: 'absolute', left: Math.max(8, popup.x - 40), top: Math.max(6, popup.y - 48), backgroundColor: theme.name === 'dark' ? '#111' : '#FFF', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.name === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 3 }}>
+          <Text style={{ fontSize: 12, fontFamily: 'Poppins_600SemiBold', color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }}>{popup.label}</Text>
+          <Text style={{ fontSize: 12, color: theme.name === 'dark' ? '#BDBDBD' : '#6B7280', marginTop: 2 }}>{popup.value}%</Text>
+        </View>
+      )}
+
+      {/* Category labels removed as per UX request (static colored headings above chart) */}
+      </AnimatedReanimated.View>
+    </Pressable>
   );
 };
 
@@ -486,7 +531,7 @@ const generateSupportiveMessage = (dominantLabel = '', lang = 'en') => {
 // (previous simple motivation sentence removed — replaced by AI analysisSnippet)
 
 // Mood Summary Info Box Component
-const MoodSummaryBox = ({ categories, theme, t, isLastDay, analysisSnippet, language }) => {
+const MoodSummaryBox = ({ categories, theme, t, isLastDay, analysisSnippet, language, explicitMessage, overrideIcon, overrideIconColor, suppressHeader, variant = 'supportive', showLeftAccent = true }) => {
   const dominantCategory = categories.reduce((prev, current) =>
     (current.value > prev.value) ? current : prev
   );
@@ -496,22 +541,34 @@ const MoodSummaryBox = ({ categories, theme, t, isLastDay, analysisSnippet, lang
   const textSecondary = theme.name === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)';
 
   // Gradient background for the summary box - subtle and theme-aware
-  const gradColors = theme.name === 'dark'
-    ? ['rgba(255,255,255,0.02)', `${dominantCategory.color}06`]
-    : ['rgba(255,255,255,0.9)', `${dominantCategory.color}10`];
+  // Analysis variant uses a more neutral palette to differentiate visually
+  const gradColors = (variant === 'analysis')
+    ? (theme.name === 'dark' ? ['rgba(255,255,255,0.012)', 'rgba(255,255,255,0.018)'] : ['rgba(255,255,255,0.98)', 'rgba(255,255,255,0.98)'])
+    : (theme.name === 'dark'
+      ? ['rgba(255,255,255,0.02)', `${dominantCategory.color}06`]
+      : ['rgba(255,255,255,0.9)', `${dominantCategory.color}10`]
+    );
 
   return (
-    <LinearGradient colors={gradColors} style={[styles.moodSummaryBox, { borderColor }]}> 
-      <View style={[
-        styles.moodSummaryIconCircle,
-        { backgroundColor: theme.name === 'dark' ? `${dominantCategory.color}12` : `${dominantCategory.color}18` }
+    <LinearGradient colors={gradColors} style={[styles.moodSummaryBox, variant === 'analysis' ? styles.moodSummaryBoxAnalysis : null, { borderColor }]}> 
+      {variant === 'analysis' && showLeftAccent ? (
+        <View style={[styles.leftAccent, { backgroundColor: dominantCategory.color }]} />
+      ) : null}
+
+      <View style={[styles.moodSummaryIconCircle, variant === 'analysis' ? styles.moodSummaryIconCircleAnalysis : null,
+        // If suppressHeader is true (AI box), use a neutral background rather than category color
+        (suppressHeader
+          ? { backgroundColor: theme.name === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.04)' }
+          : { backgroundColor: theme.name === 'dark' ? `${dominantCategory.color}12` : `${dominantCategory.color}18` }
+        )
       ]}>
         <MaterialIcons 
-          name={dominantCategory.iconName} 
-          size={32} 
-          color={theme.name === 'dark' ? `${dominantCategory.color}DD` : dominantCategory.color}
+          name={overrideIcon || dominantCategory.iconName} 
+          size={variant === 'analysis' ? 28 : 32} 
+          color={overrideIcon ? (overrideIconColor || (theme.name === 'dark' ? '#BDBDBD' : '#6B7280')) : (theme.name === 'dark' ? `${dominantCategory.color}DD` : dominantCategory.color)}
         />
       </View>
+
       <View style={styles.moodSummaryTextContainer}>
         {
           (() => {
@@ -519,23 +576,57 @@ const MoodSummaryBox = ({ categories, theme, t, isLastDay, analysisSnippet, lang
             const candidate = getMoodSummaryText(categories, isLastDay, t, language);
             const shouldFallback = !candidate || (typeof candidate === 'string' && candidate.indexOf('thisWeek_') !== -1);
             const summaryText = shouldFallback ? buildSafeSummary(categories, isLastDay, language) : candidate;
-            return (
-              <Text style={[styles.moodSummaryCategory, { color: textPrimary, fontSize: 14 }]}> 
+            return suppressHeader ? null : (
+              <Text style={[styles.moodSummaryCategory, { color: textPrimary, fontSize: 14, fontFamily: 'Poppins_600SemiBold' }]}> 
                 {summaryText}
               </Text>
             );
           })()
         }
-        {/* Supportive message (rotates daily) — prefer a tailored supportive line based on dominant category */}
-        <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8 }}>
-          {generateSupportiveMessage(dominantCategory.label, language)}
-        </Text>
-        {/* If AI analysis exists and is meaningfully different, show it below the supportive line */}
-        {analysisSnippet && analysisSnippet !== generateSupportiveMessage(dominantCategory.label, language) ? (
-          <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8 }}>
-            {analysisSnippet}
-          </Text>
-        ) : null}
+        {/* Message area: use explicitMessage if provided, otherwise show supportive message and optional AI snippet below */}
+        {(() => {
+          // Replace any visible 'milestone' occurrences again (defensive)
+          const replaceMilestone = (txt) => {
+            if (!txt || typeof txt !== 'string') return txt;
+            try {
+              if (language && language.startsWith('tr')) {
+                return txt
+                  .replace(/\bmilestones\b/gi, 'görevler')
+                  .replace(/\bmilestone\b/gi, 'görev')
+                  .replace(/\bTasks\b/gi, 'Görevler')
+                  .replace(/\bTask\b/gi, 'Görev');
+              }
+              return txt
+                .replace(/\bmilestones\b/gi, 'Tasks')
+                .replace(/\bmilestone\b/gi, 'Task')
+                .replace(/\bGörevler\b/gi, 'Tasks')
+                .replace(/\bGörev\b/gi, 'Task');
+            } catch (e) { return txt; }
+          };
+
+          const bodyStyle = variant === 'analysis' ? [styles.moodSummaryMessage, styles.moodSummaryMessageAnalysis, { color: textSecondary }] : [styles.moodSummaryMessage, { color: textSecondary }];
+
+          if (explicitMessage) {
+            return (
+              <Text style={bodyStyle}>
+                {replaceMilestone(explicitMessage)}
+              </Text>
+            );
+          }
+
+          const supportive = generateSupportiveMessage(dominantCategory.label, language);
+          return (
+            <>
+              <Text style={bodyStyle}>
+                {replaceMilestone(supportive)}
+              </Text>
+              {/* If AI analysis exists and is meaningfully different, show it below the supportive line */}
+              {analysisSnippet && analysisSnippet !== supportive ? (
+                <Text style={[bodyStyle, { marginTop: 8 }]}> {replaceMilestone(analysisSnippet)} </Text>
+              ) : null}
+            </>
+          );
+        })()}
       </View>
     </LinearGradient>
   );
@@ -553,23 +644,47 @@ const MoodTrendScreen = ({ navigation }) => {
   const allMoodData = useMemo(() => {
     const allTasks = [...activeTasks, ...completedTasks];
     const moodEntries = [];
-    
+    // Helper: normalize mood key to a canonical lowercase string
+    const normalizeMoodKey = (m) => {
+      if (!m) return null;
+      if (typeof m === 'string') return m.trim().toLowerCase();
+      // if mood is an object with key or id
+      if (typeof m === 'object') {
+        if (m.key) return String(m.key).trim().toLowerCase();
+        if (m.name) return String(m.name).trim().toLowerCase();
+      }
+      return null;
+    };
+
     allTasks.forEach(task => {
-      if (task.journalEntries && Array.isArray(task.journalEntries)) {
+      if (task && task.journalEntries && Array.isArray(task.journalEntries)) {
         task.journalEntries.forEach(entry => {
-          if (entry.mood) {
+          try {
+            const created = entry && entry.createdAt ? new Date(entry.createdAt) : null;
+            if (!created || isNaN(created.getTime())) return;
+            const rawMood = normalizeMoodKey(entry.mood);
+            if (!rawMood) return;
+            // Map rawMood to a canonical mood defined in MOODS/EXTENDED_MOODS if possible
+            const canonical = (() => {
+              const all = [...MOODS, ...EXTENDED_MOODS];
+              const found = all.find(m => m.key && String(m.key).toLowerCase() === rawMood) || all.find(m => m.label && String(m.label).toLowerCase() === rawMood);
+              return found ? String(found.key).toLowerCase() : rawMood;
+            })();
+
             moodEntries.push({
-              mood: entry.mood,
-              createdAt: new Date(entry.createdAt),
-              taskTitle: task.title,
+              mood: canonical,
+              createdAt: created,
+              taskTitle: task && task.title ? task.title : null,
             });
+          } catch (e) {
+            // skip malformed entries
           }
         });
       }
     });
-    
+
     // Sort by date (newest first)
-    return moodEntries.sort((a, b) => b.createdAt - a.createdAt);
+    return moodEntries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }, [activeTasks, completedTasks]);
 
   // 5-Category Mood System for Pentagon Chart
@@ -577,6 +692,8 @@ const MoodTrendScreen = ({ navigation }) => {
   const peacefulMoods = ['happy', 'peaceful', 'relieved', 'content', 'calm'];  // Huzurlu
   const balancedMoods = ['hopeful', 'confident', 'curious', 'surprised'];  // Dengeli
   const neutralMoods = ['okay', 'neutral', 'contemplative', 'bored', 'nostalgic'];  // Nötr
+  // include 'natural' (present in EXTENDED_MOODS) as neutral synonym
+  neutralMoods.push('natural');
   const negativeMoods = ['sad', 'angry', 'anxious', 'overwhelmed', 'tired', 'frustrated', 'stressed', 'exhausted', 'worried', 'disappointed', 'lonely', 'confused'];  // Negatif
   
   // Legacy categories for compatibility
@@ -585,40 +702,72 @@ const MoodTrendScreen = ({ navigation }) => {
   // Last 7 days analysis
   const last7DaysData = useMemo(() => {
     const now = new Date();
-    const last7DaysStart = new Date(now);
-    last7DaysStart.setDate(now.getDate() - 7);
-    last7DaysStart.setHours(0, 0, 0, 0);
-    
-    const entries = allMoodData.filter(entry => entry.createdAt >= last7DaysStart);
+    // Define an explicit 7-day window (inclusive of today):
+    // start = startOfToday - 6 days, end = startOfTomorrow (non-inclusive)
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const last7DaysStart = new Date(startOfToday);
+    last7DaysStart.setDate(startOfToday.getDate() - 6); // include today + previous 6 days => 7 days total
+    const last7DaysEnd = new Date(startOfToday);
+    last7DaysEnd.setDate(startOfToday.getDate() + 1); // non-inclusive end (start of next day)
+
+    const entries = allMoodData.filter(entry => entry.createdAt >= last7DaysStart && entry.createdAt < last7DaysEnd);
     
     // Count for each of 5 categories
-    const veryPositive = entries.filter(e => veryPositiveMoods.includes(e.mood)).length;
-    const peaceful = entries.filter(e => peacefulMoods.includes(e.mood)).length;
-    const balanced = entries.filter(e => balancedMoods.includes(e.mood)).length;
-    const neutral = entries.filter(e => neutralMoods.includes(e.mood)).length;
-    const negative = entries.filter(e => negativeMoods.includes(e.mood)).length;
-    
-    // Legacy positive count
+    const veryPositive = entries.filter(e => veryPositiveMoods.includes(String(e.mood).toLowerCase())).length;
+    const peaceful = entries.filter(e => peacefulMoods.includes(String(e.mood).toLowerCase())).length;
+    const balanced = entries.filter(e => balancedMoods.includes(String(e.mood).toLowerCase())).length;
+    const neutral = entries.filter(e => neutralMoods.includes(String(e.mood).toLowerCase())).length;
+    const negative = entries.filter(e => negativeMoods.includes(String(e.mood).toLowerCase())).length;
+
+    // Legacy positive count (counts)
     const positive = veryPositive + peaceful + balanced;
     const total = entries.length;
-    
+
+    // Helper to compute percent as float and rounded display percent
+    const pct = (n) => ({ raw: total > 0 ? (n / total) : 0, display: total > 0 ? Math.round((n / total) * 100) : 0 });
+
+    const veryPositivePct = pct(veryPositive);
+    const peacefulPct = pct(peaceful);
+    const balancedPct = pct(balanced);
+    const neutralPct = pct(neutral);
+    const negativePct = pct(negative);
+
+    // Determine top label (dominant category) prefer counts
+    const categoryCounts = [
+      { key: 'veryPositive', count: veryPositive, label: t('positive') || 'Positive' },
+      { key: 'peaceful', count: peaceful, label: t('peaceful') || 'Peaceful' },
+      { key: 'balanced', count: balanced, label: t('balanced') || 'Balanced' },
+      { key: 'neutral', count: neutral, label: t('neutral') || 'Neutral' },
+      { key: 'negative', count: negative, label: t('negative') || 'Negative' },
+    ];
+    const topCategory = categoryCounts.sort((a, b) => b.count - a.count)[0] || null;
+
+    // debug logging removed
+
     return {
       entries,
       positive,
       negative,
       neutral,
       total,
-      positivePercent: total > 0 ? Math.round((positive / total) * 100) : 0,
-      negativePercent: total > 0 ? Math.round((negative / total) * 100) : 0,
-      neutralPercent: total > 0 ? Math.round((neutral / total) * 100) : 0,
-      // 5 categories for pentagon
-      veryPositivePercent: total > 0 ? Math.round((veryPositive / total) * 100) : 0,
-      peacefulPercent: total > 0 ? Math.round((peaceful / total) * 100) : 0,
-      balancedPercent: total > 0 ? Math.round((balanced / total) * 100) : 0,
-      neutralCategoryPercent: total > 0 ? Math.round((neutral / total) * 100) : 0,
-      negativeCategoryPercent: total > 0 ? Math.round((negative / total) * 100) : 0,
+      positivePercent: positive > 0 ? Math.round((positive / total) * 100) : 0,
+      negativePercent: negative > 0 ? Math.round((negative / total) * 100) : 0,
+      neutralPercent: neutral > 0 ? Math.round((neutral / total) * 100) : 0,
+      // 5 categories: provide both raw (0..1) and display (0..100)
+      veryPositivePercentRaw: veryPositivePct.raw,
+      peacefulPercentRaw: peacefulPct.raw,
+      balancedPercentRaw: balancedPct.raw,
+      neutralCategoryPercentRaw: neutralPct.raw,
+      negativeCategoryPercentRaw: negativePct.raw,
+      veryPositivePercent: veryPositivePct.display,
+      peacefulPercent: peacefulPct.display,
+      balancedPercent: balancedPct.display,
+      neutralCategoryPercent: neutralPct.display,
+      negativeCategoryPercent: negativePct.display,
+      topLabel: topCategory ? topCategory.label : null,
     };
-  }, [allMoodData]);
+  }, [allMoodData, t, language]);
 
   // Count distinct days with entries in the last 7 days. If fewer than 3, we'll show
   // a simple prompt asking the user to write more journal entries instead of analytics.
@@ -637,26 +786,33 @@ const MoodTrendScreen = ({ navigation }) => {
   // Previous 7 days for comparison
   const previous7DaysData = useMemo(() => {
     const now = new Date();
-    const previous7DaysStart = new Date(now);
-    previous7DaysStart.setDate(now.getDate() - 14);
-    previous7DaysStart.setHours(0, 0, 0, 0);
-    
-    const last7DaysStart = new Date(now);
-    last7DaysStart.setDate(now.getDate() - 7);
-    last7DaysStart.setHours(0, 0, 0, 0);
-    
+    // Build previous 7-day window that is directly before the last7Days window
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const last7DaysStart = new Date(startOfToday);
+    last7DaysStart.setDate(startOfToday.getDate() - 6); // start for the "last 7 days" window
+
+    const previous7DaysStart = new Date(startOfToday);
+    previous7DaysStart.setDate(startOfToday.getDate() - 13); // 7 days before last7DaysStart
+    const previous7DaysEnd = new Date(last7DaysStart); // non-inclusive end - directly before last7DaysStart
+
     const entries = allMoodData.filter(entry => 
-      entry.createdAt >= previous7DaysStart && entry.createdAt < last7DaysStart
+      entry.createdAt >= previous7DaysStart && entry.createdAt < previous7DaysEnd
     );
     
     const positive = entries.filter(e => positiveMoods.includes(e.mood)).length;
     const negative = entries.filter(e => negativeMoods.includes(e.mood)).length;
     const total = entries.length;
-    
+
+    // debug logging removed
+
     return {
       total,
       positivePercent: total > 0 ? Math.round((positive / total) * 100) : 0,
       negativePercent: total > 0 ? Math.round((negative / total) * 100) : 0,
+      positiveRaw: total > 0 ? (positive / total) : 0,
+      negativeRaw: total > 0 ? (negative / total) : 0,
     };
   }, [allMoodData]);
 
@@ -707,9 +863,20 @@ const MoodTrendScreen = ({ navigation }) => {
       : 0;
     
     const scoreDiff = thisWeekScore - prevWeekScore;
-    const percentChange = previous7DaysData.total > 0 
-      ? Math.round(((last7DaysData.positivePercent - previous7DaysData.positivePercent) / previous7DaysData.positivePercent) * 100) 
-      : 0;
+    // Compute percent change safely: prefer relative change when previous raw > 0, otherwise use percentage-point difference
+    let percentChange = 0;
+    try {
+      const lastRaw = last7DaysData.total > 0 ? (last7DaysData.positive / last7DaysData.total) : 0;
+      const prevRaw = previous7DaysData.total > 0 ? (previous7DaysData.positiveRaw || 0) : 0;
+      if (previous7DaysData.total > 0 && prevRaw > 0) {
+        percentChange = Math.round(((lastRaw - prevRaw) / prevRaw) * 100);
+      } else {
+        // fallback to percentage-point difference (easier to interpret)
+        percentChange = Math.round((last7DaysData.positivePercent || 0) - (previous7DaysData.positivePercent || 0));
+      }
+    } catch (e) {
+      percentChange = 0;
+    }
     
     let trend = 'stable';
     if (scoreDiff > 0.2) trend = 'improving';
@@ -731,80 +898,50 @@ const MoodTrendScreen = ({ navigation }) => {
   const dominantMoodColor = useMemo(() => {
     if (last7DaysData.total === 0) return '#8E8E93';
 
-    // Tüm mood'ları say
-    const moodCounts = {};
-    last7DaysData.entries.forEach(entry => {
-      moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
-    });
+    // Determine dominant category from the aggregated weekly percentages
+    const categories = [
+      { key: 'positive', value: last7DaysData.positivePercent || 0, color: '#16A34A' },
+      { key: 'peaceful', value: last7DaysData.peacefulPercent || 0, color: '#06B6D4' },
+      { key: 'balanced', value: last7DaysData.balancedPercent || 0, color: '#F59E0B' },
+      { key: 'neutral', value: last7DaysData.neutralCategoryPercent || 0, color: '#6B7280' },
+      { key: 'negative', value: last7DaysData.negativeCategoryPercent || 0, color: '#EF4444' },
+    ];
 
-    // En çok hissedilen mood'u bul
-    let maxCount = 0;
-    let dominantMood = null;
-    Object.keys(moodCounts).forEach(mood => {
-      if (moodCounts[mood] > maxCount) {
-        maxCount = moodCounts[mood];
-        dominantMood = mood;
-      }
-    });
-
-    // Mood rengini getir
-    if (dominantMood) {
-      const moodInfo = getMoodInfo(dominantMood);
-      return moodInfo.color;
-    }
-
-    // Fallback: Kategorilere göre renk
-    if (last7DaysData.positivePercent > last7DaysData.negativePercent) {
-      return '#34C759'; // Pozitif - Yeşil
-    } else if (last7DaysData.negativePercent > last7DaysData.positivePercent) {
-      return '#FF3B30'; // Negatif - Kırmızı
-    }
-    return '#8E8E93'; // Nötr - Gri
+    const dominant = categories.reduce((max, c) => (c.value > max.value ? c : max), categories[0]);
+    return dominant && dominant.value > 0 ? dominant.color : '#8E8E93';
   }, [last7DaysData, getMoodInfo]);
 
-  // Short AI-style explanation using ProjectAnalyzer (forceShow=true to get a snippet without marking shown)
+  // Short weekly-style explanation synthesized from aggregated last 7 days data
   const [analysisSnippet, setAnalysisSnippet] = useState(null);
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-  // Use static forceShow to avoid marking daily shown state and pass current language
-  const currentLang = language || 'en';
-  const analysis = await ProjectAnalyzer.constructor.getDailyAnalysis(activeTasks, completedTasks, true, currentLang);
-        if (mounted && analysis && analysis.feedback && analysis.feedback.message) {
-          let msg = analysis.feedback.message;
-          // Post-process Turkish AI output to avoid 'şimdi' in weekly-summary phrasing
-          try {
-            if (currentLang && currentLang.startsWith('tr')) {
-              // prefer natural Turkish phrasing. If it's weekend, prefer past tense 'geçti', otherwise use present-progressive 'geçiyor'
-              const verb = isLastDayOfWeek() ? 'geçti' : 'geçiyor';
-              // Replace common Turkish temporal phrases that sound unnatural in short summaries
-              // 'şimdi', 'şu an', 'şuan', 'şimdilerde' -> replace with more natural verbs or adverbials
-              msg = msg.replace(/\b(şimdi|şu an|şuan|şimdilerde)\b/gi, verb);
-              // Also replace 'son zamanlarda' with a softer 'son zamanlarda' -> 'son zamanlarda' is okay, but if ends with 'şimdi' force swap
-              msg = msg.replace(/\bson zamanlarda\b/gi, 'son zamanlarda');
-              // If message still contains an English 'now' for any reason, remove/replace it
-              msg = msg.replace(/\bnow\b/gi, verb);
-            } else {
-              // English: avoid 'now'/'currently' — use 'is' or 'was' depending on week boundary
-              const replacementEn = isLastDayOfWeek() ? 'was' : 'is';
-              msg = msg.replace(/\b(now|currently|at the moment)\b/gi, replacementEn);
-              // If Turkish words accidentally appear, neutralize them
-              msg = msg.replace(/\b(şimdi|şu an|şimdilerde)\b/gi, replacementEn);
-            }
-            // Trim duplicate spaces possibly introduced by replacements
-            msg = msg.replace(/\s{2,}/g, ' ').trim();
-          } catch (e) {
-            // if replacement fails, fall back to original msg
-          }
-          setAnalysisSnippet(msg);
-        }
-      } catch (e) {
-        // ignore
+    // Build a concise weekly analysis string from last7DaysData and trendInfo
+    try {
+      if (!last7DaysData || last7DaysData.total === 0) {
+        setAnalysisSnippet(null);
+        return;
       }
-    })();
-    return () => { mounted = false; };
-  }, [activeTasks, completedTasks, language]);
+
+      const topLabel = last7DaysData.topLabel || (language && language.startsWith('tr') ? t('neutral') : 'Neutral');
+      const percent = Math.abs(trendInfo.percentChange || 0);
+      const dir = trendInfo.direction || 'stable';
+
+      if (language && language.startsWith('tr')) {
+        let verb = 'kararlı kaldı';
+        if (dir === 'up') verb = percent > 0 ? `%${percent} iyileşti` : 'iyileşti';
+        if (dir === 'down') verb = percent > 0 ? `%${percent} düştü` : 'düşüş gösterdi';
+        const msg = `Bu hafta çoğunlukla ${topLabel} hissedildi. Geçen haftaya göre ruh hali ${verb}.`;
+        setAnalysisSnippet(msg);
+      } else {
+        let verb = 'was stable';
+        if (dir === 'up') verb = percent > 0 ? `improved by ${percent}%` : 'improved';
+        if (dir === 'down') verb = percent > 0 ? `declined by ${percent}%` : 'declined';
+        const msg = `This week was mostly ${topLabel}. Mood ${verb} vs last week.`;
+        setAnalysisSnippet(msg);
+      }
+    } catch (e) {
+      setAnalysisSnippet(null);
+    }
+  }, [last7DaysData, trendInfo, language, t]);
 
 
 
@@ -981,32 +1118,57 @@ const MoodTrendScreen = ({ navigation }) => {
             <View style={styles.radarChartContainer}>
               <CustomRadarChart
                 moodData={{
-                  positive: last7DaysData.veryPositivePercent || 0,
+                  // Use combined positive percentage (veryPositive + peaceful + balanced)
+                  positive: last7DaysData.positivePercent || 0,
                   peaceful: last7DaysData.peacefulPercent || 0,
                   balanced: last7DaysData.balancedPercent || 0,
                   neutral: last7DaysData.neutralCategoryPercent || 0,
                   negative: last7DaysData.negativeCategoryPercent || 0
                 }}
-                size={Math.min(320, width - 60)}
+                size={Math.min(380, width - 40)}
                 theme={theme}
               />
             </View>
             
-            {/* Mood Summary Box */}
-            <MoodSummaryBox 
-              categories={[
-                { label: t('positive') || 'Positive', iconName: 'sentiment-very-satisfied', value: last7DaysData.veryPositivePercent || 0, color: '#9333EA' },
-                { label: t('peaceful') || 'Peaceful', iconName: 'spa', value: last7DaysData.peacefulPercent || 0, color: '#06B6D4' },
-                { label: t('balanced') || 'Balanced', iconName: 'wb-sunny', value: last7DaysData.balancedPercent || 0, color: '#F59E0B' },
-                { label: t('neutral') || 'Neutral', iconName: 'sentiment-neutral', value: last7DaysData.neutralCategoryPercent || 0, color: '#6B7280' },
-                { label: t('negative') || 'Negative', iconName: 'sentiment-dissatisfied', value: last7DaysData.negativeCategoryPercent || 0, color: '#EF4444' },
-              ]}
-              theme={theme}
-              t={t}
-              isLastDay={isLastDayOfWeek()}
-              language={language}
-              analysisSnippet={analysisSnippet}
-            />
+            {/* Mood Summary Boxes: supportive message + AI analysis (each in its own identical card) */}
+            <View style={{ marginTop: 0, gap: 4 }}>
+                <MoodSummaryBox
+                categories={[
+                  { label: t('positive') || 'Positive', iconName: 'sentiment-very-satisfied', value: last7DaysData.veryPositivePercent || 0, color: '#16A34A' },
+                  { label: t('peaceful') || 'Peaceful', iconName: 'spa', value: last7DaysData.peacefulPercent || 0, color: '#06B6D4' },
+                  { label: t('balanced') || 'Balanced', iconName: 'wb-sunny', value: last7DaysData.balancedPercent || 0, color: '#F59E0B' },
+                  { label: t('neutral') || 'Neutral', iconName: 'sentiment-neutral', value: last7DaysData.neutralCategoryPercent || 0, color: '#6B7280' },
+                  { label: t('negative') || 'Negative', iconName: 'sentiment-dissatisfied', value: last7DaysData.negativeCategoryPercent || 0, color: '#EF4444' },
+                ]}
+                theme={theme}
+                t={t}
+                isLastDay={isLastDayOfWeek()}
+                language={language}
+                  explicitMessage={generateSupportiveMessage((last7DaysData.topLabel || t('positive')), language)}
+              />
+
+              {analysisSnippet ? (
+                <MoodSummaryBox
+                  categories={[
+                    { label: t('positive') || 'Positive', iconName: 'sentiment-very-satisfied', value: last7DaysData.veryPositivePercent || 0, color: '#16A34A' },
+                    { label: t('peaceful') || 'Peaceful', iconName: 'spa', value: last7DaysData.peacefulPercent || 0, color: '#06B6D4' },
+                    { label: t('balanced') || 'Balanced', iconName: 'wb-sunny', value: last7DaysData.balancedPercent || 0, color: '#F59E0B' },
+                    { label: t('neutral') || 'Neutral', iconName: 'sentiment-neutral', value: last7DaysData.neutralCategoryPercent || 0, color: '#6B7280' },
+                    { label: t('negative') || 'Negative', iconName: 'sentiment-dissatisfied', value: last7DaysData.negativeCategoryPercent || 0, color: '#EF4444' },
+                  ]}
+                  theme={theme}
+                  t={t}
+                  isLastDay={isLastDayOfWeek()}
+                  language={language}
+                  explicitMessage={analysisSnippet}
+                  overrideIcon={'insights'}
+                  overrideIconColor={'#6B7280'}
+                  suppressHeader={true}
+                  showLeftAccent={false}
+                  variant={'analysis'}
+                />
+              ) : null}
+            </View>
             
           </View>
         )}
@@ -1056,7 +1218,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginHorizontal: Math.max(20, width * 0.05),
-    marginTop: 4,
+    marginTop: 0,
   },
   sectionTitle: {
     fontSize: 17,
@@ -1073,39 +1235,73 @@ const styles = StyleSheet.create({
   radarChartContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 0,
   },
   moodSummaryBox: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 16,
     padding: 16,
-  marginTop: 4,
+  marginTop: 0,
     borderWidth: 1,
   },
+
+  /* supportiveAccent removed */
   moodSummaryIconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 12,
+  },
+  moodSummaryIconCircleAnalysis: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 12,
+  },
+  // Thin left accent bar used for the 'analysis' variant
+  leftAccent: {
+    width: 6,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+    marginRight: 12,
+    height: '100%'
+  },
+  // Slightly different box style for analysis cards
+  moodSummaryBoxAnalysis: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    alignItems: 'center',
   },
   moodSummaryTextContainer: {
     flex: 1,
   },
-  moodSummaryTitle: {
+  moodSummaryMessage: {
     fontSize: 13,
+    fontFamily: 'Poppins_400Regular',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  moodSummaryMessageAnalysis: {
+    fontSize: 14,
+    fontFamily: 'Poppins_500Medium',
+    lineHeight: 20,
+  },
+  moodSummaryTitle: {
+    fontSize: 12,
     fontFamily: 'Poppins_400Regular',
     marginBottom: 2,
   },
   moodSummaryCategory: {
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     marginBottom: 2,
   },
   moodSummarySubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Poppins_400Regular',
   },
   // ========== END RADAR CHART STYLES ==========

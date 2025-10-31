@@ -34,6 +34,20 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+import logger from '../utils/logger';
+// Throttle pickLocation logs to avoid noisy repeated messages in quick succession
+let _lastPickLocationLogTs = 0;
+const _pickLocationLog = (...args) => {
+  try {
+    const now = Date.now();
+    if (now - _lastPickLocationLogTs > 5000) { // at most once every 5s
+      _lastPickLocationLogTs = now;
+      logger.debug(...args);
+    }
+  } catch (e) {
+    // swallow logging errors
+  }
+};
 import { useEducation } from "../context/EducationContext";
 import { EDUCATION_STEPS } from "../context/EducationContext";
 import { 
@@ -42,6 +56,7 @@ import {
   analyzeSentiment, 
   analyzeSentimentBySentences,
   getSmartMoodSuggestion, 
+  learnFromUser,
   getSentimentColor,
   getSentimentEmoji,
   getValidIconName,
@@ -200,14 +215,30 @@ export default function Journal({
         // Önce konum izinlerini kontrol et
         const { status } = await Location.getForegroundPermissionsAsync();
         if (status !== 'granted') {
-          console.warn('Location permission not granted for reverse geocoding');
+          logger.warn('Location permission not granted for reverse geocoding');
           return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
         }
 
-        const reverseGeocode = await Location.reverseGeocodeAsync({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        });
+        // Try reverse geocoding with a single retry on intermittent errors
+        const reverseGeocodeWithRetry = async (coords, attempts = 2, delayMs = 300) => {
+          let lastErr = null;
+          for (let i = 0; i < attempts; i++) {
+            try {
+              const res = await Location.reverseGeocodeAsync({
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              });
+              return res;
+            } catch (err) {
+              lastErr = err;
+              // small backoff
+              if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
+            }
+          }
+          throw lastErr;
+        };
+
+        const reverseGeocode = await reverseGeocodeWithRetry(coords);
 
         if (reverseGeocode && reverseGeocode.length > 0) {
           const location = reverseGeocode[0];
@@ -224,8 +255,10 @@ export default function Journal({
             return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
           }
         }
-      } catch (error) {
-        console.warn('Reverse geocoding failed:', error);
+    } catch (error) {
+  // reverse geocoding can fail intermittently on some devices or simulators
+  // demote to debug to avoid noisy warnings; keep original error available for crash reporting
+  logger.debug('Reverse geocoding failed (fallback to coords):', error && (error.message || error.code || error));
         // Fallback: koordinat
         return `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
       }
@@ -298,7 +331,7 @@ export default function Journal({
       const moodSugs = await getSmartMoodSuggestion(analysis, selectedMood?.key, userHistory, allText);
       setMoodSuggestions(moodSugs);
     } catch (error) {
-      console.error('Mood analysis error:', error);
+  logger.error('Mood analysis error:', error);
       setMoodSuggestions([]);
     }
     
@@ -565,7 +598,7 @@ export default function Journal({
       if (uri) addPreviewImage(uri);
     } catch (error) {
       // User'a error gösterme - sessizce logla
-      console.log('Image picker error:', error);
+  logger.debug('Image picker error:', error);
     } finally {
       // Medya seçme bitti - klavye kapanmışsa preview gösterilebilir
       setTimeout(() => setIsPickingMedia(false), 300); // 300ms bekle
@@ -574,17 +607,36 @@ export default function Journal({
 
   const pickLocation = async () => {
     try {
+      const startTs = Date.now();
+  _pickLocationLog('[pickLocation] start', new Date(startTs).toISOString());
+
+      // Quick immediate fallback: try to get last known position so user sees something fast
+      let lastKnown = null;
+      try {
+        lastKnown = await Location.getLastKnownPositionAsync?.();
+        if (lastKnown) {
+          _pickLocationLog('[pickLocation] lastKnown found', lastKnown.coords);
+          // Update UI immediately with last known position
+          setCurrentLocation(lastKnown);
+          setPreviews(prev => {
+            const filteredPreviews = prev.filter(item => item.type !== "map");
+            return [...filteredPreviews, { type: "map", content: lastKnown }];
+          });
+        }
+      } catch (lkError) {
+  logger.warn('[pickLocation] getLastKnownPositionAsync failed', lkError);
+      }
+
       // Check if permission is already granted
       const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
-      
       let finalStatus = existingStatus;
-      
+
       // Eğer izin verilmemişse iste
       if (existingStatus !== 'granted') {
         const { status } = await Location.requestForegroundPermissionsAsync();
         finalStatus = status;
       }
-      
+
       if (finalStatus !== "granted") {
         Alert.alert(
           t('permissionRequired') || 'İzin Gerekli',
@@ -593,25 +645,52 @@ export default function Journal({
         );
         return;
       }
-      
-      // Optimized location request - faster response with reasonable accuracy
-      const loc = await Location.getCurrentPositionAsync({
+
+      // Start a location request but race it against a short timeout so we can show the lastKnown quickly
+      const locationOptions = {
         accuracy: Location.Accuracy.Balanced, // Faster than high accuracy
         maximumAge: 10000, // Accept cached location up to 10 seconds old
-        timeout: 5000, // 5 second timeout instead of default 15
-      });
-      
-      // Location'ı hem currentLocation state'ine hem de previews'e ekle
-      setCurrentLocation(loc);
-      
-      // Location'ı previews array'ine ekle (journal entry için)
-      setPreviews(prev => {
-        // Eğer zaten location varsa, eski olanı kaldır
-        const filteredPreviews = prev.filter(item => item.type !== "map");
-        return [...filteredPreviews, { type: "map", content: loc }];
-      });
+        // Note: expo-location's timeout option isn't universally reliable; we'll implement our own fallback
+      };
+
+      const currentPromise = Location.getCurrentPositionAsync(locationOptions);
+      const fastTimeoutMs = 2000; // 2s: if no fresh fix within this, keep lastKnown and update later
+
+      let timelyLoc = null;
+      try {
+        timelyLoc = await Promise.race([
+          currentPromise,
+          new Promise((res) => setTimeout(() => res(null), fastTimeoutMs)),
+        ]);
+    } catch (raceErr) {
+  logger.warn('[pickLocation] fast race error', raceErr);
+        timelyLoc = null;
+      }
+
+    if (timelyLoc) {
+  _pickLocationLog('[pickLocation] got timely location in', Date.now() - startTs, 'ms');
+        setCurrentLocation(timelyLoc);
+        setPreviews(prev => {
+          const filteredPreviews = prev.filter(item => item.type !== "map");
+          return [...filteredPreviews, { type: "map", content: timelyLoc }];
+        });
+    } else {
+  _pickLocationLog('[pickLocation] no timely location, using lastKnown if exists. Will update when precise fix arrives.');
+        // If lastKnown already set above, UI updated. If not, still wait for the eventual currentPromise
+        currentPromise.then((realLoc) => {
+      _pickLocationLog('[pickLocation] late precise location arrived', Date.now() - startTs, 'ms');
+          setCurrentLocation(realLoc);
+          setPreviews(prev => {
+            const filteredPreviews = prev.filter(item => item.type !== "map");
+            return [...filteredPreviews, { type: "map", content: realLoc }];
+          });
+        }).catch((laterErr) => {
+          logger.error('[pickLocation] late location error', laterErr);
+        });
+      }
+
     } catch (error) {
-      console.error('Error in pickLocation:', error);
+  logger.error('Error in pickLocation:', error);
       Alert.alert(
         t('error') || 'Error',
         t('locationError') || 'Could not get your location. Please try again.',
@@ -698,7 +777,7 @@ export default function Journal({
           }
         } else {
           // Legacy milestone-based journal entry - REMOVED
-          console.warn('Legacy milestone-based journal system is no longer supported');
+          logger.warn('Legacy milestone-based journal system is no longer supported');
         }
         
         // Update user history for pattern learning
@@ -720,7 +799,7 @@ export default function Journal({
           handleClose();
         }, 100);
       } catch (error) {
-        console.warn('Journal save error:', error);
+  logger.warn('Journal save error:', error);
         handleClose();
       }
     }
@@ -1061,7 +1140,7 @@ export default function Journal({
                           try {
                             await learnFromUser(m.key, textValue);
                           } catch (error) {
-                            console.warn('Failed to learn from user:', error);
+                            logger.warn('Failed to learn from user:', error);
                           }
                         }
                       }}

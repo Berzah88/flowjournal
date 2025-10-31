@@ -29,7 +29,7 @@ import { useLanguage } from "../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
-export default function AddTaskModal({ visible, onClose, onSave, editingTask = null, existingTasks = [] }) {
+export default function AddTaskModal({ visible, onClose, onSave, editingTask = null, existingTasks = [], project = null }) {
   const { theme } = useTheme();
   const { t, language } = useLanguage();
   const [title, setTitle] = useState("");
@@ -239,6 +239,8 @@ export default function AddTaskModal({ visible, onClose, onSave, editingTask = n
     return existingTasks.some(task => {
       // Skip the task being edited
       if (editingTask && task.id === editingTask.id) return false;
+      // Skip completed milestones - we don't want to display them in the calendar markers
+      if (task.completed) return false;
       
       if (!task.startDate || !task.endDate) return false;
       
@@ -259,66 +261,135 @@ export default function AddTaskModal({ visible, onClose, onSave, editingTask = n
     });
   };
 
+  // Return list of milestone colors for a given date (one entry per milestone overlapping that date)
+  const getMilestonesForDate = (date) => {
+    // Only show milestone dots when modal was opened for a specific project
+    if (!project) return [];
+    if (!existingTasks || existingTasks.length === 0) return [];
+
+    const checkDate = new Date(date);
+    checkDate.setHours(0,0,0,0);
+
+    const matched = existingTasks.reduce((acc, task) => {
+      // Skip the task being edited
+      if (editingTask && task.id === editingTask.id) return acc;
+      if (!task.startDate || !task.endDate) return acc;
+
+      const taskStart = new Date(task.startDate);
+      const taskEnd = new Date(task.endDate);
+      taskStart.setHours(0,0,0,0);
+      taskEnd.setHours(0,0,0,0);
+
+      const dateTime = checkDate.getTime();
+      // Skip completed milestones entirely
+      if (task.completed) return acc;
+
+      if (dateTime >= taskStart.getTime() && dateTime <= taskEnd.getTime()) {
+        // Resolve color using existing util (keeps original milestone color behavior)
+        const color = getMilestoneColor(task, theme.name === 'dark' ? 'dark' : 'light');
+        acc.push(color);
+      }
+      return acc;
+    }, []);
+
+    return matched;
+  };
+
   const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentMonth);
-    const firstDay = getFirstDayOfMonth(currentMonth);
-    const days = [];
-    
-    // Empty cells for days before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.calendarDay} />);
+    // Build a linear list of cells (null = empty leading/trailing cell)
+  const daysInMonth = getDaysInMonth(currentMonth);
+  // Determine week start index based on locale: Turkish starts Monday (1), English starts Sunday (0)
+  const weekStart = language && language.startsWith('tr') ? 1 : 0;
+  const jsFirstDay = getFirstDayOfMonth(currentMonth); // 0 (Sun) - 6 (Sat)
+  // Adjust first day according to desired week start so leading empties align with headers
+  const firstDay = (jsFirstDay - weekStart + 7) % 7; // 0..6
+    const cells = [];
+
+    // Leading empty cells
+    for (let i = 0; i < firstDay; i++) cells.push(null);
+
+    // Month days
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+    // Pad trailing empty cells so total is multiple of 7
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    // Chunk into weeks and render as rows to ensure consistent alignment
+    const weeks = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      weeks.push(cells.slice(i, i + 7));
     }
-    
-    // Days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-      const isSelected = isSameDay(dayDate, selectedDate);
-      const isToday = isSameDay(dayDate, new Date());
-      const isStartDate = startDate && isSameDay(dayDate, startDate);
-      const isEndDate = endDate && isSameDay(dayDate, endDate);
-      const isInRange = isDateInRange(dayDate, startDate, endDate);
-      const isInExistingTask = isDateInTask(dayDate);
-      
-      days.push(
-        <TouchableOpacity
-          key={day}
-          style={[
-            styles.calendarDay,
-            isSelected && !startDate && !endDate && styles.selectedDay,
-            isToday && !isSelected && !isInRange && styles.todayDay,
-            isStartDate && styles.rangeStartDay,
-            isEndDate && styles.rangeEndDay,
-            isInRange && !isStartDate && !isEndDate && styles.rangeDay,
-            isInExistingTask && !isInRange && !isStartDate && !isEndDate && {
-              backgroundColor: theme.name === 'dark' ? 'rgba(174, 174, 178, 0.3)' : 'rgba(142, 142, 147, 0.2)',
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: theme.name === 'dark' ? 'rgba(174, 174, 178, 0.5)' : 'rgba(142, 142, 147, 0.3)',
-            }
-          ]}
-          onPress={() => handleDayPress(dayDate)}
-          onLongPress={() => handleDayLongPress(dayDate)}
-          delayLongPress={500}
-        >
-          <Text style={[
-            styles.dayText,
-            isSelected && !startDate && !endDate && styles.selectedDayText,
-            isToday && !isSelected && !isInRange && styles.todayDayText,
-            (isStartDate || isEndDate) && styles.rangeEndDayText,
-            isInRange && !isStartDate && !isEndDate && styles.rangeDayText,
-            isInExistingTask && !isInRange && !isStartDate && !isEndDate && {
-              color: theme.name === 'dark' ? '#AEAEB2' : '#8E8E93',
-              fontFamily: FONTS.SEMI_BOLD,
-              fontSize: 13,
-            }
-          ]}>
-            {day}
-          </Text>
-        </TouchableOpacity>
-      );
-    }
-    
-    return days;
+
+    return weeks.map((week, wi) => (
+      <View key={`week-${wi}`} style={{ flexDirection: 'row', width: '100%' }}>
+        {week.map((cell, ci) => {
+          if (cell === null) {
+            return <View key={`empty-${wi}-${ci}`} style={styles.calendarDay} />;
+          }
+
+          const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), cell);
+          const isSelected = isSameDay(dayDate, selectedDate);
+          const isToday = isSameDay(dayDate, new Date());
+          const isStartDate = startDate && isSameDay(dayDate, startDate);
+          const isEndDate = endDate && isSameDay(dayDate, endDate);
+          const isInRange = isDateInRange(dayDate, startDate, endDate);
+          const dayMilestones = getMilestonesForDate(dayDate);
+
+          return (
+            <TouchableOpacity
+              key={`day-${wi}-${ci}`}
+              style={[
+                styles.calendarDay,
+                isSelected && !startDate && !endDate && styles.selectedDay,
+                isToday && !isSelected && !isInRange && styles.todayDay,
+                isStartDate && styles.rangeStartDay,
+                isEndDate && styles.rangeEndDay,
+                isInRange && !isStartDate && !isEndDate && styles.rangeDay,
+              ]}
+              onPress={() => handleDayPress(dayDate)}
+              onLongPress={() => handleDayLongPress(dayDate)}
+              delayLongPress={500}
+            >
+              <Text style={[
+                styles.dayText,
+                isSelected && !startDate && !endDate && styles.selectedDayText,
+                isToday && !isSelected && !isInRange && styles.todayDayText,
+                (isStartDate || isEndDate) && styles.rangeEndDayText,
+                isInRange && !isStartDate && !isEndDate && styles.rangeDayText,
+              ]}>
+                {cell}
+              </Text>
+              {/* Milestone colored dots (one dot per milestone on that date). Only shown when modal has a project prop. */}
+              {dayMilestones && dayMilestones.length > 0 && (() => {
+                const MAX_DOTS = 2; // show up to 2 colored dots; if more, show only +n
+                if (dayMilestones.length > MAX_DOTS) {
+                  // Only show a single +n badge (n = total milestones on that day)
+                  return (
+                    <View style={styles.milestoneDotsRow} pointerEvents="none">
+                      <View style={[styles.milestoneDotMore, { backgroundColor: theme.name === 'dark' ? '#3A3A3C' : '#E6E7EB' }]}>
+                        <Text style={[styles.milestoneDotMoreText, { color: theme.name === 'dark' ? '#FFF' : '#111' }]}>{`+${dayMilestones.length}`}</Text>
+                      </View>
+                    </View>
+                  );
+                }
+
+                // Otherwise render each milestone as a small colored dot
+                return (
+                  <View style={styles.milestoneDotsRow} pointerEvents="none">
+                    {dayMilestones.map((c, idx) => (
+                      <View
+                        key={`dot-${wi}-${ci}-${idx}`}
+                        style={[styles.milestoneDot, { backgroundColor: c }]}
+                      />
+                    ))}
+                  </View>
+                );
+              })()}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    ));
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -659,9 +730,12 @@ const styles = StyleSheet.create({
   calendarDay: {
     width: `${100/7 - 1}%`, // 7 columns with small gap (14.28% - 1% = ~13.28%)
     aspectRatio: 1, // Keep cells square regardless of width
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     marginBottom: 4, // Less spacing
+    paddingTop: 6,
+    paddingBottom: 20, // extra bottom space reserved for dot/+n badge
+    position: 'relative', // allow absolute-positioned overlays (dots) without affecting layout
   },
   selectedDay: {
     backgroundColor: '#5AC8FA', // Soft Apple blue
@@ -710,6 +784,36 @@ const styles = StyleSheet.create({
   rangeDayText: {
     color: '#5AC8FA', // Soft Apple mavi
     fontFamily: FONTS.MEDIUM,
+  },
+  // Milestone dot indicators shown under day numbers in calendar (small colored dots)
+  milestoneDotsRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 2, // move lower inside cell
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  milestoneDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginHorizontal: 1,
+  },
+  milestoneDotMore: {
+    minWidth: 16,
+    height: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+    paddingHorizontal: 3,
+  },
+  milestoneDotMoreText: {
+    fontSize: 8,
+    fontFamily: FONTS.SEMI_BOLD,
   },
   // Note: existingMilestoneDay and existingMilestoneDayText are now inline for theme support
 });

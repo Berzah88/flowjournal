@@ -138,6 +138,67 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
     };
   }, [startDate, endDate]);
 
+  // Status calculation for header badge: started / not started / overdue / completed
+  const { statusText, statusVariant } = useMemo(() => {
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const capitalize = (s) => {
+      if (!s) return s;
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    };
+
+    const safeT = (key, params = {}) => {
+      try {
+        if (!t) return null;
+        const translated = t(key, params);
+        // If translation missing, t returns the key itself — detect that and return null
+        if (!translated || translated === key) return null;
+        return translated;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    if (completed) {
+      const label = safeT('status.completed') || (language === 'tr' ? 'Tamamlandı' : 'Completed');
+      return { statusText: capitalize(label), statusVariant: 'completed' };
+    }
+
+    // overdue: now is past endDate
+    if (now > end) {
+      const daysOver = Math.ceil((now - end) / (1000 * 60 * 60 * 24));
+      const translated = safeT('status.overdueDays', { days: daysOver });
+      const label = translated || (language === 'tr' ? `${daysOver} gün gecikmede` : `${daysOver} days overdue`);
+      return { statusText: capitalize(label), statusVariant: 'overdue' };
+    }
+
+    if (now < start) {
+      const label = safeT('status.notStarted') || (language === 'tr' ? 'Başlamadı' : 'Not started');
+      return { statusText: capitalize(label), statusVariant: 'notStarted' };
+    }
+
+    // otherwise it's started
+    const label = safeT('status.started') || (language === 'tr' ? 'Başladı' : 'Started');
+    return { statusText: capitalize(label), statusVariant: 'started' };
+  }, [startDate, endDate, completed, t, language]);
+
+  // Foreground color (icon + text) should match the badge border color for each variant
+  const badgeForegroundColor = useMemo(() => {
+    switch (statusVariant) {
+      case 'started':
+        return '#007AFF'; // stronger blue for readability
+      case 'notStarted':
+      case 'completed':
+        return '#2EA043'; // slightly darker green than #34C759
+      case 'overdue':
+        return '#E02E4A'; // slightly darker red than #FF375F
+      default:
+        return '#ffffff';
+    }
+  }, [statusVariant]);
+
   // Memoize circle calculations
   const { radius, strokeWidth, center, circumference } = useMemo(() => {
     const r = 28;
@@ -152,6 +213,23 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
       circumference: circ
     };
   }, []);
+
+  // Compute unique journal day count (same logic as ProjectCard.js)
+  const journalCardCount = useMemo(() => {
+    try {
+      if (!task || !Array.isArray(task.journalEntries)) return 0;
+      const uniqueDates = new Set();
+      task.journalEntries.forEach(entry => {
+        if (!entry?.createdAt) return;
+        const d = new Date(entry.createdAt);
+        const dateKey = d.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
+        uniqueDates.add(dateKey);
+      });
+      return uniqueDates.size;
+    } catch (e) {
+      return 0;
+    }
+  }, [task?.journalEntries?.length, locale]);
 
   const animatedValue = useRef(new Animated.Value(0)).current;
 
@@ -287,6 +365,44 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
           {/* Project Mood Indicator - Tarihin altında */}
           {task && <MoodTags project={task} theme={theme} />}
         </View>
+
+        {/* Status badge on the right of the header */}
+        <View style={styles.statusBadgeWrapper}>
+          <View
+            style={[
+              styles.statusBadgeContainer,
+              statusVariant === 'started' && styles.statusBadgeStarted,
+              statusVariant === 'notStarted' && styles.statusBadgeNotStarted,
+              statusVariant === 'overdue' && styles.statusBadgeOverdue,
+              statusVariant === 'completed' && styles.statusBadgeCompleted,
+            ]}
+            accessibilityLabel={`status-${statusVariant}`}
+          >
+            {/* Icon + label */}
+            <View style={styles.statusBadgeRow}>
+              <MaterialIcons
+                name={
+                  statusVariant === 'started' ? 'play-arrow' :
+                  statusVariant === 'notStarted' ? 'hourglass-empty' :
+                  statusVariant === 'overdue' ? 'error' :
+                  'check'
+                }
+                size={14}
+                color={badgeForegroundColor}
+                style={styles.statusBadgeIcon}
+              />
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  { color: badgeForegroundColor },
+                ]}
+                numberOfLines={1}
+              >
+                {statusText}
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
 
       {/* Modern Bottom Section */}
@@ -304,6 +420,13 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
           ]}>
             {completed ? `${Math.ceil(totalDays)} days completed` : `${Math.ceil(remainingDays)} gün kaldı`}
           </Text>
+        </View>
+        {/* Journal count badge copied from ProjectCard - placed to the right of days left */}
+        <View style={styles.journalBadgeWrapper}>
+          <View style={[styles.journalCountBadge, { backgroundColor: theme.name === 'dark' ? '#007AFF' : '#007AFF' }]}> 
+            <Ionicons name="journal" size={12} color="#FFFFFF" />
+            <Text style={styles.journalCountText}>{journalCardCount}</Text>
+          </View>
         </View>
       </View>
 
@@ -382,76 +505,51 @@ const Card = memo(function Card({ title, startDate, endDate, completed = false, 
         </View>
       )}
 
-      {/* Milestones Listesi - Sadece active projeler için göster */}
-      {!completed && activeMilestones.length > 0 && (
-        <View style={styles.milestoneList}>
+      {/* Info boxes: show active and completed task counts instead of milestone list */}
+      {!completed && (
+        <View style={styles.infoBoxesRow}>
+          {/* Determine counts from provided task.milestones if available, otherwise fall back to activeMilestones prop */}
+          {/* Compute inside render to keep values up-to-date */}
           {(() => {
-            // Organize milestones hierarchically
-            const organized = [];
-            const childrenMap = {};
-            
-            // Group children by parent
-            activeMilestones.forEach(ms => {
-              if (ms.parentId) {
-                if (!childrenMap[ms.parentId]) {
-                  childrenMap[ms.parentId] = [];
-                }
-                childrenMap[ms.parentId].push(ms);
+            const allMilestones = (task && Array.isArray(task.milestones)) ? task.milestones : (activeMilestones || []);
+            const activeCount = allMilestones.filter(m => !m.completed).length;
+            const completedCount = allMilestones.filter(m => m.completed).length;
+
+            const translateOrDefault = (key, fallback) => {
+              try {
+                if (!t) return fallback;
+                const translated = t(key);
+                if (!translated || translated === key) return fallback;
+                return translated;
+              } catch (e) {
+                return fallback;
               }
-            });
-            
-            // Add parents and their children
-            activeMilestones.forEach(ms => {
-              if (!ms.parentId) {
-                organized.push(ms);
-                // Add children right after parent
-                if (childrenMap[ms.id]) {
-                  organized.push(...childrenMap[ms.id]);
-                }
-              }
-            });
-            
-            return organized.map((ms, index) => {
-              const isChild = !!ms.parentId;
-              const children = activeMilestones.filter(m => m.parentId === ms.id);
-              const hasChildren = children.length > 0;
-              const completedChildren = children.filter(m => m.completed).length;
-              
-              return (
-                <View key={ms.id}>
-                  <View 
-                    style={[
-                      styles.milestoneItemClickable,
-                      {
-                        backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(0, 122, 255, 0.04)',
-                        borderColor: theme.name === 'dark' ? '#2C2C2E' : 'transparent',
-                        borderWidth: theme.name === 'dark' ? 0.5 : 0,
-                        marginLeft: isChild ? 20 : 0, // Indent for children
-                      },
-                      completed && styles.completedMilestoneItem,
-                    ]}
-                  >
-                    <View style={styles.iconContainer}>
-                      <Ionicons 
-                        name={ms.completed ? "checkmark-circle" : "ellipse"} 
-                        size={18} 
-                        color={ms.completed ? "#636366" : getMilestoneColor(ms)} 
-                      />
-                    </View>
-                    <View style={styles.milestoneContent}>
-                      <Text style={[
-                        styles.milestoneText, 
-                        { color: theme.name === 'dark' ? '#FFFFFF' : theme.colors.text },
-                        completed ? styles.completedMilestoneText : {},
-                        ms.completed ? { opacity: 0.9 } : {}
-                      ]}>
-                        {ms.title || t('untitled')}
-                      </Text>
-                    </View>
+            };
+
+            const activeLabel = translateOrDefault('activeMilestones', language === 'tr' ? 'Aktif Görevler' : 'Active');
+            const completedLabel = translateOrDefault('completedMilestones', language === 'tr' ? 'Tamamlanan Görevler' : 'Completed');
+
+            return (
+              <>
+                <View style={[styles.infoBox, { backgroundColor: theme.name === 'dark' ? '#0F0F10' : '#F7F7FC', borderColor: theme.name === 'dark' ? '#272729' : 'rgba(0,0,0,0.04)' }] }>
+                  <View style={styles.infoBoxHeader}>
+                    <Text style={[styles.infoBoxTitle, { color: theme.colors.textSecondary }]}>{activeLabel}</Text>
+                  </View>
+                  <View style={styles.infoBoxNumber}>
+                    <Text style={[styles.infoBoxValue, { color: theme.colors.text }]}>{activeCount}</Text>
                   </View>
                 </View>
-              );
-            });
+
+                <View style={[styles.infoBox, { backgroundColor: theme.name === 'dark' ? '#0F0F10' : '#F7F7FC', borderColor: theme.name === 'dark' ? '#272729' : 'rgba(0,0,0,0.04)' }] }>
+                  <View style={styles.infoBoxHeader}>
+                    <Text style={[styles.infoBoxTitle, { color: theme.colors.textSecondary }]}>{completedLabel}</Text>
+                  </View>
+                  <View style={styles.infoBoxNumber}>
+                    <Text style={[styles.infoBoxValue, { color: theme.colors.text }]}>{completedCount}</Text>
+                  </View>
+                </View>
+              </>
+            );
           })()}
         </View>
       )}
@@ -590,7 +688,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   modernTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: FONTS.BOLD,
     letterSpacing: -0.3,
     color: "#1D1D1F",
@@ -605,7 +703,7 @@ const styles = StyleSheet.create({
     marginTop: 8, // Boşluk artırıldı
   },
   modernDateRange: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: FONTS.MEDIUM,
     color: '#8E8E93',
     letterSpacing: -0.1,
@@ -626,10 +724,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modernDaysLeftText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: FONTS.MEDIUM,
     color: "#007AFF",
     marginLeft: 6,
+  },
+  journalBadgeWrapper: {
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    minWidth: 40,
+  },
+  journalCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  journalCountText: {
+    fontSize: 10,
+    fontFamily: FONTS.MEDIUM,
+    color: '#FFFFFF',
+    marginLeft: 6,
+  },
+  statusBadgeWrapper: {
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    minWidth: 92,
+  },
+  statusBadgeContainer: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.06)',
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBadgeIcon: {
+    marginRight: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    letterSpacing: -0.1,
+  },
+  statusBadgeStarted: {
+    backgroundColor: 'rgba(0,122,255,0.12)',
+    borderColor: 'rgba(0,122,255,0.25)',
+    borderWidth: 1,
+  },
+  statusBadgeNotStarted: {
+    backgroundColor: 'rgba(52,199,89,0.12)',
+    borderColor: 'rgba(52,199,89,0.22)',
+    borderWidth: 1,
+  },
+  statusBadgeOverdue: {
+    backgroundColor: 'rgba(255,55,95,0.12)',
+    borderColor: 'rgba(255,55,95,0.25)',
+    borderWidth: 1,
+  },
+  statusBadgeCompleted: {
+    backgroundColor: 'rgba(52,199,89,0.12)',
+    borderColor: 'rgba(52,199,89,0.22)',
+    borderWidth: 1,
   },
   // Completed States - Dengeli Gri Tema
   modernCompletedTitle: {
@@ -678,7 +842,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 20,
+    fontSize: 19,
     fontFamily: FONTS.BOLD,
     letterSpacing: -0.3,
     color: "#1D1D1F", // Apple'ın kullandığı koyu gri
@@ -695,7 +859,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   dateText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: FONTS.MEDIUM,
     color: '#8E8E93',
   },
@@ -724,7 +888,7 @@ const styles = StyleSheet.create({
   daysLeftText: {
     fontFamily: FONTS.MEDIUM,
     color: "#007AFF", // Apple'ın mavi rengi
-    fontSize: 15,
+    fontSize: 14,
     letterSpacing: -0.1,
   },
   completedDaysText: {
@@ -734,6 +898,51 @@ const styles = StyleSheet.create({
   milestoneList: {
     marginTop: 4,
     paddingTop: 0,
+  },
+  infoBoxesRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 6,
+  },
+  infoBox: {
+    width: '46%', // ensure equal widths for both boxes
+    aspectRatio: 1.4, // reduce vertical height (wider relative to height)
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 6,
+  },
+  infoBoxTitle: {
+    fontSize: 11,
+    fontFamily: FONTS.MEDIUM,
+    marginBottom: 4,
+    letterSpacing: -0.1,
+    textAlign: 'center',
+  },
+  infoBoxValue: {
+    fontSize: 16,
+    fontFamily: FONTS.BOLD,
+    letterSpacing: -0.15,
+    textAlign: 'center',
+  },
+  infoBoxHeader: {
+    flex: 0.45,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  infoBoxNumber: {
+    flex: 0.55,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
   },
   milestoneItem: {
     flexDirection: "row",
@@ -796,7 +1005,7 @@ const styles = StyleSheet.create({
   },
   milestoneText: {
     fontFamily: FONTS.MEDIUM,
-    fontSize: 14,
+    fontSize: 13,
     color: "#1D1D1F", // Apple'ın koyu gri rengi
     lineHeight: 20,
     letterSpacing: -0.1,
@@ -822,7 +1031,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   statText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: FONTS.MEDIUM,
     color: "#636366",
     marginLeft: 6,

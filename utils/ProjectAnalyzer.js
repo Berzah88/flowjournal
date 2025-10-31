@@ -1,5 +1,6 @@
 // utils/ProjectAnalyzer.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from './logger';
 
 class ProjectAnalyzer {
   constructor(languageOverride = null) {
@@ -18,7 +19,7 @@ class ProjectAnalyzer {
       const language = await AsyncStorage.getItem('app_language');
       return language || 'en';
     } catch (error) {
-      console.warn('Failed to get language:', error);
+  logger.warn('Failed to get language:', error);
       return this.languageOverride || 'en';
     }
   }
@@ -44,7 +45,7 @@ class ProjectAnalyzer {
       // Already shown today
       return false; // Already shown today
     } catch (error) {
-      console.warn('Failed to check daily display status:', error);
+  logger.warn('Failed to check daily display status:', error);
       return true; // Default to showing if error
     }
   }
@@ -57,7 +58,7 @@ class ProjectAnalyzer {
       const today = new Date().toDateString();
       await AsyncStorage.setItem(this.dailyDisplayKey, today);
     } catch (error) {
-      console.warn('Failed to mark analysis as shown:', error);
+  logger.warn('Failed to mark analysis as shown:', error);
     }
   }
 
@@ -161,7 +162,7 @@ class ProjectAnalyzer {
       return analysis;
 
     } catch (error) {
-      console.error('ProjectAnalyzer error:', error);
+      logger.error('ProjectAnalyzer error:', error);
       return {
         shouldShow: false,
         reason: 'analysis_error',
@@ -931,7 +932,7 @@ class ProjectAnalyzer {
       
       return analysis;
     } catch (error) {
-      console.error('Daily analysis error:', error);
+      logger.error('Daily analysis error:', error);
       return {
         shouldShow: false,
         reason: 'analysis_error',

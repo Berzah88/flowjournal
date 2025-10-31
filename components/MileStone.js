@@ -290,8 +290,20 @@ function MileStone({
           // "X gün sonra bitiyor"
           return `${diffEnd} gün sonra bitiyor`;
         } else {
-          // "X gün önce sona erdi"
-          return `${Math.abs(diffEnd)} gün önce sona erdi`;
+          // If milestone is past end date and not completed, show overdue / delayed wording
+          const days = Math.abs(diffEnd);
+          // Prefer localized translation keys defined in LanguageContext
+          try {
+            // Use singular/plural keys when available
+            if (language === 'tr') {
+              return days === 1 ? (t('overdue1Day') || `${days} gün gecikme`) : (t('overdueDays', { days }) || `${days} gün gecikme`);
+            } else {
+              return days === 1 ? (t('overdue1Day') || `${days} day overdue`) : (t('overdueDays', { days }) || `${days} days overdue`);
+            }
+          } catch (e) {
+            // Fallback string
+            return language === 'tr' ? `${days} gün gecikme` : `${days} days overdue`;
+          }
         }
       } else {
         if (isCompleted) {

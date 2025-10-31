@@ -2,6 +2,13 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+// Force building react-native-reanimated from source so the library's
+// Android plugin config is evaluated and its artifacts/variants are
+// available to other modules during compilation.
+// This is a diagnostic/compatibility setting — you can remove it once
+// reanimated is available as a proper AAR for your RN version.
+ext.reanimated = [buildFromSource: true]
+
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
 /**

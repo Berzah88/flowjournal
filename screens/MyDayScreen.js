@@ -33,6 +33,8 @@ import JourneyOverview from "../components/JourneyOverview";
 import TodaysSummary from "../components/TodaysSummary";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
+import AnimatedReanimated from 'react-native-reanimated';
+import { useAnimatedProps } from 'react-native-reanimated';
 const { width } = Dimensions.get("window");
 
 const MyDayScreen = memo(function MyDayScreen({ 
@@ -49,6 +51,10 @@ const MyDayScreen = memo(function MyDayScreen({
   setSelectedDate,
   onAddProject,
   onOpenJournal
+  , headerFullyCollapsed
+  , headerShouldHandleJS
+  , parentHandlesVertical
+  , myDayContentScrollHandler
 }) {
   const activeTasks = useActiveTasks();
   const completedTasks = useCompletedTasks();
@@ -171,13 +177,16 @@ const MyDayScreen = memo(function MyDayScreen({
       
       // Celebration'ı anında tetikle
       if (global.triggerCelebration) {
+        // Pass only a small, serializable payload to the global trigger
+        // to avoid moving large/circular project objects around which could
+        // be accidentally captured by worklets.
         global.triggerCelebration({
           type: 'milestone',
           name: milestone.title,
           projectId: project.id,
           projectTitle: project.title,
           completedAt: Date.now(),
-          project: project
+          project: { id: project.id, title: project.title }
         });
       }
       
@@ -715,9 +724,17 @@ const MyDayScreen = memo(function MyDayScreen({
     return tasks;
   }, [activeTasks]);
 
+  // Child scroll is handled natively; header collapse is driven by the
+  // shared `globalCollapseProgress` via MainScreen's scroll handlers.
+
 
   return (
-    <View style={styles.container}>
+    <AnimatedReanimated.ScrollView
+      style={styles.container}
+      onScroll={myDayContentScrollHandler}
+      scrollEventThrottle={16}
+      scrollEnabled={true}
+    >
         {/* Horizontal Calendar */}
         <HorizontalCalendar
           selectedDate={selectedDate}
@@ -725,7 +742,7 @@ const MyDayScreen = memo(function MyDayScreen({
         />
         
         {/* Today's Summary with Progress and Projects */}
-        <TodaysSummary
+          <TodaysSummary
           selectedDateActiveTasks={selectedDateActiveTasks}
           selectedDate={safeSelectedDate}
           activeTasks={activeTasks}
@@ -747,6 +764,9 @@ const MyDayScreen = memo(function MyDayScreen({
           focusedProjects={new Set(focusedProject ? [focusedProject] : [])}
           handleProjectLongPress={handleProjectLongPress}
           getProjectEmotionalProgress={getProjectEmotionalProgress}
+          headerFullyCollapsed={headerFullyCollapsed}
+          headerShouldHandleJS={headerShouldHandleJS}
+          parentHandlesVertical={parentHandlesVertical}
         />
         
         {/* Journey Overview */}
@@ -795,7 +815,7 @@ const MyDayScreen = memo(function MyDayScreen({
             </Text>
           </TouchableOpacity>
         </View>
-    </View>
+    </AnimatedReanimated.ScrollView>
   );
 });
 

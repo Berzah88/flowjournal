@@ -6,13 +6,15 @@ import { useTasks } from '../hooks/useTaskContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getValidIconName } from '../utils/AIMoodPredictor';
+import { getMilestoneColor } from '../utils/milestoneColors';
 
 const { width } = Dimensions.get("window");
 // Dinamik hücre genişliği hesaplama
 // Ekran genişliği - (30*2 marginHorizontal + 16*2 containerPadding) / 7 gün
 const AVAILABLE_WIDTH = width - (30 * 2) - (16 * 2);
 const CELL_SIZE = Math.floor(AVAILABLE_WIDTH / 7);
-const CELL_HEIGHT = 46; // Optimized height for better visibility
+const CELL_HEIGHT = 48; // More compact vertical spacing
+const MILESTONE_DOT_SIZE = 6; // size of the milestone dot under day number
 
 export default function MoodCalendar() {
   const { theme } = useTheme();
@@ -111,13 +113,11 @@ export default function MoodCalendar() {
         today.setHours(0, 0, 0, 0);
         
         // Determine project status color
-        let statusColor = project.color || '#4A90E2';
-        
-        if (checkDate.toDateString() === endDate.toDateString()) {
-          // Last day of project - purple
-          statusColor = '#9C27B0';
-        } else if (checkDate > endDate) {
-          // Project is overdue - red
+        // Prefer an explicit logoColor (e.g., project.logoColor) if provided, otherwise fall back to project.color
+        let statusColor = project.logoColor || project.color || '#4A90E2';
+
+        // If the project is overdue, mark as red for visibility
+        if (checkDate > endDate) {
           statusColor = '#F44336';
         }
         
@@ -131,6 +131,28 @@ export default function MoodCalendar() {
       }
     }
     
+    return null;
+  };
+
+  // Function to find a milestone for a specific date across active projects
+  const getMilestoneForDate = (currentDate) => {
+    const activeProjects = tasks.filter(task => task.milestones && task.milestones.length > 0);
+
+    for (const project of activeProjects) {
+      for (const milestone of project.milestones) {
+        if (!milestone || !milestone.endDate) continue;
+
+        const msDate = new Date(milestone.endDate);
+        msDate.setHours(0, 0, 0, 0);
+        const checkDate = new Date(currentDate);
+        checkDate.setHours(0, 0, 0, 0);
+
+        if (msDate.toDateString() === checkDate.toDateString()) {
+          return { milestone, project };
+        }
+      }
+    }
+
     return null;
   };
 
@@ -168,8 +190,9 @@ export default function MoodCalendar() {
     for (let day = 1; day <= daysInMonth; day++) {
       const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
       const isToday = dayDate.toDateString() === new Date().toDateString();
-      const moodData = getMoodForDate(dayDate);
-      const projectData = getProjectForDate(dayDate);
+  const moodData = getMoodForDate(dayDate);
+  const projectData = getProjectForDate(dayDate);
+  const milestoneMatch = getMilestoneForDate(dayDate);
       
       days.push(
         <TouchableOpacity
@@ -178,11 +201,20 @@ export default function MoodCalendar() {
             styles.calendarDay,
             isToday && [
               styles.todayDay,
-              { 
-                backgroundColor: theme.name === 'dark' 
-                  ? 'rgba(255, 59, 48, 0.3)' // Karanlık modda kırmızı
-                  : theme.colors.primary + '20' // Açık modda tema rengi
-              }
+              (() => {
+                // Use the theme info color (blue) as a solid today indicator to match HorizontalCalendar
+                const indicator = theme.colors?.info || '#4A90E2';
+                return {
+                  backgroundColor: indicator,
+                  borderWidth: 2,
+                  borderColor: indicator,
+                  shadowColor: indicator,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 6,
+                  elevation: 2,
+                };
+              })()
             ],
             moodData && !isToday && styles.moodDay,
             projectData && [
@@ -196,47 +228,63 @@ export default function MoodCalendar() {
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
             isToday && [
               styles.todayText,
-              { 
-                color: theme.name === 'dark' 
-                  ? '#FF3B30' // Karanlık modda kırmızı
-                  : theme.colors.primary // Açık modda tema rengi
+              {
+                color: '#FFFFFF'
               }
             ],
-            projectData && !isToday && [
-              styles.projectText,
-              { 
-                color: projectData.projectColor,
-                borderWidth: 1.5,
-                borderColor: projectData.projectColor,
-                borderRadius: 6,
-                paddingHorizontal: 4,
-                paddingVertical: 1,
-                fontSize: 10,
-                minWidth: 18,
-                textAlign: 'center'
-              }
-            ]
+            // project text decoration removed; milestones shown as underline instead
           ]}>
             {day}
           </Text>
           
           
-          {/* Mood indicator */}
+          {/* Mood indicator (increased size) */}
           {moodData && (
             <View style={[
               styles.moodIndicator,
-              { 
+              {
                 backgroundColor: moodData.moodColor || theme.colors.primary,
                 borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)',
                 borderWidth: 0.8
               }
             ]}>
-              <MaterialIcons 
-                name={getValidIconName(moodData.moodIcon || 'sentiment-neutral')} 
-                size={10} 
+              <MaterialIcons
+                name={getValidIconName(moodData.moodIcon || 'sentiment-neutral')}
+                size={14}
                 color={getContrastColor(moodData.moodColor || theme.colors.primary)}
               />
             </View>
+          )}
+
+          {/* Milestone dot: prefer milestone's own color if a milestone exists for this date */}
+          {milestoneMatch ? (
+            (() => {
+              const ms = milestoneMatch.milestone;
+              const msColor = ms.color || getMilestoneColor(ms, theme.name === 'dark' ? 'dark' : 'light');
+              return (
+                <View style={[
+                  styles.milestoneDot,
+                  {
+                    backgroundColor: msColor,
+                    left: (CELL_SIZE / 2) - (MILESTONE_DOT_SIZE / 2),
+                    borderWidth: 0.6,
+                    borderColor: getContrastColor(msColor),
+                  }
+                ]} />
+              );
+            })()
+          ) : (
+            projectData && (projectData.isStartDate || projectData.isEndDate) && (
+              <View style={[
+                styles.milestoneDot,
+                {
+                  backgroundColor: projectData.projectColor,
+                  left: (CELL_SIZE / 2) - (MILESTONE_DOT_SIZE / 2),
+                  borderWidth: 0.6,
+                  borderColor: getContrastColor(projectData.projectColor),
+                }
+              ]} />
+            )
           )}
         </TouchableOpacity>
       );
@@ -396,8 +444,9 @@ const styles = StyleSheet.create({
   calendarDay: {
     width: CELL_SIZE,
     height: CELL_HEIGHT,
-    justifyContent: 'center',
+    justifyContent: 'flex-start', // day number aligned top
     alignItems: 'center',
+    paddingTop: 8, // move day number slightly lower vertically
     position: 'relative',
     marginBottom: 2,
   },
@@ -426,11 +475,11 @@ const styles = StyleSheet.create({
   },
   moodIndicator: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  bottom: 4, // slightly above the milestone underline
+  right: 2, // closer to the corner
+  width: 20,
+  height: 20,
+  borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -438,5 +487,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 1,
     elevation: 1,
+  },
+  milestoneUnderline: {
+    position: 'absolute',
+    // removed - kept for backward compatibility placeholder (no visual use)
+    bottom: 0,
+    left: 8,
+    right: 8,
+    height: 3,
+    borderRadius: 2,
+    opacity: 0.0,
+  },
+  milestoneDot: {
+    position: 'absolute',
+    bottom: 2,
+    width: MILESTONE_DOT_SIZE,
+    height: MILESTONE_DOT_SIZE,
+    borderRadius: MILESTONE_DOT_SIZE / 2,
+    opacity: 0.95,
   },
 });

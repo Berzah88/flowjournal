@@ -1,5 +1,6 @@
 // utils/PerformanceOptimizer.js
 import React from 'react';
+import logger from './logger';
 import { InteractionManager, Platform } from 'react-native';
 
 class PerformanceOptimizer {
@@ -137,7 +138,7 @@ class PerformanceOptimizer {
     const renderTime = endTime - startTime;
 
     if (__DEV__ && renderTime > 16) { // 16ms = 60fps threshold
-      console.warn(`⚠️ Slow render in ${componentName}: ${renderTime.toFixed(2)}ms`);
+      logger.warn(`⚠️ Slow render in ${componentName}: ${renderTime.toFixed(2)}ms`);
     }
 
     return result;

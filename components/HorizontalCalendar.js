@@ -1,5 +1,5 @@
 // components/HorizontalCalendar.js
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 // MaterialIcons removed - no mood stickers needed
@@ -10,6 +10,8 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
   const [currentWeek, setCurrentWeek] = useState(0);
   const { theme } = useTheme();
   const { t, language } = useLanguage();
+  const scrollRef = useRef(null);
+  const ITEM_WIDTH = 68; // should match snapToInterval for predictable scroll
 
   // 7 günlük tarihleri hesapla - bugünü ortaya hizala
   const weekDates = useMemo(() => {
@@ -50,6 +52,28 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
     return date.toDateString() === selectedDate.toDateString();
   };
 
+  // On first render (or when weekDates change), scroll so that today is the
+  // second item from the left. This positions index(today) - 1 to the left edge.
+  useEffect(() => {
+    // Only attempt if we have a ref and weekDates
+    if (!scrollRef.current || !weekDates || weekDates.length === 0) return;
+
+    const todayIndex = weekDates.findIndex(d => isToday(d));
+    if (todayIndex === -1) return;
+
+    const targetIndex = Math.max(0, todayIndex - 1);
+    const offset = targetIndex * ITEM_WIDTH;
+
+    // Defer to next frame so layout is ready
+    setTimeout(() => {
+      try {
+        scrollRef.current.scrollTo({ x: offset, animated: false });
+      } catch (e) {
+        // ignore
+      }
+    }, 0);
+  }, [weekDates]);
+
 
   // Task and mood functionality removed - only date selection
 
@@ -61,6 +85,7 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
         horizontal 
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.calendarStrip}
+        ref={scrollRef}
         snapToInterval={68} // Tek günün genişliği (68px)
         snapToAlignment="start"
         decelerationRate="fast"
@@ -80,16 +105,19 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
                  {
                    backgroundColor: theme.name === 'dark' ? 'transparent' : 'transparent',
                  },
-                 isSelectedDate && {
-                   backgroundColor: theme.name === 'dark' ? '#FF6B6B' : '#4A90E2',
-                   elevation: 4,
-                   shadowColor: theme.name === 'dark' ? '#FF6B6B' : '#4A90E2',
-                   shadowOffset: { width: 0, height: 4 },
-                   shadowOpacity: 0.3,
-                   shadowRadius: 8,
-                   borderWidth: 2,
-                   borderColor: theme.name === 'dark' ? '#FF6B6B' : '#4A90E2',
-                 },
+                isSelectedDate && (() => {
+                  const indicator = theme.colors?.info || '#4A90E2';
+                  return {
+                    backgroundColor: indicator,
+                    elevation: 4,
+                    shadowColor: indicator,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    borderWidth: 2,
+                    borderColor: indicator,
+                  };
+                })(),
                ]}
                onPress={() => onDateSelect && onDateSelect(date)}
                accessible={true}
@@ -133,10 +161,11 @@ export default HorizontalCalendar;
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 8, // 0'dan 8'e çıkardım - biraz padding top
+  paddingTop: 6,
+  marginTop: -4, // lift calendar slightly (reduced from -8)
     paddingBottom: 0,
-    paddingHorizontal: 16, // 20'den 16'ya düşürdüm
-    marginBottom: 20, // Horizontal calendar margin bottom
+    paddingHorizontal: 16,
+    marginBottom: 8, // Reduced space below calendar to bring TodaysSummary closer
     width: '100%',
     backgroundColor: 'transparent',
   },

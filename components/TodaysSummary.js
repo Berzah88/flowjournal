@@ -1,6 +1,9 @@
 // components/TodaysSummary.js
 import React, { memo, useCallback } from 'react';
+import { useAnimatedProps } from 'react-native-reanimated';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
+import AnimatedReanimated from 'react-native-reanimated';
+const AnimatedFlatList = AnimatedReanimated.FlatList;
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -24,9 +27,56 @@ const TodaysSummary = memo(function TodaysSummary({
   focusedProjects,
   handleProjectLongPress,
   getProjectEmotionalProgress,
+  headerFullyCollapsed = false,
+  myDayContentScrollHandler = null,
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  // Production: no visual debug overlays or touch counters here.
+
+  const renderProjectList = () => {
+    if (selectedDateActiveTasks.length === 0) {
+      return (
+        <View style={[styles.emptyState, { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7', borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent', borderWidth: theme.name === 'dark' ? 1 : 0, borderLeftColor: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }]}>
+          <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
+          <Text style={[styles.emptyTitle, { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }]}>{t('noProjectOnThisDate')}</Text>
+          <Text style={[styles.emptyText, { color: '#8E8E93' }]}>
+            {(() => { const today = new Date(); const selected = new Date(selectedDate); today.setHours(0,0,0,0); selected.setHours(0,0,0,0); return selected < today ? t('noProjectOnThisDate') : t('noActiveProjectOnSelectedDate'); })()}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={{ flex: 1 }}>
+        {selectedDateActiveTasks.map((item, index) => (
+          <ProjectCard
+            key={item.id}
+            project={item}
+            index={index}
+            isLastProject={index >= selectedDateActiveTasks.length - 1}
+            theme={theme}
+            t={t}
+            setSelectedCard={setSelectedCard}
+            setSelectedProjectForMilestone={setSelectedProjectForMilestone}
+            setAddMilestoneModalVisible={setAddMilestoneModalVisible}
+            completingMilestones={completingMilestones}
+            selectedDate={selectedDate}
+            isMilestoneActiveToday={isMilestoneActiveToday}
+            isMilestoneCompletedToday={isMilestoneCompletedToday}
+            isMilestoneOverdue={isMilestoneOverdue}
+            isMilestoneLastDay={isMilestoneLastDay}
+            openMilestone={openMilestone}
+            handleMilestoneToggle={handleMilestoneToggle}
+            onOpenJournal={onOpenJournal}
+            isFocused={focusedProjects.has(item.id)}
+            onProjectLongPress={handleProjectLongPress}
+            getProjectEmotionalProgress={getProjectEmotionalProgress}
+          />
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -55,7 +105,7 @@ const TodaysSummary = memo(function TodaysSummary({
         if (total === 0) return null;
         return (
           <View style={[styles.progressStatus, { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.05)', borderLeftColor: '#34C759' }]}>
-            <View style={styles.progressIconContainer}><Ionicons name="trending-up" size={16} color="#34C759" /></View>
+            <View style={styles.progressIconContainer}><Ionicons name="trending-up" size={14} color="#34C759" /></View>
             <View style={styles.progressContent}>
               <View style={styles.progressHeader}>
                 <Text style={[styles.progressText, { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }]}>{t('progressStatus')}</Text>
@@ -73,49 +123,7 @@ const TodaysSummary = memo(function TodaysSummary({
         );
       })()}
       <View style={styles.summaryContainer}>
-        {selectedDateActiveTasks.length === 0 ? (
-          <View style={[styles.emptyState, { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7', borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent', borderWidth: theme.name === 'dark' ? 1 : 0, borderLeftColor: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }]}>
-            <Ionicons name="calendar-outline" size={48} color="#8E8E93" />
-            <Text style={[styles.emptyTitle, { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }]}>{t('noProjectOnThisDate')}</Text>
-            <Text style={[styles.emptyText, { color: '#8E8E93' }]}>
-              {(() => { const today = new Date(); const selected = new Date(selectedDate); today.setHours(0,0,0,0); selected.setHours(0,0,0,0); return selected < today ? t('noProjectOnThisDate') : t('noActiveProjectOnSelectedDate'); })()}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={selectedDateActiveTasks}
-            keyExtractor={(item) => item.id.toString()}
-            initialNumToRender={6}
-            maxToRenderPerBatch={10}
-            windowSize={7}
-            removeClippedSubviews={true}
-            renderItem={({ item, index }) => (
-              <ProjectCard
-                key={item.id}
-                project={item}
-                index={index}
-                isLastProject={index >= selectedDateActiveTasks.length - 1}
-                theme={theme}
-                t={t}
-                setSelectedCard={setSelectedCard}
-                setSelectedProjectForMilestone={setSelectedProjectForMilestone}
-                setAddMilestoneModalVisible={setAddMilestoneModalVisible}
-                completingMilestones={completingMilestones}
-                selectedDate={selectedDate}
-                isMilestoneActiveToday={isMilestoneActiveToday}
-                isMilestoneOverdue={isMilestoneOverdue}
-                isMilestoneLastDay={isMilestoneLastDay}
-                openMilestone={openMilestone}
-                handleMilestoneToggle={handleMilestoneToggle}
-                onOpenJournal={onOpenJournal}
-                isMilestoneCompletedToday={isMilestoneCompletedToday}
-                isFocused={focusedProjects.has(item.id)}
-                onProjectLongPress={handleProjectLongPress}
-                getProjectEmotionalProgress={getProjectEmotionalProgress}
-              />
-            )}
-          />
-        )}
+        {renderProjectList()}
       </View>
     </View>
   );
@@ -123,7 +131,7 @@ const TodaysSummary = memo(function TodaysSummary({
 
 const styles = StyleSheet.create({
   container: { marginBottom: 0 },
-  summaryHeaderContainer: { marginHorizontal: 30, marginTop: 16, marginBottom: 14 },
+  summaryHeaderContainer: { marginHorizontal: 30, marginTop: 8, marginBottom: 10 },
   summaryHeaderContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   summaryHeaderTitle: { fontSize: 16, fontFamily: 'Poppins_600SemiBold' },
   counterBadge: { 
@@ -135,14 +143,14 @@ const styles = StyleSheet.create({
     borderWidth: 1 
   },
   counterText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
-  progressStatus: { marginHorizontal: 30, marginBottom: 14, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'flex-start', borderLeftWidth: 3 },
-  progressIconContainer: { marginRight: 12, marginTop: 2 },
+  progressStatus: { marginHorizontal: 30, marginBottom: 12, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'flex-start', borderLeftWidth: 3 },
+  progressIconContainer: { marginRight: 10, marginTop: 1 },
   progressContent: { flex: 1 },
-  progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  progressText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
-  progressPercentage: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  progressText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
+  progressPercentage: { fontSize: 11, fontFamily: 'Poppins_600SemiBold', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
   progressBarContainer: { width: '100%' },
-  progressBar: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressBar: { height: 5, borderRadius: 3, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 3 },
   progressGradient: { flex: 1, width: '100%', height: '100%' },
   summaryContainer: { marginHorizontal: 30 },

@@ -1,21 +1,26 @@
 // components/MainTabNavigation.js
-import React, { useRef, useCallback, useEffect } from 'react';
-import { View, Animated, PanResponder, Dimensions, Text, TouchableOpacity } from 'react-native';
-import AnimatedReanimated, { 
-  useAnimatedScrollHandler, 
+import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { View, Dimensions, Text, TouchableOpacity } from 'react-native';
+import AnimatedReanimated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  Easing
+  runOnJS,
+  Easing,
+  useDerivedValue,
+  useAnimatedReaction,
+  useAnimatedProps,
 } from 'react-native-reanimated';
+import { Gesture, GestureDetector, NativeViewGestureHandler } from 'react-native-gesture-handler';
 import { SWIPE_THRESHOLDS } from '../constants';
 import StatusTabs from './StatusTabs';
-import StatusBarComponent from './StatusBar';
 import MyDayScreen from '../screens/MyDayScreen';
 import Card from './Card';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
+
+// Production: no FORCE override for child scrolling.
 
 const MainTabNavigation = ({
   navigation,
@@ -41,116 +46,152 @@ const MainTabNavigation = ({
   onMyDayAddProject,
   moodHeight,
   statusTabsOffset,
-  collapseProgress,
-  myDayScrollRef,
-  activeListScrollRef,
+  globalCollapseProgress,
+  globalScrollY,
+  headerShouldHandle,
+  myDayContentScrollHandler,
+  activeContentScrollHandler,
+  
+  parentHandlesVertical,
   onOpenCard,
   onAddProject,
+  flatListProps,
+  headerFullyCollapsed,
+  headerShouldHandleJS,
 }) => {
-  // Simplified scroll handler with direct value updates
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      'worklet';
-      if (!statusTabsOffset || !collapseProgress) return;
-      
-      const y = event.contentOffset?.y ?? 0;
-      const thr = statusTabsOffset.value; // StatusTabs offset'i kullan
-      const clamped = Math.max(0, Math.min(y, thr));
-      
-      const progress = thr > 0 ? clamped / thr : 0;
-      collapseProgress.value = progress;
-    },
-  });
+  // scrollHandler kaldırıldı; header çökme kontrolü artık child ScrollView/FlatList
+  // (MyDayScreen / Active list) içindeki scroll handler'lar ve header gesture'ları
+  // tarafından sürdürülüyor. flatListProps uygulanır.
 
-  // Pan animation values
-  const panX = useRef(new Animated.Value(0)).current;
-  const offsetRef = useRef(0);
+  // Reanimated translateX for horizontal pan (UI-thread)
+  const translateX = useSharedValue(0);
+  const offsetRef = useRef(0); // tracks current translate target in JS
+  // keep a worklet-safe copy of offset so worklets don't capture JS ref
+  const offsetShared = useSharedValue(0);
 
   // Memoized animate to page index
   const animateToIndex = useCallback((index) => {
     const target = -index * width;
-    panX.stopAnimation();
-    try {
-      panX.flattenOffset();
-    } catch (e) {
-      // Ignore errors during cleanup
-    }
-
-    Animated.spring(panX, {
-      toValue: target,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 30,
-    }).start(() => {
-      offsetRef.current = target;
-      setActiveIndex(index);
-      panX.setValue(target);
-      panX.setOffset(0);
+    // animate on UI thread without spring overshoot using timing
+    // update worklet-safe offset immediately so worklets can read correct state
+    offsetShared.value = target;
+    translateX.value = withTiming(target, { duration: 240, easing: Easing.out(Easing.cubic) }, (finished) => {
+      if (finished) {
+        // sync JS ref/state once animation finished
+        runOnJS(setIndexAndOffset)(index, target);
+      }
     });
-  }, [panX, setActiveIndex]);
+  }, [setActiveIndex, translateX]);
 
   // Sync when activeIndex changes from parent
   useEffect(() => {
     const target = -activeIndex * width;
     if (offsetRef.current !== target) {
-      Animated.spring(panX, {
-        toValue: target,
-        useNativeDriver: true,
-        tension: 300,
-        friction: 30,
-      }).start(() => {
-        offsetRef.current = target;
-        panX.setValue(target);
-        panX.setOffset(0);
+      offsetShared.value = target;
+      translateX.value = withTiming(target, { duration: 240, easing: Easing.out(Easing.cubic) }, (finished) => {
+        if (finished) runOnJS(setIndexAndOffset)(activeIndex, target);
       });
     }
-  }, [activeIndex, panX]);
+  }, [activeIndex, translateX]);
 
-  // PanResponder for swipe navigation
+  // Gesture: single Pan gesture handled on UI thread via react-native-gesture-handler
   const threshold = width * SWIPE_THRESHOLDS.NAVIGATE;
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) => {
-        return Math.abs(gesture.dx) > SWIPE_THRESHOLDS.PAN_RESPONDER && Math.abs(gesture.dx) > Math.abs(gesture.dy);
-      },
-      onPanResponderGrant: () => {
-        panX.stopAnimation();
-        panX.setOffset(offsetRef.current);
-        panX.setValue(0);
-      },
-      onPanResponderMove: (_, gesture) => {
-        const offset = offsetRef.current;
-        const minDx = -width - offset;
-        const maxDx = -offset;
-        const clampedDx = Math.max(Math.min(gesture.dx, maxDx), minDx);
-        panX.setValue(clampedDx);
-      },
-      onPanResponderRelease: (_, gesture) => {
-        try {
-          panX.flattenOffset();
-        } catch (e) {}
-        const currentOffset = offsetRef.current;
+  // shared values to store gesture start state (worklet-safe)
+  const gestureStartX = useSharedValue(0);
+  const gestureStartProgress = useSharedValue(0);
+  // worklet-safe active index so gestures can read which tab is active
+  const activeIndexShared = useSharedValue(activeIndex);
+  React.useEffect(() => { activeIndexShared.value = activeIndex; }, [activeIndex]);
 
-        if (gesture.dx <= -threshold && currentOffset === 0) {
-          animateToIndex(1);
-        } else if (gesture.dx >= threshold && currentOffset === -width) {
-          animateToIndex(0);
-        } else {
-          animateToIndex(currentOffset === 0 ? 0 : 1);
-        }
-      },
-      onPanResponderTerminate: () => {
-        animateToIndex(offsetRef.current === 0 ? 0 : 1);
-      },
-      onShouldBlockNativeResponder: () => false,
+  // Header eligibility (when the header should handle vertical gestures)
+  // is computed centrally in `MainScreen` and passed to the header as
+  // `headerShouldHandle`. We keep the horizontal-only gesture here so
+  // nested vertical native scrolling can operate without the parent
+  // intercepting touches.
+
+  // Refs to native view gesture handlers so parent gesture can be told to
+  // wait/fail when native views should win
+  const myDayNativeRef = useRef(null);
+  const activeNativeRef = useRef(null);
+
+  // JS helper to set index and offset safely from worklets
+  const setIndexAndOffset = React.useCallback((index, target) => {
+    offsetRef.current = target;
+    setActiveIndex(index);
+  }, [setActiveIndex]);
+
+  // Horizontal pan gesture (always enabled) for tab swipes
+  const horizontalGesture = Gesture.Pan().activeOffsetX([-10, 10])
+    .onStart(() => {
+      gestureStartX.value = translateX.value;
     })
-  ).current;
+    .onUpdate((e) => {
+      const dx = e.translationX;
+      const dy = e.translationY;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        const offset = gestureStartX.value + dx;
+        const clamped = Math.max(Math.min(offset, 0), -width);
+        translateX.value = clamped;
+      }
+    })
+    .onEnd((e) => {
+      const dx = e.translationX;
+      const current = gestureStartX.value + dx;
+      if (dx <= -threshold && offsetShared.value === 0) {
+        translateX.value = withTiming(-width, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
+          if (finished) runOnJS(setIndexAndOffset)(1, -width);
+        });
+      } else if (dx >= threshold && offsetShared.value === -width) {
+        translateX.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
+          if (finished) runOnJS(setIndexAndOffset)(0, 0);
+        });
+      } else {
+        const target = Math.abs(current) > width / 2 ? -width : 0;
+        translateX.value = withTiming(target, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
+          if (finished) runOnJS(setIndexAndOffset)(target === 0 ? 0 : 1, target);
+        });
+      }
+    });
+
+  // Horizontal-only pan for tab swipes
+  const panGesture = horizontalGesture;
+  // Vertical gestures removed — header won't be controlled by parent vertical drags
+
+  // Only use horizontal gestures for tab swipes
+  const combinedGesture = horizontalGesture;
+
+  // (debugging reactions removed)
+
+  // If the Gesture API supports requiring external native gestures to fail,
+  // instruct the parent gestures to wait for the native view handlers. Use
+  // optional chaining in case the method isn't available in this version.
+  try {
+    // prefer the API method if available
+    horizontalGesture.requireExternalGestureToFail?.(myDayNativeRef);
+    horizontalGesture.requireExternalGestureToFail?.(activeNativeRef);
+    // NOTE: do NOT require the verticalGesture to wait for native view
+    // gestures to fail here; that previously made the header unresponsive
+    // when touches started inside native lists. We prefer the onStart logic
+    // inside the vertical gesture to decide activation based on header state.
+  // NOTE: we do NOT require native view gestures to fail for vertical
+  // parent gesture here. The parent decides onStart whether it should
+  // take ownership (based on headerShouldHandle / active child offset)
+  // and activating requireExternalGestureToFail here caused the header
+  // to be unresponsive when touches started from inside native lists.
+  } catch (e) {
+    // ignore if API not present at runtime
+  }
+
+  // animated style for container
+  const containerAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
   // Tab press handler
   const handleTabPress = useCallback((index) => {
     if (index === activeIndex) return;
     setActiveIndex(index);
-    offsetRef.current = -index * width;
+    const target = -index * width;
+    offsetRef.current = target;
+    offsetShared.value = target;
     animateToIndex(index);
   }, [activeIndex, animateToIndex, setActiveIndex]);
 
@@ -161,7 +202,7 @@ const MainTabNavigation = ({
       startDate={item.startDate}
       endDate={item.endDate}
       completed={item.done}
-      activeMilestones={item.milestones?.filter((m) => !m.completed) ?? []}
+  activeMilestones={(item.milestones && Array.isArray(item.milestones)) ? item.milestones.filter((m) => !m.completed) : []}
       onMilestonePress={() => {
         const projectData = {
           id: 'project-journal',
@@ -187,57 +228,48 @@ const MainTabNavigation = ({
 
   return (
     <View style={styles.viewport}>
-      <Animated.View
-        {...panResponder.panHandlers}
-        style={[
-          styles.panContainer,
-          { width: width * 2, transform: [{ translateX: panX }] },
-        ]}
-      >
+    <GestureDetector gesture={combinedGesture}>
+        <AnimatedReanimated.View
+          style={[
+            styles.panContainer,
+            { width: width * 2 },
+            containerAnimatedStyle,
+          ]}
+        >
         {/* My Day Screen (left) */}
-        <View style={{ width }}>
-          <AnimatedReanimated.FlatList
-            ref={myDayScrollRef}
-            data={[{ key: 'myday' }]}
-            keyExtractor={(item) => item.key}
-            renderItem={() => (
-              <MyDayScreen 
-                navigation={navigation}
-                selectedCard={myDaySelectedCard}
-                setSelectedCard={setMyDaySelectedCard}
-                selectedMilestone={myDaySelectedMilestone}
-                setSelectedMilestone={setMyDaySelectedMilestone}
-                addMilestoneModalVisible={myDayAddMilestoneModalVisible}
-                setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
-                selectedProjectForMilestone={myDaySelectedProjectForMilestone}
-                setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                onOpenJournal={onMyDayOpenJournal}
-                onAddProject={onMyDayAddProject}
-              />
-            )}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 40 }}
-            onScroll={activeIndex === 0 && statusTabsOffset && collapseProgress ? scrollHandler : undefined}
-            scrollEnabled={activeIndex === 0}
-            scrollEventThrottle={16}
-            removeClippedSubviews={false}
-            windowSize={5}
-            maxToRenderPerBatch={5}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={1}
+        <View style={{ width, flex: 1 }}>
+          <MyDayScreen 
+            navigation={navigation}
+            headerFullyCollapsed={headerFullyCollapsed}
+            headerShouldHandleJS={headerShouldHandleJS}
+            parentHandlesVertical={parentHandlesVertical}
+            selectedCard={myDaySelectedCard}
+            setSelectedCard={setMyDaySelectedCard}
+            selectedMilestone={myDaySelectedMilestone}
+            setSelectedMilestone={setMyDaySelectedMilestone}
+            addMilestoneModalVisible={myDayAddMilestoneModalVisible}
+            setAddMilestoneModalVisible={setMyDayAddMilestoneModalVisible}
+            selectedProjectForMilestone={myDaySelectedProjectForMilestone}
+            setSelectedProjectForMilestone={setMyDaySelectedProjectForMilestone}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            onOpenJournal={onMyDayOpenJournal}
+            onAddProject={onMyDayAddProject}
+            myDayContentScrollHandler={myDayContentScrollHandler}
           />
         </View>
 
         {/* Active list (right) */}
         <View style={{ width }}>
-          <StatusBarComponent activeCount={activeTasks.length} doneCount={completedTasks.length} />
+          <NativeViewGestureHandler ref={activeNativeRef}>
+  {/* no debug overrides */}
           <AnimatedReanimated.FlatList
-            ref={activeListScrollRef}
+            {...(flatListProps || {})}
             data={activeTasksReversed}
             keyExtractor={keyExtractor}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140, paddingTop: 0 }}
+            // Add a small top padding so cards are not too close to the StatusTabs
+            // Use the same horizontal padding as MyDay's summary container (30) so cards align
+            contentContainerStyle={{ paddingHorizontal: 30, paddingBottom: 140, paddingTop: 24 }}
             renderItem={renderActiveItem}
             extraData={refreshKey}
             ListHeaderComponent={null}
@@ -287,8 +319,9 @@ const MainTabNavigation = ({
               </View>
             }
             showsVerticalScrollIndicator={false}
-            onScroll={activeIndex === 1 && statusTabsOffset && collapseProgress ? scrollHandler : undefined}
-            scrollEnabled={activeIndex === 1}
+            onScroll={activeContentScrollHandler}
+            scrollEnabled={true}
+            nestedScrollEnabled={true}
             scrollEventThrottle={16}
             removeClippedSubviews={false}
             windowSize={5}
@@ -301,8 +334,10 @@ const MainTabNavigation = ({
               index,
             })}
           />
+          </NativeViewGestureHandler>
         </View>
-      </Animated.View>
+        </AnimatedReanimated.View>
+      </GestureDetector>
     </View>
   );
 };

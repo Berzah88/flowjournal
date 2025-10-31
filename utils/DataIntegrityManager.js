@@ -1,6 +1,7 @@
 // utils/DataIntegrityManager.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../constants';
+import logger from './logger';
 
 class DataIntegrityManager {
   static async createSecureBackup(data) {
@@ -18,7 +19,7 @@ class DataIntegrityManager {
       
       return { success: true, backupKey };
     } catch (error) {
-      console.error('Backup creation failed:', error);
+  logger.error('Backup creation failed:', error);
       return { success: false, error: error.message };
     }
   }
@@ -36,7 +37,7 @@ class DataIntegrityManager {
         await AsyncStorage.multiRemove(keysToDelete);
       }
     } catch (error) {
-      console.error('Backup cleanup failed:', error);
+  logger.error('Backup cleanup failed:', error);
     }
   }
 
@@ -62,28 +63,28 @@ class DataIntegrityManager {
       let mainValid = false;
       let backupValid = false;
       
-      try {
+        try {
         if (mainData) JSON.parse(mainData);
         mainValid = true;
       } catch (e) {
-        console.warn('Main data corrupted');
+        logger.warn('Main data corrupted');
       }
       
-      try {
-        if (backupData) JSON.parse(backupData);
-        backupValid = true;
-      } catch (e) {
-        // Maybe backup was created with old base64 encoding (btoa). Try to detect and decode.
         try {
-          if (backupData) {
-            // atob may not exist in RN, provide fallback
-            const atob = (str) => Buffer.from(str, 'base64').toString('utf8');
-            const decoded = atob(backupData);
-            JSON.parse(decoded);
-            backupValid = true;
-          }
-        } catch (e2) {
-          console.warn('Backup data corrupted or unknown encoding');
+          if (backupData) JSON.parse(backupData);
+          backupValid = true;
+        } catch (e) {
+        // Maybe backup was created with old base64 encoding (btoa). Try to detect and decode.
+          try {
+            if (backupData) {
+              // atob may not exist in RN, provide fallback
+              const atob = (str) => Buffer.from(str, 'base64').toString('utf8');
+              const decoded = atob(backupData);
+              JSON.parse(decoded);
+              backupValid = true;
+            }
+          } catch (e2) {
+          logger.warn('Backup data corrupted or unknown encoding');
         }
       }
       
@@ -94,7 +95,7 @@ class DataIntegrityManager {
         hasData: !!(mainData || backupData)
       };
     } catch (error) {
-      console.error('Data validation failed:', error);
+  logger.error('Data validation failed:', error);
       return { isValid: false, error: error.message };
     }
   }
@@ -128,7 +129,7 @@ class DataIntegrityManager {
             recoveredData: parsedBackup
           };
         } catch (e) {
-          console.error('Backup recovery failed:', e);
+          logger.error('Backup recovery failed:', e);
         }
       }
       
@@ -142,7 +143,7 @@ class DataIntegrityManager {
         recoveredData: []
       };
     } catch (error) {
-      console.error('Data recovery failed:', error);
+  logger.error('Data recovery failed:', error);
       return { success: false, error: error.message };
     }
   }

@@ -20,6 +20,7 @@ try {
 }
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import logger from '../utils/logger';
 const analyzeSemanticPatterns = (allMoods) => {
   if (allMoods.length < 2) return null;
   
@@ -155,7 +156,7 @@ const MoodStatement = React.memo(({
   
   // STEP 2: Journal entries'i flat array'e çıkar - SADECE METADATA DEĞİŞTİĞİNDE
   const allJournalEntries = useMemo(() => {
-    console.log('📦 MoodStatement - Journal cache güncelleniyor');
+    logger.debug('📦 MoodStatement - Journal cache güncelleniyor');
     
     const entries = [];
     [...activeTasks, ...completedTasks].forEach(task => {
@@ -174,7 +175,7 @@ const MoodStatement = React.memo(({
   
   // Bugünkü mood'ları hesapla - SADECE allJournalEntries DEĞİŞTİĞİNDE
   const todayMoodData = useMemo(() => {
-    console.log('🔄 MoodStatement - HESAPLAMA YAPILIYOR (sadece journal değiştiğinde olmalı)');
+  logger.debug('🔄 MoodStatement - HESAPLAMA YAPILIYOR (sadece journal değiştiğinde olmalı)');
     
     // selectedDate yoksa bugünü kullan
     const dateToUse = selectedDate || new Date();
@@ -274,8 +275,8 @@ const MoodStatement = React.memo(({
       dominantMood = foundMood;
       
       // Debug log - Sadece final result
-      if (todayMoods.length > 0) {
-        console.log('🎭 MoodStatement - Final Dominant:', dominantMood?.key, 
+        if (todayMoods.length > 0) {
+        logger.debug('🎭 MoodStatement - Final Dominant:', dominantMood?.key, 
                     '| Scores:', moodWeightedScores,
                     '| Entries:', todayMoods.length);
       }
@@ -430,7 +431,7 @@ const MoodStatement = React.memo(({
     if (prov && prov.__predicted_text_for_js && jsPredictor) {
       // Run predictor asynchronously (non-blocking to UI)
       setTimeout(() => {
-        try {
+          try {
           const res = jsPredictor.predict(prov.__predicted_text_for_js);
           if (!active) return;
           if (res && res.mood && res.probs) {
@@ -444,7 +445,7 @@ const MoodStatement = React.memo(({
           }
         } catch (e) {
           // ignore predictor errors
-          console.warn('JS predictor error:', e.message || e);
+          logger.warn('JS predictor error:', e.message || e);
         }
       }, 0);
     } else {
@@ -518,7 +519,7 @@ const MoodStatement = React.memo(({
           setDailyTip(newTip);
         }
       } catch (error) {
-        console.error('Daily tip loading error:', error);
+        logger.error('Daily tip loading error:', error);
         // Hata durumunda normal mesaj kullan
         const moodKey = todayMoodData?.dominantMood?.key || 'default';
         setDailyTip(generateQuickTip(moodKey));
@@ -564,10 +565,11 @@ const MoodStatement = React.memo(({
           borderWidth: theme.name === 'dark' ? 1 : 0.5,
           borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
           shadowColor: hasNoProjects ? '#667eea' : (todayMoodData.dominantMood?.color || '#8E7DBE'),
-          shadowOffset: { width: 0, height: 3 }, // 2 → 3 (daha belirgin)
-          shadowOpacity: 0.25, // 0.15 → 0.25 (daha belirgin)
-          shadowRadius: 10, // 6 → 10 (daha yumuşak)
-          elevation: 6, // 3 → 6 (daha yüksek)
+          // Softer, more subtle shadow (larger radius, lower opacity)
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.04,
+          shadowRadius: 8,
+          elevation: 0,
         }
       ]}>
         <View style={[
@@ -579,25 +581,26 @@ const MoodStatement = React.memo(({
             shadowColor: hasNoProjects 
               ? '#667eea' 
               : (todayMoodData.dominantMood?.color || '#007AFF'),
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.4, // 0.3 → 0.4 (daha belirgin)
-            shadowRadius: 6, // 4 → 6 (daha yumuşak)
-            elevation: 4, // 2 → 4 (daha yüksek)
+            // Softer icon shadow
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 0,
           }
         ]}>
           <MaterialIcons 
             name={hasNoProjects ? 'rocket-launch' : (todayMoodData.dominantMood?.icon || 'create')} 
-            size={28} 
+            size={22} 
             color="#000000" 
           />
         </View>
         
-        <View style={styles.statusContent}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', marginBottom: 6 }}>
+          <View style={styles.statusContent}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 }}>
             <Text style={[
               styles.statusText,
-              { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }
-            ]} numberOfLines={1} ellipsizeMode="tail">
+              { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F', flex: 1, flexShrink: 1, flexWrap: 'wrap' }
+            ]}>
               {hasNoProjects ? 
                     t('startYourJourney') || 'İlk projeni oluşturarak başla' :
                     (displayMood ? 
@@ -609,7 +612,7 @@ const MoodStatement = React.memo(({
             
             {/* ✨ Streak Badge - Sadece proje varsa */}
             {!hasNoProjects && todayMoodData.journalStreak.current >= 3 && (
-              <View style={[styles.streakBadge, { backgroundColor: displayMood?.color || '#FF9500', marginLeft: 6 }]}> 
+                <View style={[styles.streakBadge, { backgroundColor: displayMood?.color || '#FF9500', marginLeft: 8 }]}> 
                 <Text style={styles.streakText}>🔥 {todayMoodData.journalStreak.current}</Text>
               </View>
             )}
@@ -651,7 +654,7 @@ const MoodStatement = React.memo(({
   
   // Proje durumu değiştiyse re-render gerekli
   if (prevHasNoProjects !== nextHasNoProjects) {
-    console.log('🔄 MoodStatement - Re-render gerekli (proje durumu değişti)');
+    logger.debug('🔄 MoodStatement - Re-render gerekli (proje durumu değişti)');
     return false; // Do re-render
   }
   
@@ -698,7 +701,7 @@ const MoodStatement = React.memo(({
   );
   
   if (!shouldSkipRender) {
-    console.log('🔄 MoodStatement - Re-render gerekli (journal değişti)');
+    logger.debug('🔄 MoodStatement - Re-render gerekli (journal değişti)');
   }
   
   return shouldSkipRender;
@@ -706,46 +709,47 @@ const MoodStatement = React.memo(({
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 24, // 26 → 24 (biraz daha geniş)
-    marginTop: 12, // 10 → 12 (biraz daha fazla boşluk)
-    marginBottom: 2, // 8 → 2 (yaklaşık %75 azaltıldı, hedef %65)
+    marginHorizontal: 24, // slightly narrower to better fit header
+    marginTop: 8, // reduce to fit header height
+    marginBottom: 0,
   },
   moodStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16, // 12 → 16 (daha ferah yükseklik)
-    paddingHorizontal: 10, // 14 → 10 (daha kompakt yatay)
-    borderRadius: 16, // 14 → 16 (daha yuvarlak)
-    borderLeftWidth: 4, // 3 → 4 (daha kalın vurgu)
+    paddingVertical: 12, // moderate vertical padding to fit header
+    paddingHorizontal: 8, // slightly more compact horizontally
+    borderRadius: 16,
+    borderLeftWidth: 4,
   },
   moodIconContainer: {
-    width: 36, // 32 → 36
-    height: 36, // 32 → 36
-    borderRadius: 18, // 16 → 18
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10, // 14 → 10 (daha kompakt)
+    marginRight: 12,
   },
   statusContent: {
     flex: 1,
   },
   statusText: {
-    fontSize: 13, // 12 → 13 (başlık biraz daha belirgin)
+    fontSize: 13, // moderate size to fit header
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 3, // 2 → 3
-    lineHeight: 18, // 17 → 18
+    marginBottom: 3,
+    lineHeight: 18,
     letterSpacing: -0.3,
+    flexWrap: 'wrap',
   },
   motivationText: {
-    fontSize: 12, // 11 → 12
+    fontSize: 11, // slightly larger than original but smaller than previous change
     fontFamily: 'Poppins_400Regular',
-    lineHeight: 16, // 15 → 16
-    opacity: 0.8, // 0.75 → 0.8 (biraz daha görünür)
+    lineHeight: 16,
+    opacity: 0.85,
   },
   streakBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
     alignSelf: 'flex-start',
   },
   streakText: {

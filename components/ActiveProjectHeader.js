@@ -45,7 +45,8 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
   onTabSwitch,
   onMenuPress,
   isModalOpen,
-  panGesture
+  panGesture,
+  headerCollapse // optional RN Animated.Value (0..1)
 }) {
   const { theme } = useTheme();
   const { t, language } = useLanguage();
@@ -100,7 +101,7 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
 
   return (
     <GestureDetector gesture={panGesture}>
-      <View style={[
+      <RNAnimated.View style={[
         styles.modernHeader,
         {
           backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
@@ -108,7 +109,15 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
         }
       ]}>
         {/* Modern Header Content */}
-        <View style={styles.headerContent}>
+        <RNAnimated.View style={styles.headerContent}>
+          {/* If headerCollapse provided, animate title/menu */}
+          {headerCollapse ? (
+            <RNAnimated.View style={{
+              transform: [{ scale: headerCollapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }) }],
+              opacity: headerCollapse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] })
+            }}>
+            </RNAnimated.View>
+          ) : null}
           {/* Project Title Section */}
           <View style={styles.titleSection}>
             <Text style={[
@@ -186,9 +195,9 @@ const ActiveProjectHeader = memo(function ActiveProjectHeader({
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </RNAnimated.View>
 
-      </View>
+      </RNAnimated.View>
     </GestureDetector>
   );
 });
@@ -199,7 +208,7 @@ const styles = StyleSheet.create({
   // Modern Header Styles
   modernHeader: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+  paddingTop: 6,
     paddingBottom: 12,
     borderBottomWidth: 0.5,
     borderBottomLeftRadius: 20,

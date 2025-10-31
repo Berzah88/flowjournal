@@ -8,6 +8,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useActiveTasks, useCompletedTasks } from '../hooks/useTaskContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
@@ -475,26 +476,26 @@ const OverviewScreen = ({ navigation, route }) => {
       icon: 'flame',
       value: streakInfo.current,
       subtitle: translate('days', 'days'),
-      // Softer blue gradient
-      colors: isDark ? ['#4C7FD6', '#7FB8F0'] : ['#7FB3E6', '#B9D7F5'],
+      // More pronounced blue gradient
+      colors: isDark ? ['#2E66D6', '#4C8FF0'] : ['#2B6CE6', '#5AA3F8'],
     },
     {
       title: translate('longestStreak', 'Longest Streak'),
       icon: 'trophy',
       value: streakInfo.longest,
       subtitle: translate('days', 'days'),
-      // Softer amber/gold gradient
-      colors: isDark ? ['#D7A24E', '#EBCF85'] : ['#E8C07A', '#F3DFAC'],
+      // Stronger amber / gold gradient
+      colors: isDark ? ['#B57016', '#D69E3A'] : ['#D29B1E', '#F4C35D'],
     },
     {
       title: streakInfo.todayWritten ? translate('wroteToday', 'Wrote Today') : translate('noEntryToday', 'No Entry Today'),
       icon: streakInfo.todayWritten ? 'checkmark-circle' : 'close-circle',
       value: streakInfo.todayWritten ? '✓' : '✗',
       subtitle: streakInfo.todayWritten ? translate('keepItUp', 'Keep it up!') : translate('writeToday', 'Write today!'),
-      // Softer success/warning gradients
+      // Stronger success / warning gradients
       colors: streakInfo.todayWritten 
-        ? (isDark ? ['#5FAE7A', '#8CC9A2'] : ['#9BD4AF', '#C7E7D2'])
-        : (isDark ? ['#E0C76B', '#F0DC97'] : ['#F2E3A6', '#F7EDC7']),
+        ? (isDark ? ['#2E8B57', '#4FBF8B'] : ['#2EBD7A', '#66D69F'])
+        : (isDark ? ['#C59A2E', '#E8C870'] : ['#E3C06A', '#F5DD9B']),
     },
   ], [streakInfo, isDark, translate]);
 
@@ -513,37 +514,54 @@ const OverviewScreen = ({ navigation, route }) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (!streakSlides.length) {
-        setSelectedStreakCardIndex(0);
-        return undefined;
-      }
+      let isActive = true;
+      const STORAGE_KEY = 'overview_last_streak_index';
 
-      setSelectedStreakCardIndex(0);
-      setStreakVersion(0);
-      setShowCounters(false);
-
-      let intervalId;
-      const delayTimer = setTimeout(() => {
-        setShowCounters(true);
-        setFocusVersion(v => v + 1);
-        setStreakVersion(v => v + 1);
-
-        if (streakSlides.length > 1) {
-          intervalId = setInterval(() => {
-            setSelectedStreakCardIndex(prevIndex => {
-              const nextIndex = (prevIndex + 1) % streakSlides.length;
-              setStreakVersion(v => v + 1);
-              return nextIndex;
-            });
-          }, 6000);
+      const start = async () => {
+        if (!streakSlides.length) {
+          if (isActive) setSelectedStreakCardIndex(0);
+          return;
         }
-      }, 1000); // ✅ 1 saniye gecikme (2000'den 1000'e düşürüldü)
+
+        setStreakVersion(0);
+        setShowCounters(false);
+
+        try {
+          const raw = await AsyncStorage.getItem(STORAGE_KEY);
+          const last = raw ? parseInt(raw, 10) : null;
+          const nextIndex = (Number.isInteger(last) && !Number.isNaN(last))
+            ? (last + 1) % streakSlides.length
+            : 0;
+
+          if (isActive) {
+            setSelectedStreakCardIndex(nextIndex);
+            await AsyncStorage.setItem(STORAGE_KEY, `${nextIndex}`);
+          }
+        } catch (e) {
+          // fallback: just rotate in-memory
+          if (isActive) {
+            setSelectedStreakCardIndex(prev => (streakSlides.length ? (prev + 1) % streakSlides.length : 0));
+          }
+        }
+
+        const delayTimer = setTimeout(() => {
+          if (!isActive) return;
+          setShowCounters(true);
+          setFocusVersion(v => v + 1);
+          setStreakVersion(v => v + 1);
+        }, 1000);
+
+        // cleanup for the timeout
+        return () => clearTimeout(delayTimer);
+      };
+
+      let clearFn;
+      start().then((cleanup) => { clearFn = cleanup; }).catch(() => {});
 
       return () => {
-        clearTimeout(delayTimer);
-        if (intervalId) {
-          clearInterval(intervalId);
-        }
+        isActive = false;
+        if (typeof clearFn === 'function') clearFn();
+        return undefined;
       };
     }, [streakSlides.length])
   );
@@ -602,7 +620,7 @@ const OverviewScreen = ({ navigation, route }) => {
               colors={selectedStreakCard.colors}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.streakHeroCard}
+              style={[styles.streakHeroCard, isDark ? styles.streakHeroCardDark : styles.streakHeroCardLight]}
             >
               <View style={styles.streakHeroHeader}>
                 <Ionicons name={selectedStreakCard.icon} size={18} color="#FFFFFF" />
@@ -636,7 +654,10 @@ const OverviewScreen = ({ navigation, route }) => {
                   {secondaryStreakCards.map((otherSlide, idx) => (
                     <View
                       key={`${otherSlide.title}-${idx}`}
-                      style={[styles.streakBadge, { backgroundColor: 'rgba(255,255,255,0.18)' }]}
+                      style={[
+                        styles.streakBadge,
+                        { backgroundColor: isDark ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.26)' },
+                      ]}
                     >
                       <Ionicons name={otherSlide.icon} size={14} color="#FFFFFF" />
                       <Text style={styles.streakBadgeText}>
@@ -864,6 +885,26 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     overflow: 'hidden', // Prevent content overflow
+  },
+  streakHeroCardDark: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    // elevated shadow to help card pop on dark backgrounds
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  streakHeroCardLight: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    // soft shadow for light backgrounds
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
   streakHeroHeader: {
     flexDirection: 'row',

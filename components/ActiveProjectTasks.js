@@ -190,6 +190,12 @@ function ActiveProjectTasks({
             alignItems: 'stretch', // Full width items
           }}
           showsVerticalScrollIndicator={false}
+          onScroll={(e) => {
+            if (typeof onInnerScroll === 'function') {
+              try { onInnerScroll(e.nativeEvent.contentOffset.y); } catch (err) {}
+            }
+          }}
+          scrollEventThrottle={16}
         >
           {/* Active Milestones */}
           {activeMilestonesWithLatest.map((item) => {

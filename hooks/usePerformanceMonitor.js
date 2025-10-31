@@ -1,5 +1,6 @@
 // hooks/usePerformanceMonitor.js
 import { useEffect, useRef, useState } from 'react';
+import logger from '../utils/logger';
 
 // Enhanced performance monitoring hook
 export const usePerformanceMonitor = (componentName, options = {}) => {
@@ -33,16 +34,19 @@ export const usePerformanceMonitor = (componentName, options = {}) => {
     
     if (__DEV__) {
       const avgRenderTime = renderTimes.current.reduce((a, b) => a + b, 0) / renderTimes.current.length;
-      
-      console.log(`🔄 ${componentName} rendered ${renderCount.current} times. Time since last render: ${timeSinceLastRender}ms | Render time: ${renderTime.toFixed(2)}ms | Avg: ${avgRenderTime.toFixed(2)}ms`);
-      
+
+      // Reduce log noise: only log the first few renders and then every 5th render
+      if (renderCount.current <= 3 || renderCount.current % 5 === 0) {
+        logger.debug(`🔄 ${componentName} rendered ${renderCount.current} times. Time since last render: ${timeSinceLastRender}ms | Render time: ${renderTime.toFixed(2)}ms | Avg: ${avgRenderTime.toFixed(2)}ms`);
+      }
+
       // Performance warnings
       if (timeSinceLastRender < warnThreshold && renderCount.current > 1) {
-        console.warn(`⚠️ ${componentName} is rendering too frequently! Consider optimizing.`);
+        logger.warn(`⚠️ ${componentName} is rendering too frequently! Consider optimizing.`);
       }
-      
+
       if (renderTime > criticalThreshold) {
-        console.error(`🚨 ${componentName} has critical render time: ${renderTime.toFixed(2)}ms`);
+        logger.error(`🚨 ${componentName} has critical render time: ${renderTime.toFixed(2)}ms`);
       }
     }
     
@@ -79,7 +83,10 @@ export const useContextPerformanceMonitor = (contextName) => {
     const timeSinceLastRender = currentTime - lastRenderTime.current;
     
     if (__DEV__) {
-      console.log(`📊 ${contextName} context updated. Render count: ${renderCount.current}. Time since last update: ${timeSinceLastRender}ms`);
+      // Log only occasionally to avoid spamming logs during rapid context updates
+      if (renderCount.current <= 2 || renderCount.current % 5 === 0) {
+        logger.debug(`📊 ${contextName} context updated. Render count: ${renderCount.current}. Time since last update: ${timeSinceLastRender}ms`);
+      }
     }
     
     lastRenderTime.current = currentTime;

@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AnimatedReanimated, { useAnimatedStyle } from 'react-native-reanimated';
+import AnimatedReanimated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
 const MainHeader = ({ 
   theme, 
@@ -10,55 +10,74 @@ const MainHeader = ({
   headerElementsStyle, 
   titleAnimatedStyle, 
   menuButtonStyle,
-  onMenuPress 
+  logoContainerStyle,
+  onMenuPress,
+  onLayout,
+  // new props: shared values to control header from header-only pan
+  globalCollapseProgress,
+  globalScrollY,
+  statusTabsOffset,
+  headerShouldHandle,
 }) => {
+  // Header gestures removed — header is static. All gesture-driven
+  // updates to `globalCollapseProgress` should come from elsewhere if
+  // needed. Kept animated styles only.
+
+  // We now react to `headerAnimatedStyle`, `headerElementsStyle`, and
+  // `titleAnimatedStyle` supplied by the parent (MainScreen) which are
+  // driven by the scroll position. Render as-is.
+
   return (
-    <AnimatedReanimated.View style={headerAnimatedStyle}>
-      <View style={styles.headerContainer}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
-            <AnimatedReanimated.View style={headerElementsStyle}>
-              <View style={styles.logoContainer}>
-                <AnimatedReanimated.Image 
-                  source={require('../assets/logo-yeni.png')} 
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </View>
-            </AnimatedReanimated.View>
-            <AnimatedReanimated.View style={[styles.headerTextContainer, titleAnimatedStyle]}>
-              <AnimatedReanimated.Text style={[styles.header, { color: theme.colors.text }]}>
-                Flow Journal
-              </AnimatedReanimated.Text>
-            </AnimatedReanimated.View>
-          </View>
-          <View style={styles.headerActions}>
-            <AnimatedReanimated.View style={menuButtonStyle}>
-              <TouchableOpacity 
-                style={[
-                  styles.menuButton,
-                  {
-                    backgroundColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(255, 255, 255, 0.8)',
-                    borderColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(102, 126, 234, 0.15)',
-                    shadowColor: theme.name === 'dark' ? '#FF6B6B' : '#667eea',
-                  }
-                ]} 
-                onPress={onMenuPress}
-                accessible={true}
-                accessibilityLabel="Menu options"
-                accessibilityRole="button"
-              >
-                <Ionicons 
-                  name="menu" 
-                  size={20} 
-                  color={theme.name === 'dark' ? '#FFFFFF' : theme.colors.primary} 
-                />
-              </TouchableOpacity>
-            </AnimatedReanimated.View>
+    <AnimatedReanimated.View
+      style={[headerAnimatedStyle]}
+      onLayout={onLayout}
+    >
+  {/* debug indicator removed */}
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerLeft}>
+                <AnimatedReanimated.View style={headerElementsStyle}>
+                  <AnimatedReanimated.View style={[styles.logoContainer, logoContainerStyle]}> 
+                    <AnimatedReanimated.Image 
+                      source={require('../assets/logo-yeni.png')} 
+                      style={styles.logoImage}
+                      resizeMode="contain"
+                    />
+                  </AnimatedReanimated.View>
+                </AnimatedReanimated.View>
+              <AnimatedReanimated.View style={[styles.headerTextContainer, titleAnimatedStyle]}>
+                <AnimatedReanimated.Text style={[styles.header, { color: theme.colors.text }]}>
+                  Flow Journal
+                </AnimatedReanimated.Text>
+              </AnimatedReanimated.View>
+            </View>
+            <View style={styles.headerActions}>
+              <AnimatedReanimated.View style={menuButtonStyle}>
+                <TouchableOpacity 
+                  style={[
+                    styles.menuButton,
+                    {
+                      backgroundColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(255, 255, 255, 0.8)',
+                      borderColor: theme.name === 'dark' ? '#FF6B6B' : 'rgba(102, 126, 234, 0.15)',
+                      shadowColor: theme.name === 'dark' ? '#FF6B6B' : '#667eea',
+                    }
+                  ]} 
+                  onPress={onMenuPress}
+                  accessible={true}
+                  accessibilityLabel="Menu options"
+                  accessibilityRole="button"
+                >
+                  <Ionicons 
+                    name="menu" 
+                    size={20} 
+                    color={theme.name === 'dark' ? '#FFFFFF' : theme.colors.primary} 
+                  />
+                </TouchableOpacity>
+              </AnimatedReanimated.View>
+            </View>
           </View>
         </View>
-      </View>
-    </AnimatedReanimated.View>
+      </AnimatedReanimated.View>
   );
 };
 
@@ -72,7 +91,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 15,
+  marginTop: 6,
     marginBottom: 4,
   },
   headerLeft: {
@@ -115,6 +134,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  // debug styles removed
 });
 
 export default MainHeader;

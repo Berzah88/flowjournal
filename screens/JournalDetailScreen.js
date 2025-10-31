@@ -16,6 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import logger from '../utils/logger';
+import { reverseGeocodeSafe, formatCoords } from '../utils/locationHelpers';
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
   useSharedValue,
@@ -298,14 +300,11 @@ const JournalDetailScreen = ({
             // Önce konum izinlerini kontrol et
             const { status } = await Location.getForegroundPermissionsAsync();
             if (status !== 'granted') {
-              console.warn('Location permission not granted for reverse geocoding');
+              logger.warn('Location permission not granted for reverse geocoding');
               return;
             }
 
-            const result = await Location.reverseGeocodeAsync({
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-            });
+            const result = await reverseGeocodeSafe(coords);
 
             if (result && result.length > 0) {
               const location = result[0];
@@ -320,6 +319,9 @@ const JournalDetailScreen = ({
               }
 
               setLocationText(locationText);
+            } else {
+              // fallback to coords when reverse geocoding not available
+              setLocationText(formatCoords(coords));
             }
           } catch (error) {
             console.warn('Reverse geocoding error:', error);

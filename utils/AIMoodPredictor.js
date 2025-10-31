@@ -1025,7 +1025,7 @@ class UserLearningSystem {
       await this.saveUserData();
       
     } catch (error) {
-      console.warn('Failed to learn from user:', error);
+      logger.warn('Failed to learn from user:', error);
     }
   }
 
@@ -1083,7 +1083,7 @@ class UserLearningSystem {
       return null;
       
     } catch (error) {
-      console.warn('Failed to get user mood prediction:', error);
+      logger.warn('Failed to get user mood prediction:', error);
       return null;
     }
   }
@@ -1101,7 +1101,7 @@ class UserLearningSystem {
         JSON.stringify(this.userHistory.slice(-100)) // Keep last 100 entries
       );
     } catch (error) {
-      console.warn('Failed to save user data:', error);
+      logger.warn('Failed to save user data:', error);
     }
   }
 
@@ -1119,7 +1119,7 @@ class UserLearningSystem {
         this.userHistory = JSON.parse(history);
       }
     } catch (error) {
-      console.warn('Failed to load user data:', error);
+      logger.warn('Failed to load user data:', error);
     }
   }
 
@@ -1129,7 +1129,7 @@ class UserLearningSystem {
       const patterns = await AsyncStorage.getItem(STORAGE_KEYS.USER_PATTERNS);
       return patterns ? JSON.parse(patterns) : {};
     } catch (error) {
-      console.warn('Failed to get user patterns:', error);
+      logger.warn('Failed to get user patterns:', error);
       return {};
     }
   }
@@ -1248,7 +1248,7 @@ class RealTimeAdapter {
       });
       
     } catch (error) {
-      console.warn('Failed to adapt patterns:', error);
+      logger.warn('Failed to adapt patterns:', error);
     }
   }
 
@@ -1603,7 +1603,7 @@ class SmartMoodDetector {
   logger.debug('Learned from user:', { mood, text, confidence });
       
     } catch (error) {
-      console.warn('Failed to learn from user:', error);
+      logger.warn('Failed to learn from user:', error);
     }
   }
 
@@ -1613,7 +1613,7 @@ class SmartMoodDetector {
       const history = await AsyncStorage.getItem(STORAGE_KEYS.USER_HISTORY);
       return history ? JSON.parse(history) : [];
     } catch (error) {
-      console.warn('Failed to get user mood history:', error);
+      logger.warn('Failed to get user mood history:', error);
       return [];
     }
   }

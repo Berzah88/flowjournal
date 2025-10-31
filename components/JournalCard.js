@@ -5,6 +5,8 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 // import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
 import PropTypes from "prop-types";
 import * as Location from "expo-location";
+import logger from '../utils/logger';
+import { reverseGeocodeSafe, formatCoords } from '../utils/locationHelpers';
 import * as Haptics from 'expo-haptics';
 import { getValidIconName, MOODS as MOODS_FROM_PREDICTOR } from "../utils/AIMoodPredictor";
 import { getMilestoneColor } from "../utils/milestoneColors";
@@ -177,11 +179,7 @@ const JournalCard = memo(function JournalCard({
     }
     
     try {
-      const result = await Location.reverseGeocodeAsync({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      });
-      
+      const result = await reverseGeocodeSafe(coords);
       if (result && result.length > 0) {
         const location = result[0];
         // Şehir ve ilçe bilgisini al
@@ -195,7 +193,7 @@ const JournalCard = memo(function JournalCard({
           locationText = city;
         } else {
           // Fallback: koordinat
-          locationText = `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
+          locationText = formatCoords(coords);
         }
         
         // Cache'e kaydet
@@ -203,9 +201,9 @@ const JournalCard = memo(function JournalCard({
         return locationText;
       }
     } catch (error) {
-      console.warn('Reverse geocoding error:', error);
+      logger.debug('Reverse geocoding error (JournalCard):', error && (error.message || error.code || error));
       // Fallback: koordinat
-      const locationText = `${coords.latitude.toFixed(1)}, ${coords.longitude.toFixed(1)}`;
+      const locationText = formatCoords(coords);
       setLocationTexts(prev => ({ ...prev, [key]: locationText }));
       return locationText;
     }
