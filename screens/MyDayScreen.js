@@ -727,9 +727,14 @@ const MyDayScreen = memo(function MyDayScreen({
   // Child scroll is handled natively; header collapse is driven by the
   // shared `globalCollapseProgress` via MainScreen's scroll handlers.
 
+  const scrollRef = useRef(null);
+
+  // header-expand auto-scroll registration removed — header no longer
+  // programmatically scrolls child lists when it expands.
 
   return (
     <AnimatedReanimated.ScrollView
+      ref={scrollRef}
       style={styles.container}
       onScroll={myDayContentScrollHandler}
       scrollEventThrottle={16}

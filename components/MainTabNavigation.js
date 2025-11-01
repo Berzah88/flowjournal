@@ -182,6 +182,13 @@ const MainTabNavigation = ({
     // ignore if API not present at runtime
   }
 
+  // Active FlatList ref so we can programmatically scroll to end when asked
+  const activeListRef = useRef(null);
+
+  // If parent provided a registration callback, register a function that
+  // scrolls the active FlatList to the last item. We capture the current
+  // tasks array so the scroll index is accurate.
+
   // animated style for container
   const containerAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
@@ -256,6 +263,7 @@ const MainTabNavigation = ({
             onOpenJournal={onMyDayOpenJournal}
             onAddProject={onMyDayAddProject}
             myDayContentScrollHandler={myDayContentScrollHandler}
+            
           />
         </View>
 
@@ -265,6 +273,7 @@ const MainTabNavigation = ({
   {/* no debug overrides */}
           <AnimatedReanimated.FlatList
             {...(flatListProps || {})}
+            ref={activeListRef}
             data={activeTasksReversed}
             keyExtractor={keyExtractor}
             // Add a small top padding so cards are not too close to the StatusTabs

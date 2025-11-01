@@ -18,6 +18,7 @@ const MainHeader = ({
   statusTabs,
   // new props: shared values to control header from header-only pan
   globalCollapseProgress,
+  smoothedCollapse,
   globalScrollY,
   statusTabsOffset,
   headerShouldHandle,
@@ -34,8 +35,10 @@ const MainHeader = ({
 
   // Animate the visibility of statusTabs based on collapse progress.
   const statusTabsAnimatedStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress ? globalCollapseProgress.value : 0;
-    // translate from below into place as p goes 0 -> 1
+    // Prefer a smoothed collapse value if supplied by the parent.
+    const p = (typeof smoothedCollapse !== 'undefined' && smoothedCollapse) ? smoothedCollapse.value : (globalCollapseProgress ? globalCollapseProgress.value : 0);
+    // Drive tabs visibility directly from collapse progress so their
+    // motion stays synchronized with logo/title movement.
     const tabH = (statusTabsHeight && statusTabsHeight.value > 0) ? statusTabsHeight.value : 44;
     const translateY = tabH * (1 - p);
     const opacity = p; // proportional fade while sliding

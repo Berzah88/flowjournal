@@ -95,11 +95,17 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const myDayContentOffset = useSharedValue(0);
   const activeContentOffset = useSharedValue(0);
 
+  // Previously we exposed JS-side scroller registration so the header
+  // could trigger a scroll-to-top when it expanded. That behavior was
+  // removed to keep header/scroll interactions purely user-driven.
+
   // Expose snap configuration so the parent screen can tune snapping behavior
   // without editing the hook. These can be changed later (e.g. via debug UI)
-  // to test different thresholds and durations.
-  const [snapThreshold, setSnapThreshold] = useState(0.5);
-  const [snapDuration, setSnapDuration] = useState(180);
+  // to test different thresholds and durations. Defaults tuned for higher
+  // sensitivity: less scroll required and snappier timing.
+  const [snapThreshold, setSnapThreshold] = useState(0.05);
+  // Use a slightly longer duration for smoother snap animations
+  const [snapDuration, setSnapDuration] = useState(160);
 
   // Worklet-safe copy of the current tab index for other components
   const activeIndexShared = useSharedValue(activeIndex);
@@ -112,7 +118,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // unexpectedly undefined (hot-reload / revert mismatch), fall back to 0.
   const headerShouldHandle = useDerivedValue(() => {
     const g = (typeof globalCollapseProgress !== 'undefined' && globalCollapseProgress) ? globalCollapseProgress : { value: 0 };
-    return g.value < 0.95;
+    // Consider header handling a bit earlier to make the handoff to the
+    // header more sensitive during quick gestures. Slightly higher value
+    // makes the header take control a bit sooner.
+    return g.value < 0.94;
   });
 
   // UI-thread flag indicating parent should handle vertical gestures.
@@ -127,65 +136,54 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [headerFullyCollapsed, setHeaderFullyCollapsed] = useState(false);
   const [headerShouldHandleJS, setHeaderShouldHandleJS] = useState(false);
 
-  // Keep JS mirrors for debugging or gating actions
+  // Keep minimal JS mirrors for gating actions (avoid flooding JS thread)
   const [collapseProgressJS, setCollapseProgressJS] = useState(0);
-  const [statusTabsOffsetJS, setStatusTabsOffsetJS] = useState(0);
-  const [statusTabsHeightJS, setStatusTabsHeightJS] = useState(0);
-  const [headerHeightJS, setHeaderHeightJS] = useState(0);
-  const [moodHeightJS, setMoodHeightJS] = useState(120);
-  const loggedRef = React.useRef(false);
+  // NOTE: other layout mirrors (statusTabs/header/mood measurements) were
+  // intentionally removed to reduce JS-thread traffic. If you need them for
+  // debugging, re-introduce with a high-change threshold to avoid flooding.
 
   // forceParentHandle removed because child scrolls are disabled
 
   // Mirror numeric collapse progress for JS
   useAnimatedReaction(
     () => globalCollapseProgress.value,
-    (val) => { try { runOnJS(setCollapseProgressJS)(val); } catch (e) {} }
+    (val, prev) => {
+      try {
+        // Only mirror to JS when the progress changes sufficiently to
+        // avoid flooding the JS thread on every frame. This reduces
+        // jank during quick reverse scrolls.
+        if (prev === undefined || Math.abs(val - prev) > 0.02) {
+          runOnJS(setCollapseProgressJS)(val);
+        }
+      } catch (e) {}
+    }
   );
 
   // Mirror headerShouldHandle (worklet) to JS so non-worklet components can read it
   useAnimatedReaction(
     () => headerShouldHandle.value,
-    (val) => { try { runOnJS(setHeaderShouldHandleJS)(!!val); } catch (e) {} }
+    (val, prev) => { try { if (prev === undefined || val !== prev) runOnJS(setHeaderShouldHandleJS)(!!val); } catch (e) {} }
   );
 
   // Mirror fully-collapsed boolean to JS for gating child scrollEnabled
   useAnimatedReaction(
-    () => (globalCollapseProgress.value >= 0.95),
-    (val) => { try { runOnJS(setHeaderFullyCollapsed)(!!val); } catch (e) {} }
+    () => (globalCollapseProgress.value >= 0.94),
+    (val, prev) => { try { if (prev === undefined || val !== prev) runOnJS(setHeaderFullyCollapsed)(!!val); } catch (e) {} }
   );
 
   // Mirror statusTabsOffset for JS
-  useAnimatedReaction(
-    () => statusTabsOffset.value,
-    (val) => { try { runOnJS(setStatusTabsOffsetJS)(val); } catch (e) {} }
-  );
-
-  // Mirror statusTabsHeight for JS
-  useAnimatedReaction(
-    () => statusTabsHeight.value,
-    (val) => { try { runOnJS(setStatusTabsHeightJS)(val); } catch (e) {} }
-  );
-
-  // Mirror headerHeight and moodHeight to JS so we can log spacing diagnostics
-  useAnimatedReaction(
-    () => headerHeight.value,
-    (val) => { try { runOnJS(setHeaderHeightJS)(val); } catch (e) {} }
-  );
+  // Layout mirrors removed here to reduce JS thread work. Keep collapse
+  // progress mirror (above) and header gating mirror (below).
 
   useAnimatedReaction(
-    () => moodHeight.value,
-    (val) => { try { runOnJS(setMoodHeightJS)(val); } catch (e) {} }
+    () => ({ p: globalCollapseProgress.value, ai: activeIndexShared ? activeIndexShared.value : 0 }),
+    (val, prev) => { /* snapping/auto-expand behavior disabled */ }
   );
 
   // One-time diagnostic log when measurements are available
-  useEffect(() => {
-    if (!loggedRef.current && headerHeightJS > 0 && moodHeightJS > 0) {
-      const spacing = 0; // header and mood are adjacent in layout; spacing is primarily internal header padding
-      console.log('Layout measurements — headerHeight:', headerHeightJS, 'moodHeight:', moodHeightJS, 'estimated spacing (header->mood):', spacing);
-      loggedRef.current = true;
-    }
-  }, [headerHeightJS, moodHeightJS]);
+  // Note: layout measurement logging removed to avoid depending on JS-thread
+  // mirrors. If you need to log measurements, either run a one-time
+  // runOnJS from a worklet or use a larger mirror-threshold.
 
   // NOTE: a dedicated global scroll handler was previously defined here
   // but removed to centralize scroll handling in the child ScrollViews
@@ -205,15 +203,28 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     moodHeight,
     snapThreshold,
     snapDuration,
+    // Disable automatic snapping/auto expand-collapse; keep header strictly
+    // synced to scroll. This prevents the header from deciding to snap on
+    // end-of-drag and avoids automatic expand/collapse side-effects.
+    snapEnabled: false,
   });
 
   // forward handlers and keep local refs for any other use
   const myDayContentScrollHandler = _myDayHandler;
   const activeContentScrollHandler = _activeHandler;
 
+  // Smooth the raw collapse progress slightly for cosmetic animations
+  // (logo/title/menu). This prevents tiny frame-to-frame jumps from
+  // producing visually choppy scale/translate changes while keeping
+  // the header still tightly coupled to scroll.
+  const smoothedCollapse = useDerivedValue(() => {
+    // gentle timing for smoothing; tuned to be responsive but soft
+    return withTiming(globalCollapseProgress.value, { duration: 260, easing: Easing.out(Easing.cubic) });
+  });
+
   // Simplified header animation - single style with reduced calculations
   const headerAnimatedStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress.value;
+    const p = smoothedCollapse.value;
     // Reduce vertical padding as header collapses to create a smaller header.
     // Make header area tighter when collapsed to remove the gap under
     // the shrunken logo/title.
@@ -228,8 +239,10 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
   // Logo and menu button animation
   const headerElementsStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress.value;
-    const scale = 1 - 0.32 * p; // stronger shrink
+    const p = smoothedCollapse.value;
+    // Slightly reduce the overall scale factor to keep the logo readable
+    // when collapsed while making the interpolation softer.
+    const scale = 1 - 0.28 * p; // tuned for smoother visual
     // Start 20% lower (relative to measured headerHeight) and move up as p -> 1
     const base = (headerHeight.value && headerHeight.value > 0) ? headerHeight.value : 62;
     const startOffset = base * 0.2; // 20% of header height
@@ -242,7 +255,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Animate logo container margin so the gap between logo and title
   // shrinks as the header collapses (prevents large empty space when both scale)
   const logoContainerAnimatedStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress.value;
+    const p = smoothedCollapse.value;
     // Reduce the right margin from 16 -> ~6 as p goes 0 -> 1
     const marginRight = 16 * (1 - 0.65 * p);
     return {
@@ -252,8 +265,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
   // Title animation - separate and more conservative
   const titleAnimatedStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress.value;
-    const scale = 1 - 0.32 * p; // stronger shrink for title
+    const p = smoothedCollapse.value;
+    const scale = 1 - 0.28 * p; // match logo smoothing for visual coherence
     // Keep title vertically in-place while scaling
     const base = (headerHeight.value && headerHeight.value > 0) ? headerHeight.value : 62;
     const startOffset = base * 0.2; // 20% of header height
@@ -268,7 +281,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
   // Menu button opacity animation (fades out like mood statement)
   const menuButtonStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress.value;
+    const p = smoothedCollapse.value;
     // Immediate fade out - disappears as soon as scroll starts
     const opacity = p > 0.15 ? 0 : 1; // If scroll progress > 15%, completely invisible
     const base = (headerHeight.value && headerHeight.value > 0) ? headerHeight.value : 62;
@@ -282,7 +295,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
   // Combined logo and title animation for better spacing
   const logoTitleContainerStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress.value;
+    const p = smoothedCollapse.value;
     // Move the combined logo+title container slightly left as collapse progresses
     // to gently nudge the pair together. Keep this smaller so the title
     // translation remains the dominant adjustment.
@@ -297,13 +310,14 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
   // Simplified MoodStatement animation
   const moodStatementAnimatedStyle = useAnimatedStyle(() => {
-    const p = globalCollapseProgress.value;
-    // Make MoodStatement fade and collapse faster than the header so it
-    // disappears earlier during scroll. Scale factors tuned to be snappy.
-    const fadeFactor = Math.min(1, p * 1.6); // fades out by ~p=0.625
-    const heightFactor = Math.min(1, p * 1.25); // height collapses slightly faster
-    const height = moodHeight.value * (1 - heightFactor);
-    const opacity = 1 - fadeFactor;
+    // Drive mood statement visibility directly from the same collapse
+    // progress used by the header so the motion is synchronized with
+    // the logo/title and status tabs. Use a direct mapping so there is
+    // no perceptual skew between components.
+    const p = smoothedCollapse.value;
+    const eff = p; // direct sync (0 = expanded, 1 = collapsed)
+    const height = moodHeight.value * (1 - eff);
+    const opacity = 1 - eff;
     return {
       height,
       opacity,
@@ -433,6 +447,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           menuButtonStyle={menuButtonStyle}
           onMenuPress={() => setMainMenuVisible(true)}
           globalCollapseProgress={globalCollapseProgress}
+          smoothedCollapse={smoothedCollapse}
           globalScrollY={globalScrollY}
           statusTabsOffset={statusTabsOffset}
           statusTabsHeight={statusTabsHeight}
