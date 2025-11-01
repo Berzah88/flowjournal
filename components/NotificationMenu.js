@@ -1,5 +1,5 @@
 // components/NotificationMenu.js
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Switch, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
@@ -10,6 +10,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withSequence,
 } from "react-native-reanimated";
 import fcmService from "../services/FCMService";
 import notificationService from "../services/NotificationService";
@@ -28,24 +29,50 @@ export default function NotificationMenu({
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(-20);
 
-  // Menu açılma/kapanma animasyonu
+  // Keep component mounted during close animation so closing animation runs
+  const [shouldRender, setShouldRender] = useState(visible);
+  const hideTimeout = useRef(null);
+  const CLOSE_DELAY = 300; // include backdrop fade time and longer settle
+
   useEffect(() => {
     if (visible) {
-      scale.value = withSpring(1, {
-        damping: 25,
-        stiffness: 300,
-        mass: 0.5,
-      });
-      opacity.value = withTiming(1, { duration: 200 });
-      translateY.value = withSpring(0, {
-        damping: 25,
-        stiffness: 300,
-      });
-    } else {
-      scale.value = withTiming(0, { duration: 150 });
-      opacity.value = withTiming(0, { duration: 150 });
-      translateY.value = withTiming(-20, { duration: 150 });
+      if (hideTimeout.current) {
+        clearTimeout(hideTimeout.current);
+        hideTimeout.current = null;
+      }
+      setShouldRender(true);
     }
+
+    if (visible) {
+      scale.value = withSequence(
+        withTiming(1.08, { duration: 180 }),
+        withSpring(1, { damping: 10, stiffness: 120, mass: 0.9 })
+      );
+      opacity.value = withTiming(1, { duration: 220 });
+      translateY.value = withSequence(
+        withTiming(-12, { duration: 160 }),
+        withSpring(0, { damping: 10, stiffness: 120 })
+      );
+    } else {
+      scale.value = withSequence(
+        withTiming(0.96, { duration: 160 }),
+        withTiming(0, { duration: 180 })
+      );
+      opacity.value = withTiming(0, { duration: 170 });
+      translateY.value = withTiming(-24, { duration: 170 });
+
+      hideTimeout.current = setTimeout(() => {
+        setShouldRender(false);
+        hideTimeout.current = null;
+      }, CLOSE_DELAY);
+    }
+
+    return () => {
+      if (hideTimeout.current) {
+        clearTimeout(hideTimeout.current);
+        hideTimeout.current = null;
+      }
+    };
   }, [visible]);
 
   // Animasyonlu style'lar
@@ -114,7 +141,7 @@ export default function NotificationMenu({
   }, [visible, checkSubscriptionStatus]);
 
 
-  if (!visible) return null;
+  if (!shouldRender) return null;
 
   return (
     <View style={styles.container}>

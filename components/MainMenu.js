@@ -1,12 +1,13 @@
 // components/MainMenu.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AnimatedReanimated, { 
   useSharedValue, 
   useAnimatedStyle, 
   withSpring, 
-  withTiming 
+  withTiming,
+  withSequence,
 } from 'react-native-reanimated';
 import ThemeToggle from './ThemeToggle';
 
@@ -25,24 +26,51 @@ const MainMenu = ({
   const menuOpacity = useSharedValue(0);
   const menuTranslateY = useSharedValue(-20);
 
-  // Menu animation
+  // Keep component mounted during close animation so closing animation runs
+  const [shouldRender, setShouldRender] = useState(visible);
+  const hideTimeout = useRef(null);
+  const CLOSE_DELAY = 260;
+
   useEffect(() => {
     if (visible) {
-      menuScale.value = withSpring(1, {
-        damping: 25,
-        stiffness: 300,
-        mass: 0.5,
-      });
-      menuOpacity.value = withTiming(1, { duration: 200 });
-      menuTranslateY.value = withSpring(0, {
-        damping: 25,
-        stiffness: 300,
-      });
-    } else {
-      menuScale.value = withTiming(0, { duration: 150 });
-      menuOpacity.value = withTiming(0, { duration: 150 });
-      menuTranslateY.value = withTiming(-20, { duration: 150 });
+      if (hideTimeout.current) {
+        clearTimeout(hideTimeout.current);
+        hideTimeout.current = null;
+      }
+      setShouldRender(true);
     }
+
+    if (visible) {
+      // Apple-like open: larger overshoot then softer spring settle
+      menuScale.value = withSequence(
+        withTiming(1.08, { duration: 180 }),
+        withSpring(1, { damping: 10, stiffness: 120, mass: 0.9 })
+      );
+      menuOpacity.value = withTiming(1, { duration: 220 });
+      menuTranslateY.value = withSequence(
+        withTiming(-12, { duration: 160 }),
+        withSpring(0, { damping: 10, stiffness: 120 })
+      );
+    } else {
+      menuScale.value = withSequence(
+        withTiming(0.96, { duration: 160 }),
+        withTiming(0, { duration: 180 })
+      );
+      menuOpacity.value = withTiming(0, { duration: 170 });
+      menuTranslateY.value = withTiming(-24, { duration: 170 });
+
+      hideTimeout.current = setTimeout(() => {
+        setShouldRender(false);
+        hideTimeout.current = null;
+      }, CLOSE_DELAY);
+    }
+
+    return () => {
+      if (hideTimeout.current) {
+        clearTimeout(hideTimeout.current);
+        hideTimeout.current = null;
+      }
+    };
   }, [visible, menuScale, menuOpacity, menuTranslateY]);
 
   // Menu animated style
@@ -54,7 +82,7 @@ const MainMenu = ({
     opacity: menuOpacity.value,
   }));
 
-  if (!visible) return null;
+  if (!shouldRender) return null;
 
   return (
     <TouchableWithoutFeedback onPress={onClose}>

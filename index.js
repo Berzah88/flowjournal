@@ -1,3 +1,7 @@
+// Must be imported before other libraries that use native gesture handling
+// See: https://docs.swmansion.com/react-native-gesture-handler/docs
+import 'react-native-gesture-handler';
+
 import { registerRootComponent } from 'expo';
 import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';

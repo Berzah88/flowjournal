@@ -710,7 +710,7 @@ const MoodStatement = React.memo(({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 24, // slightly narrower to better fit header
-    marginTop: 8, // reduce to fit header height
+    marginTop: 6, // small top margin so MoodStatement sits below header
     marginBottom: 0,
   },
   moodStatus: {

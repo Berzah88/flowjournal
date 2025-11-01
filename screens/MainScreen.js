@@ -87,12 +87,19 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const moodHeight = useSharedValue(120); // Default height, measured later
   const statusTabsOffset = useSharedValue(0); // StatusTabs'ın header'dan uzaklığı
   const statusTabsHeight = useSharedValue(0);
+  const statusTabsTop = useSharedValue(0);
   const globalCollapseProgress = useSharedValue(0);
 
   // Per-tab content scroll positions (worklet-safe)
   // Per-tab content scroll positions (worklet-safe)
   const myDayContentOffset = useSharedValue(0);
   const activeContentOffset = useSharedValue(0);
+
+  // Expose snap configuration so the parent screen can tune snapping behavior
+  // without editing the hook. These can be changed later (e.g. via debug UI)
+  // to test different thresholds and durations.
+  const [snapThreshold, setSnapThreshold] = useState(0.5);
+  const [snapDuration, setSnapDuration] = useState(180);
 
   // Worklet-safe copy of the current tab index for other components
   const activeIndexShared = useSharedValue(activeIndex);
@@ -101,11 +108,19 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Derived value used to decide whether the header should handle vertical
   // gestures. With scrolling removed, header handles vertical gestures
   // based purely on collapse progress.
-  const headerShouldHandle = useDerivedValue(() => globalCollapseProgress.value < 0.95);
+  // Guard against undefined shared-values (defensive): if a shared value is
+  // unexpectedly undefined (hot-reload / revert mismatch), fall back to 0.
+  const headerShouldHandle = useDerivedValue(() => {
+    const g = (typeof globalCollapseProgress !== 'undefined' && globalCollapseProgress) ? globalCollapseProgress : { value: 0 };
+    return g.value < 0.95;
+  });
 
   // UI-thread flag indicating parent should handle vertical gestures.
   // 1 = parent handles (children should be disabled), 0 = children can scroll.
-  const parentHandlesVertical = useDerivedValue(() => headerShouldHandle.value ? 1 : 0);
+  const parentHandlesVertical = useDerivedValue(() => {
+    const h = (typeof headerShouldHandle !== 'undefined' && headerShouldHandle) ? headerShouldHandle : { value: 0 };
+    return h.value ? 1 : 0;
+  });
 
   // Mirror header fully-collapsed state to JS so child JS components
   // (FlatList scrollEnabled props) can react synchronously.
@@ -116,6 +131,9 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const [collapseProgressJS, setCollapseProgressJS] = useState(0);
   const [statusTabsOffsetJS, setStatusTabsOffsetJS] = useState(0);
   const [statusTabsHeightJS, setStatusTabsHeightJS] = useState(0);
+  const [headerHeightJS, setHeaderHeightJS] = useState(0);
+  const [moodHeightJS, setMoodHeightJS] = useState(120);
+  const loggedRef = React.useRef(false);
 
   // forceParentHandle removed because child scrolls are disabled
 
@@ -149,6 +167,26 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     (val) => { try { runOnJS(setStatusTabsHeightJS)(val); } catch (e) {} }
   );
 
+  // Mirror headerHeight and moodHeight to JS so we can log spacing diagnostics
+  useAnimatedReaction(
+    () => headerHeight.value,
+    (val) => { try { runOnJS(setHeaderHeightJS)(val); } catch (e) {} }
+  );
+
+  useAnimatedReaction(
+    () => moodHeight.value,
+    (val) => { try { runOnJS(setMoodHeightJS)(val); } catch (e) {} }
+  );
+
+  // One-time diagnostic log when measurements are available
+  useEffect(() => {
+    if (!loggedRef.current && headerHeightJS > 0 && moodHeightJS > 0) {
+      const spacing = 0; // header and mood are adjacent in layout; spacing is primarily internal header padding
+      console.log('Layout measurements — headerHeight:', headerHeightJS, 'moodHeight:', moodHeightJS, 'estimated spacing (header->mood):', spacing);
+      loggedRef.current = true;
+    }
+  }, [headerHeightJS, moodHeightJS]);
+
   // NOTE: a dedicated global scroll handler was previously defined here
   // but removed to centralize scroll handling in the child ScrollViews
   // (MyDayScreen / Active list) and the header gestures. This avoids
@@ -165,6 +203,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     statusTabsOffset,
     activeIndexShared,
     moodHeight,
+    snapThreshold,
+    snapDuration,
   });
 
   // forward handlers and keep local refs for any other use
@@ -174,10 +214,12 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Simplified header animation - single style with reduced calculations
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const p = globalCollapseProgress.value;
-    // Reduce vertical padding as header collapses to create a smaller header
-    const paddingVertical = 12 - 8 * p; // 12 -> 4
-    // Slight upward shift to tighten space
-    const translateY = -6 * p;
+    // Reduce vertical padding as header collapses to create a smaller header.
+    // Make header area tighter when collapsed to remove the gap under
+    // the shrunken logo/title.
+    const paddingVertical = 10 - 7 * p; // 10 -> 3
+    // Do not translate header vertically during collapse; keep position stable
+    const translateY = 0;
     return {
       paddingVertical,
       transform: [{ translateY }],
@@ -188,9 +230,23 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const headerElementsStyle = useAnimatedStyle(() => {
     const p = globalCollapseProgress.value;
     const scale = 1 - 0.32 * p; // stronger shrink
-    const translateY = -4 * p;
+    // Start 20% lower (relative to measured headerHeight) and move up as p -> 1
+    const base = (headerHeight.value && headerHeight.value > 0) ? headerHeight.value : 62;
+    const startOffset = base * 0.2; // 20% of header height
+    const translateY = startOffset * (1 - p);
     return {
       transform: [{ scale }, { translateY }],
+    };
+  });
+
+  // Animate logo container margin so the gap between logo and title
+  // shrinks as the header collapses (prevents large empty space when both scale)
+  const logoContainerAnimatedStyle = useAnimatedStyle(() => {
+    const p = globalCollapseProgress.value;
+    // Reduce the right margin from 16 -> ~6 as p goes 0 -> 1
+    const marginRight = 16 * (1 - 0.65 * p);
+    return {
+      marginRight,
     };
   });
 
@@ -198,11 +254,15 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   const titleAnimatedStyle = useAnimatedStyle(() => {
     const p = globalCollapseProgress.value;
     const scale = 1 - 0.32 * p; // stronger shrink for title
-    const translateY = -4 * p;
-    // Move title to the left more aggressively to close the gap
-    const translateX = -30 * p; // Increased from -20 to -30 for more aggressive movement
+    // Keep title vertically in-place while scaling
+    const base = (headerHeight.value && headerHeight.value > 0) ? headerHeight.value : 62;
+    const startOffset = base * 0.2; // 20% of header height
+    const translateY = startOffset * (1 - p);
+    // Move title to the left to close the gap, but less extremely than before.
+    // Apply translateX before scale so the translation uses unscaled units.
+    const translateX = -40 * p;
     return {
-      transform: [{ scale }, { translateY }, { translateX }],
+      transform: [{ translateX }, { scale }, { translateY }],
     };
   });
 
@@ -211,27 +271,39 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     const p = globalCollapseProgress.value;
     // Immediate fade out - disappears as soon as scroll starts
     const opacity = p > 0.15 ? 0 : 1; // If scroll progress > 15%, completely invisible
+    const base = (headerHeight.value && headerHeight.value > 0) ? headerHeight.value : 62;
+    const startOffset = base * 0.2;
+    const translateY = startOffset * (1 - p);
     return {
       opacity,
+      transform: [{ translateY }],
     };
   });
 
   // Combined logo and title animation for better spacing
   const logoTitleContainerStyle = useAnimatedStyle(() => {
     const p = globalCollapseProgress.value;
-    const scaleReduction = 0.12 * p;
-    const originalMargin = 16;
-    const translateX = -(scaleReduction * originalMargin * 0.8);
+    // Move the combined logo+title container slightly left as collapse progresses
+    // to gently nudge the pair together. Keep this smaller so the title
+    // translation remains the dominant adjustment.
+    const base = (headerHeight.value && headerHeight.value > 0) ? headerHeight.value : 62;
+    const startOffset = base * 0.2;
+    const translateX = -12 * p;
+    const translateY = startOffset * (1 - p);
     return {
-      transform: [{ translateX }],
+      transform: [{ translateX }, { translateY }],
     };
   });
 
   // Simplified MoodStatement animation
   const moodStatementAnimatedStyle = useAnimatedStyle(() => {
     const p = globalCollapseProgress.value;
-    const height = moodHeight.value * (1 - p);
-    const opacity = 1 - p;
+    // Make MoodStatement fade and collapse faster than the header so it
+    // disappears earlier during scroll. Scale factors tuned to be snappy.
+    const fadeFactor = Math.min(1, p * 1.6); // fades out by ~p=0.625
+    const heightFactor = Math.min(1, p * 1.25); // height collapses slightly faster
+    const height = moodHeight.value * (1 - heightFactor);
+    const opacity = 1 - fadeFactor;
     return {
       height,
       opacity,
@@ -239,31 +311,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     };
   });
 
-  // Simplified StatusTabs - static positioning
-  const statusTabsAnimatedStyle = useAnimatedStyle(() => {
-    // Make StatusTabs an absolute overlay that stays above content and
-    // follows content scroll until it becomes sticky under the header/logo.
-    const margin = 6;
-    // baseTop: prefer the measured spacer offset (content top). Fallback to header+ mood.
-    const baseTop = (statusTabsOffset.value && statusTabsOffset.value > 0)
-      ? statusTabsOffset.value
-      : ((headerHeight.value || 0) + (moodHeight.value || 0));
-    // maxUp: how far tabs may move up so they end up under the header/logo
-    const maxUp = Math.max(0, (moodHeight.value || 0) - margin);
-    // Use the clamped scroll distance (globalScrollY) to move tabs with content
-    const scrollY = globalScrollY ? globalScrollY.value : 0;
-    const move = Math.min(Math.max(0, scrollY), maxUp);
-    const top = baseTop - move;
-    return {
-      zIndex: 50,
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top,
-      // keep fully visible; tabs should not fade
-      opacity: 1,
-    };
-  });
+  // StatusTabs will be rendered inside the header (see MainHeader.statusTabs)
 
   // Header lock spacer removed - using scroll handler only for better performance
 
@@ -381,12 +429,16 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           headerAnimatedStyle={headerAnimatedStyle}
           headerElementsStyle={headerElementsStyle}
           titleAnimatedStyle={titleAnimatedStyle}
+          logoContainerStyle={logoContainerAnimatedStyle}
           menuButtonStyle={menuButtonStyle}
           onMenuPress={() => setMainMenuVisible(true)}
           globalCollapseProgress={globalCollapseProgress}
           globalScrollY={globalScrollY}
           statusTabsOffset={statusTabsOffset}
+          statusTabsHeight={statusTabsHeight}
+          statusTabs={<StatusTabs insideHeader={true} activeIndex={activeIndex} onTabPress={handleTabPress} />}
           headerShouldHandle={headerShouldHandle}
+          headerFullyCollapsed={headerFullyCollapsed}
           onLayout={(e) => {
             const h = e.nativeEvent.layout.height;
             if (h && headerHeight.value === 0) headerHeight.value = h;
@@ -411,35 +463,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           />
         </AnimatedReanimated.View>
 
-        {/* Status Tabs placeholder to keep layout flow (measured height/offset will be applied) */}
-        <AnimatedReanimated.View
-          style={{ height: statusTabsHeightJS || 56 }}
-          onLayout={(e) => {
-            const { y, height } = e.nativeEvent.layout;
-            // Save measurements once from the spacer (this is the content top)
-            if (height && statusTabsHeight.value === 0) {
-              statusTabsHeight.value = height;
-            }
-            if ((y || y === 0) && statusTabsOffset.value === 0) {
-              statusTabsOffset.value = y;
-            }
-          }}
-        />
-
-        {/* Status Tabs overlay - absolute so content scrolls under it. */}
-        <AnimatedReanimated.View
-          style={statusTabsAnimatedStyle}
-          onLayout={(e) => {
-            const { height } = e.nativeEvent.layout;
-            // Save height if not already measured
-            if (height && statusTabsHeight.value === 0) {
-              statusTabsHeight.value = height;
-            }
-          }}
-          pointerEvents="box-none"
-        >
-          <StatusTabs activeIndex={activeIndex} onTabPress={handleTabPress} />
-        </AnimatedReanimated.View>
+        {/* StatusTabs are rendered inside the header now — pass as prop */}
 
         {/* Main Tab Navigation */}
         <MainTabNavigation
@@ -580,7 +604,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 40
+    paddingTop: 20
   },
 });
 

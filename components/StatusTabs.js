@@ -9,7 +9,7 @@ const { width } = Dimensions.get("window");
 // so the tabs have the same horizontal width as other My Day components.
 const TAB_MAX_WIDTH = width - 48;
 
-export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
+export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, insideHeader = false }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
 
@@ -56,7 +56,7 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
   const indicatorLeft = PADDING + INDICATOR_MARGIN;
 
   return (
-    <View style={styles.wrapper} pointerEvents="box-none">
+    <View style={[styles.wrapper, insideHeader ? styles.wrapperInsideHeader : null]} pointerEvents="box-none">
       <View
         style={[
           styles.container,
@@ -74,12 +74,13 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
             {
               left: indicatorLeft,
               width: indicatorWidth,
-              // New indicator colors: white fill with subtle border to stand out on the soft background
-              backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#FFFFFF',
-              borderWidth: theme.name === 'dark' ? 0 : 0.6,
-              borderColor: theme.name === 'dark' ? 'transparent' : 'rgba(14,20,30,0.06)',
+              // Use a softer, semi-transparent fill and remove harsh border/shadow
+              backgroundColor: theme.name === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.96)',
+              borderWidth: 0,
+              borderColor: 'transparent',
               shadowColor: theme.name === 'dark' ? '#000000' : '#000',
-              shadowOpacity: theme.name === 'dark' ? 0.15 : 0.08,
+              shadowOpacity: theme.name === 'dark' ? 0.03 : 0.02,
+              elevation: 0,
             },
             indicatorStyle,
           ]}
@@ -99,9 +100,16 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {} }) {
 const styles = StyleSheet.create({
   wrapper: {
     marginHorizontal: 24, // match main content horizontal padding
-    marginTop: -8, // lift tabs up slightly to reduce gap with MoodStatement
+    marginTop: 0,
     marginBottom: 0,
     paddingHorizontal: 0,
+  },
+  // When rendered inside the header (header already has horizontal padding),
+  // remove the extra wrapper margin so the tab width lines up with other content.
+  wrapperInsideHeader: {
+    marginHorizontal: 0,
+    marginTop: 10,
+    marginBottom: -12, // remove extra spacing so tabs sit flush with header bottom
   },
   container: {
     borderRadius: 12,

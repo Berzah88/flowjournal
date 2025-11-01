@@ -11,13 +11,18 @@ const MainHeader = ({
   titleAnimatedStyle, 
   menuButtonStyle,
   logoContainerStyle,
+  logoTitleContainerStyle,
   onMenuPress,
   onLayout,
+  // Optional React element: render StatusTabs inside the header below title
+  statusTabs,
   // new props: shared values to control header from header-only pan
   globalCollapseProgress,
   globalScrollY,
   statusTabsOffset,
   headerShouldHandle,
+  headerFullyCollapsed,
+  statusTabsHeight,
 }) => {
   // Header gestures removed — header is static. All gesture-driven
   // updates to `globalCollapseProgress` should come from elsewhere if
@@ -27,6 +32,16 @@ const MainHeader = ({
   // `titleAnimatedStyle` supplied by the parent (MainScreen) which are
   // driven by the scroll position. Render as-is.
 
+  // Animate the visibility of statusTabs based on collapse progress.
+  const statusTabsAnimatedStyle = useAnimatedStyle(() => {
+    const p = globalCollapseProgress ? globalCollapseProgress.value : 0;
+    // translate from below into place as p goes 0 -> 1
+    const tabH = (statusTabsHeight && statusTabsHeight.value > 0) ? statusTabsHeight.value : 44;
+    const translateY = tabH * (1 - p);
+    const opacity = p; // proportional fade while sliding
+    return { opacity, transform: [{ translateY }] };
+  });
+
   return (
     <AnimatedReanimated.View
       style={[headerAnimatedStyle]}
@@ -34,8 +49,8 @@ const MainHeader = ({
     >
   {/* debug indicator removed */}
         <View style={styles.headerContainer}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerLeft}>
+          <View style={[styles.headerTop, styles.innerContentOffset]}>
+            <AnimatedReanimated.View style={[styles.headerLeft, logoTitleContainerStyle]}>
                 <AnimatedReanimated.View style={headerElementsStyle}>
                   <AnimatedReanimated.View style={[styles.logoContainer, logoContainerStyle]}> 
                     <AnimatedReanimated.Image 
@@ -50,7 +65,7 @@ const MainHeader = ({
                   Flow Journal
                 </AnimatedReanimated.Text>
               </AnimatedReanimated.View>
-            </View>
+            </AnimatedReanimated.View>
             <View style={styles.headerActions}>
               <AnimatedReanimated.View style={menuButtonStyle}>
                 <TouchableOpacity 
@@ -76,6 +91,15 @@ const MainHeader = ({
               </AnimatedReanimated.View>
             </View>
           </View>
+          {/* Render status tabs inside header (immediately under logo + title) */}
+          {statusTabs ? (
+            <AnimatedReanimated.View
+              style={[styles.statusTabsContainer, statusTabsAnimatedStyle]}
+              pointerEvents={headerFullyCollapsed ? 'auto' : 'none'}
+            >
+              {statusTabs}
+            </AnimatedReanimated.View>
+          ) : null}
         </View>
       </AnimatedReanimated.View>
   );
@@ -84,15 +108,20 @@ const MainHeader = ({
 const styles = StyleSheet.create({
   headerContainer: {
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 10,
     marginBottom: 0,
   },
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  marginTop: 6,
-    marginBottom: 4,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+
+  // Move inner header elements down visually without affecting layout size
+  innerContentOffset: {
+    transform: [{ translateY: 6 }],
   },
   headerLeft: {
     flexDirection: "row",
@@ -103,19 +132,19 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   logoImage: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 8,
   },
   headerTextContainer: {
     flex: 1,
   },
   header: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: "Poppins_700Bold",
     color: "#1a1a1a",
     letterSpacing: -0.5,
-    lineHeight: 30,
+    lineHeight: 28,
   },
   headerActions: {
     flexDirection: "row",
@@ -133,6 +162,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  statusTabsContainer: {
+    marginTop: 0,
+    paddingHorizontal: 0,
   },
   // debug styles removed
 });

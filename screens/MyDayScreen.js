@@ -827,10 +827,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   componentSpacing: {
-    marginTop: 12,
+    marginTop: 6,
   },
   todaysSummaryContainer: {
-    marginTop: 12,
+    marginTop: 6,
   },
   reducedSpacing: {
     marginTop: 8,
