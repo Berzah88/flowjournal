@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } 
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing, InteractionManager } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import logger from '../utils/logger';
+import { Helpers } from '../components/Styles';
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
@@ -552,7 +553,8 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
 
   return (
     <AnimatedReanimated.View style={[
-      styles.modernContainer, 
+      styles.modernContainer,
+      Helpers.container,
       {
         // Üst boşluk sabit kalıyor (kartlar efekti için)
         // Alt boşluk yok (bottom: 0 ile ekranın en altına kadar iniyor)
@@ -744,7 +746,6 @@ const styles = StyleSheet.create({
   calendarContainer: { 
   },
   contentWrapper: {
-    flex: 1,
     paddingTop: 12, // Minimal padding for header
   },
   menuButton: { 
