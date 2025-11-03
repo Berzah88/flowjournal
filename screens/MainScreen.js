@@ -222,6 +222,14 @@ const MainScreen = memo(function MainScreen({ navigation }) {
     return withTiming(globalCollapseProgress.value, { duration: 260, easing: Easing.out(Easing.cubic) });
   });
 
+  // Worklet-side flag to allow tab switching (used by MainTabNavigation's
+  // gesture worklets). This avoids JS roundtrips: swipe is fully disabled
+  // until smoothedCollapse passes the visibility threshold.
+  const tabSwitchAllowedShared = useDerivedValue(() => {
+    // status tabs become visible as collapse -> 1, use 0.9 as threshold
+    return smoothedCollapse.value >= 0.9 ? 1 : 0;
+  });
+
   // Simplified header animation - single style with reduced calculations
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const p = smoothedCollapse.value;
@@ -382,9 +390,13 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
   // Memoized tab press handler (preserve scroll positions and header state)
   const handleTabPress = useCallback((index) => {
+    // Prevent tab switching until the status tabs are visible. Use the
+    // JS-mirrored `headerFullyCollapsed` boolean which indicates the
+    // header is collapsed enough for the status tabs to be interactable.
+    if (!headerFullyCollapsed) return;
     if (index === activeIndex) return;
     setActiveIndex(index);
-  }, [activeIndex]);
+  }, [activeIndex, headerFullyCollapsed]);
 
 
   // Parent date notifications için global trigger sistemi
@@ -512,7 +524,8 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           headerFullyCollapsed={headerFullyCollapsed}
           myDayContentScrollHandler={myDayContentScrollHandler}
           activeContentScrollHandler={activeContentScrollHandler}
-          
+          tabSwitchAllowed={headerFullyCollapsed}
+          tabSwitchAllowedShared={tabSwitchAllowedShared}
           onOpenCard={openCard}
           onAddProject={() => setAddVisible(true)}
         />

@@ -1,0 +1,29 @@
+C:\dev\flowjournal\.venv\lib\site-packages\google\api_core\_python_version_support.py:266: FutureWarning: You are using a Python version (3.10.11) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+DEBUG: Resolved service account path -> C:\dev\flowjournal\backend\serviceAccountKey.json
+DEBUG: Firebase app name: [DEFAULT]
+DEBUG: Firebase app options: <firebase_admin._AppOptions object at 0x0000000004FB1CC0>
+DEBUG: google-services.json project_id -> flowjournal-731f7
+
+============================================================
+[FCM] Firebase Cloud Messaging - Manuel Test
+============================================================
+
+[TEST] Manuel Test Notification G├Ânderiliyor...
+[TIME] Tarih/Saat: 2025-11-02 11:54:21
+------------------------------------------------------------
+[INFO] Do─ƒrudan token ile test g├Ânderiliyor (Firestore kullan─▒c─▒ sorgulanm─▒yor)
+[OK] Kullan─▒c─▒ bulundu: test-user
+[TOKEN] FCM Token: dJAXp5PIRZGaaijVHYBp...
+
+[INFO] Data-only mesaj g├Ânderiliyor (notification alan─▒ yok). Bu mesaj React Native JS taraf─▒nda onMessage ile yakalan─▒r (foreground) veya background handler ile i┼ƒlenir.
+[OK] Test bildirimi ba┼ƒar─▒yla g├Ânderildi!
+[RESPONSE] Response: projects/flowjournal-731f7/messages/0:1762073671627696%0c29ba6ef9fd7ecd
+
+[DEVICE] Cihaz─▒n─▒z─▒ kontrol edin - bildirim geldi mi?
+
+
+============================================================
+[OK] Test tamamland─▒ - BA┼×ARILI
+============================================================
+

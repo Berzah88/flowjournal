@@ -12,7 +12,12 @@ export const ANIMATION_DURATIONS = {
 // Swipe threshold'ları
 export const SWIPE_THRESHOLDS = {
   CLOSE: 120,
-  NAVIGATE: 0.25,
+  // Fraction of screen width required to navigate between tabs. Lower
+  // value -> more sensitive to shorter swipes. Default was 0.18.
+  NAVIGATE: 0.12,
+  // Velocity threshold (px/s) used for fling shortcuts. Lowering this
+  // makes quick swipes easier to trigger.
+  VELOCITY: 500,
   PAN_RESPONDER: 12,
 };
 

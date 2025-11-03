@@ -92,6 +92,8 @@ class FirestoreService {
       }
 
       const userDocRef = doc(this.db, 'users', this.currentUserId);
+      // Log what we are going to write for easier debugging
+      console.log('ℹ️ Firestore: Kullanıcı profili güncelleniyor. userId=', this.currentUserId, 'data=', data);
       await setDoc(userDocRef, {
         ...data,
         updatedAt: serverTimestamp()
@@ -100,6 +102,10 @@ class FirestoreService {
       console.log('✅ Firestore: Kullanıcı profili güncellendi');
     } catch (error) {
       console.error('❌ Firestore: Profil güncelleme hatası:', error);
+      // If write is rejected due to security rules, provide hint
+      if (error && error.code) {
+        console.error('Firestore error code:', error.code);
+      }
     }
   }
 

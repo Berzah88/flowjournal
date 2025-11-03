@@ -13,7 +13,23 @@ def initialize_firebase():
     """Initialize Firebase if not already initialized"""
     try:
         if not firebase_admin._apps:
-            cred = credentials.Certificate('serviceAccountKey.json')
+            import os
+
+            def _resolve_service_account_path():
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                local_path = os.path.join(base_dir, 'serviceAccountKey.json')
+                env_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+                if os.path.exists(local_path):
+                    return local_path
+                if env_path and os.path.exists(env_path):
+                    return env_path
+                return None
+
+            sa_path = _resolve_service_account_path()
+            if not sa_path:
+                print('❌ serviceAccountKey.json bulunamadı. Lütfen service account JSON dosyasını backend dizinine yükleyin veya GOOGLE_APPLICATION_CREDENTIALS ile yol verin.', file=sys.stderr)
+                return False
+            cred = credentials.Certificate(sa_path)
             firebase_admin.initialize_app(cred)
         return True
     except Exception as e:

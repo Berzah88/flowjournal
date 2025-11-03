@@ -13,6 +13,7 @@ import {
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
+import firestoreService from './FirestoreService';
 
 const STORAGE_KEYS = {
   FCM_TOKEN: 'fcmToken',
@@ -42,6 +43,26 @@ class FCMService {
     }
     if (!globalThis.__fcmRecentMessageKeys) {
       globalThis.__fcmRecentMessageKeys = new Map(); // key -> timestamp
+    }
+  }
+
+  // Decide whether a message is "critical" (heuristic)
+  isCriticalNotification(remoteMessage) {
+    try {
+      // Treat project_deadline and manual critical types as critical
+      const dataType = remoteMessage?.data?.type;
+      if (!dataType && remoteMessage?.notification && remoteMessage?.from?.startsWith('/topics/')) {
+        // Topic notifications from backend are considered important reminders
+        return true;
+      }
+      if (dataType === 'project_deadline' || dataType === 'critical' || dataType === 'manual_test') {
+        return true;
+      }
+      // Allow override via data.force_show = '1'
+      if (remoteMessage?.data?.force_show === '1') return true;
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -175,11 +196,39 @@ class FCMService {
       if (token) {
         await AsyncStorage.setItem(STORAGE_KEYS.FCM_TOKEN, token);
         this.fcmToken = token;
+        // Also ensure token is registered to Firestore immediately
+        try {
+          await firestoreService.setFCMToken(token);
+          console.log('✅ FCM token Firestore\'a kaydedildi (FCMService)');
+        } catch (e) {
+          console.warn('⚠️ FCM token Firestore\'a kaydedilirken hata:', e);
+        }
       }
       
       return token;
     } catch (error) {
       console.error('❌ FCM token alınamadı:', error);
+      return null;
+    }
+  }
+
+  // Force refresh token and register to Firestore (debug helper)
+  async refreshTokenAndRegister() {
+    try {
+      console.log('🔄 FCM token yenileniyor (refresh)...');
+      const messagingInstance = getMessaging();
+      const token = await getToken(messagingInstance);
+      if (token) {
+        this.fcmToken = token;
+        await AsyncStorage.setItem(STORAGE_KEYS.FCM_TOKEN, token);
+        await firestoreService.setFCMToken(token);
+        console.log('✅ refreshTokenAndRegister: token yenilendi ve Firestore\'a kaydedildi');
+        return token;
+      }
+      console.warn('⚠️ refreshTokenAndRegister: token alınamadı');
+      return null;
+    } catch (error) {
+      console.error('❌ refreshTokenAndRegister hatası:', error);
       return null;
     }
   }
@@ -204,9 +253,18 @@ class FCMService {
       console.log('🔥 Foreground handler kaydediliyor...');
       
       globalThis.__fcmForegroundHandler = async (remoteMessage) => {
-        // Boş veya geçersiz mesajları filtrele
-        if (!remoteMessage || !remoteMessage.notification || remoteMessage.sentTime === 0) {
+        // Boş veya geçersiz mesajları filtrele (sentTime==0 veya tamamen boş)
+        if (!remoteMessage || remoteMessage.sentTime === 0) {
           console.log('⏭️ Geçersiz mesaj atlandı (boş veya sentTime=0)');
+          return;
+        }
+
+        const hasNotification = !!remoteMessage.notification;
+        const hasData = !!remoteMessage.data;
+
+        // Eğer ne notification ne data yoksa atla
+        if (!hasNotification && !hasData) {
+          console.log('⏭️ Geçersiz mesaj atlandı (notification veya data yok)');
           return;
         }
 
@@ -230,31 +288,39 @@ class FCMService {
           hasNotification: !!remoteMessage.notification
         });
 
-        if (appState === 'active' && remoteMessage.notification && isCritical) {
-          // Sadece uygulama aktifken VE kritik bildirimler için local notification göster
+        // Decide whether to show a local notification while app is foreground.
+        // For notification payloads the existing logic applies. For data-only messages
+        // we allow showing a local notification when the message is critical or explicitly forced.
+        let shouldShowLocal = false;
+        if (hasNotification) {
+          shouldShowLocal = isCritical || (remoteMessage.from || '').startsWith('/topics/') || remoteMessage.data?.force_show === '1';
+        } else {
+          // data-only: show if critical or forced
+          shouldShowLocal = isCritical || remoteMessage.data?.force_show === '1';
+        }
+
+        if (appState === 'active' && shouldShowLocal) {
           try {
             await Notifications.scheduleNotificationAsync({
               content: {
-                title: remoteMessage.notification.title || 'Bildirim',
-                body: remoteMessage.notification.body || '',
+                title: (remoteMessage.notification && remoteMessage.notification.title) || (remoteMessage.data && remoteMessage.data.title) || 'Bildirim',
+                body: (remoteMessage.notification && remoteMessage.notification.body) || (remoteMessage.data && remoteMessage.data.body) || '',
                 data: remoteMessage.data || {},
                 sound: true,
                 priority: Notifications.AndroidNotificationPriority.HIGH,
               },
-              trigger: null, // Hemen göster
+              trigger: null,
             });
 
-            console.log('✅ Kritik bildirim için local notification gösterildi');
+            console.log('✅ Kritik/local bildirim için local notification gösterildi');
           } catch (error) {
             console.error('❌ Local notification hatası:', error);
           }
         } else {
           if (appState !== 'active') {
             console.log('ℹ️ App arka planda - local notification gösterilmedi (sistem gösterecek)');
-          } else if (!isCritical) {
-            console.log('ℹ️ Kritik olmayan bildirim - sadece native notification gösterilecek');
-          } else if (!remoteMessage.notification) {
-            console.log('ℹ️ Notification payload yok - local notification gösterilmeyecek');
+          } else if (!shouldShowLocal) {
+            console.log('ℹ️ Foreground: local notification gösterilmeyecek. isCritical=', isCritical, 'from=', remoteMessage.from, 'force_show=', remoteMessage.data?.force_show);
           }
         }
         

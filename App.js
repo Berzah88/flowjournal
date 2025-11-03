@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StatusBar } from 'react-native';
+import { StatusBar, Platform } from 'react-native';
 import TutorialScreen from './screens/TutorialScreen';
 import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
@@ -170,6 +170,26 @@ export default function App() {
       initializeApp();
     }
   }, [fontsLoaded]);
+
+  // Ensure Android notification channel exists (important for Android 8+)
+  useEffect(() => {
+    async function ensureChannel() {
+      try {
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'Default',
+            importance: Notifications.AndroidImportance.HIGH,
+            sound: 'default',
+          });
+          console.log('✅ Android notification channel "default" ensured');
+        }
+      } catch (e) {
+        console.warn('⚠️ Kanal oluşturulurken hata:', e);
+      }
+    }
+
+    ensureChannel();
+  }, []);
 
   if (!fontsLoaded) {
     return <LoadingSpinner message="Loading fonts..." />;

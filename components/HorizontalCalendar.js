@@ -55,23 +55,22 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
   // On first render (or when weekDates change), scroll so that today is the
   // second item from the left. This positions index(today) - 1 to the left edge.
   useEffect(() => {
-    // Only attempt if we have a ref and weekDates
-    if (!scrollRef.current || !weekDates || weekDates.length === 0) return;
-
-    const todayIndex = weekDates.findIndex(d => isToday(d));
-    if (todayIndex === -1) return;
-
-    const targetIndex = Math.max(0, todayIndex - 1);
-    const offset = targetIndex * ITEM_WIDTH;
-
-    // Defer to next frame so layout is ready
-    setTimeout(() => {
-      try {
-        scrollRef.current.scrollTo({ x: offset, animated: false });
-      } catch (e) {
-        // ignore
-      }
-    }, 0);
+    // Automatic initial positioning intentionally disabled.
+    // Previously we programmatically scrolled the calendar so "today" was
+    // centered/visible on first render. That behavior caused unexpected
+    // jumps during some navigation flows, so it was removed per UX request.
+    // If you need the original behavior again, re-enable the code below
+    // and consider using `animated: true` or guarding with a one-time flag.
+    //
+    // Example (disabled):
+    // if (scrollRef.current && weekDates && weekDates.length) {
+    //   const todayIndex = weekDates.findIndex(d => isToday(d));
+    //   if (todayIndex !== -1) {
+    //     const targetIndex = Math.max(0, todayIndex - 1);
+    //     const offset = targetIndex * ITEM_WIDTH;
+    //     setTimeout(() => { try { scrollRef.current.scrollTo({ x: offset, animated: false }); } catch (e) {} }, 0);
+    //   }
+    // }
   }, [weekDates]);
 
 

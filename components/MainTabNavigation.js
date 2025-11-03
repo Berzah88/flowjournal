@@ -58,7 +58,10 @@ const MainTabNavigation = ({
   flatListProps,
   headerFullyCollapsed,
   headerShouldHandleJS,
+  tabSwitchAllowed = true,
+  tabSwitchAllowedShared = null,
 }) => {
+  // (diagnostics removed)
   // scrollHandler kaldırıldı; header çökme kontrolü artık child ScrollView/FlatList
   // (MyDayScreen / Active list) içindeki scroll handler'lar ve header gesture'ları
   // tarafından sürdürülüyor. flatListProps uygulanır.
@@ -87,7 +90,7 @@ const MainTabNavigation = ({
   useEffect(() => {
     const target = -activeIndex * width;
     if (offsetRef.current !== target) {
-      offsetShared.value = target;
+        offsetShared.value = target;
       translateX.value = withTiming(target, { duration: 240, easing: Easing.out(Easing.cubic) }, (finished) => {
         if (finished) runOnJS(setIndexAndOffset)(activeIndex, target);
       });
@@ -116,16 +119,34 @@ const MainTabNavigation = ({
 
   // JS helper to set index and offset safely from worklets
   const setIndexAndOffset = React.useCallback((index, target) => {
+    // (diagnostics removed)
+    // If tab switching is currently disallowed (e.g. MoodStatement not visible),
+    // reject the change and animate the view back to the current index.
+    if (!tabSwitchAllowed) {
+      const fallback = -activeIndex * width;
+      offsetRef.current = fallback;
+      offsetShared.value = fallback;
+      // bring view back to the current index
+      translateX.value = withTiming(fallback, { duration: 200, easing: Easing.out(Easing.cubic) });
+      return;
+    }
     offsetRef.current = target;
     setActiveIndex(index);
-  }, [setActiveIndex]);
+  }, [setActiveIndex, tabSwitchAllowed, activeIndex]);
 
   // Horizontal pan gesture (always enabled) for tab swipes
-  const horizontalGesture = Gesture.Pan().activeOffsetX([-10, 10])
+  // Narrow the activeOffsetX so small intentional horizontal moves are
+  // recognized sooner. Previously [-10,10]. Make it slightly tighter.
+  const horizontalGesture = Gesture.Pan().activeOffsetX([-6, 6])
     .onStart(() => {
+      // If a shared flag is provided from the parent, consult it on the UI
+      // thread and reject gesture start when switching is disallowed so
+      // the user cannot even begin a horizontal swipe.
+      if (tabSwitchAllowedShared && tabSwitchAllowedShared.value === 0) return;
       gestureStartX.value = translateX.value;
     })
     .onUpdate((e) => {
+      if (tabSwitchAllowedShared && tabSwitchAllowedShared.value === 0) return;
       const dx = e.translationX;
       const dy = e.translationY;
       if (Math.abs(dx) > Math.abs(dy)) {
@@ -135,18 +156,60 @@ const MainTabNavigation = ({
       }
     })
     .onEnd((e) => {
+        // (diagnostics removed)
+
+      if (tabSwitchAllowedShared && tabSwitchAllowedShared.value === 0) {
+        // If switching disallowed, simply snap back to current index
+        const fallback = -activeIndex * width;
+        translateX.value = withTiming(fallback, { duration: 160, easing: Easing.out(Easing.cubic) });
+        return;
+      }
       const dx = e.translationX;
       const current = gestureStartX.value + dx;
-      if (dx <= -threshold && offsetShared.value === 0) {
+      // Make right-swipe (active -> MyDay) easier by using a lower
+      // threshold when dx > 0 (swiping right). Left-swipe keeps the
+      // default threshold to avoid accidental forward navigation.
+      // Also allow a velocity-based fling to trigger the navigation so
+      // quick swipes are respected even if translation distance is small.
+      // Reduce right-direction threshold slightly for better sensitivity.
+      const dirThreshold = dx > 0 ? width * 0.06 : threshold;
+      const vX = e.velocityX || 0;
+      // Velocity-based shortcuts (use centralized constant)
+      // Use activeIndexShared (worklet-safe) rather than strict offset checks
+      // because offsetShared can lag in some paths. activeIndexShared.value
+      // reliably indicates the currently active tab (0 or 1).
+      if (vX > SWIPE_THRESHOLDS.VELOCITY && activeIndexShared.value === 1) {
+        // fast right fling -> go to MyDay
+        translateX.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) }, (finished) => {
+          if (finished) runOnJS(setIndexAndOffset)(0, 0);
+        });
+        return;
+      }
+      if (vX < -SWIPE_THRESHOLDS.VELOCITY && activeIndexShared.value === 0) {
+        // fast left fling -> go to Active
+        translateX.value = withTiming(-width, { duration: 200, easing: Easing.out(Easing.cubic) }, (finished) => {
+          if (finished) runOnJS(setIndexAndOffset)(1, -width);
+        });
+        return;
+      }
+
+      // Normal translation-based navigation: use activeIndexShared checks
+      if (dx <= -dirThreshold && activeIndexShared.value === 0) {
         translateX.value = withTiming(-width, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
           if (finished) runOnJS(setIndexAndOffset)(1, -width);
         });
-      } else if (dx >= threshold && offsetShared.value === -width) {
+      } else if (dx >= dirThreshold && activeIndexShared.value === 1) {
         translateX.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
           if (finished) runOnJS(setIndexAndOffset)(0, 0);
         });
       } else {
-        const target = Math.abs(current) > width / 2 ? -width : 0;
+        // Also consider how far the current position moved relative to
+        // the page width: reduce the main snap threshold from 50% to
+        // ~38% to make swipes more sensitive (shorter drags will snap).
+        let target = Math.abs(current) > width * 0.38 ? -width : 0;
+        // If the currently active index is the right page and the user
+        // moved back past a small threshold, snap back to the left page.
+        if (activeIndexShared.value === 1 && current > -width * 0.35) target = 0;
         translateX.value = withTiming(target, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
           if (finished) runOnJS(setIndexAndOffset)(target === 0 ? 0 : 1, target);
         });
@@ -194,13 +257,14 @@ const MainTabNavigation = ({
 
   // Tab press handler
   const handleTabPress = useCallback((index) => {
+    if (!tabSwitchAllowed) return;
     if (index === activeIndex) return;
     setActiveIndex(index);
     const target = -index * width;
     offsetRef.current = target;
     offsetShared.value = target;
     animateToIndex(index);
-  }, [activeIndex, animateToIndex, setActiveIndex]);
+  }, [activeIndex, animateToIndex, setActiveIndex, tabSwitchAllowed]);
 
   // Memoized render functions
   const renderActiveItem = useCallback(({ item }) => (

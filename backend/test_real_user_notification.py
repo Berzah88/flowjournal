@@ -8,7 +8,12 @@ import firebase_admin
 from firebase_admin import credentials, firestore, messaging
 from datetime import datetime
 
+import os
+
 if not firebase_admin._apps:
+    if not os.path.exists('serviceAccountKey.json'):
+        print('❌ serviceAccountKey.json bulunamadı. Lütfen service account JSON dosyasını backend dizinine yükleyin.')
+        exit(2)
     cred = credentials.Certificate('serviceAccountKey.json')
     firebase_admin.initialize_app(cred)
 

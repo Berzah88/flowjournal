@@ -55,22 +55,11 @@ export default function useHeaderCollapseCoordinator({
         : (statusTabsOffset ? statusTabsOffset.value : 120);
       const clamped = Math.max(0, Math.min(y, thr));
       const progress = thr > 0 ? clamped / thr : 0;
-      if (snapEnabled) {
-        const target = progress > snapThreshold ? 1 : 0;
-        // Avoid starting tiny animations when we're already very close to the
-        // target; jump to final state or skip the timing to prevent jitter.
-        if (Math.abs(globalCollapseProgress.value - target) > 0.015) {
-          globalCollapseProgress.value = withTiming(target, { duration: snapDuration, easing: Easing.out(Easing.cubic) });
-          if (globalScrollY) globalScrollY.value = withTiming(target * thr, { duration: snapDuration, easing: Easing.out(Easing.cubic) });
-        } else {
-          globalCollapseProgress.value = target;
-          if (globalScrollY) globalScrollY.value = target * thr;
-        }
-      } else {
-        // Keep header strictly synced to current progress without snapping.
-        globalCollapseProgress.value = progress;
-        if (globalScrollY) globalScrollY.value = clamped;
-      }
+      // Automatic snapping removed: always keep header strictly synced to
+      // the current scroll progress. This avoids any autonomous expand/
+      // collapse behavior and prevents unexpected auto-scrolling.
+      globalCollapseProgress.value = progress;
+      if (globalScrollY) globalScrollY.value = clamped;
     },
     onMomentumEnd: (event) => {
       if (activeIndexShared && activeIndexShared.value !== 0) return;
@@ -80,19 +69,10 @@ export default function useHeaderCollapseCoordinator({
         : (statusTabsOffset ? statusTabsOffset.value : 120);
       const clamped = Math.max(0, Math.min(y, thr));
       const progress = thr > 0 ? clamped / thr : 0;
-      if (snapEnabled) {
-        const target = progress > snapThreshold ? 1 : 0;
-        if (Math.abs(globalCollapseProgress.value - target) > 0.015) {
-          globalCollapseProgress.value = withTiming(target, { duration: snapDuration, easing: Easing.out(Easing.cubic) });
-          if (globalScrollY) globalScrollY.value = withTiming(target * thr, { duration: snapDuration, easing: Easing.out(Easing.cubic) });
-        } else {
-          globalCollapseProgress.value = target;
-          if (globalScrollY) globalScrollY.value = target * thr;
-        }
-      } else {
-        globalCollapseProgress.value = progress;
-        if (globalScrollY) globalScrollY.value = clamped;
-      }
+      // Automatic snapping removed: keep header strictly synced to scroll
+      // progress even when momentum finishes.
+      globalCollapseProgress.value = progress;
+      if (globalScrollY) globalScrollY.value = clamped;
     }
   });
 

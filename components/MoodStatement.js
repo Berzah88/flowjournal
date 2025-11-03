@@ -156,7 +156,7 @@ const MoodStatement = React.memo(({
   
   // STEP 2: Journal entries'i flat array'e çıkar - SADECE METADATA DEĞİŞTİĞİNDE
   const allJournalEntries = useMemo(() => {
-    logger.debug('📦 MoodStatement - Journal cache güncelleniyor');
+    // Journal cache updated (logging removed to reduce JS-thread work)
     
     const entries = [];
     [...activeTasks, ...completedTasks].forEach(task => {
@@ -175,7 +175,8 @@ const MoodStatement = React.memo(({
   
   // Bugünkü mood'ları hesapla - SADECE allJournalEntries DEĞİŞTİĞİNDE
   const todayMoodData = useMemo(() => {
-  logger.debug('🔄 MoodStatement - HESAPLAMA YAPILIYOR (sadece journal değiştiğinde olmalı)');
+  // Heavy calculations are memoized; avoid debug logging here to
+  // reduce JS-thread activity during scroll interactions.
     
     // selectedDate yoksa bugünü kullan
     const dateToUse = selectedDate || new Date();
@@ -429,9 +430,11 @@ const MoodStatement = React.memo(({
     let active = true;
     const prov = todayMoodData?.provisional;
     if (prov && prov.__predicted_text_for_js && jsPredictor) {
-      // Run predictor asynchronously (non-blocking to UI)
-      setTimeout(() => {
-          try {
+      // Debounce predictor to avoid running heavy JS during short
+      // interactions (like quick reverse-scrolls). If provisional input
+      // changes or component unmounts, the timer is cleared.
+      const timer = setTimeout(() => {
+        try {
           const res = jsPredictor.predict(prov.__predicted_text_for_js);
           if (!active) return;
           if (res && res.mood && res.probs) {
@@ -447,7 +450,8 @@ const MoodStatement = React.memo(({
           // ignore predictor errors
           logger.warn('JS predictor error:', e.message || e);
         }
-      }, 0);
+      }, 500);
+      return () => { active = false; clearTimeout(timer); };
     } else {
       setJsOverride(null);
     }
@@ -502,32 +506,34 @@ const MoodStatement = React.memo(({
   const [dailyTip, setDailyTip] = useState('');
 
   useEffect(() => {
+    // Load daily tip once on mount to avoid AsyncStorage access during
+    // scroll interactions which can introduce JS-thread stalls.
+    let active = true;
     const loadDailyTip = async () => {
       try {
         const today = new Date().toDateString();
         const cachedTip = await AsyncStorage.getItem(`daily_tip_${today}`);
 
-        if (cachedTip) {
+        if (cachedTip && active) {
           setDailyTip(cachedTip);
-        } else {
+        } else if (active) {
           // Yeni gün için rastgele mesaj oluştur
           const moodKey = todayMoodData?.dominantMood?.key || 'default';
           const newTip = generateQuickTip(moodKey);
 
-          // Cache'e kaydet
-          await AsyncStorage.setItem(`daily_tip_${today}`, newTip);
+          // Cache'e kaydet (fire-and-forget)
+          AsyncStorage.setItem(`daily_tip_${today}`, newTip).catch(() => {});
           setDailyTip(newTip);
         }
       } catch (error) {
         logger.error('Daily tip loading error:', error);
-        // Hata durumunda normal mesaj kullan
-        const moodKey = todayMoodData?.dominantMood?.key || 'default';
-        setDailyTip(generateQuickTip(moodKey));
+        if (active) setDailyTip(generateQuickTip(todayMoodData?.dominantMood?.key || 'default'));
       }
     };
 
     loadDailyTip();
-  }, [todayMoodData?.dominantMood?.key, generateQuickTip]);
+    return () => { active = false; };
+  }, []);
 
   // QuickTip: Günlük mesajları kullan
   const quickTip = useMemo(() => {

@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
+import MediaPickerModal from '../components/MediaPickerModal';
 // import MapView, { Marker } from "expo-maps"; // Geçici olarak devre dışı
 import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
@@ -172,6 +173,7 @@ export default function Journal({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [isPickingMedia, setIsPickingMedia] = useState(false); // Medya seçme durumu
+  const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
   const [textValue, setTextValue] = useState("");
   const [previews, setPreviews] = useState([]);
   const [editingEntryId, setEditingEntryId] = useState(null);
@@ -561,48 +563,24 @@ export default function Journal({
   };
 
   const pickImage = async () => {
-    try {
-      setIsPickingMedia(true); // Medya seçme başladı - preview'i engelle
-      
-      // Check permission status first
-      let { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
-      // If permission has not been requested/granted, request it explicitly
-      if (status !== 'granted') {
-        const req = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        status = req.status;
-      }
+    // Open the in-app media picker modal instead of launching system gallery
+    setMediaPickerVisible(true);
+  };
 
-      if (status !== 'granted') {
-        // İzin reddedilmişse açıklama göster
-        Alert.alert(
-          t('permissionRequired') || 'İzin Gerekli',
-          t('galleryPermissionMessage') || 'Fotoğraf eklemek için galeri erişim izni gerekli. Lütfen ayarlardan izin verin.',
-          [{ text: t('ok') || 'Tamam' }]
-        );
-        setIsPickingMedia(false);
-        return;
-      }
-      
-      // Prefer the newer ImagePicker.MediaType (strings like 'images'),
-      // fallback to an array of media types to avoid using deprecated MediaTypeOptions.
-      const mediaTypesOption =
-        (ImagePicker.MediaType && ImagePicker.MediaType.Images) ||
-        ['images'];
-      const result = await ImagePicker.launchImageLibraryAsync({
-        quality: 0.7,
-        mediaTypes: mediaTypesOption, // Sadece resim
-      });
-      let uri = null;
-      if (result?.assets && result.assets.length > 0) uri = result.assets[0].uri;
-      else if (result?.uri) uri = result.uri;
-      if (uri) addPreviewImage(uri);
-    } catch (error) {
-      // User'a error gösterme - sessizce logla
-  logger.debug('Image picker error:', error);
-    } finally {
-      // Medya seçme bitti - klavye kapanmışsa preview gösterilebilir
-      setTimeout(() => setIsPickingMedia(false), 300); // 300ms bekle
+  const handleMediaSelected = (uriOrArray) => {
+    // Accept single uri string or array of uris
+    if (!uriOrArray) {
+      setMediaPickerVisible(false);
+      setTimeout(() => setIsPickingMedia(false), 200);
+      return;
     }
+    const uris = Array.isArray(uriOrArray) ? uriOrArray : [uriOrArray];
+    uris.forEach(u => {
+      if (u) addPreviewImage(u);
+    });
+    setMediaPickerVisible(false);
+    // small delay to avoid jumpy UI
+    setTimeout(() => setIsPickingMedia(false), 200);
   };
 
   const pickLocation = async () => {
@@ -1213,6 +1191,15 @@ export default function Journal({
         </KeyboardAvoidingView>
         </LinearGradient>
       </Animated.View>
+
+      {/* Media Picker Modal (in-app) */}
+      {mediaPickerVisible && (
+        <MediaPickerModal
+          visible={mediaPickerVisible}
+          onClose={() => setMediaPickerVisible(false)}
+          onSelect={handleMediaSelected}
+        />
+      )}
 
       {/* Image Modal */}
       {showImageModal && selectedImage && selectedImage.type === "image" && (
