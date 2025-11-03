@@ -19,6 +19,7 @@ import FlashCalendar from "../components/FlashCalendar";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useEducation } from "../context/EducationContext";
+import { Typography } from '../components/Styles';
 import { EDUCATION_STEPS } from "../context/EducationContext";
 import Animated, {
   useSharedValue,
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
   inputOverlay: {
     width: "100%",
     fontSize: 20,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: Typography.fonts.bold,
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
     marginVertical: 15,
@@ -250,6 +251,6 @@ const styles = StyleSheet.create({
   dateButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: Typography.fonts.bold,
   },
 });
