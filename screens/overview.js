@@ -10,6 +10,7 @@ import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { Helpers } from '../components/Styles';
 
 const { width } = Dimensions.get('window');
 
@@ -576,7 +577,7 @@ const OverviewScreen = ({ navigation, route }) => {
       colors={overviewGradientColors}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={styles.screen}
+      style={[styles.screen, Helpers.container]}
     >
       <View
         style={[
@@ -755,7 +756,6 @@ const OverviewScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
   },
   topBar: {
     flexDirection: 'row',
