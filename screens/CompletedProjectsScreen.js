@@ -20,6 +20,7 @@ import { useLanguage } from "../context/LanguageContext";
 import Card from "../components/Card";
 import CompletedActiveProject from "./CompletedActiveProject";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { Helpers } from '../components/Styles';
 
 const { width } = Dimensions.get("window");
 
@@ -91,7 +92,7 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
         : ['#F0F0F0', '#E8E8E8']}
       start={{ x: 0, y: 1 }}
       end={{ x: 0, y: 0 }}
-      style={styles.container}
+      style={[styles.container, Helpers.container]}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -290,7 +291,6 @@ export default CompletedProjectsScreen;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
   },
   header: {
     flexDirection: "row",
@@ -351,7 +351,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   content: {
-    flex: 1,
     paddingHorizontal: 24,
   },
   listContainer: {
