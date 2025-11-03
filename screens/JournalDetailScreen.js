@@ -19,6 +19,7 @@ import * as Location from "expo-location";
 import logger from '../utils/logger';
 import { reverseGeocodeSafe, formatCoords } from '../utils/locationHelpers';
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Helpers } from '../components/Styles';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -547,6 +548,7 @@ const JournalDetailScreen = ({
   return (
     <SafeAreaView style={[
       styles.container,
+      Helpers.container,
       { backgroundColor: theme.name === 'dark' ? '#000000' : '#FFFFFF' }
     ]}>
       <Reanimated.View style={[styles.contentContainer, animatedContainerStyle]}>
