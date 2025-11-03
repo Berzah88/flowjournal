@@ -10,7 +10,7 @@ import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { Helpers } from '../components/Styles';
+import { Helpers, Typography } from '../components/Styles';
 
 const { width } = Dimensions.get('window');
 
@@ -777,11 +777,11 @@ const styles = StyleSheet.create({
   },
   topBarTitle: {
     fontSize: 22,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
   },
   topBarSubtitle: {
     fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: Typography.fonts.regular,
     marginTop: 2,
   },
   topBarSubtitleRow: {
@@ -856,24 +856,24 @@ const styles = StyleSheet.create({
   },
   highlightValue: {
     fontSize: 22,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: Typography.fonts.bold,
     marginBottom: 4,
     textAlign: 'center',
   },
   highlightValueSmall: {
     fontSize: 18,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: Typography.fonts.bold,
     marginBottom: 2,
     textAlign: 'center',
   },
   highlightLabel: {
     fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     textAlign: 'center',
   },
   highlightLabelSmall: {
     fontSize: 11,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     textAlign: 'center',
   },
   streakHeroContainer: {
@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 8,
     fontSize: 14,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
   },
   streakHeroContent: {
     flexDirection: 'row',
@@ -925,13 +925,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 46,
     lineHeight: 48,
-    fontFamily: 'Poppins_800ExtraBold',
+    fontFamily: Typography.fonts.extraBold,
     marginRight: 6,
   },
   streakHeroSub: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 14,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     marginBottom: 4,
   },
   streakMiniRow: {
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 6,
     fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
   },
 });
 

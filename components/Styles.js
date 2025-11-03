@@ -27,6 +27,7 @@ const Typography = {
     medium: Platform.select({ ios: 'System', android: 'Poppins_500Medium', default: 'System' }),
     semiBold: Platform.select({ ios: 'System', android: 'Poppins_600SemiBold', default: 'System' }),
     bold: Platform.select({ ios: 'System', android: 'Poppins_700Bold', default: 'System' }),
+    extraBold: Platform.select({ ios: 'System', android: 'Poppins_800ExtraBold', default: 'System' }),
   },
   // Default fontFamily uses the regular variant for compatibility with existing code
   fontFamily: Platform.select({ ios: 'System', android: 'Poppins_400Regular', default: 'System' }),
