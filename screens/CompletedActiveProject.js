@@ -21,7 +21,7 @@ import AnimatedReanimated, {
   Easing,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Helpers } from '../components/Styles';
+import { Helpers, Typography } from '../components/Styles';
 
 const { width, height } = Dimensions.get("window");
 
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   },
   projectTitle: {
     fontSize: 20,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: Typography.fonts.bold,
     color: "#1D1D1F",
     textAlign: "left",
     letterSpacing: -0.3,
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   },
   dateRange: {
     fontSize: 12,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
     color: "#636366",
     textAlign: "left",
   },
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: Typography.fonts.semiBold,
     color: "#1D1D1F",
     marginBottom: 16,
     letterSpacing: -0.2,
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
   },
   milestoneTitle: {
     fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: Typography.fonts.semiBold,
     color: "#1D1D1F",
   },
   journalCardsContainer: {
@@ -710,14 +710,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: Typography.fonts.semiBold,
     color: "#1D1D1F",
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
     color: "#8E8E93",
     textAlign: "center",
   },
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
     color: "#8E8E93",
   },
   moreIndicator: {
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   },
   moreText: {
     fontSize: 13,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
     color: "#8E7DBE",
   },
 });
