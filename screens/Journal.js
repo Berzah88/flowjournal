@@ -36,6 +36,7 @@ import { useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import logger from '../utils/logger';
+import Styles, { Helpers, Typography } from '../components/Styles';
 // Throttle pickLocation logs to avoid noisy repeated messages in quick succession
 let _lastPickLocationLogTs = 0;
 const _pickLocationLog = (...args) => {
@@ -871,7 +872,7 @@ export default function Journal({
         </GestureDetector>
       </Animated.View>
 
-      <Animated.View style={[dynamicStyles.modalContainer, modalStyle]}>
+      <Animated.View style={[dynamicStyles.modalContainer, Helpers.container, modalStyle]}>
         <LinearGradient
           colors={theme.name === 'dark' 
             ? ['#1C1C1E', '#1A1A1C', '#18181A'] 
@@ -1279,7 +1280,7 @@ const styles = StyleSheet.create({
   dateText: { 
     paddingHorizontal: 0, 
     fontSize: 18, // 20'den 18'e düşürdüm - 2 punto küçük
-    fontFamily: "Poppins_600SemiBold",
+  fontFamily: Typography.fonts.semiBold,
     letterSpacing: -0.2,
     marginRight: 12,
   },
@@ -1294,7 +1295,7 @@ const styles = StyleSheet.create({
   moodLabel: {
     marginLeft: 6,
     fontSize: 12,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
   },
   locationSticker: {
     flexDirection: "row",
@@ -1310,7 +1311,7 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 10,
     color: "#007AFF",
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
   },
   previewWrapper: {
     paddingHorizontal: 16,
@@ -1395,7 +1396,7 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     fontSize: 18, 
     textAlignVertical: "top", 
-    fontFamily: "Poppins_400Regular", 
+  fontFamily: Typography.fonts.regular, 
     letterSpacing: -0.3,
     lineHeight: 24,
     borderRadius: 12,
@@ -1425,7 +1426,7 @@ const styles = StyleSheet.create({
     fontSize: 11, 
     textAlign: "center", 
     marginTop: 4, 
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
     letterSpacing: -0.1,
   },
 
@@ -1472,7 +1473,7 @@ const styles = StyleSheet.create({
   },
   suggestionMoodLabel: {
     fontSize: 11,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     marginLeft: 4,
   },
   manualMoodContainer: {
@@ -1610,7 +1611,7 @@ const styles = StyleSheet.create({
   mediaCounterText: {
     fontSize: 12,
     color: "#007AFF",
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
     fontWeight: "600",
   },
   moodTag: {
@@ -1627,7 +1628,7 @@ const styles = StyleSheet.create({
   },
   moodTagText: {
     fontSize: 11,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
     marginLeft: 4,
     letterSpacing: -0.1,
   },
