@@ -21,6 +21,7 @@ import AnimatedReanimated, {
   Easing,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Helpers } from '../components/Styles';
 
 const { width, height } = Dimensions.get("window");
 
@@ -320,7 +321,8 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
   return (
     <GestureDetector gesture={panGesture}>
       <AnimatedReanimated.View style={[
-        styles.modernContainer, 
+        styles.modernContainer,
+        Helpers.container,
         animatedStyle
       ]}>
         <LinearGradient
