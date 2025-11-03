@@ -30,6 +30,7 @@ import MainTabNavigation from "../components/MainTabNavigation";
 import MainModalManager from "../components/MainModalManager";
 import MainMenu from "../components/MainMenu";
 import StatusTabs from "../components/StatusTabs";
+import { Helpers } from '../components/Styles';
 
 const { width, height } = Dimensions.get("window");
 
@@ -445,7 +446,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
           ? ['#4B5563', '#374151', '#1F2937']
           : ['#f8f9fa', '#e9ecef', '#dee2e6']
         }
-        style={styles.container}
+        style={[styles.container, Helpers.container]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
@@ -631,7 +632,6 @@ const MainScreen = memo(function MainScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingTop: 20
   },
 });
