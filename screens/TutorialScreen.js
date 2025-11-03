@@ -16,6 +16,7 @@ import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../c
 import { useLanguage } from "../context/LanguageContext";
 import { useEducation } from "../context/EducationContext";
 import permissionManager from '../services/PermissionManager';
+import { Helpers } from '../components/Styles';
 
 const { width, height } = Dimensions.get("window");
 
@@ -206,7 +207,7 @@ export default function TutorialScreen({ navigation }) {
   const currentTutorial = tutorialSteps[currentStep];
 
   return (
-    <View style={styles.fullScreen}>
+    <View style={[styles.fullScreen, Helpers.container]}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <LinearGradient
         colors={[
@@ -397,10 +398,8 @@ export default function TutorialScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   fullScreen: {
-    flex: 1,
   },
   container: {
-    flex: 1,
     width: "100%",
   },
   header: {
