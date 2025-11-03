@@ -19,8 +19,16 @@ const Spacing = {
 };
 
 const Typography = {
-  // Use system font on iOS, use Poppins on Android as requested. Note: ensure
-  // Poppins font files (or expo-google-fonts/poppins) are loaded at app start.
+  // Map of the Poppins font variants used across the app. On iOS we fall back
+  // to the system font. Make sure Poppins variants are loaded at app start
+  // (eg. via expo-google-fonts/poppins or expo-font + assets).
+  fonts: {
+    regular: Platform.select({ ios: 'System', android: 'Poppins_400Regular', default: 'System' }),
+    medium: Platform.select({ ios: 'System', android: 'Poppins_500Medium', default: 'System' }),
+    semiBold: Platform.select({ ios: 'System', android: 'Poppins_600SemiBold', default: 'System' }),
+    bold: Platform.select({ ios: 'System', android: 'Poppins_700Bold', default: 'System' }),
+  },
+  // Default fontFamily uses the regular variant for compatibility with existing code
   fontFamily: Platform.select({ ios: 'System', android: 'Poppins_400Regular', default: 'System' }),
   sizes: {
     sm: 12,
@@ -35,6 +43,23 @@ const Typography = {
   },
 };
 
+// Basic text role helpers that use the centralized font mapping. Screens can
+// opt to reference `Typography.fonts.*` directly or use these role styles.
+const Text = StyleSheet.create({
+  heading: {
+    fontFamily: Typography.fonts.semiBold,
+    fontSize: Typography.sizes.lg,
+  },
+  body: {
+    fontFamily: Typography.fonts.regular,
+    fontSize: Typography.sizes.md,
+  },
+  small: {
+    fontFamily: Typography.fonts.regular,
+    fontSize: Typography.sizes.sm,
+  },
+});
+
 const Helpers = StyleSheet.create({
   rowCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -48,7 +73,8 @@ export default {
   Colors,
   Spacing,
   Typography,
+  Text,
   Helpers,
 };
 
-export { Colors, Spacing, Typography, Helpers };
+export { Colors, Spacing, Typography, Text, Helpers };

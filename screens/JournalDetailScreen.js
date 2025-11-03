@@ -19,7 +19,7 @@ import * as Location from "expo-location";
 import logger from '../utils/logger';
 import { reverseGeocodeSafe, formatCoords } from '../utils/locationHelpers';
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Helpers } from '../components/Styles';
+import { Helpers, Typography } from '../components/Styles';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -1087,7 +1087,7 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: 16,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
   },
 
   header: {
@@ -1117,7 +1117,7 @@ const styles = StyleSheet.create({
 
   date: {
     fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: Typography.fonts.semiBold,
     marginBottom: 4,
   },
 
@@ -1140,7 +1140,7 @@ const styles = StyleSheet.create({
 
   moodText: {
     fontSize: 10,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
     marginLeft: 4,
   },
 
@@ -1155,7 +1155,7 @@ const styles = StyleSheet.create({
 
   locationTagText: {
     fontSize: 10,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
     marginLeft: 4,
   },
 
@@ -1271,7 +1271,7 @@ const styles = StyleSheet.create({
   imageCounterText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
   },
 
   fullscreenScrollView: {
@@ -1319,7 +1319,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     fontSize: 16,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: Typography.fonts.semiBold,
     marginBottom: 12,
     textAlign: "left", // Sola hizalandı
   },
@@ -1348,7 +1348,7 @@ const styles = StyleSheet.create({
 
   noteTime: {
     fontSize: 12,
-    fontFamily: "Poppins_500Medium",
+    fontFamily: Typography.fonts.medium,
   },
 
   editButton: {
@@ -1362,7 +1362,7 @@ const styles = StyleSheet.create({
 
   noteContent: {
     fontSize: 14,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
     lineHeight: 20,
   },
 
@@ -1375,7 +1375,7 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: 14,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
     textAlign: "center",
   },
 
@@ -1416,7 +1416,7 @@ const styles = StyleSheet.create({
   },
   milestoneTagText: {
     fontSize: 11,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     letterSpacing: 0.2,
     color: '#333',
     flex: 1, // Kalan alanı kapla, wrap yapabilsin
@@ -1456,7 +1456,7 @@ const styles = StyleSheet.create({
   },
   addMilestoneText: {
     fontSize: 13,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     marginLeft: 4,
   },
 
@@ -1482,7 +1482,7 @@ const styles = StyleSheet.create({
   },
   milestoneModalTitle: {
     fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     flex: 1,
     textAlign: "center",
     marginHorizontal: 16,
@@ -1516,7 +1516,7 @@ const styles = StyleSheet.create({
   },
   milestoneOptionText: {
     fontSize: 16,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     flex: 1,
   },
 
@@ -1531,7 +1531,7 @@ const styles = StyleSheet.create({
   },
   noMediaText: {
     fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: Typography.fonts.regular,
     marginTop: 8,
     textAlign: 'center',
   },
