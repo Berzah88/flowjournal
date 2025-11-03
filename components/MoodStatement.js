@@ -504,6 +504,8 @@ const MoodStatement = React.memo(({
 
   // Günlük mesaj cache'i (AsyncStorage'den)
   const [dailyTip, setDailyTip] = useState('');
+  // AI destekli günlük motivasyon (unique per day/input)
+  const [aiMotivation, setAiMotivation] = useState('');
 
   useEffect(() => {
     // Load daily tip once on mount to avoid AsyncStorage access during
@@ -531,7 +533,50 @@ const MoodStatement = React.memo(({
       }
     };
 
+    // Small helper: generate a lightweight AI-like motivational message and cache it per-day+input
+    const loadAiMotivation = async () => {
+      try {
+        const today = new Date().toDateString();
+        const lastTs = (todayMoodData?.allMoods && todayMoodData.allMoods.length > 0) ? String(todayMoodData.allMoods[todayMoodData.allMoods.length - 1].timestamp) : 'none';
+        const key = `ai_motivation_${today}_${todayMoodData?.dominantMood?.key || 'none'}_${lastTs}`;
+        const cached = await AsyncStorage.getItem(key);
+        if (cached && active) {
+          setAiMotivation(cached);
+          return;
+        }
+
+        const moodLabel = (displayMood && (t(displayMood.key) || displayMood.label)) || t('yourMood') || 'Ruh halin';
+        const trend = todayMoodData?.trendDirection || 'stable';
+        const streak = todayMoodData?.journalStreak?.current || 0;
+        const lastEntryText = (todayMoodData?.allMoods && todayMoodData.allMoods.length > 0) ? String(todayMoodData.allMoods[todayMoodData.allMoods.length - 1].text || '') : '';
+        const action = quickTip || t('keepGoing') || 'Küçük bir adım at';
+
+        let aiMsg = '';
+        if (trend === 'up') {
+          aiMsg = `${moodLabel} — bugün ilerleme var. Bu enerjiyi korumak için: ${action}.`;
+        } else if (trend === 'down') {
+          aiMsg = `${moodLabel} — zorlayıcı bir gün olabilir. Kendine nazik davran; bir mola ver ya da küçük bir görev tamamla.`;
+        } else {
+          if (streak >= 3) {
+            aiMsg = `${moodLabel} — harika iş! ${streak} gündür tutarlı ilerliyorsun. Küçük bir kutlama yap.`;
+          } else if (lastEntryText && lastEntryText.length > 20) {
+            const snippet = lastEntryText.split(/[\.\!\?]/)[0].slice(0, 80);
+            aiMsg = `${moodLabel} — son yazında "${snippet}..." demişsin. Bugün için küçük bir hedef belirleyebilirsin: ${action}.`;
+          } else {
+            aiMsg = `${moodLabel} — bugünü üretken kılmak için küçük bir adım at: ${action}.`;
+          }
+        }
+
+        AsyncStorage.setItem(key, aiMsg).catch(() => {});
+        if (active) setAiMotivation(aiMsg);
+      } catch (e) {
+        logger.warn('AI motivation generation failed:', e);
+        if (active) setAiMotivation('Duygusal farkındalığın gelişiyor — küçük bir adım atmayı unutma.');
+      }
+    };
+
     loadDailyTip();
+    loadAiMotivation();
     return () => { active = false; };
   }, []);
 
@@ -632,7 +677,7 @@ const MoodStatement = React.memo(({
                 : (hasNoProjects ? '#667eea' : (todayMoodData.dominantMood ? '#8E8E93' : '#4A90E2'))
             }
           ]}>
-            {quickTip}
+            {aiMotivation || quickTip}
           </Text>
         </View>
       </View>
@@ -716,7 +761,7 @@ const MoodStatement = React.memo(({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 24, // slightly narrower to better fit header
-    marginTop: 6, // small top margin so MoodStatement sits below header
+    marginTop: 2, // reduced top margin so MoodStatement sits closer to header
     marginBottom: 0,
   },
   moodStatus: {
@@ -741,7 +786,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13, // moderate size to fit header
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 3,
+    marginBottom: 2,
     lineHeight: 18,
     letterSpacing: -0.3,
     flexWrap: 'wrap',

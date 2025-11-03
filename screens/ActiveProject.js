@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } 
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing, InteractionManager } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import logger from '../utils/logger';
-import { Helpers } from '../components/Styles';
+import { Helpers, Typography } from '../components/Styles';
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
@@ -636,7 +636,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
               ]}
             >
               {/* Milestones Tab (left) */}
-              <View style={{ width }}>
+              <View style={{ width, flex: 1 }}>
                 {/* PERFORMANCE: Only render milestones after animation completes */}
                 {isReady ? (
                   <ActiveProjectTasks
@@ -668,7 +668,7 @@ export default function ActiveProject({ selectedCard, onClose, setMainActiveTab,
               </View>
 
               {/* Journey Tab (right) */}
-              <View style={{ width }}>
+              <View style={{ width, flex: 1 }}>
                 {/* PERFORMANCE: Only render journey after animation completes */}
                 {isReady ? (
                   <ProjectJourney 
@@ -746,7 +746,9 @@ const styles = StyleSheet.create({
   calendarContainer: { 
   },
   contentWrapper: {
+    flex: 1, // allow inner content to stretch and let children with flex:1 fill remaining space
     paddingTop: 12, // Minimal padding for header
+    paddingBottom: 12,
   },
   menuButton: { 
     position: "absolute", 
@@ -770,14 +772,14 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   milestoneTitle: { 
-    fontFamily: "Poppins_600SemiBold", 
+    fontFamily: Typography.fonts.semiBold, 
     fontSize: 18, 
     color: "#1D1D1F",
     letterSpacing: -0.5,
   },
   addText: { 
     fontSize: 24, 
-    fontFamily: "Poppins_700Bold", 
+    fontFamily: Typography.fonts.bold, 
     color: "#007AFF", 
     padding: 8,
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
@@ -794,10 +796,10 @@ const styles = StyleSheet.create({
     padding: 20,
     textAlign: 'center',
     fontSize: 16,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
   },
   completedHeader: { 
-    fontFamily: "Poppins_600SemiBold", 
+    fontFamily: Typography.fonts.semiBold, 
     marginTop: 24, 
     marginBottom: 12, 
     fontSize: 16, 

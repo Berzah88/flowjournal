@@ -49,6 +49,7 @@ import { useActiveTasks, useCompletedTasks } from '../hooks/useTaskContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProjectAnalyzer from '../utils/ProjectAnalyzer';
+import { Helpers } from '../components/Styles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,11 +71,15 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
   ];
 
   // Reduced baseline so polygon reflects real variance better
-  // Optimized scaling: smaller baseline and slightly larger maxScale to give
-  // more dynamic range. We also compute a dynamic floor based on the data mean
-  // so small datasets are not flattened by a large fixed floor.
-  const minBaseline = 0.12; // baseline so smallest values are still visible
-  const maxScale = 0.9; // allow polygon to get a bit closer to outer radius for better fill
+  // Optimized scaling: slightly higher baseline and a slightly smaller maxScale
+  // to avoid shapes touching the outermost grid line. We'll also clamp the
+  // computed display max against a robust cap (mean + stddev) to reduce the
+  // influence of single extreme outliers.
+  // Increase baseline to give a noticeably larger central 'safe' area
+  // so zero/very low values aren't visually at the exact center.
+  const minBaseline = 0.24; // baseline so smallest values are still visible and center area larger
+  // Reduce maxScale slightly so the polygon sits further from the outer ring
+  const maxScale = 0.76; // limit how close polygon can get to outer ring
 
   // Dynamic scaling: derive an adaptive floor from the average of values so
   // tiny datasets still show variance, but large datasets are not over-amplified.
@@ -85,11 +90,20 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
   const dynamicFloor = Math.max(baseFloor, Math.round(avgValue * 2));
   const displayMax = Math.max(maxValue, dynamicFloor);
 
+  // Robust outlier handling: compute standard deviation and clamp the
+  // displayMax to (avg * 3 + 2*stdDev) at minimum 'baseFloor'. This reduces
+  // the visual impact when a single category is an extreme outlier.
+  const variance = values.length ? values.reduce((s, v) => s + Math.pow(v - avgValue, 2), 0) / values.length : 0;
+  const stdDev = Math.sqrt(variance) || 0;
+  const robustCap = Math.max(baseFloor, Math.round(avgValue * 3 + stdDev * 2));
+  const adjustedDisplayMax = Math.max(dynamicFloor, Math.min(displayMax, robustCap));
+
   // Memoize heavy calculations
   const { dataPoints, polygonPoints, glowPoints, baseColor, avgFillOpacity, pathD, glowD } = React.useMemo(() => {
   const pts = categories.map(cat => {
-  // Normalize relative to displayMax (dynamic) rather than fixed 100
-  const rawRatio = displayMax > 0 ? (cat.value / displayMax) : 0;
+  // Normalize relative to adjustedDisplayMax (robust clamped) rather than fixed 100
+  const denom = adjustedDisplayMax > 0 ? adjustedDisplayMax : displayMax;
+  const rawRatio = denom > 0 ? (cat.value / denom) : 0;
   const clampedRatio = Math.max(0, Math.min(1, rawRatio));
   // Use maxScale to ensure the polygon never reaches the outermost grid line
   const normalizedValue = minBaseline + (clampedRatio * (maxScale - minBaseline));
@@ -103,7 +117,8 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
 
   // Create smooth closed path using local Catmull-Rom to Bezier converter
   const pointPairs = pts.map(p => [p.x, p.y]);
-  const path = catmullRom2bezier(pointPairs, true, 140); // higher divisor -> less smoothing (more angular)
+  // Use a smaller divisor to increase smoothing a bit and reduce visible spikes
+  const path = catmullRom2bezier(pointPairs, true, 80);
 
     // Glow polygon: very slightly larger radius for a subtle, tight glow
     // Remove the larger additive offset so the glow doesn't form a visible rim
@@ -118,7 +133,7 @@ const CustomRadarChart = ({ moodData, size = 280, theme }) => {
       const glowRadius = Math.min(maxRadius, p.radius * 1.03 + 2);
       return [center + glowRadius * Math.cos(p.angle), center + glowRadius * Math.sin(p.angle)];
     });
-  const glowPath = catmullRom2bezier(glowPairs, true, 140);
+  const glowPath = catmullRom2bezier(glowPairs, true, 80);
 
     // Derive base color (dominant) fallback
     const total = categories.reduce((s, c) => s + c.value, 0);
@@ -914,7 +929,7 @@ const MoodTrendScreen = ({ navigation }) => {
   // Short weekly-style explanation synthesized from aggregated last 7 days data
   const [analysisSnippet, setAnalysisSnippet] = useState(null);
   useEffect(() => {
-    // Build a concise weekly analysis string from last7DaysData and trendInfo
+    // Build a concise, more natural weekly analysis string with varied templates
     try {
       if (!last7DaysData || last7DaysData.total === 0) {
         setAnalysisSnippet(null);
@@ -925,18 +940,80 @@ const MoodTrendScreen = ({ navigation }) => {
       const percent = Math.abs(trendInfo.percentChange || 0);
       const dir = trendInfo.direction || 'stable';
 
+      // Day-based seed so messages vary across days but are stable within a day
+      const daySeed = Math.floor(Date.now() / 86400000);
+      const pick = (arr) => arr[daySeed % arr.length];
+
       if (language && language.startsWith('tr')) {
-        let verb = 'kararlı kaldı';
-        if (dir === 'up') verb = percent > 0 ? `%${percent} iyileşti` : 'iyileşti';
-        if (dir === 'down') verb = percent > 0 ? `%${percent} düştü` : 'düşüş gösterdi';
-        const msg = `Bu hafta çoğunlukla ${topLabel} hissedildi. Geçen haftaya göre ruh hali ${verb}.`;
-        setAnalysisSnippet(msg);
+        // Turkish natural templates
+        const upHigh = [
+          `Bu hafta genelde ${topLabel} hissedildi — geçen haftaya göre belirgin bir iyileşme var (%${percent}). Güzel iş!`,
+          `Hafta boyunca çoğunlukla ${topLabel} oldun; özellikle son günlerde ruh halin daha iyi görünüyordu.`
+        ];
+        const upLow = [
+          `Bu hafta çoğunlukla ${topLabel} hissettin; geçen haftaya göre hafif bir düzelme gözlemledik.`,
+          `Genel olarak ${topLabel} bir hafta geçirmişsin; küçük bir ilerleme var gibi.`
+        ];
+
+        const downHigh = [
+          `Bu hafta daha çok ${topLabel} hissettin ve geçen haftaya göre düşüş var (%${percent}). Kendine küçük bir mola ver; yardımcı olabilir.`,
+          `Hafta boyunca ${topLabel} anlar daha fazlaydı; geçen haftaya kıyasla ruh halinde belirgin bir azalma var.`
+        ];
+        const downLow = [
+          `Bu hafta çoğunlukla ${topLabel} hissettin; geçen haftaya göre hafif bir düşüş var.`,
+          `Biraz daha zor bir hafta olmuş; küçük bir reset (kısa yürüyüş, nefes) yardımcı olabilir.`
+        ];
+
+        const stableLow = [
+          `Hafta genel olarak dengeliydi; büyük dalgalanmalar yok.`,
+          `Bu hafta çoğunlukla aynı ruh hali sürdü; bu da bir istikrar göstergesi.`
+        ];
+        const stableMed = [
+          `Bu hafta çoğunlukla ${topLabel} hissedildi; geçen haftaya göre çok değişmedi.`,
+          `Genel olarak benzer bir ruh hali vardı; ufak değişiklikler fark yaratabilir.`
+        ];
+
+        let chosen = null;
+        if (dir === 'up') chosen = percent >= 20 ? pick(upHigh) : pick(upLow);
+        else if (dir === 'down') chosen = percent >= 20 ? pick(downHigh) : pick(downLow);
+        else chosen = percent <= 3 ? pick(stableLow) : pick(stableMed);
+
+        setAnalysisSnippet(chosen);
       } else {
-        let verb = 'was stable';
-        if (dir === 'up') verb = percent > 0 ? `improved by ${percent}%` : 'improved';
-        if (dir === 'down') verb = percent > 0 ? `declined by ${percent}%` : 'declined';
-        const msg = `This week was mostly ${topLabel}. Mood ${verb} vs last week.`;
-        setAnalysisSnippet(msg);
+        // English natural templates
+        const upHigh = [
+          `This week was mostly ${topLabel} — there was a clear improvement compared to last week (${percent}%). Great job!`,
+          `You felt ${topLabel} through the week; mood looks notably better than last week.`
+        ];
+        const upLow = [
+          `This week leaned ${topLabel}; a small improvement vs. last week.`,
+          `Overall ${topLabel} moments this week; slight upward change compared to before.`
+        ];
+
+        const downHigh = [
+          `This week had more ${topLabel} moments and shows a decline vs last week (${percent}%). Consider a short reset.`,
+          `There were more ${topLabel} feelings this week; it's a noticeable dip compared to last week.`
+        ];
+        const downLow = [
+          `This week was mostly ${topLabel}; a slight decline compared to last week.`,
+          `A somewhat tougher week — a small break or reset might help.`
+        ];
+
+        const stableLow = [
+          `The week felt balanced overall; not much change from last week.`,
+          `Mostly steady this week — a calm, even-paced period.`
+        ];
+        const stableMed = [
+          `This week was mainly ${topLabel}; not very different from last week.`,
+          `Overall similar mood to last week; little changes could shift things.`
+        ];
+
+        let chosen = null;
+        if (dir === 'improving' || dir === 'up') chosen = percent >= 20 ? pick(upHigh) : pick(upLow);
+        else if (dir === 'declining' || dir === 'down') chosen = percent >= 20 ? pick(downHigh) : pick(downLow);
+        else chosen = percent <= 3 ? pick(stableLow) : pick(stableMed);
+
+        setAnalysisSnippet(chosen);
       }
     } catch (e) {
       setAnalysisSnippet(null);
@@ -998,7 +1075,7 @@ const MoodTrendScreen = ({ navigation }) => {
     const textPrimaryLocal = theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F';
     const textSecondaryLocal = theme.name === 'dark' ? '#8E8E93' : '#636366';
     return (
-      <View style={[styles.screen, { backgroundColor: cardBgLocal }]}> 
+      <View style={[styles.screen, Helpers.container, { backgroundColor: cardBgLocal }]}> 
         {/* Header matched to content header (same style & position) */}
         <View style={{
           flexDirection: 'row',
@@ -1037,7 +1114,7 @@ const MoodTrendScreen = ({ navigation }) => {
   }
   if (allMoodData.length === 0) {
     return (
-      <View style={[styles.screen, { backgroundColor: cardBg }]}> 
+      <View style={[styles.screen, Helpers.container, { backgroundColor: cardBg }]}> 
         {/* Header matched to content header (same style & position) */}
         <View style={{
           flexDirection: 'row',
@@ -1078,7 +1155,7 @@ const MoodTrendScreen = ({ navigation }) => {
     );
   }
   return (
-    <View style={[styles.screen, { backgroundColor: cardBg }]}> 
+    <View style={[styles.screen, Helpers.container, { backgroundColor: cardBg }]}> 
       {/* Top Bar */}
       <View style={{
         flexDirection: 'row',
@@ -1125,7 +1202,8 @@ const MoodTrendScreen = ({ navigation }) => {
                   neutral: last7DaysData.neutralCategoryPercent || 0,
                   negative: last7DaysData.negativeCategoryPercent || 0
                 }}
-                size={Math.min(380, width - 40)}
+                // Increase chart size: raise max cap and reduce side padding allowance
+                size={Math.min(440, width - 24)}
                 theme={theme}
               />
             </View>
@@ -1182,7 +1260,6 @@ const MoodTrendScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
   },
   topBar: {
     flexDirection: 'row',

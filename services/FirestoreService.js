@@ -22,6 +22,11 @@ class FirestoreService {
     this.db = getFirestore();
     
     console.log('✅ Firestore: Aktif edildi (Expo SDK 54+)');
+    // Track the last profile write to avoid duplicate writes from multiple services
+    this._lastProfileWrite = { dataStr: null, ts: 0 };
+
+    // initializeService may read token and write profile on startup.
+    // Keep it, but duplicate-write guards below will prevent repeated writes
     this.initializeService();
   }
 
@@ -74,9 +79,13 @@ class FirestoreService {
   async setFCMToken(token) {
     this.fcmToken = token;
     console.log('✅ Firestore: FCM token ayarlandı');
-    
-    // Token'ı Firestore'a kaydet
+    // If token didn't change, skip expensive Firestore write
     if (this.currentUserId && token) {
+      if (this.fcmToken === token && this._lastProfileWrite && this._lastProfileWrite.dataStr && this._lastProfileWrite.dataStr.includes(token)) {
+        console.log('ℹ️ Firestore: FCM token unchanged, profile update skipped');
+        return;
+      }
+
       await this.updateUserProfile({
         fcmToken: token
       });
@@ -91,6 +100,16 @@ class FirestoreService {
         return;
       }
 
+      // Avoid repeated identical writes in short time windows (debounce)
+      const dataStr = JSON.stringify(data || {});
+      const now = Date.now();
+      const recent = this._lastProfileWrite || { dataStr: null, ts: 0 };
+      // If same payload was written recently (within 10s), skip
+      if (recent.dataStr === dataStr && (now - recent.ts) < 10000) {
+        console.log('ℹ️ Firestore: Aynı profil verisi kısa süre içinde yazıldı, atlanıyor');
+        return;
+      }
+
       const userDocRef = doc(this.db, 'users', this.currentUserId);
       // Log what we are going to write for easier debugging
       console.log('ℹ️ Firestore: Kullanıcı profili güncelleniyor. userId=', this.currentUserId, 'data=', data);
@@ -98,6 +117,9 @@ class FirestoreService {
         ...data,
         updatedAt: serverTimestamp()
       }, { merge: true });
+
+      // remember last write
+      this._lastProfileWrite = { dataStr, ts: now };
 
       console.log('✅ Firestore: Kullanıcı profili güncellendi');
     } catch (error) {

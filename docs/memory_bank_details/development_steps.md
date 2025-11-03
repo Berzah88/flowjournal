@@ -8,6 +8,8 @@ Aşağıda sizin belirttiğiniz ihtiyaçlara (My Day ekranına fotoğraf/vidyo d
 - 3: Yayın öncesi bildirim + backend testleri — risk azaltma, canlıya geçiş güvenliği.
 
 Adım 1 — Journal: Fotoğraf ve video ekleme (detaylı)
+
+- Durum: Tamamlandı ✅
 - Plan:
   1. UI: `screens/Journal.js` üzerine mevcut medya düğmesi bir modal açacak. bu modal da camera ve galery özet kutuları olacak. Özet medayadan kullanıcı hızlı seçim yapabilir veya galeriyi açmayı tercih edebilir olacak. Kamera düğmesi fotoğraf ve video için kamerayı açabilecek. 
   2. Permissions: Kullanılan `PermissionManager` üzerinden camera, microphone ve media-library izinlerini isteme akışını ekle.

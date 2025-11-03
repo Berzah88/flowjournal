@@ -174,6 +174,19 @@ class FCMService {
     try {
       console.log('🔥 FCM token alınmaya çalışılıyor...');
 
+      // Fast path: use stored token if present to avoid repeated native calls
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEYS.FCM_TOKEN);
+        if (stored) {
+          this.fcmToken = stored;
+          console.log('ℹ️ FCM: AsyncStorage içinde token bulundu, native token alma atlandı');
+          return stored;
+        }
+      } catch (e) {
+        // ignore storage errors and continue to request token
+        console.warn('⚠️ FCM: AsyncStorage okuma hatası:', e);
+      }
+
       const messagingInstance = getMessaging();
 
       // İzin iste - modular API
