@@ -32,6 +32,7 @@ import ProjectCard from "../components/ProjectCard";
 import JourneyOverview from "../components/JourneyOverview";
 import TodaysSummary from "../components/TodaysSummary";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Styles, { Helpers, Typography } from '../components/Styles';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import AnimatedReanimated from 'react-native-reanimated';
 import { useAnimatedProps } from 'react-native-reanimated';
@@ -735,7 +736,7 @@ const MyDayScreen = memo(function MyDayScreen({
   return (
     <AnimatedReanimated.ScrollView
       ref={scrollRef}
-      style={styles.container}
+      style={[styles.container, Helpers.container]}
       onScroll={myDayContentScrollHandler}
       scrollEventThrottle={16}
       scrollEnabled={true}
@@ -828,7 +829,6 @@ export default MyDayScreen;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     width: '100%',
   },
   componentSpacing: {
@@ -852,7 +852,7 @@ const styles = StyleSheet.create({
   },
   summaryHeaderTitle: {
     fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     letterSpacing: -0.5,
   },
   counterBadge: {
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
   },
   counterText: {
     fontSize: 12,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     textAlign: 'center',
     // Better vertical centering on Android
     textAlignVertical: 'center',
@@ -887,14 +887,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     color: '#1D1D1F',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: Typography.fonts.regular,
     color: '#8E8E93',
     textAlign: 'center',
     lineHeight: 20,
@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
   },
   addProjectButtonText: {
     fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     marginLeft: 6,
   },
   projectSummaryCard: {
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
   },
   projectTitle: {
     fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     flexShrink: 1,
   },
   focusedBadge: {
@@ -955,7 +955,7 @@ const styles = StyleSheet.create({
   },
   focusedBadgeText: {
     fontSize: 11,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     color: '#FFFFFF',
   },
   projectDateRange: {
@@ -965,7 +965,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
   },
   milestonesList: {
     marginTop: 8,
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
   },
   milestoneText: {
     fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: Typography.fonts.regular,
     marginBottom: 4,
   },
   completedMilestoneText: {
@@ -1003,7 +1003,7 @@ const styles = StyleSheet.create({
   },
   completedTodayBadge: {
     fontSize: 11,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     marginTop: 2,
   },
   completingMilestoneText: {
@@ -1024,13 +1024,13 @@ const styles = StyleSheet.create({
   },
   journalCountText: {
     fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     color: '#007AFF',
   },
   // Mood sticker styles removed
   noMilestonesText: {
     fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: Typography.fonts.regular,
     color: '#8E8E93',
     fontStyle: 'italic',
     textAlign: 'center',
@@ -1055,7 +1055,7 @@ const styles = StyleSheet.create({
   },
   addMilestoneText: {
     fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     marginLeft: 6,
   },
   minimalAddMilestoneButton: {
@@ -1073,7 +1073,7 @@ const styles = StyleSheet.create({
   },
   minimalAddMilestoneText: {
     fontSize: 11,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     marginLeft: 4,
   },
   // Son gününde olan projeler için özel style'lar
@@ -1088,7 +1088,7 @@ const styles = StyleSheet.create({
   },
   lastDayText: {
     fontSize: 11,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     color: '#FFFFFF',
     marginLeft: 4,
   },
@@ -1103,7 +1103,7 @@ const styles = StyleSheet.create({
   },
   overdueText: {
     fontSize: 11,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     color: '#FFFFFF',
     marginLeft: 4,
   },
@@ -1121,7 +1121,7 @@ const styles = StyleSheet.create({
   },
   addJournalText: {
     fontSize: 11,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: Typography.fonts.medium,
     marginLeft: 4,
   },
   
@@ -1141,7 +1141,7 @@ const styles = StyleSheet.create({
   },
   journalCountText: {
     fontSize: 10,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: Typography.fonts.semiBold,
     color: 'white',
     marginLeft: 3,
   },
