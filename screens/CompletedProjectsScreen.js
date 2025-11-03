@@ -20,7 +20,7 @@ import { useLanguage } from "../context/LanguageContext";
 import Card from "../components/Card";
 import CompletedActiveProject from "./CompletedActiveProject";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { Helpers } from '../components/Styles';
+import { Helpers, Typography } from '../components/Styles';
 
 const { width } = Dimensions.get("window");
 
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: Typography.fonts.bold,
     letterSpacing: -0.3,
   },
   headerSpacer: {
@@ -341,12 +341,12 @@ const styles = StyleSheet.create({
   },
   compactStatText: {
     fontSize: 12,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: Typography.fonts.semiBold,
     letterSpacing: -0.1,
   },
   compactStatLabel: {
     fontSize: 10,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
     textAlign: "center",
     letterSpacing: 0.1,
   },
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 22,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: Typography.fonts.bold,
     marginTop: 20,
     marginBottom: 12,
     textAlign: "center",
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 16,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: Typography.fonts.regular,
     textAlign: "center",
     lineHeight: 24,
     letterSpacing: 0.1,
