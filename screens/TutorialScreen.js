@@ -170,14 +170,13 @@ export default function TutorialScreen({ navigation }) {
     if (currentStep < tutorialSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Tutorial bittiğinde education'ı başlat, izinleri sor ve Main'e geç
-      console.log('🎓 Tutorial completed, starting education...');
+  // Tutorial bittiğinde education'ı başlat, izinleri sor ve Main'e geç
       startEducation();
 
       try {
         await permissionManager.requestAllPermissions();
       } catch (e) {
-        console.warn('Permission request failed:', e);
+        // permission request failed — handled silently in UI flow
       }
 
       navigation?.replace("Main");
@@ -192,13 +191,12 @@ export default function TutorialScreen({ navigation }) {
 
   const handleSkip = async () => {
     // Skip'te de education'ı başlat, izinleri sor ve Main'e git
-    console.log('🎓 Tutorial skipped, starting education...');
     startEducation();
 
     try {
       await permissionManager.requestAllPermissions();
     } catch (e) {
-      console.warn('Permission request failed on skip:', e);
+      // permission request failed on skip — ignore here
     }
 
     navigation?.replace("Main");

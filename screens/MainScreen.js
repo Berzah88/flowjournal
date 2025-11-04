@@ -403,8 +403,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
   // Parent date notifications için global trigger sistemi
   useEffect(() => {
     global.triggerParentDateNotification = (notifications) => {
-      console.log('📢 Parent date notifications received:', notifications);
-      // Modal'ı göster - MainModalManager'a state ekle
+      // Parent date notifications received — show modal
       setParentDateNotifications(notifications);
       setParentDateNotificationVisible(true);
     };
@@ -424,7 +423,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
         // Keep a ref copy if other parts of app need it
         if (celebrationDataRef) celebrationDataRef.current = data || null;
       } catch (err) {
-        console.warn('Failed to trigger celebration:', err);
+        // Failed to trigger celebration — ignore silently
       }
     };
 
@@ -625,7 +624,7 @@ const MainScreen = memo(function MainScreen({ navigation }) {
       </LinearGradient>
     );
   } catch (error) {
-    console.error('MainScreen rendering error:', error);
+    // Rendering error in MainScreen — surface a friendly loading state
     return <LoadingSpinner message="Error occurred in MainScreen..." />;
   }
 });

@@ -77,12 +77,11 @@ const MyDayScreen = memo(function MyDayScreen({
         if (stored) {
           const projectId = JSON.parse(stored);
           setFocusedProject(projectId);
-          console.log('✅ Focused proje yüklendi:', projectId);
         } else {
-          console.log('ℹ️ Henüz focused proje yok');
+          // no focused project stored
         }
       } catch (error) {
-        console.error('❌ Focused proje yüklenirken hata:', error);
+        // ignore storage load errors here
       }
     };
     loadFocusedProject();
@@ -93,13 +92,11 @@ const MyDayScreen = memo(function MyDayScreen({
     try {
       if (projectId) {
         await AsyncStorage.setItem('myDayFocusedProject', JSON.stringify(projectId));
-        console.log('💾 Focused proje kaydedildi:', projectId);
       } else {
         await AsyncStorage.removeItem('myDayFocusedProject');
-        console.log('💾 Focused proje temizlendi');
       }
     } catch (error) {
-      console.error('❌ Focused proje kaydedilirken hata:', error);
+      // ignore storage save errors
     }
   }, []);
 
@@ -109,11 +106,9 @@ const MyDayScreen = memo(function MyDayScreen({
       const wasFocused = prev === project.id;
       
       if (wasFocused) {
-        console.log(`🔄 "${project.title}" artık focused değil`);
         saveFocusedProject(null);
         return null;
       } else {
-        console.log(`⭐ "${project.title}" focused oldu`);
         saveFocusedProject(project.id);
         return project.id;
       }

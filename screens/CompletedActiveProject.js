@@ -109,9 +109,6 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
   const animationCleanupRef = useRef([]);
 
   useEffect(() => {
-    console.log('🎬 CompletedActiveProject MOUNTED');
-    console.log('   Initial values - translateY:', translateY.value, 'scale:', scale.value, 'opacity:', opacity.value);
-    
     // Faster, snappier opening animation
     translateY.value = withTiming(0, { 
       duration: 300,
@@ -124,15 +121,12 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
     opacity.value = withTiming(1, { 
       duration: 250
     });
-    
-    console.log('   Animation started - duration: 300ms (faster!)');
-    
+
     // PERFORMANCE: Load content after animation starts (immediate - no delay!)
     setContentLoaded(true);
-    console.log('📦 Content loading enabled immediately');
-    
+
     return () => {
-      console.log('🎬 CompletedActiveProject UNMOUNTED');
+      // unmount cleanup
     };
   }, []); // Same as ActiveProject - mount only
   
@@ -167,7 +161,7 @@ export default function CompletedActiveProject({ selectedCard, onClose, setMainA
   }, [menuVisible, editVisible, selectedMilestone, selectedJournalMilestone]);
 
   const handleClose = useCallback(() => {
-    console.log('🚪 Closing CompletedActiveProject');
+    // Closing CompletedActiveProject
     // Faster closing animation
     translateY.value = withTiming(height, { 
       duration: 250,

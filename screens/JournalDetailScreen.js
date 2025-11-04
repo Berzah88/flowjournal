@@ -325,7 +325,7 @@ const JournalDetailScreen = ({
               setLocationText(formatCoords(coords));
             }
           } catch (error) {
-            console.warn('Reverse geocoding error:', error);
+            // Reverse geocoding failed — fallback to coordinates
           }
         }
       }

@@ -37,22 +37,10 @@ const CompletedProjectsScreen = memo(function CompletedProjectsScreen({ navigati
 
   // Memoized handlers to prevent unnecessary re-renders
   const openCard = useCallback((card) => {
-    const startTime = performance.now();
-    console.log('⏱️ [PERFORMANCE] Card PRESSED at:', startTime.toFixed(2), 'ms');
-    console.log('📂 Opening completed card:', card.title);
-    
     // PERFORMANCE: Set immediately for instant open
     setSelectedCard(card);
-    
-    // Log the setState time
-    requestAnimationFrame(() => {
-      const setStateTime = performance.now();
-      console.log('⏱️ [PERFORMANCE] setState completed at:', setStateTime.toFixed(2), 'ms');
-      console.log('⏱️ [PERFORMANCE] setState took:', (setStateTime - startTime).toFixed(2), 'ms');
-    });
   }, []);
   const closeCard = useCallback(() => {
-    console.log('📂 Closing completed card');
     setSelectedCard(null);
   }, []);
 

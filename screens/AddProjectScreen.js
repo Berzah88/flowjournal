@@ -103,8 +103,6 @@ export default function AddProjectScreen({ visible, onClose }) {
 
       // Education: Move to next step after creating first project
       if (isEducationActive && currentStep === EDUCATION_STEPS.CREATE_PROJECT) {
-        console.log('🎓 First project created! Moving to MY_DAY_INFO step');
-        console.log('🎓 Saving createdProjectId:', newProjectId);
         setEducationProjectId(newProjectId);
         // Move to next step
         setTimeout(() => {
