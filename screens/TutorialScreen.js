@@ -17,7 +17,6 @@ import { useLanguage } from "../context/LanguageContext";
 import { useEducation } from "../context/EducationContext";
 import permissionManager from '../services/PermissionManager';
 // Helpers moved to constants; prefer the centralized token module
-// import { Helpers } from '../components/Styles';
 
 const { width, height } = Dimensions.get("window");
 
