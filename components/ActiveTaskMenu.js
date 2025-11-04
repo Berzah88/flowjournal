@@ -25,6 +25,46 @@ export default function ActiveTaskMenu({ visible, onClose, onToggleComplete, onD
   const hideTimeout = useRef(null);
   const CLOSE_DELAY = 260;
 
+  // Sync animations with `visible` prop
+  useEffect(() => {
+    if (visible) {
+      if (hideTimeout.current) {
+        clearTimeout(hideTimeout.current);
+        hideTimeout.current = null;
+      }
+      setShouldRender(true);
+
+      scale.value = withSequence(
+        withTiming(1.08, { duration: 180 }),
+        withSpring(1, { damping: 10, stiffness: 120, mass: 0.9 })
+      );
+      opacity.value = withTiming(1, { duration: 220 });
+      translateY.value = withSequence(
+        withTiming(-12, { duration: 160 }),
+        withSpring(0, { damping: 10, stiffness: 120 })
+      );
+    } else {
+      scale.value = withSequence(
+        withTiming(0.96, { duration: 160 }),
+        withTiming(0, { duration: 180 })
+      );
+      opacity.value = withTiming(0, { duration: 170 });
+      translateY.value = withTiming(-24, { duration: 170 });
+
+      hideTimeout.current = setTimeout(() => {
+        setShouldRender(false);
+        hideTimeout.current = null;
+      }, CLOSE_DELAY);
+    }
+
+    return () => {
+      if (hideTimeout.current) {
+        clearTimeout(hideTimeout.current);
+        hideTimeout.current = null;
+      }
+    };
+  }, [visible, scale, opacity, translateY]);
+
   useEffect(() => {
     if (visible) {
       if (hideTimeout.current) {
@@ -195,7 +235,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     minWidth: 200,
     shadowOffset: { width: 0, height: 8 },
-    backdropFilter: "blur(20px)",
     borderWidth: 1,
   },
   item: {

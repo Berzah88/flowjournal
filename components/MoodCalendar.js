@@ -1,5 +1,5 @@
 // components/MoodCalendar.js
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback, memo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTasks } from '../hooks/useTaskContext';
@@ -16,157 +16,157 @@ const CELL_SIZE = Math.floor(AVAILABLE_WIDTH / 7);
 const CELL_HEIGHT = 48; // More compact vertical spacing
 const MILESTONE_DOT_SIZE = 6; // size of the milestone dot under day number
 
-export default function MoodCalendar() {
+function MoodCalendar() {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
   const tasks = useTasks();
   
-  // Arka plan rengine göre kontrast renk hesapla
-  const getContrastColor = (backgroundColor) => {
+  // Arka plan rengine göre kontrast renk hesapla (memoized)
+  const getContrastColor = useCallback((backgroundColor) => {
     if (!backgroundColor) return theme.name === 'dark' ? '#FFFFFF' : '#000000';
-    
-    // Hex rengi RGB'ye çevir
-    const hex = backgroundColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    // Luminance hesapla
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    
-    // Kontrast renk döndür
-    return luminance > 0.5 ? '#000000' : '#FFFFFF';
-  };
-  
-  // Collect all journal entries from all tasks
-  const getAllJournalEntries = () => {
-    const allEntries = [];
-    tasks.forEach(task => {
-      if (task.journalEntries) {
-        task.journalEntries.forEach(entry => {
-          allEntries.push({
-            ...entry,
-            taskId: task.id,
-            projectTitle: task.title
-          });
-        });
-      }
-    });
-    return allEntries;
-  };
-  
-  // Function to find mood for a specific date
-  const getMoodForDate = (currentDate) => {
-    const allEntries = getAllJournalEntries();
-    
-    // Find journal entries written on that day
-    const entriesForThisDate = allEntries.filter(entry => {
-      const entryDate = new Date(entry.createdAt);
-      return entryDate.toDateString() === currentDate.toDateString();
-    });
 
-    // Find entries with mood information
-    const moodEntries = entriesForThisDate.filter(entry => entry.mood || entry.moodIcon || entry.moodColor);
-    
-    if (moodEntries.length > 0) {
-      // EN SON yazılan günlüğü kullan (createdAt'e göre sırala ve en sonuncuyu al)
-      const sortedMoodEntries = moodEntries.sort((a, b) => {
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      });
-      
-      const latestMoodEntry = sortedMoodEntries[0];
-      
-      return {
-        mood: latestMoodEntry.mood,
-        moodIcon: latestMoodEntry.moodIcon,
-        moodColor: latestMoodEntry.moodColor,
-        hasEntry: true
-      };
+    try {
+      // Hex rengi RGB'ye çevir
+      const hex = backgroundColor.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+
+      // Luminance hesapla
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+      // Kontrast renk döndür
+      return luminance > 0.5 ? '#000000' : '#FFFFFF';
+    } catch (e) {
+      // fallback
+      return theme.name === 'dark' ? '#FFFFFF' : '#000000';
     }
-    
-    return null;
-  };
+  }, [theme.name]);
+  
+  // Collect all journal entries from all tasks (memoized)
+  const allEntries = useMemo(() => {
+    const entries = [];
+    try {
+      tasks.forEach(task => {
+        if (task && Array.isArray(task.journalEntries) && task.journalEntries.length > 0) {
+          task.journalEntries.forEach(entry => {
+            entries.push({
+              ...entry,
+              taskId: task.id,
+              projectTitle: task.title
+            });
+          });
+        }
+      });
+    } catch (e) {
+      if (__DEV__) console.error('MoodCalendar: allEntries build error', e);
+    }
+    return entries;
+  }, [tasks]);
+  
+  // Build a map of latest mood entry per date (memoized)
+  const moodByDate = useMemo(() => {
+    const map = Object.create(null);
+    try {
+      allEntries.forEach(entry => {
+        if (!entry || !entry.createdAt) return;
+        if (!(entry.mood || entry.moodIcon || entry.moodColor)) return;
+        const d = new Date(entry.createdAt);
+        const key = d.toDateString();
+        const existing = map[key];
+        if (!existing || new Date(entry.createdAt) > new Date(existing.createdAt)) {
+          map[key] = {
+            mood: entry.mood,
+            moodIcon: entry.moodIcon,
+            moodColor: entry.moodColor,
+            createdAt: entry.createdAt
+          };
+        }
+      });
+    } catch (e) {
+      if (__DEV__) console.error('MoodCalendar: moodByDate build error', e);
+    }
+    return map;
+  }, [allEntries]);
+
+  const getMoodForDate = useCallback((date) => {
+    return moodByDate[date.toDateString()] || null;
+  }, [moodByDate]);
 
   // Function to check if a date is within any active project's date range
-  const getProjectForDate = (currentDate) => {
-    // Get all projects that are not completed
-    const activeProjects = tasks.filter(task => 
-      !task.completed && 
-      !task.done &&
-      task.startDate && 
-      task.endDate
-    );
-    
-    for (const project of activeProjects) {
-      const startDate = new Date(project.startDate);
-      const endDate = new Date(project.endDate);
-      
-      // Set time to start/end of day for proper comparison
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      const checkDate = new Date(currentDate);
-      checkDate.setHours(0, 0, 0, 0);
-      
-      if (checkDate >= startDate && checkDate <= endDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Determine project status color
-        // Prefer an explicit logoColor (e.g., project.logoColor) if provided, otherwise fall back to project.color
-        let statusColor = project.logoColor || project.color || '#4A90E2';
+  // Build project map for current month (memoized)
+  const projectMap = useMemo(() => {
+    const map = Object.create(null);
+    try {
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-        // If the project is overdue, mark as red for visibility
-        if (checkDate > endDate) {
-          statusColor = '#F44336';
+      tasks.forEach(project => {
+        if (!project || project.completed || project.done || !project.startDate || !project.endDate) return;
+        const rawStart = new Date(project.startDate);
+        const rawEnd = new Date(project.endDate);
+        rawStart.setHours(0,0,0,0);
+        rawEnd.setHours(23,59,59,999);
+
+        // Determine overlap with current month
+        const start = rawStart < monthStart ? new Date(monthStart) : new Date(rawStart);
+        const end = rawEnd > monthEnd ? new Date(monthEnd) : new Date(rawEnd);
+
+        if (start > end) return;
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const key = new Date(d).toDateString();
+          const isStartDate = key === new Date(rawStart).toDateString();
+          const isEndDate = key === new Date(rawEnd).toDateString();
+          const isOverdue = new Date(key) > rawEnd; // unlikely here
+          let statusColor = project.logoColor || project.color || '#4A90E2';
+          if (new Date(key) > rawEnd) statusColor = '#F44336';
+          map[key] = {
+            projectTitle: project.title,
+            projectColor: statusColor,
+            isStartDate,
+            isEndDate,
+            isOverdue
+          };
         }
-        
-        return {
-          projectTitle: project.title,
-          projectColor: statusColor,
-          isStartDate: checkDate.toDateString() === startDate.toDateString(),
-          isEndDate: checkDate.toDateString() === endDate.toDateString(),
-          isOverdue: checkDate > endDate
-        };
-      }
+      });
+    } catch (e) {
+      if (__DEV__) console.error('MoodCalendar: projectMap build error', e);
     }
-    
-    return null;
-  };
+    return map;
+  }, [tasks, currentDate]);
+
+  // legacy accessor removed — use projectMap directly for performance
 
   // Function to find a milestone for a specific date across active projects
-  const getMilestoneForDate = (currentDate) => {
-    const activeProjects = tasks.filter(task => task.milestones && task.milestones.length > 0);
-
-    for (const project of activeProjects) {
-      for (const milestone of project.milestones) {
-        if (!milestone || !milestone.endDate) continue;
-
-        const msDate = new Date(milestone.endDate);
-        msDate.setHours(0, 0, 0, 0);
-        const checkDate = new Date(currentDate);
-        checkDate.setHours(0, 0, 0, 0);
-
-        if (msDate.toDateString() === checkDate.toDateString()) {
-          return { milestone, project };
-        }
-      }
+  // Precompute milestones keyed by date (memoized)
+  const milestoneMap = useMemo(() => {
+    const map = Object.create(null);
+    try {
+      tasks.forEach(project => {
+        if (!project || !Array.isArray(project.milestones)) return;
+        project.milestones.forEach(milestone => {
+          if (!milestone || !milestone.endDate) return;
+          const key = new Date(milestone.endDate).toDateString();
+          // prefer first match; if multiple milestones on same day, last one will override — acceptable
+          map[key] = { milestone, project };
+        });
+      });
+    } catch (e) {
+      if (__DEV__) console.error('MoodCalendar: milestoneMap build error', e);
     }
+    return map;
+  }, [tasks]);
 
-    return null;
-  };
+  // legacy accessor removed — use milestoneMap directly for performance
 
-  // Get days in month
-  const getDaysInMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  // Get first day of month (Monday = 0, Sunday = 6)
-  const getFirstDayOfMonth = (date) => {
-    const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-    // Convert Sunday (0) to 6, Monday (1) to 0, etc.
+  // Get days in month and first day (memoized)
+  const daysInMonth = useMemo(() => new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate(), [currentDate]);
+  const firstDay = useMemo(() => {
+    const day = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
     return day === 0 ? 6 : day - 1;
-  };
+  }, [currentDate]);
 
   // Navigate months
   const navigateMonth = (direction) => {
@@ -177,68 +177,54 @@ export default function MoodCalendar() {
 
   // Render calendar
   const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
     const days = [];
-    
+
     // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(<View key={`empty-${i}`} style={styles.emptyDay} />);
     }
-    
+
+    const todayKey = new Date().toDateString();
+
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-      const isToday = dayDate.toDateString() === new Date().toDateString();
-  const moodData = getMoodForDate(dayDate);
-  const projectData = getProjectForDate(dayDate);
-  const milestoneMatch = getMilestoneForDate(dayDate);
-      
+      const dayKey = dayDate.toDateString();
+      const isToday = dayKey === todayKey;
+      const moodData = moodByDate[dayKey];
+      const projectData = projectMap[dayKey];
+      const milestoneMatch = milestoneMap[dayKey];
+
+      const todayIndicatorStyle = isToday ? {
+        backgroundColor: theme.colors?.info || '#4A90E2',
+        borderWidth: 2,
+        borderColor: theme.colors?.info || '#4A90E2',
+        shadowColor: theme.colors?.info || '#4A90E2',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
+        elevation: 2,
+      } : null;
+
       days.push(
         <TouchableOpacity
           key={day}
           style={[
             styles.calendarDay,
-            isToday && [
-              styles.todayDay,
-              (() => {
-                // Use the theme info color (blue) as a solid today indicator to match HorizontalCalendar
-                const indicator = theme.colors?.info || '#4A90E2';
-                return {
-                  backgroundColor: indicator,
-                  borderWidth: 2,
-                  borderColor: indicator,
-                  shadowColor: indicator,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.12,
-                  shadowRadius: 6,
-                  elevation: 2,
-                };
-              })()
-            ],
+            isToday && [styles.todayDay, todayIndicatorStyle],
             moodData && !isToday && styles.moodDay,
-            projectData && [
-              styles.projectDay
-            ]
+            projectData && styles.projectDay
           ]}
           activeOpacity={0.7}
         >
           <Text style={[
             styles.dayText,
             { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' },
-            isToday && [
-              styles.todayText,
-              {
-                color: '#FFFFFF'
-              }
-            ],
-            // project text decoration removed; milestones shown as underline instead
+            isToday && [styles.todayText, { color: '#FFFFFF' }]
           ]}>
             {day}
           </Text>
-          
-          
-          {/* Mood indicator (increased size) */}
+
           {moodData && (
             <View style={[
               styles.moodIndicator,
@@ -256,23 +242,16 @@ export default function MoodCalendar() {
             </View>
           )}
 
-          {/* Milestone dot: prefer milestone's own color if a milestone exists for this date */}
           {milestoneMatch ? (
-            (() => {
-              const ms = milestoneMatch.milestone;
-              const msColor = ms.color || getMilestoneColor(ms, theme.name === 'dark' ? 'dark' : 'light');
-              return (
-                <View style={[
-                  styles.milestoneDot,
-                  {
-                    backgroundColor: msColor,
-                    left: (CELL_SIZE / 2) - (MILESTONE_DOT_SIZE / 2),
-                    borderWidth: 0.6,
-                    borderColor: getContrastColor(msColor),
-                  }
-                ]} />
-              );
-            })()
+            <View style={[
+              styles.milestoneDot,
+              {
+                backgroundColor: milestoneMatch.milestone.color || getMilestoneColor(milestoneMatch.milestone, theme.name === 'dark' ? 'dark' : 'light'),
+                left: (CELL_SIZE / 2) - (MILESTONE_DOT_SIZE / 2),
+                borderWidth: 0.6,
+                borderColor: getContrastColor(milestoneMatch.milestone.color || getMilestoneColor(milestoneMatch.milestone, theme.name === 'dark' ? 'dark' : 'light')),
+              }
+            ]} />
           ) : (
             projectData && (projectData.isStartDate || projectData.isEndDate) && (
               <View style={[
@@ -289,9 +268,12 @@ export default function MoodCalendar() {
         </TouchableOpacity>
       );
     }
-    
+
     return days;
   };
+
+  // Memoize generated calendar days to avoid recreating elements unless relevant inputs change
+  const calendarDays = useMemo(() => renderCalendar(), [daysInMonth, firstDay, moodByDate, projectMap, milestoneMap, currentDate, theme.name]);
 
   return (
     <View style={styles.outerContainer}>
@@ -355,12 +337,15 @@ export default function MoodCalendar() {
 
         {/* Calendar grid */}
         <View style={styles.calendarGrid}>
-          {renderCalendar()}
+          {calendarDays}
         </View>
       </View>
     </View>
   );
 }
+
+MoodCalendar.displayName = 'MoodCalendar';
+export default memo(MoodCalendar);
 
 const styles = StyleSheet.create({
   outerContainer: {

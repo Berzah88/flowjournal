@@ -4,7 +4,6 @@ import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } fr
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -111,7 +110,7 @@ export default function LanguageSettings({
           animatedContainerStyle
         ]}>
           {/* Language Options */}
-          {LANGUAGES.map((language) => (
+          {LANGUAGES.map((lang) => (
             <TouchableOpacity
               key={language.code}
               style={[
@@ -130,12 +129,12 @@ export default function LanguageSettings({
                 <Text style={[
                   styles.itemText,
                   { 
-                    color: selectedLanguage === language.code 
+                    color: selectedLanguage === lang.code 
                       ? (theme.name === 'dark' ? '#FF6B6B' : '#FFA726')
                       : (theme.name === 'dark' ? '#FFFFFF' : '#2c3e50')
                   }
-                ]}>{language.nativeName}</Text>
-                {selectedLanguage === language.code && (
+                ]}>{lang.nativeName}</Text>
+                {selectedLanguage === lang.code && (
                   <Ionicons 
                     name="checkmark-circle" 
                     size={16} 
@@ -167,7 +166,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     minWidth: 200,
     shadowOffset: { width: 0, height: 8 },
-    backdropFilter: "blur(20px)",
     borderWidth: 1,
   },
   item: {

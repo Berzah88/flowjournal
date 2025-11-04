@@ -3,7 +3,18 @@ import React, { useMemo, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableWithoutFeedback, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { COLORS, ELEVATION } from '../constants';
+import { COLORS } from '../constants';
+// Module-level constant to avoid re-creating the map on every render
+const SOLID_MOOD_COLOR_MAP = {
+  '#C8E6C9': '#4CAF50', '#FFE0B2': '#FF9800', '#E1BEE7': '#9C27B0',
+  '#FFCDD2': '#F44336', '#FFAB91': '#FF5722', '#FFCCBC': '#FF7043',
+  '#FFF3E0': '#FFB74D', '#E8F5E8': '#66BB6A', '#E1F5FE': '#42A5F5',
+  '#FFF8E1': '#FFCA28', '#F3E5F5': '#BA68C8', '#FFEBEE': '#EF5350',
+  '#E0E0E0': '#90A4AE', '#DCEDC8': '#8BC34A', '#F5F5F5': '#BDBDBD',
+  '#FFE0E6': '#F48FB1', '#E8EAF6': '#7986CB', '#E0F2F1': '#4DB6AC',
+  '#FFFDE7': '#FFF176', '#FAFAFA': '#E0E0E0', '#FFF9C4': '#FFF59D',
+  '#FCE4EC': '#F06292', '#CFD8DC': '#90A4AE',
+};
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
@@ -67,19 +78,7 @@ const JourneyOverview = ({ activeTasks, completedTasks, selectedDate, onPress })
   }, [onPress]);
 
   // Mood rengini solid hale getir
-  const getSolidMoodColor = (originalColor) => {
-    const colorMap = {
-      '#C8E6C9': '#4CAF50', '#FFE0B2': '#FF9800', '#E1BEE7': '#9C27B0',
-      '#FFCDD2': '#F44336', '#FFAB91': '#FF5722', '#FFCCBC': '#FF7043',
-      '#FFF3E0': '#FFB74D', '#E8F5E8': '#66BB6A', '#E1F5FE': '#42A5F5',
-      '#FFF8E1': '#FFCA28', '#F3E5F5': '#BA68C8', '#FFEBEE': '#EF5350',
-      '#E0E0E0': '#90A4AE', '#DCEDC8': '#8BC34A', '#F5F5F5': '#BDBDBD',
-      '#FFE0E6': '#F48FB1', '#E8EAF6': '#7986CB', '#E0F2F1': '#4DB6AC',
-      '#FFFDE7': '#FFF176', '#FAFAFA': '#E0E0E0', '#FFF9C4': '#FFF59D',
-      '#FCE4EC': '#F06292', '#CFD8DC': '#90A4AE',
-    };
-    return colorMap[originalColor] || originalColor;
-  };
+  const getSolidMoodColor = (originalColor) => SOLID_MOOD_COLOR_MAP[originalColor] || originalColor;
 
   // Journey Stats hesaplaması
   const journeyStats = useMemo(() => {

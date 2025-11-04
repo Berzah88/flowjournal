@@ -1,4 +1,4 @@
-import React, { useImperativeHandle, forwardRef } from 'react';
+import React, { useImperativeHandle, forwardRef, memo } from 'react';
 import MainHeader from './MainHeader';
 import { useAnimatedReaction, runOnJS } from 'react-native-reanimated';
 
@@ -26,7 +26,18 @@ const NestedHeader = forwardRef(({ globalCollapseProgress, onHeaderClosed, ...pr
     () => globalCollapseProgress?.value,
     (progress, previous) => {
       if ((previous == null || previous < 0.999) && progress >= 0.999) {
-        if (onHeaderClosed) runOnJS(onHeaderClosed)();
+        // Use runOnJS to call the JS callback from the animated thread.
+        if (typeof onHeaderClosed === 'function') {
+          runOnJS(() => {
+            if (__DEV__) console.debug('NestedHeader: onHeaderClosed fired');
+            try {
+              onHeaderClosed();
+            } catch (e) {
+              // Swallow to avoid unhandled errors from animated thread -> JS bridge
+              if (__DEV__) console.error('NestedHeader:onHeaderClosed error', e);
+            }
+          })();
+        }
       }
     }
   );
@@ -39,4 +50,6 @@ const NestedHeader = forwardRef(({ globalCollapseProgress, onHeaderClosed, ...pr
   );
 });
 
-export default NestedHeader;
+// Improve Dev tooling and avoid unnecessary re-renders when props are stable.
+NestedHeader.displayName = 'NestedHeader';
+export default memo(NestedHeader);

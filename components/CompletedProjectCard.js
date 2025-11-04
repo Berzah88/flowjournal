@@ -1,9 +1,8 @@
 import React, { useMemo, memo, useRef, useCallback } from "react";
 import { View, Text, StyleSheet, Pressable, Animated } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import PropTypes from "prop-types";
-import { FONTS, COLORS } from '../constants';
+import { FONTS } from '../constants';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -106,7 +105,6 @@ const CompletedProjectCard = memo(({
           }
         ]} 
         onPress={() => {
-          console.log('👆 CompletedProjectCard PRESSED (onPress):', title);
           scaleAnim.setValue(1); // Reset immediately before opening
           onPress?.();
         }}

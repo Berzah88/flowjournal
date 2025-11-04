@@ -1,5 +1,5 @@
 // components/StatusTabs.js
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import { View, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -37,23 +37,36 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, ins
     transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.05]) }], // Aktif olmayan tab hafif büyüyor
   }));
 
+  // Memoize layout constants so they are stable across renders
+  const layout = useMemo(() => {
+    const PADDING = 3; // matches container.paddingHorizontal
+    const INDICATOR_MARGIN = 6; // inner margin inside each tab area
+    const innerWidth = TAB_MAX_WIDTH - PADDING * 2;
+    const tabArea = innerWidth / 2;
+    const indicatorWidth = Math.max(20, tabArea - INDICATOR_MARGIN * 2);
+    const indicatorLeft = PADDING + INDICATOR_MARGIN;
+    return { PADDING, INDICATOR_MARGIN, innerWidth, tabArea, indicatorWidth, indicatorLeft };
+  }, []);
+
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        // translate by one tab-area (innerWidth/2)
-        translateX: interpolate(progress.value, [0, 1], [0, (TAB_MAX_WIDTH - 3 * 2) * 0.5])
+        // translate by one tab-area (tabArea)
+        translateX: interpolate(progress.value, [0, 1], [0, layout.tabArea])
       }
     ],
   }));
 
-  // Layout maths for precise symmetric indicator placement
-  const PADDING = 3; // matches container.paddingHorizontal
-  // Make horizontal inner margin match vertical gap (top/bottom = 6)
-  const INDICATOR_MARGIN = 6; // inner margin inside each tab area
-  const innerWidth = TAB_MAX_WIDTH - PADDING * 2;
-  const tabArea = innerWidth / 2;
-  const indicatorWidth = Math.max(20, tabArea - INDICATOR_MARGIN * 2);
-  const indicatorLeft = PADDING + INDICATOR_MARGIN;
+  // expose layout constants for styles below
+  const { indicatorLeft, indicatorWidth } = layout;
+
+  // stable press handlers to avoid recreating inline functions on each render
+  const handlePress0 = useCallback(() => onTabPress(0), [onTabPress]);
+  const handlePress1 = useCallback(() => onTabPress(1), [onTabPress]);
+
+  // memoize label texts (tiny optimization, stable references)
+  const labelMyDay = useMemo(() => t('myDay'), [t]);
+  const labelActive = useMemo(() => t('active'), [t]);
 
   return (
     <View style={[styles.wrapper, insideHeader ? styles.wrapperInsideHeader : null]} pointerEvents="box-none">
@@ -85,12 +98,12 @@ export default function StatusTabs({ activeIndex = 0, onTabPress = () => {}, ins
             indicatorStyle,
           ]}
         />
-        <TouchableOpacity style={styles.tab} onPress={() => onTabPress(0)} activeOpacity={0.8}>
-          <Animated.Text style={[styles.tabText, activeTextStyle]}>{t('myDay')}</Animated.Text>
+        <TouchableOpacity style={styles.tab} onPress={handlePress0} activeOpacity={0.8}>
+          <Animated.Text style={[styles.tabText, activeTextStyle]}>{labelMyDay}</Animated.Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => onTabPress(1)} activeOpacity={0.8}>
-          <Animated.Text style={[styles.tabText, completedTextStyle]}>{t('active')}</Animated.Text>
+        <TouchableOpacity style={styles.tab} onPress={handlePress1} activeOpacity={0.8}>
+          <Animated.Text style={[styles.tabText, completedTextStyle]}>{labelActive}</Animated.Text>
         </TouchableOpacity>
       </View>
     </View>

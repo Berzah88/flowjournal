@@ -1,11 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
-const LoadingSpinner = ({ message = 'Loading...', size = 'large', color = '#6C63FF' }) => {
+const LoadingSpinner = ({ message = 'Loading...', size = 'large', color }) => {
+  const { theme } = useTheme();
+  const spinnerColor = color || (theme.name === 'dark' ? '#FFFFFF' : '#6C63FF');
+
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size={size} color={color} />
-      <Text style={styles.message}>{message}</Text>
+    <View style={[styles.container, { backgroundColor: theme.name === 'dark' ? '#0B0B0B' : '#f5f5f5' }]}>
+      <ActivityIndicator
+        size={size}
+        color={spinnerColor}
+        accessibilityLabel={message}
+      />
+      <Text style={[styles.message, { color: theme.name === 'dark' ? '#DDD' : '#666' }]}>{message}</Text>
     </View>
   );
 };
@@ -26,4 +34,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoadingSpinner;
+export default React.memo(LoadingSpinner);

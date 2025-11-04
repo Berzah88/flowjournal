@@ -7,9 +7,6 @@ import AnimatedReanimated, {
   withTiming,
   runOnJS,
   Easing,
-  useDerivedValue,
-  useAnimatedReaction,
-  useAnimatedProps,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, NativeViewGestureHandler } from 'react-native-gesture-handler';
 import { SWIPE_THRESHOLDS } from '../constants';
@@ -474,4 +471,4 @@ const styles = {
   },
 };
 
-export default MainTabNavigation;
+export default React.memo(MainTabNavigation);

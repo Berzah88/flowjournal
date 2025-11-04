@@ -44,7 +44,9 @@ class ErrorBoundary extends React.Component {
       });
     } else {
       // Max retries reached, show permanent error
-      console.error('🚨 Max retries reached for ErrorBoundary');
+      if (__DEV__) {
+        console.error('🚨 Max retries reached for ErrorBoundary');
+      }
     }
   };
 

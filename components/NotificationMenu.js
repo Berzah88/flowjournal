@@ -1,5 +1,5 @@
 // components/NotificationMenu.js
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef, memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Switch, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
@@ -13,9 +13,9 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 import fcmService from "../services/FCMService";
-import notificationService from "../services/NotificationService";
+// notificationService was previously imported but not used — removed to avoid dead import
 
-export default function NotificationMenu({ 
+function NotificationMenu({ 
   visible, 
   onClose
 }) {
@@ -96,7 +96,7 @@ export default function NotificationMenu({
       const subscriptionStatus = await AsyncStorage.getItem('fcm_daily_reminders_subscribed');
       setIsSubscribed(subscriptionStatus === 'true');
     } catch (error) {
-      console.error('❌ Abonelik durumu kontrol hatası:', error);
+      if (__DEV__) console.error('❌ Abonelik durumu kontrol hatası:', error);
     }
   }, []);
 
@@ -126,8 +126,8 @@ export default function NotificationMenu({
         }
       }
     } catch (error) {
-      console.error('❌ Günlük bildirim toggle hatası:', error);
-      Alert.alert('❌ ' + t('error'), error.message);
+      if (__DEV__) console.error('❌ Günlük bildirim toggle hatası:', error);
+      try { Alert.alert('❌ ' + t('error'), error.message); } catch (e) { if (__DEV__) console.debug('Alert error', e); }
     } finally {
       setIsLoading(false);
     }
@@ -276,3 +276,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 });
+
+NotificationMenu.displayName = 'NotificationMenu';
+export default memo(NotificationMenu);

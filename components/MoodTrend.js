@@ -1,70 +1,65 @@
 // components/MoodTrend.js
-import React, { useMemo, useCallback, useRef } from 'react';
+import React, { memo, useMemo, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableWithoutFeedback, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { COLORS, ELEVATION } from '../constants';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
 
-const MoodTrend = ({ activeTasks, completedTasks }) => {
+// Moods lists hoisted to module scope to avoid recreating on each render
+const POSITIVE_MOODS = ['happy', 'excited', 'grateful', 'confident', 'calm', 'peaceful', 'hopeful', 'proud', 'relieved', 'motivated', 'content'];
+const NEGATIVE_MOODS = ['sad', 'angry', 'anxious', 'overwhelmed', 'tired', 'frustrated', 'stressed', 'exhausted', 'worried', 'disappointed', 'lonely', 'confused', 'bored'];
+
+const MoodTrend = ({ activeTasks = [], completedTasks = [] }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const navigation = useNavigation();
 
-  // Mood trend calculation (from previous code)
+  // Mood trend calculation (optimized to avoid repeated Date parsing)
   const moodTrend = useMemo(() => {
     const allTasks = [...activeTasks, ...completedTasks];
     const allMoodData = [];
-    allTasks.forEach(task => {
-      if (task.journalEntries && Array.isArray(task.journalEntries)) {
-        task.journalEntries.forEach(entry => {
-          if (entry.mood) {
-            allMoodData.push({ mood: entry.mood, createdAt: entry.createdAt });
-          }
-        });
+    for (let i = 0; i < allTasks.length; i++) {
+      const task = allTasks[i];
+      const entries = task?.journalEntries;
+      if (!entries || !Array.isArray(entries)) continue;
+      for (let j = 0; j < entries.length; j++) {
+        const entry = entries[j];
+        if (!entry || !entry.mood) continue;
+        const createdAtMs = typeof entry.createdAt === 'number' ? entry.createdAt : (Date.parse(entry.createdAt || '') || Date.now());
+        const d = new Date(createdAtMs);
+        const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        allMoodData.push({ mood: entry.mood, createdAtMs, dayKey });
       }
-    });
-    const now = new Date();
-    const positiveMoods = ['happy', 'excited', 'grateful', 'confident', 'calm', 'peaceful', 'hopeful', 'proud', 'relieved', 'motivated', 'content'];
-    const negativeMoods = ['sad', 'angry', 'anxious', 'overwhelmed', 'tired', 'frustrated', 'stressed', 'exhausted', 'worried', 'disappointed', 'lonely', 'confused', 'bored'];
-    const last7DaysStart = new Date(now);
-    last7DaysStart.setDate(now.getDate() - 7);
-    last7DaysStart.setHours(0, 0, 0, 0);
-    const thisWeekEntries = allMoodData.filter(entry => {
-      const entryDate = new Date(entry.createdAt);
-      return entryDate >= last7DaysStart;
-    });
-    const previous7DaysStart = new Date(now);
-    previous7DaysStart.setDate(now.getDate() - 14);
-    previous7DaysStart.setHours(0, 0, 0, 0);
-    const previousWeekEntries = allMoodData.filter(entry => {
-      const entryDate = new Date(entry.createdAt);
-      return entryDate >= previous7DaysStart && entryDate < last7DaysStart;
-    });
+    }
 
-    // Check if we have enough data for trend analysis (at least 3 entries across 3 different days in current week)
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const todayStartMs = (new Date()).setHours(0,0,0,0);
+    const last7DaysStartMs = todayStartMs - (7 * oneDayMs);
+    const previous7DaysStartMs = last7DaysStartMs - (7 * oneDayMs);
+
+    const thisWeekEntries = [];
+    const previousWeekEntries = [];
+    for (let k = 0; k < allMoodData.length; k++) {
+      const e = allMoodData[k];
+      if (e.createdAtMs >= last7DaysStartMs) thisWeekEntries.push(e);
+      else if (e.createdAtMs >= previous7DaysStartMs && e.createdAtMs < last7DaysStartMs) previousWeekEntries.push(e);
+    }
+
     const hasEnoughData = thisWeekEntries.length >= 3;
-
-    // Check if user has written journal entries on at least 3 different days this week
-    const uniqueDaysThisWeek = new Set();
-    thisWeekEntries.forEach(entry => {
-      const entryDate = new Date(entry.createdAt);
-      const dayKey = `${entryDate.getFullYear()}-${entryDate.getMonth()}-${entryDate.getDate()}`;
-      uniqueDaysThisWeek.add(dayKey);
-    });
+    const uniqueDaysThisWeek = new Set(thisWeekEntries.map(e => e.dayKey));
     const hasEnoughDailyEntries = uniqueDaysThisWeek.size >= 3;
 
     if (!hasEnoughData || !hasEnoughDailyEntries) {
       return { trend: null, hasEnoughData: false, hasEnoughDailyEntries: false };
     }
 
-    const thisWeekPositive = thisWeekEntries.filter(e => positiveMoods.includes(e.mood)).length;
-    const thisWeekNegative = thisWeekEntries.filter(e => negativeMoods.includes(e.mood)).length;
+    const thisWeekPositive = thisWeekEntries.reduce((acc, e) => acc + (POSITIVE_MOODS.includes(e.mood) ? 1 : 0), 0);
+    const thisWeekNegative = thisWeekEntries.reduce((acc, e) => acc + (NEGATIVE_MOODS.includes(e.mood) ? 1 : 0), 0);
     const thisWeekScore = thisWeekEntries.length > 0 ? (thisWeekPositive - thisWeekNegative) / thisWeekEntries.length : 0;
-    const prevWeekPositive = previousWeekEntries.filter(e => positiveMoods.includes(e.mood)).length;
-    const prevWeekNegative = previousWeekEntries.filter(e => negativeMoods.includes(e.mood)).length;
+    const prevWeekPositive = previousWeekEntries.reduce((acc, e) => acc + (POSITIVE_MOODS.includes(e.mood) ? 1 : 0), 0);
+    const prevWeekNegative = previousWeekEntries.reduce((acc, e) => acc + (NEGATIVE_MOODS.includes(e.mood) ? 1 : 0), 0);
     const prevWeekScore = previousWeekEntries.length > 0 ? (prevWeekPositive - prevWeekNegative) / previousWeekEntries.length : 0;
     const scoreDiff = thisWeekScore - prevWeekScore;
 
@@ -131,8 +126,8 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
     navigation.navigate('MoodTrend');
   }, [navigation]);
 
-  // Helper functions
-  const getTrendIcon = useCallback(() => {
+  // Memoized UI values derived from moodTrend
+  const iconName = useMemo(() => {
     if (!moodTrend.hasEnoughData) return 'analytics';
     switch (moodTrend.trend) {
       case 'improving': return 'trending-up';
@@ -141,7 +136,7 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
     }
   }, [moodTrend]);
 
-  const getTrendColor = useCallback(() => {
+  const trendColor = useMemo(() => {
     if (!moodTrend.hasEnoughData) return '#007AFF';
     switch (moodTrend.trend) {
       case 'improving': return '#34C759';
@@ -150,7 +145,7 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
     }
   }, [moodTrend]);
 
-  const getTrendText = useCallback(() => {
+  const trendText = useMemo(() => {
     if (!moodTrend.hasEnoughDailyEntries) return t('writeJournalMoreDays');
     switch (moodTrend.trend) {
       case 'improving': return t('moodImproving');
@@ -159,7 +154,7 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
     }
   }, [moodTrend, t]);
 
-  const getSubtext = useCallback(() => {
+  const subtext = useMemo(() => {
     if (!moodTrend.hasEnoughDailyEntries) return t('needMoreJournalDays');
     return t('basedOnLast7Days');
   }, [moodTrend, t]);
@@ -193,11 +188,14 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
         onPressIn={handleCardPressIn}
         onPressOut={handleCardPressOut}
         onPress={handleCardPress}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={t('openMoodTrend')}
       >
         <Animated.View style={[
           styles.card,
           {
-            borderLeftColor: getTrendColor(),
+            borderLeftColor: trendColor,
             backgroundColor: theme.name === 'dark' ? '#1C1C1E' : 'rgba(255, 255, 255, 0.95)',
             shadowColor: theme.name === 'dark' ? '#000000' : '#000',
             shadowOpacity: theme.name === 'dark' ? 0 : 0.03,
@@ -210,12 +208,12 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
           }
         ]}>
           <View style={styles.header}>
-            <Ionicons name={getTrendIcon()} size={24} color={getTrendColor()} />
+            <Ionicons name={iconName} size={24} color={trendColor} />
             <Text style={[
               styles.trendText,
-              { color: getTrendColor() }
+              { color: trendColor }
             ]}>
-              {getTrendText()}
+              {trendText}
             </Text>
             <View style={{ flex: 1 }} />
                 {/* chevron moved into header (left of icon) — no outside chevron */}
@@ -224,7 +222,7 @@ const MoodTrend = ({ activeTasks, completedTasks }) => {
             styles.subtext,
             { color: theme.name === 'dark' ? '#8E8E93' : '#8E8E93' }
           ]}>
-            {getSubtext()}
+            {subtext}
           </Text>
         </Animated.View>
       </TouchableWithoutFeedback>
@@ -282,5 +280,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MoodTrend;
+export default memo(MoodTrend);
 

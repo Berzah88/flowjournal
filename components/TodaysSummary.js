@@ -1,9 +1,6 @@
 // components/TodaysSummary.js
-import React, { memo, useCallback } from 'react';
-import { useAnimatedProps } from 'react-native-reanimated';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import AnimatedReanimated from 'react-native-reanimated';
-const AnimatedFlatList = AnimatedReanimated.FlatList;
+import React, { memo, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -34,7 +31,22 @@ const TodaysSummary = memo(function TodaysSummary({
   const { t } = useLanguage();
   // Production: no visual debug overlays or touch counters here.
 
-  const renderProjectList = () => {
+  // Progress calculation memoized to avoid re-scanning projects on every render
+  const progressInfo = useMemo(() => {
+    const today = new Date();
+    const selectedDateObj = new Date(selectedDate);
+    today.setHours(0, 0, 0, 0);
+    selectedDateObj.setHours(0, 0, 0, 0);
+    if (selectedDateObj.getTime() !== today.getTime()) return null;
+    const totalMilestones = selectedDateActiveTasks.reduce((total, project) => total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length || 0), 0);
+    const completedMilestones = selectedDateActiveTasks.reduce((total, project) => total + (project.milestones?.filter(m => isMilestoneCompletedToday(m, selectedDate)).length || 0), 0);
+    const total = totalMilestones + completedMilestones;
+    if (total === 0) return null;
+    const percentage = Math.round((completedMilestones / total) * 100);
+    return { total, totalMilestones, completedMilestones, percentage };
+  }, [selectedDateActiveTasks, selectedDate, isMilestoneActiveToday, isMilestoneCompletedToday]);
+
+  const renderProjectList = useCallback(() => {
     if (selectedDateActiveTasks.length === 0) {
       return (
         <View style={[styles.emptyState, { backgroundColor: theme.name === 'dark' ? '#1C1C1E' : '#F2F2F7', borderColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'transparent', borderWidth: theme.name === 'dark' ? 1 : 0, borderLeftColor: theme.name === 'dark' ? '#FF6B6B' : '#1976D2' }]}>
@@ -76,7 +88,7 @@ const TodaysSummary = memo(function TodaysSummary({
         ))}
       </View>
     );
-  };
+  }, [selectedDateActiveTasks, ProjectCard, setSelectedCard, setSelectedProjectForMilestone, setAddMilestoneModalVisible, completingMilestones, selectedDate, isMilestoneActiveToday, isMilestoneCompletedToday, isMilestoneOverdue, isMilestoneLastDay, openMilestone, handleMilestoneToggle, onOpenJournal, focusedProjects, handleProjectLongPress, getProjectEmotionalProgress, theme, t]);
 
   return (
     <View style={styles.container}>
@@ -92,36 +104,24 @@ const TodaysSummary = memo(function TodaysSummary({
           </View>
         </View>
       </View>
-      {(() => {
-        const today = new Date();
-        const selectedDateObj = new Date(selectedDate);
-        today.setHours(0, 0, 0, 0);
-        selectedDateObj.setHours(0, 0, 0, 0);
-        if (selectedDateObj.getTime() !== today.getTime()) return null;
-        const totalMilestones = selectedDateActiveTasks.reduce((total, project) => total + (project.milestones?.filter(m => !m.completed && isMilestoneActiveToday(m, selectedDate)).length || 0), 0);
-        const completedMilestones = selectedDateActiveTasks.reduce((total, project) => total + (project.milestones?.filter(m => isMilestoneCompletedToday(m, selectedDate)).length || 0), 0);
-        const total = totalMilestones + completedMilestones;
-        const percentage = total > 0 ? Math.round((completedMilestones / total) * 100) : 0;
-        if (total === 0) return null;
-        return (
-          <View style={[styles.progressStatus, { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.05)', borderLeftColor: '#34C759' }]}>
-            <View style={styles.progressIconContainer}><Ionicons name="trending-up" size={14} color="#34C759" /></View>
-            <View style={styles.progressContent}>
-              <View style={styles.progressHeader}>
-                <Text style={[styles.progressText, { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }]}>{t('progressStatus')}</Text>
-                <Text style={[styles.progressPercentage, { color: '#34C759', backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.1)' }]}>{percentage}%</Text>
-              </View>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBar, { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.3)' : 'rgba(52, 199, 89, 0.2)' }]}>
-                  <View style={[styles.progressBarFill, { width: `${percentage}%` }]}>
-                    <LinearGradient colors={['#34C759', '#30D158']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.progressGradient} />
-                  </View>
+      {progressInfo && (
+        <View style={[styles.progressStatus, { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.1)' : 'rgba(52, 199, 89, 0.05)', borderLeftColor: '#34C759' }]}>
+          <View style={styles.progressIconContainer}><Ionicons name="trending-up" size={14} color="#34C759" /></View>
+          <View style={styles.progressContent}>
+            <View style={styles.progressHeader}>
+              <Text style={[styles.progressText, { color: theme.name === 'dark' ? '#FFFFFF' : '#1D1D1F' }]}>{t('progressStatus')}</Text>
+              <Text style={[styles.progressPercentage, { color: '#34C759', backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.2)' : 'rgba(52, 199, 89, 0.1)' }]}>{progressInfo.percentage}%</Text>
+            </View>
+            <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBar, { backgroundColor: theme.name === 'dark' ? 'rgba(52, 199, 89, 0.3)' : 'rgba(52, 199, 89, 0.2)' }]}>
+                <View style={[styles.progressBarFill, { width: `${progressInfo.percentage}%` }]}>
+                  <LinearGradient colors={['#34C759', '#30D158']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.progressGradient} />
                 </View>
               </View>
             </View>
           </View>
-        );
-      })()}
+        </View>
+      )}
       <View style={styles.summaryContainer}>
         {renderProjectList()}
       </View>

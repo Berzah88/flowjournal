@@ -49,7 +49,7 @@ import { useActiveTasks, useCompletedTasks } from '../hooks/useTaskContext';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProjectAnalyzer from '../utils/ProjectAnalyzer';
-import { Helpers } from '../components/Styles';
+import { Helpers } from '../constants';
 
 const { width, height } = Dimensions.get('window');
 

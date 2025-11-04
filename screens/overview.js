@@ -10,7 +10,7 @@ import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { Helpers, Typography } from '../components/Styles';
+import { Helpers, Typography } from '../constants';
 
 const { width } = Dimensions.get('window');
 

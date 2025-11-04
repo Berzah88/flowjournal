@@ -19,7 +19,7 @@ import FlashCalendar from "../components/FlashCalendar";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useEducation } from "../context/EducationContext";
-import { Typography } from '../components/Styles';
+import { Typography } from '../constants';
 import { EDUCATION_STEPS } from "../context/EducationContext";
 import Animated, {
   useSharedValue,

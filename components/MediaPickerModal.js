@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Modal, StyleSheet, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Modal, StyleSheet, Text, TouchableOpacity, FlatList, Image, ActivityIndicator, Alert } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,7 +7,9 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, interpolate, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing } from 'react-native-reanimated';
+
+const SHEET_HEIGHT = 420; // module-level constant to avoid re-creation on each render
 
 export default function MediaPickerModal({ visible, onClose, onSelect }) {
   const { theme } = useTheme();
@@ -19,8 +21,7 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [selectedUris, setSelectedUris] = useState([]);
 
-  const sheetHeight = 420; // approximate sheet height for animation
-  const translateY = useSharedValue(sheetHeight);
+  const translateY = useSharedValue(SHEET_HEIGHT);
   const startY = useSharedValue(0);
 
   useEffect(() => {
@@ -57,23 +58,24 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  const closeSheet = (cb) => {
-    translateY.value = withTiming(sheetHeight, { duration: 220 }, () => {
-      runOnJS(cb)();
+  const closeSheet = useCallback((cb) => {
+    translateY.value = withTiming(SHEET_HEIGHT, { duration: 220 }, () => {
+      // run a safe JS callback on animation end
+      runOnJS(() => {
+        try { cb && cb(); } catch (e) { if (__DEV__) console.debug('closeSheet cb error', e); }
+      })();
     });
-  };
+  }, [translateY]);
 
-  const commitAndClose = () => {
+  const commitAndClose = useCallback(() => {
     try {
-      if (selectedUris.length > 0) onSelect(selectedUris.slice());
+      if (selectedUris.length > 0) onSelect?.(selectedUris.slice());
     } catch (e) {
-      // ignore
+      if (__DEV__) console.debug('commitAndClose onSelect error', e);
     }
-    // call onClose after delivering selection
-    try { onClose(); } catch (e) {}
-    // reset selection
+    try { onClose?.(); } catch (e) { if (__DEV__) console.debug('commitAndClose onClose error', e); }
     setSelectedUris([]);
-  };
+  }, [selectedUris, onSelect, onClose]);
 
   // Drag-to-close gesture (robust: track start offset + velocity)
   const pan = Gesture.Pan()
@@ -90,7 +92,7 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
       // close if dragged far enough or released with a strong downward velocity
       const shouldClose = (e.translationY > 120) || (e.velocityY > 1200);
       if (shouldClose) {
-        translateY.value = withTiming(sheetHeight, { duration: 180 }, () => runOnJS(commitAndClose)());
+        translateY.value = withTiming(SHEET_HEIGHT, { duration: 180 }, () => runOnJS(commitAndClose)());
       } else {
         translateY.value = withTiming(0, { duration: 180 });
       }
@@ -100,17 +102,17 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
     transform: [{ translateY: translateY.value }],
   }));
 
-  // ref for the horizontal ScrollView so we can allow simultaneous handling
-  const assetsScrollRef = useRef(null);
+  // ref for the horizontal FlatList so we can allow simultaneous handling
+  const assetsListRef = useRef(null);
 
-  const toggleSelect = (uri) => {
+  const toggleSelect = useCallback((uri) => {
     setSelectedUris((prev) => {
       if (prev.includes(uri)) return prev.filter(u => u !== uri);
       return [...prev, uri];
     });
-  };
+  }, []);
 
-  const handleTakePhoto = async () => {
+  const handleTakePhoto = useCallback(async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') return;
@@ -119,16 +121,15 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
       if (result?.assets && result.assets.length > 0) uri = result.assets[0].uri;
       else if (result?.uri) uri = result.uri;
       if (uri) {
-        // add to selection and return immediately
-        onSelect([uri]);
+        onSelect?.([uri]);
         closeSheet(onClose);
       }
     } catch (err) {
-      // ignore
+      if (__DEV__) console.debug('handleTakePhoto error', err);
     }
-  };
+  }, [onSelect, closeSheet, onClose]);
 
-  const handleOpenLibrary = async () => {
+  const handleOpenLibrary = useCallback(async () => {
     try {
       // Ensure media library permission is granted before launching
       let { status } = await ImagePicker.getMediaLibraryPermissionsAsync?.();
@@ -140,7 +141,7 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
         try {
           Alert.alert(t('permissionRequired') || 'Permission Required', t('galleryPermissionMessage') || 'Gallery access permission is required to add photos. Please grant permission in settings.', [{ text: t('ok') || 'OK' }]);
         } catch (e) {
-          // ignore alert errors
+          if (__DEV__) console.debug('Alert error', e);
         }
         return;
       }
@@ -160,16 +161,15 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
       if (result?.assets && result.assets.length > 0) uri = result.assets[0].uri;
       else if (result?.uri) uri = result.uri;
       if (uri) {
-        onSelect([uri]);
+        onSelect?.([uri]);
         closeSheet(onClose);
       }
     } catch (err) {
-      // Log error and swallow so UI doesn't crash
       try { console.debug('MediaPicker: open library error', err); } catch (e) {}
     }
-  };
+  }, [onSelect, closeSheet, onClose, t]);
 
-  const triggerHaptic = async () => {
+  const triggerHaptic = useCallback(async () => {
     try {
       if (Haptics && Haptics.selectionAsync) {
         await Haptics.selectionAsync();
@@ -177,13 +177,26 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
     } catch (e) {
       // ignore if Haptics isn't available
     }
-  };
+  }, []);
 
-  const confirmSelection = () => {
+  const confirmSelection = useCallback(() => {
     if (selectedUris.length === 0) return;
-    onSelect(selectedUris.slice());
+    onSelect?.(selectedUris.slice());
     closeSheet(onClose);
-  };
+  }, [selectedUris, onSelect, closeSheet, onClose]);
+
+  const renderAssetItem = useCallback(({ item }) => {
+    const selected = selectedUris.includes(item.uri);
+    const overlayStyle = selected ? [styles.overlayBase, styles.overlaySelected, { backgroundColor: activeColor, borderColor: '#fff', borderWidth: 2 }] : [styles.overlayBase, styles.overlayUnselected];
+    return (
+      <TouchableOpacity onPress={() => toggleSelect(item.uri)} style={styles.assetWrap} activeOpacity={0.85}>
+        <Image source={{ uri: item.uri }} style={styles.asset} resizeMode="cover" />
+        <View style={overlayStyle}>
+          {selected ? (<MaterialIcons name="check" size={12} color={'#fff'} />) : null}
+        </View>
+      </TouchableOpacity>
+    );
+  }, [selectedUris, activeColor, toggleSelect]);
 
   return (
     <Modal visible={visible} animationType="none" transparent>
@@ -191,7 +204,7 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
         <View style={[styles.backdrop, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
             <Animated.View style={[styles.sheet, { backgroundColor: theme.name === 'dark' ? '#0B1612' : '#FFFFFF' }, sheetStyle]}>
               {/* Only allow the header/handle region to receive the vertical pan gesture so horizontal scrolling in the thumbnails works freely */}
-              <GestureDetector gesture={pan} simultaneousHandlers={assetsScrollRef}>
+              <GestureDetector gesture={pan} simultaneousHandlers={assetsListRef}>
                 <View>
                   <View style={styles.handleRow}>
                     <View style={styles.handle} />
@@ -213,28 +226,34 @@ export default function MediaPickerModal({ visible, onClose, onSelect }) {
               {loading ? (
                 <ActivityIndicator size="small" color={activeColor} />
               ) : permissionGranted ? (
-                <ScrollView
-                  ref={assetsScrollRef}
+                <FlatList
+                  ref={assetsListRef}
                   horizontal
+                  data={assets}
+                  keyExtractor={(item) => item.id}
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.assetsScroll}
                   nestedScrollEnabled={true}
                   directionalLockEnabled={true}
-                >
-                  {assets.slice(0, 6).map((a) => {
-                    const selected = selectedUris.includes(a.uri);
+                  initialNumToRender={6}
+                  maxToRenderPerBatch={6}
+                  windowSize={5}
+                  removeClippedSubviews={true}
+                  getItemLayout={(data, index) => ({ length: 104, offset: 104 * index, index })}
+                  renderItem={({ item }) => {
+                    const selected = selectedUris.includes(item.uri);
+                    // avoid recreating inline style objects frequently
+                    const overlayStyle = selected ? [styles.overlayBase, styles.overlaySelected, { backgroundColor: activeColor, borderColor: '#fff', borderWidth: 2 }] : [styles.overlayBase, styles.overlayUnselected];
                     return (
-                        <TouchableOpacity key={a.id} onPress={() => toggleSelect(a.uri)} style={styles.assetWrap} activeOpacity={0.85}>
-                        <Image source={{ uri: a.uri }} style={styles.asset} />
-                        <View style={selected ? [styles.overlayBase, styles.overlaySelected, { backgroundColor: activeColor, borderColor: '#fff', borderWidth: 2 }] : [styles.overlayBase, styles.overlayUnselected]}>
-                          {selected ? (
-                            <MaterialIcons name="check" size={12} color={'#fff'} />
-                          ) : null}
+                      <TouchableOpacity key={item.id} onPress={() => toggleSelect(item.uri)} style={styles.assetWrap} activeOpacity={0.85}>
+                        <Image source={{ uri: item.uri }} style={styles.asset} resizeMode="cover" />
+                        <View style={overlayStyle}>
+                          {selected ? (<MaterialIcons name="check" size={12} color={'#fff'} />) : null}
                         </View>
                       </TouchableOpacity>
                     );
-                  })}
-                </ScrollView>
+                  }}
+                />
                 ) : (
                 <View style={styles.permissionNotice}>
                   <Text style={{ color: theme.name === 'dark' ? '#CCC' : '#444' }}>{t('galleryPermissionMessage')}</Text>
@@ -273,15 +292,14 @@ const styles = StyleSheet.create({
   sectionTitle: { paddingHorizontal: 16, paddingTop: 16, fontSize: 16, fontWeight: '600' },
   assetsRow: { paddingVertical: 24, paddingHorizontal: 12 },
   assetsScroll: { paddingRight: 12 },
-  assetWrap: { marginRight: 8, width: 96, height: 96, borderRadius: 12, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.06)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4 },
+  assetWrap: { marginRight: 8, width: 96, height: 96, borderRadius: 12, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.06)' },
   asset: { width: '100%', height: '100%' },
   overlayBase: { position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
-  overlaySelected: { /* shadow + border handled inline */ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 4 },
+  overlaySelected: { /* border handled inline */ },
   overlayUnselected: { backgroundColor: 'rgba(255,255,255,0.28)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' },
   selectedText: { color: '#fff', fontWeight: '700' },
   permissionNotice: { padding: 12, alignItems: 'center' },
   footerRow: { flexDirection: 'column', paddingHorizontal: 16, gap: 12, marginTop: 24, paddingBottom: 24 },
-  footerRow: { flexDirection: 'column', paddingHorizontal: 16, marginTop: 28, paddingBottom: 28 },
   primaryBtn: { height: 58, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText: { color: '#000', fontWeight: '700', fontSize: 16 },
   secondaryBtn: { height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, marginTop: 16 },

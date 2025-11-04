@@ -1,18 +1,16 @@
 // components/ParentDateNotificationModal.js
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Animated,
   PanResponder,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const { width } = Dimensions.get('window');
 
 const ParentDateNotificationModal = ({
   visible = false,
@@ -70,7 +68,7 @@ const ParentDateNotificationModal = ({
           useNativeDriver: true,
         }),
       ]).start(() => {
-        onClose();
+          try { onClose && onClose(); } catch (e) { if (__DEV__) console.debug('ParentDateNotificationModal onClose error', e); }
       });
     }
   }, [visible]);
@@ -88,7 +86,7 @@ const ParentDateNotificationModal = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onClose();
+      try { onClose && onClose(); } catch (e) { if (__DEV__) console.debug('ParentDateNotificationModal onClose error', e); }
     });
   };
 
@@ -202,4 +200,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ParentDateNotificationModal;
+ParentDateNotificationModal.displayName = 'ParentDateNotificationModal';
+export default memo(ParentDateNotificationModal);

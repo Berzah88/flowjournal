@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StatusBar, Platform } from 'react-native';
+import { StatusBar, Platform, View, Text, ActivityIndicator } from 'react-native';
 import TutorialScreen from './screens/TutorialScreen';
 import MainScreen from './screens/MainScreen';
 import AddProjectScreen from './screens/AddProjectScreen';
@@ -192,7 +192,14 @@ export default function App() {
   }, []);
 
   if (!fontsLoaded) {
-    return <LoadingSpinner message="Loading fonts..." />;
+    // Avoid using theme-aware components before ThemeProvider is mounted.
+    // Render a minimal fallback UI that does not call useTheme.
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#6C63FF" />
+        <Text style={{ marginTop: 12, fontFamily: 'Poppins_400Regular' }}>Loading fonts...</Text>
+      </View>
+    );
   }
 
   return (

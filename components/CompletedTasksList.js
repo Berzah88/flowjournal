@@ -5,7 +5,6 @@ import MileStone from './MileStone';
 
 function CompletedTasksList({
   completedMilestones,
-  refreshKey,
   theme,
   t,
   currentTask,
@@ -14,7 +13,6 @@ function CompletedTasksList({
   onDeleteMilestone,
   onSetActiveMilestone,
   onOpenJournal,
-  onAttachMilestone,
   allMilestones,
   navigation,
   styles,

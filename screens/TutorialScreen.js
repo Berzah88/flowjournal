@@ -12,11 +12,12 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS } from "../constants";
+import { FONTS, COLORS, SPACING, BORDER_RADIUS, ANIMATION_DURATIONS, Helpers } from "../constants";
 import { useLanguage } from "../context/LanguageContext";
 import { useEducation } from "../context/EducationContext";
 import permissionManager from '../services/PermissionManager';
-import { Helpers } from '../components/Styles';
+// Helpers moved to constants; prefer the centralized token module
+// import { Helpers } from '../components/Styles';
 
 const { width, height } = Dimensions.get("window");
 
@@ -401,6 +402,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: "100%",
+    flex: 1,
   },
   header: {
     flexDirection: "row",

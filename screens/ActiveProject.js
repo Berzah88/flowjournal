@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect, useCallback, useRef, useMemo } 
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, BackHandler, Animated, PanResponder, Vibration, Easing, InteractionManager } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import logger from '../utils/logger';
-import { Helpers, Typography } from '../components/Styles';
+import { Helpers, Typography } from '../constants';
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 import { useTasks, useTaskActions } from "../hooks/useTaskContext";
@@ -12,7 +12,6 @@ import { useLanguage } from "../context/LanguageContext";
 import EditModal from "../components/EditModal";
 import ActiveTaskMenu from "../components/ActiveTaskMenu";
 import Journal from "./Journal";
-import ProjectCalendar from "../components/ProjectCalendar";
 import AddTaskModal from "../components/AddTaskModal";
 import ActiveProjectHeader from "../components/ActiveProjectHeader";
 import ActiveProjectTasks from "../components/ActiveProjectTasks";

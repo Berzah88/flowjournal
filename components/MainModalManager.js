@@ -11,6 +11,7 @@ import NotificationMenu from './NotificationMenu';
 import LanguageSettings from './LanguageSettings';
 import CelebrationModal from './CelebrationModal';
 import ParentDateNotificationModal from './ParentDateNotificationModal';
+import Motive from './Motive';
 
 const MainModalManager = ({
   // Add Project Modal
@@ -61,6 +62,10 @@ const MainModalManager = ({
   setParentDateNotificationVisible,
   parentDateNotifications,
   setParentDateNotifications,
+  // Motive modal
+  motiveVisible,
+  setMotiveVisible,
+  motiveData,
   
   // Props
   navigation,
@@ -202,6 +207,15 @@ const MainModalManager = ({
           setParentDateNotificationVisible(false);
           setParentDateNotifications([]);
         }}
+      />
+
+      {/* Motive notification - small slide-in banner/modal */}
+      <Motive
+        visible={!!motiveVisible}
+        onClose={() => setMotiveVisible && setMotiveVisible(false)}
+        title={motiveData?.title || ''}
+        message={motiveData?.message || ''}
+        color={motiveData?.color || '#667eea'}
       />
     </>
   );

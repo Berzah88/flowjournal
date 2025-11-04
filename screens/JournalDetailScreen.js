@@ -19,7 +19,7 @@ import * as Location from "expo-location";
 import logger from '../utils/logger';
 import { reverseGeocodeSafe, formatCoords } from '../utils/locationHelpers';
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Helpers, Typography } from '../components/Styles';
+import { Helpers, Typography } from '../constants';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,

@@ -1,5 +1,5 @@
 // components/ProjectCard.js
-import React, { memo, useRef, useCallback } from 'react';
+import React, { memo, useRef, useCallback, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Animated, Vibration, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -135,14 +135,66 @@ const ProjectCard = memo(function ProjectCard({
 
   const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
 
-  const formatShort = (dateStr) => {
+  const formatShort = useCallback((dateStr) => {
     try {
       const d = new Date(dateStr);
       return d.toLocaleDateString(locale, { day: '2-digit', month: 'short' });
     } catch (e) {
       return '';
     }
-  };
+  }, [locale]);
+
+  // Precompute maps and organized milestone list to avoid repeated filtering in render
+  const milestoneChildrenMap = useMemo(() => {
+    const map = Object.create(null);
+    if (!project?.milestones) return map;
+    project.milestones.forEach(ms => {
+      if (ms.parentId) {
+        if (!map[ms.parentId]) map[ms.parentId] = [];
+        map[ms.parentId].push(ms);
+      }
+    });
+    return map;
+  }, [project?.milestones]);
+
+  const organizedMilestones = useMemo(() => {
+    if (!project?.milestones) return [];
+    const filteredMilestones = project.milestones.filter(m => {
+      // Always show if completing
+      if (completingMilestones.has(`${project.id}-${m.id}`)) return true;
+
+      // Show completed milestones ONLY if completed today
+      if (m.completed) {
+        return isMilestoneCompletedToday(m, selectedDate);
+      }
+
+      // If milestone is a child
+      if (m.parentId) {
+        const parent = project.milestones.find(p => p.id === m.parentId);
+        if (parent && (!parent.completed || isMilestoneCompletedToday(parent, selectedDate))) {
+          return isMilestoneActiveToday(m, selectedDate);
+        }
+        return false;
+      }
+
+      // If milestone is a parent or standalone
+      const hasActiveOrTodayChild = (milestoneChildrenMap[m.id] || []).some(child => {
+        if (completingMilestones.has(`${project.id}-${child.id}`)) return true;
+        if (child.completed) return isMilestoneCompletedToday(child, selectedDate);
+        return isMilestoneActiveToday(child, selectedDate);
+      });
+      return isMilestoneActiveToday(m, selectedDate) || hasActiveOrTodayChild;
+    });
+
+    const organized = [];
+    filteredMilestones.forEach(ms => {
+      if (!ms.parentId) {
+        organized.push(ms);
+        if (milestoneChildrenMap[ms.id]) organized.push(...milestoneChildrenMap[ms.id]);
+      }
+    });
+    return organized;
+  }, [project?.milestones, completingMilestones, selectedDate, isMilestoneActiveToday, isMilestoneCompletedToday, milestoneChildrenMap]);
 
   return (
     <TouchableWithoutFeedback
@@ -296,74 +348,16 @@ const ProjectCard = memo(function ProjectCard({
         
         {project.milestones && project.milestones.length > 0 && (
           <View style={styles.milestonesList}>
-            {(() => {
-              // NEW FILTERING LOGIC: Show active milestones + today's completed milestones
-              const filteredMilestones = project.milestones.filter(m => {
-                // Always show if completing
-                if (completingMilestones.has(`${project.id}-${m.id}`)) return true;
-                
-                // Show completed milestones ONLY if completed today
-                if (m.completed) {
-                  return isMilestoneCompletedToday(m, selectedDate);
-                }
-                
-                // If milestone is a child
-                if (m.parentId) {
-                  const parent = project.milestones.find(p => p.id === m.parentId);
-                  // Show child only if parent is not completed (or completed today)
-                  if (parent && (!parent.completed || isMilestoneCompletedToday(parent, selectedDate))) {
-                    return isMilestoneActiveToday(m, selectedDate);
-                  }
-                  // Don't show child if parent is completed (and not today)
-                  return false;
-                }
-                
-                // If milestone is a parent or standalone
-                // Show if active OR any of its children is active/completed today
-                const hasActiveOrTodayChild = project.milestones.some(child => {
-                  if (child.parentId !== m.id) return false;
-                  if (completingMilestones.has(`${project.id}-${child.id}`)) return true;
-                  if (child.completed) return isMilestoneCompletedToday(child, selectedDate);
-                  return isMilestoneActiveToday(child, selectedDate);
-                });
-                return isMilestoneActiveToday(m, selectedDate) || hasActiveOrTodayChild;
-              });
-              
-              // Organize hierarchically
-              const organized = [];
-              const childrenMap = {};
-              
-              // Group children by parent
-              filteredMilestones.forEach(ms => {
-                if (ms.parentId) {
-                  if (!childrenMap[ms.parentId]) {
-                    childrenMap[ms.parentId] = [];
-                  }
-                  childrenMap[ms.parentId].push(ms);
-                }
-              });
-              
-              // Add parents and their children in hierarchical order
-              filteredMilestones.forEach(ms => {
-                if (!ms.parentId) {
-                  organized.push(ms);
-                  // Add children right after parent
-                  if (childrenMap[ms.id]) {
-                    organized.push(...childrenMap[ms.id]);
-                  }
-                }
-              });
-              
-              return organized.map((milestone, index) => {
+            {organizedMilestones.map((milestone, index) => {
                 const milestoneKey = `${project.id}-${milestone.id}`;
                 const isCompleting = completingMilestones.has(milestoneKey);
                 const isOverdue = isMilestoneOverdue(milestone, selectedDate);
                 const isLastDay = isMilestoneLastDay(milestone, selectedDate);
                 const isChild = !!milestone.parentId;
-                const children = project.milestones.filter(m => m.parentId === milestone.id);
+                const children = milestoneChildrenMap[milestone.id] || [];
                 const hasChildren = children.length > 0;
                 const completedChildren = children.filter(m => m.completed).length;
-                
+
                 return (
                 <View 
                   key={milestone.id || index}
@@ -419,8 +413,7 @@ const ProjectCard = memo(function ProjectCard({
                   </View>
                 </View>
                 );
-              });
-            })()}
+              })}
           </View>
         )}
 

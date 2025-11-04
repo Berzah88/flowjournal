@@ -275,19 +275,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   shadowLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    borderRadius: 20,
-    height: '100%',
-    // Static shadow - will not be animated
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-    borderWidth: 0,
-    zIndex: -1,
+    // removed: unused shadow layer (kept for historical reference)
   },
   emojiContainer: {
     width: 48,

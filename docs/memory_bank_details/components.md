@@ -156,9 +156,8 @@ Bu dosya `components/` altındaki bileşenlerin kısa özetlerini içerir. Her m
 - Export: default memoized component
 - Açıklama: MyDay içinde kullanılan proje özet kartı (başlık, tarih, milestone kısa erişimleri, badge'ler). Long-press / touch animasyonları ve milestone kısmi listesi içerir.
 
-`components/ProjectCalendar.js`
-- Export: default component
-- Açıklama: Projeler/ tüm milestone'ların ay bazlı takvim görünümü; milestone dot'ları, mood tag'ları ve legend içerir.
+`components/ProjectCalendar.js` — REMOVED
+- Status: Dosya projeden silindi (2025-11-04). Tüm import/usage referansları güncellendi veya kaldırıldı.
 
 `components/ParentDateNotificationModal.js`
 - Export: default component

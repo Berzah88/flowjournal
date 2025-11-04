@@ -21,7 +21,7 @@ import AnimatedReanimated, {
   Easing,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Helpers, Typography } from '../components/Styles';
+import { Helpers, Typography } from '../constants';
 
 const { width, height } = Dimensions.get("window");
 

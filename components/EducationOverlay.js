@@ -7,18 +7,16 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
-  StatusBar,
-  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useEducation } from '../context/EducationContext';
 import { EDUCATION_STEPS } from '../context/EducationContext';
-import { getStepConfig, calculateProgress } from '../utils/EducationManager';
+import { getStepConfig } from '../utils/EducationManager';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
-const { width, height } = Dimensions.get('window');
+// Dimensions not required here; keep if needed later
 
 export default function EducationOverlay({ onAddProject, onAddMilestone, hideOverlay }) {
   const { 
@@ -41,12 +39,14 @@ export default function EducationOverlay({ onAddProject, onAddMilestone, hideOve
   useEffect(() => {
     if (currentStep) {
       const stepConfig = getStepConfig(currentStep, language);
-      console.log('🎓 Education config loaded:', { 
-        currentStep, 
-        language, 
-        title: stepConfig?.title,
-        buttonText: stepConfig?.buttonText 
-      });
+      if (__DEV__) {
+        console.log('🎓 Education config loaded:', {
+          currentStep,
+          language,
+          title: stepConfig?.title,
+          buttonText: stepConfig?.buttonText,
+        });
+      }
       setConfig(stepConfig);
     }
   }, [currentStep, language]);
@@ -95,7 +95,7 @@ export default function EducationOverlay({ onAddProject, onAddMilestone, hideOve
       }
     } else if (currentStep === EDUCATION_STEPS.MY_DAY_FEATURES) {
       // User understood features - complete education
-      console.log('🎓 User acknowledged My Day features, completing education');
+      if (__DEV__) console.log('🎓 User acknowledged My Day features, completing education');
       completeEducation();
     }
   };
@@ -114,21 +114,23 @@ export default function EducationOverlay({ onAddProject, onAddMilestone, hideOve
   }
 
   if (hideOverlay) {
-    console.log('🎓 Overlay hidden temporarily');
+    if (__DEV__) console.log('🎓 Overlay hidden temporarily');
     return null;
   }
 
   if (!config) {
-    console.log('🎓 Config not loaded yet');
+    if (__DEV__) console.log('🎓 Config not loaded yet');
     return null;
   }
 
-  console.log('🎓 Rendering overlay:', { 
-    currentStep,
-    hasConfig: !!config,
-    buttonText: config?.buttonText,
-    position: 'top'
-  });
+  if (__DEV__) {
+    console.log('🎓 Rendering overlay:', {
+      currentStep,
+      hasConfig: !!config,
+      buttonText: config?.buttonText,
+      position: 'top',
+    });
+  }
 
   return (
     <Animated.View 

@@ -1,6 +1,6 @@
 // components/ActiveProjectHeader.js
 import React, { useCallback, memo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated as RNAnimated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated as RNAnimated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';

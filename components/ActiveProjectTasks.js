@@ -23,7 +23,8 @@ function ActiveProjectTasks({
   onOpenJournal,
   onAttachMilestone,
   navigation,
-  refreshKey
+  refreshKey,
+  onInnerScroll
 }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -296,12 +297,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 122, 255, 0.15)',
   },
-  minimalAddText: {
-    fontSize: 16,
-    fontFamily: "Poppins_600SemiBold",
-    lineHeight: 16,
-    marginTop: -1, // Fine-tune vertical alignment
-  },
+  // minimalAddText removed (unused)
   // Legacy styles (keeping for compatibility)
   // Legacy styles removed to keep file compact. Reintroduce if needed.
   emptyState: {

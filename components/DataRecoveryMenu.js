@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     minWidth: 200,
     shadowOffset: { width: 0, height: 8 },
-    backdropFilter: "blur(20px)",
+    // Note: React Native doesn't support CSS `backdropFilter`; remove it.
     borderWidth: 1,
   },
   item: {

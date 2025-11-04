@@ -1,5 +1,5 @@
 // components/FlashCalendar.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Modal,
   View,
@@ -70,7 +70,7 @@ export default function FlashCalendar({
     }
   };
 
-  const getMarkedDates = () => {
+  const markedDates = useMemo(() => {
     const marked = {};
     if (!localStart) return marked;
 
@@ -104,7 +104,7 @@ export default function FlashCalendar({
       return marked;
     }
     return marked;
-  };
+  }, [localStart, localEnd]);
 
   const handleConfirm = () => {
     if (!localStart) {
@@ -132,7 +132,7 @@ export default function FlashCalendar({
 
           <Calendar
             onDayPress={handleDayPress}
-            markedDates={getMarkedDates()}
+            markedDates={markedDates}
             markingType={"period"}
             minDate={minDate ? toDateKey(minDate) : undefined}
             firstDay={1}

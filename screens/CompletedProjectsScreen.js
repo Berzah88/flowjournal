@@ -20,7 +20,7 @@ import { useLanguage } from "../context/LanguageContext";
 import Card from "../components/Card";
 import CompletedActiveProject from "./CompletedActiveProject";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { Helpers, Typography } from '../components/Styles';
+import { Helpers, Typography } from '../constants';
 
 const { width } = Dimensions.get("window");
 

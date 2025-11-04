@@ -36,7 +36,7 @@ import { useTaskActions } from "../hooks/useTaskContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import logger from '../utils/logger';
-import Styles, { Helpers, Typography } from '../components/Styles';
+import { Helpers, Typography } from '../constants';
 // Throttle pickLocation logs to avoid noisy repeated messages in quick succession
 let _lastPickLocationLogTs = 0;
 const _pickLocationLog = (...args) => {

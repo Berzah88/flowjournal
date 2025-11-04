@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MOODS } from '../utils/AIMoodPredictor';
 // Lazy import of JS predictor for on-device inference
@@ -61,43 +60,11 @@ const getMoodCategory = (moodKey) => {
   return 'neutral';
 };
 
-// Helper: Light mood color'ı solid color'a çevir
-const getSolidMoodColor = (originalColor) => {
-  const colorMap = {
-    // Basic MOODS
-    '#C8E6C9': '#4CAF50', // Happy - Light green
-    '#FFE0B2': '#FF9800', // Excited - Light orange
-    '#E1BEE7': '#9C27B0', // Tired - Light purple
-    '#FFCDD2': '#F44336', // Sad - Light red
-    '#FFAB91': '#FF5722', // Angry - Light deep orange
-    
-    // EXTENDED_MOODS
-    '#FFCCBC': '#FF7043', // Frustrated
-    '#FFF3E0': '#FFB74D', // Anxious
-    '#E8F5E8': '#66BB6A', // Grateful
-    '#E1F5FE': '#42A5F5', // Hopeful
-    '#FFF8E1': '#FFCA28', // Proud
-    '#F3E5F5': '#BA68C8', // Relieved
-    '#FFEBEE': '#EF5350', // Overwhelmed
-    '#E0E0E0': '#90A4AE', // Lonely
-    '#DCEDC8': '#8BC34A', // Motivated
-    '#F5F5F5': '#BDBDBD', // Confused
-    '#FFE0E6': '#F48FB1', // Disappointed
-    '#E8EAF6': '#7986CB', // Nostalgic
-    '#E0F2F1': '#4DB6AC', // Peaceful
-    '#FFFDE7': '#FFF176', // Curious
-    '#FAFAFA': '#E0E0E0', // Bored
-    '#FFF9C4': '#FFF59D', // Surprised
-    '#FCE4EC': '#F06292', // Worried
-    '#CFD8DC': '#90A4AE', // Natural
-  };
-  
-  return colorMap[originalColor] || originalColor;
-};
+// NOTE: getSolidMoodColor removed (unused) to reduce bundle size
 
 // Helper: Recency bazlı weight hesapla - EN ÖNEMLİ: Son girilen entry en yüksek weight
 const getRecencyWeight = (timestamp, allTimestamps) => {
-  const entryTime = new Date(timestamp).getTime();
+  const entryTime = (typeof timestamp === 'number') ? timestamp : new Date(timestamp).getTime();
   const now = Date.now();
   const timeDiff = now - entryTime; // Milliseconds
   
@@ -120,6 +87,15 @@ const getRecencyWeight = (timestamp, allTimestamps) => {
   // Daha eski: 1.0x (normal)
   
   return recencyWeight;
+};
+
+// Helper: format a Date (local) to YYYY-MM-DD dayKey to avoid timezone surprises
+const formatDayKey = (date) => {
+  const d = new Date(date);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 };
 
 const MoodStatement = React.memo(({ 
@@ -161,13 +137,33 @@ const MoodStatement = React.memo(({
     const entries = [];
     [...activeTasks, ...completedTasks].forEach(task => {
       if (task.journalEntries && Array.isArray(task.journalEntries)) {
-        task.journalEntries.forEach(entry => {
-          entries.push({
-            ...entry,
-            projectId: task.id,
-            projectDone: task.done
+          task.journalEntries.forEach(entry => {
+            try {
+              const createdAtMs = (entry && entry.createdAt)
+                ? (typeof entry.createdAt === 'number'
+                    ? entry.createdAt
+                    : (Date.parse(entry.createdAt) || new Date(entry.createdAt).getTime()) )
+                : Date.now();
+              const dayKey = formatDayKey(createdAtMs);
+              entries.push({
+                ...entry,
+                projectId: task.id,
+                projectDone: task.done,
+                createdAtMs,
+                dayKey,
+              });
+            } catch (e) {
+              if (__DEV__) logger.warn('MoodStatement: entry date parse failed', e);
+              const createdAtMs = Date.now();
+              entries.push({
+                ...entry,
+                projectId: task.id,
+                projectDone: task.done,
+                createdAtMs,
+                dayKey: formatDayKey(createdAtMs),
+              });
+            }
           });
-        });
       }
     });
     return entries;
@@ -178,31 +174,33 @@ const MoodStatement = React.memo(({
   // Heavy calculations are memoized; avoid debug logging here to
   // reduce JS-thread activity during scroll interactions.
     
-    // selectedDate yoksa bugünü kullan
-    const dateToUse = selectedDate || new Date();
-    const today = new Date(dateToUse);
-    today.setHours(0, 0, 0, 0);
+  // selectedDate yoksa bugünü kullan
+  const dateToUse = selectedDate ? new Date(selectedDate) : new Date();
+  const today = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), dateToUse.getDate());
+  const todayKey = formatDayKey(today);
     
     const todayMoods = [];
     const moodCounts = {};
+    // build quick lookup map by dayKey to avoid repeated date parsing
+    const entriesByDay = Object.create(null);
+    allJournalEntries.forEach(e => {
+      const key = e.dayKey || formatDayKey(e.createdAtMs || e.createdAt);
+      if (!entriesByDay[key]) entriesByDay[key] = [];
+      entriesByDay[key].push(e);
+    });
     let hasCompletedProjectToday = false;
     
-    // Bugünkü entry'leri filtrele - allJournalEntries'den (optimize edilmiş)
-    allJournalEntries.forEach(entry => {
-      const entryDate = new Date(entry.createdAt);
-      entryDate.setHours(0, 0, 0, 0);
-      
-      // Bugünkü entry'leri filtrele
-      if (entryDate.getTime() === today.getTime() && entry.mood) {
+    // Pull today's entries from map if any
+    const todays = entriesByDay[todayKey] || [];
+    todays.forEach(entry => {
+      if (entry.mood) {
         todayMoods.push({
           mood: entry.mood,
           moodIcon: entry.moodIcon,
           moodColor: entry.moodColor,
           text: entry.text,
-          timestamp: entry.createdAt
+          timestamp: entry.createdAtMs || Date.parse(entry.createdAt)
         });
-        
-        // Mood sayısını artır
         moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
       }
     });
@@ -252,7 +250,7 @@ const MoodStatement = React.memo(({
     });
     
     // Dominant mood bulunduysa mood objesini oluştur
-    if (dominantMoodKey) {
+  if (dominantMoodKey) {
       // Önce MOODS'da ara
       let foundMood = MOODS.find(m => m.key === dominantMoodKey);
         
@@ -276,10 +274,8 @@ const MoodStatement = React.memo(({
       dominantMood = foundMood;
       
       // Debug log - Sadece final result
-        if (todayMoods.length > 0) {
-        logger.debug('🎭 MoodStatement - Final Dominant:', dominantMood?.key, 
-                    '| Scores:', moodWeightedScores,
-                    '| Entries:', todayMoods.length);
+      if (todayMoods.length > 0) {
+        if (__DEV__) logger.debug('🎭 MoodStatement - Final Dominant:', dominantMood?.key, '| Scores:', moodWeightedScores, '| Entries:', todayMoods.length);
       }
     }
     // --- New: try JS predictor override (non-blocking effect will set state below) ---
@@ -293,19 +289,15 @@ const MoodStatement = React.memo(({
       }
     }
     
-    // ✨ YENİ: Dünkü mood'u hesapla (Trend Analysis) - OPTIMIZE
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayMoods = [];
+  // ✨ YENİ: Dünkü mood'u hesapla (Trend Analysis) - OPTIMIZE
+  const yesterdayMoods = [];
     
-    // allJournalEntries'den dünkü mood'ları filtrele
-    allJournalEntries.forEach(entry => {
-      const entryDate = new Date(entry.createdAt);
-      entryDate.setHours(0, 0, 0, 0);
-      
-      if (entryDate.getTime() === yesterday.getTime() && entry.mood) {
-        yesterdayMoods.push({ mood: entry.mood, timestamp: entry.createdAt });
-      }
+  // yesterday moods from entriesByDay
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  const yesterdayKey = formatDayKey(yesterday);
+  const yest = entriesByDay[yesterdayKey] || [];
+    yest.forEach(entry => {
+      if (entry.mood) yesterdayMoods.push({ mood: entry.mood, timestamp: entry.createdAtMs || Date.parse(entry.createdAt) });
     });
     
     // Dünkü dominant mood - Dün için de recency kullan
@@ -354,21 +346,12 @@ const MoodStatement = React.memo(({
     const moodStreak = { mood: null, count: 0 };
     
     for (let i = 0; i < 7; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(checkDate.getDate() - i);
-      checkDate.setHours(0, 0, 0, 0);
-      
-      // allJournalEntries'den bu günün mood'larını filtrele (optimize)
-      const dayMoods = allJournalEntries
-        .filter(entry => {
-          const entryDate = new Date(entry.createdAt);
-          entryDate.setHours(0, 0, 0, 0);
-          return entryDate.getTime() === checkDate.getTime() && entry.mood;
-        })
-        .map(entry => entry.mood);
-      
+  const cd = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+  const checkKey = formatDayKey(cd);
+      const dayEntries = entriesByDay[checkKey] || [];
+      const dayMoods = dayEntries.filter(e => e.mood).map(e => e.mood);
       last7Days.push({
-        date: new Date(checkDate),
+        date: new Date(cd),
         hasEntry: dayMoods.length > 0,
         moods: dayMoods
       });
@@ -404,7 +387,14 @@ const MoodStatement = React.memo(({
     
     // ✨ Semantic Analysis - Gün içi mood patterns
     const semanticPattern = analyzeSemanticPatterns(todayMoods);
-    
+
+    if (__DEV__) {
+      try {
+        const last7Count = last7Days.reduce((acc, d) => acc + (d.hasEntry ? 1 : 0), 0);
+        logger.debug('MoodStatement debug', { todayCount: (todays || []).length, yesterdayCount: (yest || []).length, last7Count });
+      } catch (e) { /* swallow */ }
+    }
+
     return {
       dominantMood,
       provisional,
@@ -448,7 +438,7 @@ const MoodStatement = React.memo(({
           }
         } catch (e) {
           // ignore predictor errors
-          logger.warn('JS predictor error:', e.message || e);
+          if (__DEV__) logger.warn('JS predictor error:', e.message || e);
         }
       }, 500);
       return () => { active = false; clearTimeout(timer); };
@@ -459,10 +449,13 @@ const MoodStatement = React.memo(({
   }, [todayMoodData?.provisional]);
 
   // If JS override exists, use it to replace dominantMood for display (no UI structure changes)
-  const displayMood = jsOverride && jsOverride.moodKey ? (
-    // find mood object
-    MOODS.find(m => m.key === jsOverride.moodKey) || require('../utils/AIMoodPredictor').EXTENDED_MOODS.find(m => m.key === jsOverride.moodKey) || { key: jsOverride.moodKey, label: jsOverride.moodKey }
-  ) : todayMoodData.dominantMood;
+  const displayMood = useMemo(() => {
+    if (jsOverride && jsOverride.moodKey) {
+      const found = MOODS.find(m => m.key === jsOverride.moodKey) || require('../utils/AIMoodPredictor').EXTENDED_MOODS.find(m => m.key === jsOverride.moodKey);
+      return found || { key: jsOverride.moodKey, label: jsOverride.moodKey };
+    }
+    return todayMoodData.dominantMood;
+  }, [jsOverride, todayMoodData.dominantMood]);
 
   // ----- Quick Tips: Emotional Journal ile aynı mapping -----
   const generateQuickTip = useCallback((moodKey) => {
@@ -507,70 +500,163 @@ const MoodStatement = React.memo(({
   // AI destekli günlük motivasyon (unique per day/input)
   const [aiMotivation, setAiMotivation] = useState('');
 
+  // Migration effect: run once on mount to normalize any old cached ai_motivation_* keys
   useEffect(() => {
-    // Load daily tip once on mount to avoid AsyncStorage access during
-    // scroll interactions which can introduce JS-thread stalls.
     let active = true;
+    const migrateCachedAiMotivations = async () => {
+      try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const aiKeys = allKeys.filter(k => typeof k === 'string' && k.startsWith('ai_motivation_'));
+        if (!aiKeys || aiKeys.length === 0) return;
+
+        // load EXTENDED_MOODS safely
+        const { EXTENDED_MOODS = [] } = require('../utils/AIMoodPredictor');
+
+        for (const key of aiKeys) {
+          try {
+            const parts = key.split('_'); // ai_motivation_<date>_<moodKey>_<ts>
+            const moodKey = parts[2] || 'none';
+            const raw = await AsyncStorage.getItem(key);
+            if (!raw) continue;
+            let cleaned = String(raw);
+
+            // Build candidate labels to strip based on moodKey
+            const candidates = [];
+            const m1 = MOODS.find(m => m.key === moodKey);
+            const m2 = EXTENDED_MOODS.find(m => m.key === moodKey);
+            if (m1) candidates.push(m1.label);
+            if (m2) candidates.push(m2.label);
+            // localized form
+            try { candidates.push(t(moodKey)); } catch (e) {}
+            // fallback 'yourMood' label
+            try { candidates.push(t('yourMood')); } catch (e) {}
+
+            // Try to strip any of these labels from the start of the text
+            const patterns = [' —', ' -', ':', '—', '-', ':'];
+            let modified = false;
+            for (const cand of candidates) {
+              if (!cand) continue;
+              const cl = String(cand).trim();
+              for (const sep of patterns.concat([''])) {
+                const prefix = cl + (sep ? sep + ' ' : ' ');
+                if (cleaned.startsWith(prefix)) {
+                  cleaned = cleaned.slice(prefix.length).trim();
+                  modified = true;
+                  break;
+                }
+                const prefix2 = cl + sep;
+                if (cleaned.startsWith(prefix2)) {
+                  cleaned = cleaned.slice(prefix2.length).trim();
+                  modified = true;
+                  break;
+                }
+              }
+              if (modified) break;
+            }
+
+            if (modified) {
+              await AsyncStorage.setItem(key, cleaned).catch(() => {});
+              if (__DEV__) logger.debug('MoodStatement: migrated ai_motivation key', key);
+            }
+          } catch (e) {
+            if (__DEV__) logger.warn('MoodStatement: migrate key failed', key, e);
+            continue;
+          }
+        }
+      } catch (e) {
+        if (__DEV__) logger.warn('MoodStatement: migration failed', e);
+      }
+    };
+
+    migrateCachedAiMotivations().catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  // Load daily tip and AI motivation whenever the mood context for today changes.
+  // This keeps AsyncStorage access off the main render path and updates when
+  // relevant inputs change (dominant mood, entries count or selectedDate).
+  useEffect(() => {
+    let active = true;
+
     const loadDailyTip = async () => {
       try {
-        const today = new Date().toDateString();
+        const today = formatDayKey(new Date());
         const cachedTip = await AsyncStorage.getItem(`daily_tip_${today}`);
 
         if (cachedTip && active) {
           setDailyTip(cachedTip);
         } else if (active) {
-          // Yeni gün için rastgele mesaj oluştur
           const moodKey = todayMoodData?.dominantMood?.key || 'default';
           const newTip = generateQuickTip(moodKey);
-
-          // Cache'e kaydet (fire-and-forget)
           AsyncStorage.setItem(`daily_tip_${today}`, newTip).catch(() => {});
           setDailyTip(newTip);
         }
       } catch (error) {
-        logger.error('Daily tip loading error:', error);
+        if (__DEV__) logger.error('Daily tip loading error:', error);
         if (active) setDailyTip(generateQuickTip(todayMoodData?.dominantMood?.key || 'default'));
       }
     };
 
-    // Small helper: generate a lightweight AI-like motivational message and cache it per-day+input
     const loadAiMotivation = async () => {
       try {
-        const today = new Date().toDateString();
+        const today = formatDayKey(new Date());
         const lastTs = (todayMoodData?.allMoods && todayMoodData.allMoods.length > 0) ? String(todayMoodData.allMoods[todayMoodData.allMoods.length - 1].timestamp) : 'none';
         const key = `ai_motivation_${today}_${todayMoodData?.dominantMood?.key || 'none'}_${lastTs}`;
         const cached = await AsyncStorage.getItem(key);
+
+        const normalizeAiText = (text, moodLabel) => {
+          if (!text) return text;
+          try {
+            const ml = moodLabel && String(moodLabel).trim();
+            if (!ml) return text;
+            const patterns = [`${ml} —`, `${ml} -`, `${ml}:`, `${ml} — `, `${ml} - `, `${ml}: `, `${ml} `, ml];
+            let out = String(text);
+            for (const p of patterns) {
+              if (out.startsWith(p)) {
+                out = out.slice(p.length).trim();
+                break;
+              }
+            }
+            return out;
+          } catch (e) {
+            return text;
+          }
+        };
+
         if (cached && active) {
-          setAiMotivation(cached);
+          const moodLabel = (displayMood && (t(displayMood.key) || displayMood.label)) || t('yourMood') || 'Ruh halin';
+          const clean = normalizeAiText(cached, moodLabel);
+          setAiMotivation(clean);
           return;
         }
 
-        const moodLabel = (displayMood && (t(displayMood.key) || displayMood.label)) || t('yourMood') || 'Ruh halin';
         const trend = todayMoodData?.trendDirection || 'stable';
         const streak = todayMoodData?.journalStreak?.current || 0;
         const lastEntryText = (todayMoodData?.allMoods && todayMoodData.allMoods.length > 0) ? String(todayMoodData.allMoods[todayMoodData.allMoods.length - 1].text || '') : '';
-        const action = quickTip || t('keepGoing') || 'Küçük bir adım at';
+        const action = generateQuickTip((todayMoodData?.dominantMood && todayMoodData.dominantMood.key) || 'default') || t('keepGoing') || 'Küçük bir adım at';
 
         let aiMsg = '';
         if (trend === 'up') {
-          aiMsg = `${moodLabel} — bugün ilerleme var. Bu enerjiyi korumak için: ${action}.`;
+          aiMsg = `Bugün ilerleme var — bu enerjiyi korumak için: ${action}.`;
         } else if (trend === 'down') {
-          aiMsg = `${moodLabel} — zorlayıcı bir gün olabilir. Kendine nazik davran; bir mola ver ya da küçük bir görev tamamla.`;
+          aiMsg = `Zorlayıcı bir gün olabilir. Kendine nazik davran; bir mola ver ya da küçük bir görev tamamla.`;
         } else {
           if (streak >= 3) {
-            aiMsg = `${moodLabel} — harika iş! ${streak} gündür tutarlı ilerliyorsun. Küçük bir kutlama yap.`;
+            aiMsg = `Harika iş! ${streak} gündür tutarlı ilerliyorsun. Küçük bir kutlama yap.`;
           } else if (lastEntryText && lastEntryText.length > 20) {
             const snippet = lastEntryText.split(/[\.\!\?]/)[0].slice(0, 80);
-            aiMsg = `${moodLabel} — son yazında "${snippet}..." demişsin. Bugün için küçük bir hedef belirleyebilirsin: ${action}.`;
+            aiMsg = `Son yazında "${snippet}..." demişsin. Bugün için küçük bir hedef belirleyebilirsin: ${action}.`;
           } else {
-            aiMsg = `${moodLabel} — bugünü üretken kılmak için küçük bir adım at: ${action}.`;
+            aiMsg = `Bugünü üretken kılmak için küçük bir adım at: ${action}.`;
           }
         }
 
-        AsyncStorage.setItem(key, aiMsg).catch(() => {});
-        if (active) setAiMotivation(aiMsg);
+        const moodLabel = (displayMood && (t(displayMood.key) || displayMood.label)) || t('yourMood') || 'Ruh halin';
+        const normalized = normalizeAiText(aiMsg, moodLabel);
+        AsyncStorage.setItem(key, normalized).catch(() => {});
+        if (active) setAiMotivation(normalized);
       } catch (e) {
-        logger.warn('AI motivation generation failed:', e);
+        if (__DEV__) logger.warn('AI motivation generation failed:', e);
         if (active) setAiMotivation('Duygusal farkındalığın gelişiyor — küçük bir adım atmayı unutma.');
       }
     };
@@ -578,7 +664,13 @@ const MoodStatement = React.memo(({
     loadDailyTip();
     loadAiMotivation();
     return () => { active = false; };
-  }, []);
+  }, [
+    // update when today's entries or dominant mood change
+    todayMoodData?.allMoods?.length,
+    todayMoodData?.dominantMood?.key,
+    displayMood?.key,
+    selectedDate,
+  ]);
 
   // QuickTip: Günlük mesajları kullan
   const quickTip = useMemo(() => {
@@ -705,7 +797,7 @@ const MoodStatement = React.memo(({
   
   // Proje durumu değiştiyse re-render gerekli
   if (prevHasNoProjects !== nextHasNoProjects) {
-    logger.debug('🔄 MoodStatement - Re-render gerekli (proje durumu değişti)');
+    if (__DEV__) logger.debug('🔄 MoodStatement - Re-render gerekli (proje durumu değişti)');
     return false; // Do re-render
   }
   
@@ -752,7 +844,7 @@ const MoodStatement = React.memo(({
   );
   
   if (!shouldSkipRender) {
-    logger.debug('🔄 MoodStatement - Re-render gerekli (journal değişti)');
+    if (__DEV__) logger.debug('🔄 MoodStatement - Re-render gerekli (journal değişti)');
   }
   
   return shouldSkipRender;

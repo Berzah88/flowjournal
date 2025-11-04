@@ -30,7 +30,7 @@ import MainTabNavigation from "../components/MainTabNavigation";
 import MainModalManager from "../components/MainModalManager";
 import MainMenu from "../components/MainMenu";
 import StatusTabs from "../components/StatusTabs";
-import { Helpers } from '../components/Styles';
+import { Helpers } from '../constants';
 
 const { width, height } = Dimensions.get("window");
 

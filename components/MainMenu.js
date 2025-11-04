@@ -9,7 +9,9 @@ import AnimatedReanimated, {
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
-import ThemeToggle from './ThemeToggle';
+// ThemeToggle is imported lazily inside the component to avoid potential
+// circular import issues that can cause the imported value to be undefined
+// at module-evaluation time. See runtime guard below.
 
 const MainMenu = ({
   visible,
@@ -107,7 +109,7 @@ const MainMenu = ({
               navigation.navigate('Tutorial');
             }}
             accessible={true}
-            accessibilityLabel="View tutorial"
+            accessibilityLabel={t('tutorial')}
             accessibilityRole="button"
           >
             <View style={styles.menuItemContent}>
@@ -124,7 +126,7 @@ const MainMenu = ({
               navigation.navigate('CompletedProjects');
             }}
             accessible={true}
-            accessibilityLabel="View completed projects"
+            accessibilityLabel={t('completedProjects')}
             accessibilityRole="button"
           >
             <View style={styles.menuItemContent}>
@@ -133,8 +135,19 @@ const MainMenu = ({
             </View>
           </TouchableOpacity>
 
-          {/* Theme Toggle */}
-          <ThemeToggle />
+          {/* Theme Toggle (lazy require to avoid circular import issues) */}
+          {(() => {
+            try {
+              // eslint-disable-next-line global-require
+              const Imported = require('./ThemeToggle').default;
+              // Render the imported value directly. It may be a memoized component
+              // (React.memo returns an object) which is valid to use in JSX.
+              return Imported ? <Imported /> : null;
+            } catch (e) {
+              // Module couldn't be loaded yet — skip rendering the toggle
+              return null;
+            }
+          })()}
 
           {/* Notifications */}
           <TouchableOpacity
@@ -144,7 +157,7 @@ const MainMenu = ({
               onNotificationPress();
             }}
             accessible={true}
-            accessibilityLabel="Notification settings"
+            accessibilityLabel={t('notifications')}
             accessibilityRole="button"
           >
             <View style={styles.menuItemContent}>
@@ -161,7 +174,7 @@ const MainMenu = ({
               onDataRecoveryPress();
             }}
             accessible={true}
-            accessibilityLabel="Settings and data management"
+            accessibilityLabel={t('settings')}
             accessibilityRole="button"
           >
             <View style={styles.menuItemContent}>
@@ -193,7 +206,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     minWidth: 200,
     shadowOffset: { width: 0, height: 8 },
-    backdropFilter: "blur(20px)",
     borderWidth: 1,
   },
   menuItem: {
@@ -213,5 +225,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MainMenu;
+export default React.memo(MainMenu);
 

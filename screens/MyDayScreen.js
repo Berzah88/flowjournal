@@ -32,7 +32,7 @@ import ProjectCard from "../components/ProjectCard";
 import JourneyOverview from "../components/JourneyOverview";
 import TodaysSummary from "../components/TodaysSummary";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Styles, { Helpers, Typography } from '../components/Styles';
+import { Helpers, Typography } from '../constants';
 import { MOODS, EXTENDED_MOODS } from '../utils/AIMoodPredictor';
 import AnimatedReanimated from 'react-native-reanimated';
 import { useAnimatedProps } from 'react-native-reanimated';

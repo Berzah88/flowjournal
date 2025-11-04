@@ -1,14 +1,13 @@
 // components/ProjectJourney.js
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useTaskActions } from '../hooks/useTaskContext';
 import JournalCard from './JournalCard';
-import { FONTS, SPACING, BORDER_RADIUS, COLORS } from '../constants';
+import { FONTS } from '../constants';
 
-const { width } = Dimensions.get('window');
+/* width not used — removed Dimensions usage */
 
 export default function ProjectJourney({ 
   currentTask, 
@@ -20,17 +19,15 @@ export default function ProjectJourney({
   const { theme } = useTheme();
   const { t, language } = useLanguage();
   const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
-  const { addProjectJournalEntry } = useTaskActions();
 
 
   // Get all journal entries (only project-based system)
   const getAllJournalEntries = useMemo(() => {
     if (!currentTask?.journalEntries) return [];
-    
-    
-    // Sort by date (newest first)
-    return currentTask.journalEntries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [currentTask, refreshKey]); // refreshKey dependency eklendi
+
+    // Sort by date (newest first) — use slice() to avoid mutating prop array
+    return currentTask.journalEntries.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [currentTask?.journalEntries, refreshKey]);
 
 
   // Group entries by date
@@ -60,10 +57,10 @@ export default function ProjectJourney({
         date: dateKey,
         entries: groups[dateKey]
       }));
-  }, [getAllJournalEntries, refreshKey]); // refreshKey dependency eklendi
+  }, [getAllJournalEntries, locale, refreshKey]);
 
 
-  const renderDateGroup = (dateGroup) => {
+  const renderDateGroup = useCallback((dateGroup) => {
     // Convert to JournalCard format
     const journalCardData = {
       date: dateGroup.date,
@@ -95,7 +92,7 @@ export default function ProjectJourney({
         }}
       />
     );
-  };
+  }, [navigation, currentTask?.id, availableMilestones, refreshKey, onOpenJournal]);
 
   return (
     <View style={[

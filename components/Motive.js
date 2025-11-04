@@ -1,17 +1,13 @@
 // components/Motive.js
-import React, { useEffect, useRef } from 'react';
+import React, { memo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Animated,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-
-const { width } = Dimensions.get('window');
 
 const Motive = ({ 
   visible = false, 
@@ -59,7 +55,7 @@ const Motive = ({
     }
   }, [visible]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: -100,
@@ -72,9 +68,9 @@ const Motive = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onClose();
+      onClose && onClose();
     });
-  };
+  }, [onClose, slideAnim, opacityAnim]);
 
   if (!visible) return null;
 
@@ -95,6 +91,9 @@ const Motive = ({
         style={styles.content}
         onPress={handleClose}
         activeOpacity={0.9}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={title || 'notification'}
       >
         <View style={styles.leftSection}>
           <View style={styles.textContainer}>
@@ -165,4 +164,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Motive;
+export default memo(Motive);

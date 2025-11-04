@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated, Alert, Pressable, Keyboard, Easing, Vibration } from "react-native";
+import { View, Text, TextInput, StyleSheet, Animated, Pressable, Keyboard, Vibration } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { MaterialIcons } from "@expo/vector-icons";
-import Svg, { Circle } from "react-native-svg";
 import * as Haptics from 'expo-haptics';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import AnimatedReanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, Easing as ReanimatedEasing } from 'react-native-reanimated';
@@ -10,10 +8,9 @@ import FlashCalendar from "./FlashCalendar";
 import JournalCard from "./JournalCard";
 import PropTypes from "prop-types";
 import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
-import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { FONTS, ANIMATION_DURATIONS } from '../constants';
+import { FONTS } from '../constants';
 
 
 function MileStone({
@@ -50,136 +47,20 @@ function MileStone({
   const triggerHaptic = useCallback(async (style = Haptics.ImpactFeedbackStyle.Medium) => {
     try {
       await Haptics.impactAsync(style);
-      console.log('✅ Milestone Haptic:', style === Haptics.ImpactFeedbackStyle.Medium ? 'MEDIUM' : 'LIGHT');
+      if (__DEV__) console.log('✅ Milestone Haptic:', style === Haptics.ImpactFeedbackStyle.Medium ? 'MEDIUM' : 'LIGHT');
     } catch (error) {
       // Fallback to native Vibration
       try {
         const duration = style === Haptics.ImpactFeedbackStyle.Medium ? 50 : 30;
         Vibration.vibrate(duration);
-        console.log('✅ Milestone Vibration:', duration + 'ms');
+        if (__DEV__) console.log('✅ Milestone Vibration:', duration + 'ms');
       } catch (vibError) {
-        console.log('Haptic feedback not available');
+        if (__DEV__) console.log('Haptic feedback not available');
       }
     }
   }, []);
 
-  // Format date to localized short month format (e.g. 'Mar. 13' or 'Mar 13' depending on locale)
-  const formatShortDate = useCallback((dateString) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
-      const month = date.toLocaleDateString(locale, { month: 'short' });
-      return `${month} ${date.getDate()}`;
-    } catch (e) {
-      return '';
-    }
-  }, [language]);
-
-  // Format date to day number only (for start date in calendar icon)
-  const formatDayOnly = useCallback((dateString) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      return `${date.getDate()}`;
-    } catch (e) {
-      return '';
-    }
-  }, []);
-
-  // Format date for circular progress center - compact format
-  const formatCompactDate = useCallback((dateString) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      const day = date.getDate();
-      const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
-      const month = date.toLocaleDateString(locale, { month: 'short' });
-      return { day: day.toString(), month };
-    } catch (e) {
-      return { day: '', month: '' };
-    }
-  }, [language]);
-
-  // Safely convert various color formats to rgba(r,g,b,a)
-  const toRgba = useCallback((color, alpha = 1) => {
-    try {
-      if (!color) return `rgba(0,0,0,${alpha})`;
-      // #RRGGBB or #RGB
-      let c = color.trim();
-      if (c[0] === '#') {
-        if (c.length === 4) {
-          const r = parseInt(c[1] + c[1], 16);
-          const g = parseInt(c[2] + c[2], 16);
-          const b = parseInt(c[3] + c[3], 16);
-          return `rgba(${r},${g},${b},${alpha})`;
-        }
-        if (c.length === 7) {
-          const r = parseInt(c.slice(1, 3), 16);
-          const g = parseInt(c.slice(3, 5), 16);
-          const b = parseInt(c.slice(5, 7), 16);
-          return `rgba(${r},${g},${b},${alpha})`;
-        }
-        // #AARRGGBB
-        if (c.length === 9) {
-          const a = parseInt(c.slice(1, 3), 16) / 255;
-          const r = parseInt(c.slice(3, 5), 16);
-          const g = parseInt(c.slice(5, 7), 16);
-          const b = parseInt(c.slice(7, 9), 16);
-          const outA = Math.max(0, Math.min(1, a * alpha));
-          return `rgba(${r},${g},${b},${outA})`;
-        }
-      }
-      // rgb/rgba
-      if (c.startsWith('rgb')) {
-        const nums = c.replace(/rgba?\(/, '').replace(/\)/, '').split(',').map(x => parseFloat(x.trim()));
-        const [r, g, b, a = 1] = nums;
-        const outA = Math.max(0, Math.min(1, a * alpha));
-        return `rgba(${r|0},${g|0},${b|0},${outA})`;
-      }
-      // named colors – let RN resolve but wrap as rgba by fallback
-      return color;
-    } catch (e) {
-      return `rgba(0,0,0,${alpha})`;
-    }
-  }, []);
-
-  // Force a specific alpha without multiplying any existing alpha
-  const setAlpha = useCallback((color, alpha = 1) => {
-    try {
-      if (!color) return `rgba(0,0,0,${alpha})`;
-      let c = color.trim();
-      if (c[0] === '#') {
-        if (c.length === 4) {
-          const r = parseInt(c[1] + c[1], 16);
-          const g = parseInt(c[2] + c[2], 16);
-          const b = parseInt(c[3] + c[3], 16);
-          return `rgba(${r},${g},${b},${alpha})`;
-        }
-        if (c.length === 7) {
-          const r = parseInt(c.slice(1, 3), 16);
-          const g = parseInt(c.slice(3, 5), 16);
-          const b = parseInt(c.slice(5, 7), 16);
-          return `rgba(${r},${g},${b},${alpha})`;
-        }
-        // #AARRGGBB → ignore AA and use provided alpha
-        if (c.length === 9) {
-          const r = parseInt(c.slice(3, 5), 16);
-          const g = parseInt(c.slice(5, 7), 16);
-          const b = parseInt(c.slice(7, 9), 16);
-          return `rgba(${r},${g},${b},${alpha})`;
-        }
-      }
-      if (c.startsWith('rgb')) {
-        const nums = c.replace(/rgba?\(/, '').replace(/\)/, '').split(',').map(x => parseFloat(x.trim()));
-        const [r, g, b] = nums; // ignore incoming alpha
-        return `rgba(${r|0},${g|0},${b|0},${alpha})`;
-      }
-      return color;
-    } catch (e) {
-      return `rgba(0,0,0,${alpha})`;
-    }
-  }, []);
+  // (Removed unused date/color helpers to reduce bundle size and per-render allocations)
 
   // Using solid, fully opaque borders for milestone icon frames
 
@@ -272,7 +153,7 @@ function MileStone({
     });
   };
 
-  const getDaysText = () => {
+  const getDaysText = useCallback(() => {
     try {
       const today = new Date();
       const diffStart = Math.ceil((startDate - today) / 86400000);
@@ -318,10 +199,10 @@ function MileStone({
         }
       }
     } catch (error) {
-      console.error('Error in getDaysText:', error);
+      if (__DEV__) console.error('Error in getDaysText:', error);
       return '';
     }
-  };
+  }, [startDate, endDate, language, isCompleted, t]);
 
   // Renk sistemi - kart gövdesi beyaz, icon arkaplanı renkli
   const cardBgColor = useMemo(() => getMilestoneCardColor(), []);
@@ -329,7 +210,7 @@ function MileStone({
 
 
   // Günlük kartları için gerekli fonksiyonlar - Project-based system
-  const entries = []; // Milestone-based journal entries removed
+  // Journal entries are currently not used in this component to keep render light.
 
   // Pre-create project data for journal opening (performance optimization)
   const projectData = useMemo(() => ({
@@ -343,8 +224,8 @@ function MileStone({
   // ⚠️ Touch animations kaldırıldı - görsel geri bildirim yok
   
   // Optimized press handler
-  // Press animation for visual feedback
-  const [pressScale] = useState(new Animated.Value(1));
+  // Press animation for visual feedback (useRef to keep Animated.Value stable)
+  const pressScale = useRef(new Animated.Value(1)).current;
   
   const handlePress = useCallback(() => {
     // Attach mode aktifken attach işlemini yap
@@ -485,42 +366,7 @@ function MileStone({
 
   const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
 
-  // Günlükleri tarihlere göre gruplandır
-  // ⚠️ GEÇICI OLARAK KALDIRILDI - Journal grouping functions
-  /*
-  const groupEntriesByDate = useCallback((entries) => {
-    const groups = {};
-    entries.forEach(entry => {
-      const date = new Date(entry.createdAt);
-      const dateKey = date.toLocaleDateString(locale, {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
-      
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(entry);
-    });
-    
-    return Object.keys(groups)
-      .sort((a, b) => {
-        const dateA = new Date(groups[a][0].createdAt);
-        const dateB = new Date(groups[b][0].createdAt);
-        return dateB - dateA;
-      })
-      .map(dateKey => {
-        const dayEntries = groups[dateKey];
-        return {
-          date: dateKey,
-          allEntries: dayEntries
-        };
-      });
-  }, [locale]);
-
-  const groupedEntries = useMemo(() => groupEntriesByDate(entries), [entries, groupEntriesByDate]);
-  */
+  // (Removed unused/commented-out journal grouping helpers to keep render light)
 
   // Calculate children info for this milestone
   const childMilestones = useMemo(() => {
@@ -534,43 +380,55 @@ function MileStone({
   // Calculate time-based progress percentage (for parent milestones)
   // NEW LOGIC: From earliest child start to parent end
   const progressPercentage = useMemo(() => {
-    if (!hasChildren || !milestone.startDate || !milestone.endDate) return 0;
-    
+    // Require start/end dates handled by component state
+    if (!hasChildren || !startDate || !endDate) return 0;
+
     try {
       const now = new Date();
-      const parentEnd = new Date(milestone.endDate);
-      
+      const parentEnd = endDate;
+
       // Find earliest child start date
       let earliestChildStart = null;
       if (childMilestones.length > 0) {
         earliestChildStart = childMilestones.reduce((earliest, child) => {
-          const childStart = new Date(child.startDate);
-          return !earliest || childStart < earliest ? childStart : earliest;
+          const childStart = child.startDate ? new Date(child.startDate) : null;
+          return !earliest || (childStart && childStart < earliest) ? childStart : earliest;
         }, null);
       }
-      
+
       // If no children or can't find earliest, fallback to parent start
-      const effectiveStart = earliestChildStart || new Date(milestone.startDate);
-      
-      // If not started yet (before earliest child)
+      const effectiveStart = earliestChildStart || startDate;
+
+      // If not started yet
       if (now < effectiveStart) return 0;
-      
+
       // If already ended or completed
       if (now > parentEnd || milestone.completed) return 100;
-      
-      // Calculate percentage based on elapsed time from earliest child to parent end
+
       const totalDuration = parentEnd - effectiveStart;
       const elapsedDuration = now - effectiveStart;
       const percentage = (elapsedDuration / totalDuration) * 100;
-      
+
       return Math.max(0, Math.min(100, Math.round(percentage)));
     } catch (error) {
-      console.error('Error calculating progress:', error);
+      if (__DEV__) console.error('Error calculating progress:', error);
       return 0;
     }
-  }, [hasChildren, milestone.startDate, milestone.endDate, milestone.completed, childMilestones]);
+  }, [hasChildren, startDate, endDate, milestone.completed, childMilestones]);
 
   // NO ANIMATION - direkt marginLeft hesapla (titreşim önleme)
+
+  const containerStyle = useMemo(() => ([
+    styles.container,
+    {
+      // Daha ince, kart olmayan görünüm: sol/sağ boşluk biraz azaltıldı
+      // Child milestone'lar için biraz daha indent verildi
+      marginLeft: isChildMilestone ? 44 : 16,
+      marginRight: 16,
+      marginBottom: 0,
+      marginTop: 0,
+    }
+  ]), [isChildMilestone]);
 
   return (
     <>
@@ -580,17 +438,7 @@ function MileStone({
           setEditable(false);
         }
       }}>
-        <View style={[
-          styles.container,
-          {
-            // Daha ince, kart olmayan görünüm: sol/sağ boşluk biraz azaltıldı
-            // Child milestone'lar için biraz daha indent verildi
-            marginLeft: isChildMilestone ? 44 : 16,
-            marginRight: 16,
-            marginBottom: 0,
-            marginTop: 0,
-          }
-        ]}>
+        <View style={containerStyle}>
           {/* Swipe Action Backgrounds - Horizontal Only */}
           <View style={styles.swipeActionsContainer}>
             {/* ⬅️ Left: DELETE - Kırmızı */}
@@ -645,7 +493,7 @@ function MileStone({
                           triggerHaptic?.(Haptics.ImpactFeedbackStyle.Medium);
                         }
                       } catch (e) {
-                        console.error('Milestone icon press error:', e);
+                        if (__DEV__) console.error('Milestone icon press error:', e);
                       }
                     }}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -701,7 +549,7 @@ function MileStone({
                           triggerHaptic?.(Haptics.ImpactFeedbackStyle.Medium);
                         }
                       } catch (e) {
-                        console.error('Milestone icon press error:', e);
+                        if (__DEV__) console.error('Milestone icon press error:', e);
                       }
                     }}
                     onLongPress={onStartDrag}
@@ -797,11 +645,11 @@ function MileStone({
                       transform: [{ scale: pressed ? 0.92 : 1 }],
                     }
                   ]}
-                  onPress={() => {
+                    onPress={() => {
                     try {
                       onEditToggle?.({ parentId: milestone.id, taskId: milestone.taskId || currentTask?.id, projectTitle: milestone.projectTitle || currentTask?.title || '', title: '' });
                     } catch (e) {
-                      console.error('Add child milestone error:', e);
+                      if (__DEV__) console.error('Add child milestone error:', e);
                     }
                   }}
                   accessibilityRole="button"

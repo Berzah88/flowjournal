@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AnimatedReanimated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import AnimatedReanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 const MainHeader = ({ 
   theme, 
@@ -151,7 +151,6 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: "row",
-    gap: 12,
     alignItems: "center",
   },
   menuButton: {
@@ -165,6 +164,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    marginLeft: 12,
   },
   statusTabsContainer: {
     marginTop: 0,
@@ -173,5 +173,5 @@ const styles = StyleSheet.create({
   // debug styles removed
 });
 
-export default MainHeader;
+export default React.memo(MainHeader);
 

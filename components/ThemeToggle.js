@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
+// (debug logs removed)
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { FONTS, SPACING, BORDER_RADIUS } from '../constants';
 
-export default function ThemeToggle({ style }) {
+function ThemeToggle({ style }) {
   const { theme, toggleTheme, isDark } = useTheme();
   const { t } = useLanguage();
 
@@ -23,7 +24,7 @@ export default function ThemeToggle({ style }) {
           size={20} 
           color={theme.colors.primary} 
         />
-        <Text style={[styles.menuItemText, { color: theme.colors.text }]}>
+        <Text style={[styles.menuItemText, { color: theme.colors.text }] }>
           {isDark ? t('lightMode') : t('darkMode')}
         </Text>
       </View>
@@ -32,7 +33,7 @@ export default function ThemeToggle({ style }) {
 }
 
 // Theme Settings Modal Component
-export function ThemeSettingsModal({ visible, onClose }) {
+const ThemeSettingsModal = React.memo(function ThemeSettingsModal({ visible, onClose }) {
   const { theme, setThemePreference, getCurrentThemeName } = useTheme();
   const [currentTheme, setCurrentTheme] = React.useState('light');
 
@@ -40,13 +41,13 @@ export function ThemeSettingsModal({ visible, onClose }) {
     if (visible) {
       getCurrentThemeName().then(setCurrentTheme);
     }
-  }, [visible]);
+  }, [visible, getCurrentThemeName]);
 
-  const themeOptions = [
+  const themeOptions = React.useMemo(() => [
     { key: 'light', label: 'Light', icon: 'sunny', description: 'Always use light theme' },
     { key: 'dark', label: 'Dark', icon: 'moon', description: 'Always use dark theme' },
     { key: 'system', label: 'System', icon: 'phone-portrait', description: 'Follow system setting' },
-  ];
+  ], []);
 
   const handleThemeSelect = async (themeKey) => {
     await setThemePreference(themeKey);
@@ -95,7 +96,7 @@ export function ThemeSettingsModal({ visible, onClose }) {
                   <Text style={[styles.optionTitle, { color: theme.colors.text }]}>
                     {option.label}
                   </Text>
-                  <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>
+                  <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}> 
                     {option.description}
                   </Text>
                 </View>
@@ -109,7 +110,9 @@ export function ThemeSettingsModal({ visible, onClose }) {
       </View>
     </View>
   );
-}
+});
+
+export { ThemeSettingsModal };
 
 const styles = StyleSheet.create({
   menuItem: {
@@ -195,3 +198,5 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.REGULAR,
   },
 });
+
+export default React.memo(ThemeToggle);

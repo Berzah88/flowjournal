@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
+import { getMilestoneColor } from '../utils/milestoneColors';
 import {
   View,
   Text,
@@ -14,18 +14,14 @@ import {
   ScrollView,
 } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-  Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { FONTS, COLORS, ANIMATION_DURATIONS, SWIPE_THRESHOLDS } from "../constants";
+import { FONTS } from "../constants";
 import { useSpringAnimation } from "../hooks/useAnimations";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+import TaskCalendar from './TaskCalendar';
 
 const { width, height } = Dimensions.get("window");
 
@@ -71,22 +67,7 @@ export default function AddTaskModal({ visible, onClose, onSave, editingTask = n
     };
   }, []);
 
-  // Update form when editingTask changes
-  useEffect(() => {
-    if (editingTask) {
-      setTitle(editingTask.title || "");
-      setSelectedDate(editingTask.startDate ? new Date(editingTask.startDate) : new Date());
-      setStartDate(editingTask.startDate ? new Date(editingTask.startDate) : null);
-      setEndDate(editingTask.endDate ? new Date(editingTask.endDate) : null);
-      setIsEditing(true);
-    } else {
-      setTitle("");
-      setSelectedDate(new Date());
-      setStartDate(null);
-      setEndDate(null);
-      setIsEditing(false);
-    }
-  }, [editingTask]);
+  
 
   useEffect(() => {
     if (visible) {
@@ -168,47 +149,12 @@ export default function AddTaskModal({ visible, onClose, onSave, editingTask = n
     onClose();
   };
 
-  // Calendar helper functions
-  const getDaysInMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
-  const formatMonthYear = (date) => {
-    const locale = language === 'tr' ? 'tr-TR' : (language || 'en-US');
-    try {
-      return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
-    } catch (e) {
-      return date.toLocaleString();
-    }
-  };
-
-  const navigateMonth = (direction) => {
-    setCurrentMonth(prev => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + direction);
-      return newDate;
-    });
-  };
-
-  const isSameDay = (date1, date2) => {
-    return date1.getDate() === date2.getDate() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getFullYear() === date2.getFullYear();
-  };
-
-  const isDateInRange = (date, start, end) => {
-    if (!start || !end) return false;
-    const startTime = start.getTime();
-    const endTime = end.getTime();
-    const dateTime = date.getTime();
-    return dateTime >= startTime && dateTime <= endTime;
-  };
+  // Calendar UI extracted into components/TaskCalendar.js to reduce AddTaskModal size
 
   const handleDayPress = (dayDate) => {
+    // Update selectedDate for immediate UI feedback
+    setSelectedDate(dayDate);
+
     if (!startDate || (startDate && endDate)) {
       // Start new selection
       setStartDate(dayDate);
@@ -227,169 +173,10 @@ export default function AddTaskModal({ visible, onClose, onSave, editingTask = n
   };
 
   const handleDayLongPress = (dayDate) => {
+    setSelectedDate(dayDate);
     setStartDate(dayDate);
     setEndDate(null);
     setIsSelectingRange(true);
-  };
-
-  // Check if a date is part of any existing task (excluding the one being edited)
-  const isDateInTask = (date) => {
-    if (!existingTasks || existingTasks.length === 0) return false;
-    
-    return existingTasks.some(task => {
-      // Skip the task being edited
-      if (editingTask && task.id === editingTask.id) return false;
-      // Skip completed milestones - we don't want to display them in the calendar markers
-      if (task.completed) return false;
-      
-      if (!task.startDate || !task.endDate) return false;
-      
-      const taskStart = new Date(task.startDate);
-      const taskEnd = new Date(task.endDate);
-      
-      // Set to start of day for comparison
-      taskStart.setHours(0, 0, 0, 0);
-      taskEnd.setHours(0, 0, 0, 0);
-      const checkDate = new Date(date);
-      checkDate.setHours(0, 0, 0, 0);
-      
-      const dateTime = checkDate.getTime();
-      const startTime = taskStart.getTime();
-      const endTime = taskEnd.getTime();
-      
-      return dateTime >= startTime && dateTime <= endTime;
-    });
-  };
-
-  // Return list of milestone colors for a given date (one entry per milestone overlapping that date)
-  const getMilestonesForDate = (date) => {
-    // Only show milestone dots when modal was opened for a specific project
-    if (!project) return [];
-    if (!existingTasks || existingTasks.length === 0) return [];
-
-    const checkDate = new Date(date);
-    checkDate.setHours(0,0,0,0);
-
-    const matched = existingTasks.reduce((acc, task) => {
-      // Skip the task being edited
-      if (editingTask && task.id === editingTask.id) return acc;
-      if (!task.startDate || !task.endDate) return acc;
-
-      const taskStart = new Date(task.startDate);
-      const taskEnd = new Date(task.endDate);
-      taskStart.setHours(0,0,0,0);
-      taskEnd.setHours(0,0,0,0);
-
-      const dateTime = checkDate.getTime();
-      // Skip completed milestones entirely
-      if (task.completed) return acc;
-
-      if (dateTime >= taskStart.getTime() && dateTime <= taskEnd.getTime()) {
-        // Resolve color using existing util (keeps original milestone color behavior)
-        const color = getMilestoneColor(task, theme.name === 'dark' ? 'dark' : 'light');
-        acc.push(color);
-      }
-      return acc;
-    }, []);
-
-    return matched;
-  };
-
-  const renderCalendar = () => {
-    // Build a linear list of cells (null = empty leading/trailing cell)
-  const daysInMonth = getDaysInMonth(currentMonth);
-  // Determine week start index based on locale: Turkish starts Monday (1), English starts Sunday (0)
-  const weekStart = language && language.startsWith('tr') ? 1 : 0;
-  const jsFirstDay = getFirstDayOfMonth(currentMonth); // 0 (Sun) - 6 (Sat)
-  // Adjust first day according to desired week start so leading empties align with headers
-  const firstDay = (jsFirstDay - weekStart + 7) % 7; // 0..6
-    const cells = [];
-
-    // Leading empty cells
-    for (let i = 0; i < firstDay; i++) cells.push(null);
-
-    // Month days
-    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-    // Pad trailing empty cells so total is multiple of 7
-    while (cells.length % 7 !== 0) cells.push(null);
-
-    // Chunk into weeks and render as rows to ensure consistent alignment
-    const weeks = [];
-    for (let i = 0; i < cells.length; i += 7) {
-      weeks.push(cells.slice(i, i + 7));
-    }
-
-    return weeks.map((week, wi) => (
-      <View key={`week-${wi}`} style={{ flexDirection: 'row', width: '100%' }}>
-        {week.map((cell, ci) => {
-          if (cell === null) {
-            return <View key={`empty-${wi}-${ci}`} style={styles.calendarDay} />;
-          }
-
-          const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), cell);
-          const isSelected = isSameDay(dayDate, selectedDate);
-          const isToday = isSameDay(dayDate, new Date());
-          const isStartDate = startDate && isSameDay(dayDate, startDate);
-          const isEndDate = endDate && isSameDay(dayDate, endDate);
-          const isInRange = isDateInRange(dayDate, startDate, endDate);
-          const dayMilestones = getMilestonesForDate(dayDate);
-
-          return (
-            <TouchableOpacity
-              key={`day-${wi}-${ci}`}
-              style={[
-                styles.calendarDay,
-                isSelected && !startDate && !endDate && styles.selectedDay,
-                isToday && !isSelected && !isInRange && styles.todayDay,
-                isStartDate && styles.rangeStartDay,
-                isEndDate && styles.rangeEndDay,
-                isInRange && !isStartDate && !isEndDate && styles.rangeDay,
-              ]}
-              onPress={() => handleDayPress(dayDate)}
-              onLongPress={() => handleDayLongPress(dayDate)}
-              delayLongPress={500}
-            >
-              <Text style={[
-                styles.dayText,
-                isSelected && !startDate && !endDate && styles.selectedDayText,
-                isToday && !isSelected && !isInRange && styles.todayDayText,
-                (isStartDate || isEndDate) && styles.rangeEndDayText,
-                isInRange && !isStartDate && !isEndDate && styles.rangeDayText,
-              ]}>
-                {cell}
-              </Text>
-              {/* Milestone colored dots (one dot per milestone on that date). Only shown when modal has a project prop. */}
-              {dayMilestones && dayMilestones.length > 0 && (() => {
-                const MAX_DOTS = 2; // show up to 2 colored dots; if more, show only +n
-                if (dayMilestones.length > MAX_DOTS) {
-                  // Only show a single +n badge (n = total milestones on that day)
-                  return (
-                    <View style={styles.milestoneDotsRow} pointerEvents="none">
-                      <View style={[styles.milestoneDotMore, { backgroundColor: theme.name === 'dark' ? '#3A3A3C' : '#E6E7EB' }]}>
-                        <Text style={[styles.milestoneDotMoreText, { color: theme.name === 'dark' ? '#FFF' : '#111' }]}>{`+${dayMilestones.length}`}</Text>
-                      </View>
-                    </View>
-                  );
-                }
-
-                // Otherwise render each milestone as a small colored dot
-                return (
-                  <View style={styles.milestoneDotsRow} pointerEvents="none">
-                    {dayMilestones.map((c, idx) => (
-                      <View
-                        key={`dot-${wi}-${ci}-${idx}`}
-                        style={[styles.milestoneDot, { backgroundColor: c }]}
-                      />
-                    ))}
-                  </View>
-                );
-              })()}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    ));
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -492,41 +279,22 @@ export default function AddTaskModal({ visible, onClose, onSave, editingTask = n
             </View>
           </View>
 
-          {/* Inline Calendar - Full Width */}
-          <View style={styles.calendarContainerFull}>
-            {/* Calendar Header */}
-            <View style={styles.calendarHeader}>
-              <TouchableOpacity 
-                style={styles.navButton}
-                onPress={() => navigateMonth(-1)}
-              >
-                <Ionicons name="chevron-back" size={20} color={theme.name === 'dark' ? '#8E8E93' : '#7f8c8d'} />
-              </TouchableOpacity>
-              
-              <Text style={[styles.monthYearText, { color: theme.text }]}>
-                {formatMonthYear(currentMonth)}
-              </Text>
-              
-              <TouchableOpacity 
-                style={styles.navButton}
-                onPress={() => navigateMonth(1)}
-              >
-                <Ionicons name="chevron-forward" size={20} color={theme.name === 'dark' ? '#8E8E93' : '#7f8c8d'} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Day Headers */}
-            <View style={styles.dayHeaders}>
-              {t('dayAbbreviations').map(day => (
-                <Text key={day} style={[styles.dayHeaderText, { color: theme.name === 'dark' ? '#8E8E93' : '#666' }]}>{day}</Text>
-              ))}
-            </View>
-
-            {/* Calendar Grid */}
-            <View style={styles.calendarGrid}>
-              {renderCalendar()}
-            </View>
-          </View>
+          {/* Inline Calendar (extracted) */}
+          <TaskCalendar
+            currentMonth={currentMonth}
+            setCurrentMonth={setCurrentMonth}
+            selectedDate={selectedDate}
+            startDate={startDate}
+            endDate={endDate}
+            onDayPress={handleDayPress}
+            onDayLongPress={handleDayLongPress}
+            language={language}
+            t={t}
+            theme={theme}
+            existingTasks={existingTasks}
+            editingTask={editingTask}
+            project={project}
+          />
           </ScrollView>
 
         </Animated.View>

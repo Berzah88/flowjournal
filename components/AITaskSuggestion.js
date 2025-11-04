@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 
 const AITaskSuggestion = ({
   journalEntries = [],
@@ -21,11 +20,10 @@ const AITaskSuggestion = ({
   onClose,
 }) => {
   const { theme } = useTheme();
-  const { t } = useLanguage();
-  
+
   const [suggestions, setSuggestions] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [fadeAnim] = useState(new Animated.Value(0));
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Journal metinlerini analiz ederek milestone önerileri çıkar
   const analyzeJournalEntries = useCallback(async () => {

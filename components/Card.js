@@ -1,26 +1,14 @@
 import React, { useEffect, useRef, useMemo, useCallback, memo } from "react";
-import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback, Vibration } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import { View, Text, StyleSheet, Animated, TouchableWithoutFeedback } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import PropTypes from "prop-types";
-import { getMilestoneColor, getMilestoneCardColor } from '../utils/milestoneColors';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { FONTS, ANIMATION_DURATIONS } from '../constants';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
-// Hex rengi RGB'ye çeviren fonksiyon
-const hexToRgb = (hex) => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16)
-  } : { r: 211, g: 203, b: 227 }; // Varsayılan renk
-};
+// (Removed unused SVG/hex utilities)
 
 // Mood tag'lerini render eden fonksiyon - basit ve temiz
 const MoodTags = memo(({ project, theme }) => {

@@ -1,8 +1,6 @@
 // components/HorizontalCalendar.js
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-// MaterialIcons removed - no mood stickers needed
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -13,17 +11,17 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
   const scrollRef = useRef(null);
   const ITEM_WIDTH = 68; // should match snapToInterval for predictable scroll
 
-  // 7 günlük tarihleri hesapla - bugünü ortaya hizala
+  // 5 günlük tarihleri hesapla - bugünü ortada tut: 2 gün geçmiş, bugün, 2 gün gelecek
   const weekDates = useMemo(() => {
     const today = new Date();
-    const startOfWeek = new Date(today);
-    // Bugünü ortaya hizala (3 gün öncesi + bugün + 3 gün sonrası)
-    startOfWeek.setDate(today.getDate() - 3 + (currentWeek * 7));
-    
+    const startOfWindow = new Date(today);
+    // 2 gün öncesi + bugün + 2 gün sonrası; currentWeek ilerledikçe 5'lik bloklar kaydırılır
+    startOfWindow.setDate(today.getDate() - 2 + (currentWeek * 5));
+
     const dates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
+    for (let i = 0; i < 5; i++) {
+      const date = new Date(startOfWindow);
+      date.setDate(startOfWindow.getDate() + i);
       dates.push(date);
     }
     return dates;
@@ -34,11 +32,14 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
     return date.getDate();
   };
 
-  // Gün kısaltması
-  const getDayAbbreviation = (date) => {
-    const dayAbbreviations = t('dayAbbreviations');
-    return dayAbbreviations[date.getDay()];
-  };
+  // Gün kısaltması (çeviri kaynağından al, yoksa fallback)
+  const dayAbbreviations = useMemo(() => {
+    const arr = t('dayAbbreviations');
+    if (Array.isArray(arr) && arr.length >= 7) return arr;
+    return ['Pazar','Pzt','Sal','Çar','Per','Cum','Cmt'];
+  }, [t, language]);
+
+  const getDayAbbreviation = (date) => dayAbbreviations[date.getDay()];
 
   // Bugün mü kontrolü
   const isToday = (date) => {
@@ -49,7 +50,8 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
   // Seçili tarih mi kontrolü
   const isSelected = (date) => {
     if (!selectedDate) return false;
-    return date.toDateString() === selectedDate.toDateString();
+    const sel = selectedDate instanceof Date ? selectedDate : new Date(selectedDate);
+    return date.toDateString() === sel.toDateString();
   };
 
   // On first render (or when weekDates change), scroll so that today is the
@@ -96,27 +98,24 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
            const isTodayDate = isToday(date);
            const isSelectedDate = isSelected(date);
 
+           const selectedStyle = isSelectedDate ? {
+             backgroundColor: theme.colors?.info || '#4A90E2',
+             elevation: 4,
+             shadowColor: theme.colors?.info || '#4A90E2',
+             shadowOffset: { width: 0, height: 4 },
+             shadowOpacity: 0.3,
+             shadowRadius: 8,
+             borderWidth: 2,
+             borderColor: theme.colors?.info || '#4A90E2',
+           } : null;
+
            return (
              <TouchableOpacity
-               key={index}
+               key={date.toDateString()}
                style={[
                  styles.dayContainer,
-                 {
-                   backgroundColor: theme.name === 'dark' ? 'transparent' : 'transparent',
-                 },
-                isSelectedDate && (() => {
-                  const indicator = theme.colors?.info || '#4A90E2';
-                  return {
-                    backgroundColor: indicator,
-                    elevation: 4,
-                    shadowColor: indicator,
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    borderWidth: 2,
-                    borderColor: indicator,
-                  };
-                })(),
+                 { backgroundColor: 'transparent' },
+                 selectedStyle,
                ]}
                onPress={() => onDateSelect && onDateSelect(date)}
                accessible={true}
@@ -125,29 +124,18 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect }) => {
              >
                <Text style={[
                  styles.dayNumber,
-                 {
-                   color: theme.name === 'dark' ? '#D1D5DB' : '#8E8E93',
-                 },
-                 isSelectedDate && {
-                   color: '#FFFFFF',
-                   fontFamily: 'Poppins_600SemiBold',
-                 },
+                 { color: theme.name === 'dark' ? '#D1D5DB' : '#8E8E93' },
+                 isSelectedDate && { color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' },
                ]}>
                  {dayNumber}
                </Text>
                <Text style={[
                  styles.dayAbbr,
-                 {
-                   color: theme.name === 'dark' ? '#D1D5DB' : '#8E8E93',
-                 },
-                 isSelectedDate && {
-                   color: '#FFFFFF',
-                   fontFamily: 'Poppins_500Medium',
-                 },
+                 { color: theme.name === 'dark' ? '#D1D5DB' : '#8E8E93' },
+                 isSelectedDate && { color: '#FFFFFF', fontFamily: 'Poppins_500Medium' },
                ]}>
                  {dayAbbr}
                </Text>
-               {/* All indicators removed - only date selection */}
              </TouchableOpacity>
            );
          })}

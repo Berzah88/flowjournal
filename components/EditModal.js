@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import FlashCalendar from "../components/FlashCalendar";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { MODAL_SIZES, SWIPE_THRESHOLDS, ANIMATION_DURATIONS } from "../constants";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 

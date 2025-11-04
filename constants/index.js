@@ -21,6 +21,46 @@ export const SWIPE_THRESHOLDS = {
   PAN_RESPONDER: 12,
 };
 
+import { StyleSheet, Platform } from 'react-native';
+
+// Typography and small helpers previously lived in components/Styles.js.
+// They are intentionally moved here to centralize design tokens and
+// avoid duplicate definitions. Keep these lightweight (Helpers is a
+// minimal StyleSheet) so importing this module doesn't cause heavy
+// runtime overhead.
+
+// Typography (font families, sizes, weights)
+export const Typography = {
+  fonts: {
+    regular: Platform.select({ ios: 'System', android: 'Poppins_400Regular', default: 'System' }),
+    medium: Platform.select({ ios: 'System', android: 'Poppins_500Medium', default: 'System' }),
+    semiBold: Platform.select({ ios: 'System', android: 'Poppins_600SemiBold', default: 'System' }),
+    bold: Platform.select({ ios: 'System', android: 'Poppins_700Bold', default: 'System' }),
+    extraBold: Platform.select({ ios: 'System', android: 'Poppins_800ExtraBold', default: 'System' }),
+  },
+  fontFamily: Platform.select({ ios: 'System', android: 'Poppins_400Regular', default: 'System' }),
+  sizes: {
+    sm: 12,
+    md: 16,
+    lg: 20,
+    xl: 24,
+  },
+  weights: {
+    normal: '400',
+    medium: '500',
+    bold: '700',
+  },
+};
+
+// Small reusable helpers as a StyleSheet to keep parity with existing
+// code that expects `Helpers.container`, `Helpers.rowCenter` etc.
+export const Helpers = StyleSheet.create({
+  rowCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  absoluteFill: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  container: { flex: 1 },
+});
+
 // Renk paleti
 export const COLORS = {
   PRIMARY: "#8E7DBE",

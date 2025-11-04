@@ -1,4 +1,4 @@
-import React, { useCallback, memo, useMemo, useState, useRef } from "react";
+import React, { useCallback, memo, useMemo, useState, useRef, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, Image, Dimensions, Animated, Vibration, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -24,7 +24,7 @@ const MOODS = MOODS_FROM_PREDICTOR;
 // Location tag component
 const LocationTag = memo(({ locationData, getLocationText }) => {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [locationText, setLocationText] = useState(t('location'));
 
   React.useEffect(() => {
@@ -67,9 +67,17 @@ const JournalCard = memo(function JournalCard({
   refreshKey = 0 // Refresh trigger
 }) {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { deleteProjectJournalEntry } = useTaskActions();
-  const [locationTexts, setLocationTexts] = useState({});
+  // Use a ref-based cache for reverse-geocoding results to avoid
+  // causing parent re-renders on cache writes. LocationTag manages
+  // its own display state when it calls getLocationText.
+  const locationCacheRef = useRef({});
+
+  // Clear cached location texts when language changes so labels re-resolve
+  useEffect(() => {
+    locationCacheRef.current = {};
+  }, [language]);
   const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
   
   // Apple-style touch animation (scale only - cleaner for nested backgrounds)
@@ -81,15 +89,21 @@ const JournalCard = memo(function JournalCard({
   const triggerHaptic = useCallback(async (style = Haptics.ImpactFeedbackStyle.Medium) => {
     try {
       await Haptics.impactAsync(style);
-      console.log('✅ JournalCard Haptic:', style === Haptics.ImpactFeedbackStyle.Medium ? 'MEDIUM' : 'LIGHT');
+      if (__DEV__) {
+        console.log('✅ JournalCard Haptic:', style === Haptics.ImpactFeedbackStyle.Medium ? 'MEDIUM' : 'LIGHT');
+      }
     } catch (error) {
       // Fallback to native Vibration
       try {
         const duration = style === Haptics.ImpactFeedbackStyle.Medium ? 50 : 30;
         Vibration.vibrate(duration);
-        console.log('✅ JournalCard Vibration:', duration + 'ms');
+        if (__DEV__) {
+          console.log('✅ JournalCard Vibration:', duration + 'ms');
+        }
       } catch (vibError) {
-        console.log('Haptic feedback not available');
+        if (__DEV__) {
+          console.log('Haptic feedback not available');
+        }
       }
     }
   }, []);
@@ -167,17 +181,17 @@ const JournalCard = memo(function JournalCard({
   // Location koordinatlarını şehir/ilçe formatına çevir
   const getLocationText = useCallback(async (locationData) => {
     if (!locationData) return t('location');
-    
+
     const coords = locationData.coords || locationData;
     if (!coords || !coords.latitude || !coords.longitude) return t('location');
-    
+
     const key = `${coords.latitude}_${coords.longitude}`;
-    
+
     // Eğer daha önce çevrilmişse cache'den dön
-    if (locationTexts[key]) {
-      return locationTexts[key];
+    if (locationCacheRef.current[key]) {
+      return locationCacheRef.current[key];
     }
-    
+
     try {
       const result = await reverseGeocodeSafe(coords);
       if (result && result.length > 0) {
@@ -185,8 +199,8 @@ const JournalCard = memo(function JournalCard({
         // Şehir ve ilçe bilgisini al
         const city = location.city || location.subregion || location.region;
         const district = location.district || location.subLocality;
-        
-        let locationText = "Location";
+
+        let locationText = t('location');
         if (city && district && city !== district) {
           locationText = `${district}, ${city}`;
         } else if (city) {
@@ -195,21 +209,21 @@ const JournalCard = memo(function JournalCard({
           // Fallback: koordinat
           locationText = formatCoords(coords);
         }
-        
-        // Cache'e kaydet
-        setLocationTexts(prev => ({ ...prev, [key]: locationText }));
+
+        // Cache'e kaydet (ref, no setState)
+        locationCacheRef.current[key] = locationText;
         return locationText;
       }
     } catch (error) {
       logger.debug('Reverse geocoding error (JournalCard):', error && (error.message || error.code || error));
       // Fallback: koordinat
       const locationText = formatCoords(coords);
-      setLocationTexts(prev => ({ ...prev, [key]: locationText }));
+      locationCacheRef.current[key] = locationText;
       return locationText;
     }
-    
-    return "Location";
-  }, [locationTexts]);
+
+    return t('location');
+  }, [t]);
 
   // O günün tüm resimlerini birleştir (harita hariç - APK crash sorunu)
   const allMedia = useMemo(() => {
@@ -680,7 +694,7 @@ const JournalCard = memo(function JournalCard({
       {otherTextEntries.length > 0 && (
         <View style={styles.additionalTextTags}>
           {otherTextEntries.map((entry, index) => (
-            <View key={index} style={[
+                <View key={entry.id || entry.createdAt || index} style={[
               styles.textTag,
               {
                 backgroundColor: theme.name === 'dark' ? 'rgba(255, 255, 255, 0.12)' : '#E9ECEF',
@@ -794,23 +808,41 @@ const JournalCard = memo(function JournalCard({
     </Animated.View>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function for better performance
-  return (
-    prevProps.dayGroup.date === nextProps.dayGroup.date &&
-    prevProps.refreshKey === nextProps.refreshKey && // RefreshKey kontrolü eklendi
-    prevProps.dayGroup.allEntries.length === nextProps.dayGroup.allEntries.length &&
-    prevProps.dayGroup.allEntries.every((entry, index) => {
-      const nextEntry = nextProps.dayGroup.allEntries[index];
-      return entry.id === nextEntry.id &&
-             entry.text === nextEntry.text &&
-             entry.createdAt === nextEntry.createdAt &&
-             entry.mood === nextEntry.mood &&
-             entry.moodIcon === nextEntry.moodIcon &&
-             entry.moodColor === nextEntry.moodColor &&
-             JSON.stringify(entry.images) === JSON.stringify(nextEntry.images) && // Medya kontrolü
-             JSON.stringify(entry.location) === JSON.stringify(nextEntry.location); // Konum kontrolü
-    })
-  );
+  // Custom comparison function for better performance without heavy JSON.stringify
+  if (prevProps.dayGroup.date !== nextProps.dayGroup.date) return false;
+  if (prevProps.refreshKey !== nextProps.refreshKey) return false;
+  const prevEntries = prevProps.dayGroup.allEntries;
+  const nextEntries = nextProps.dayGroup.allEntries;
+  if (prevEntries.length !== nextEntries.length) return false;
+
+  for (let i = 0; i < prevEntries.length; i++) {
+    const a = prevEntries[i];
+    const b = nextEntries[i];
+    if (!b) return false;
+    if (a.id !== b.id) return false;
+    if (a.text !== b.text) return false;
+    if (a.createdAt !== b.createdAt) return false;
+    if (a.mood !== b.mood) return false;
+    if (a.moodIcon !== b.moodIcon) return false;
+    if (a.moodColor !== b.moodColor) return false;
+    // images: compare lengths and first item as quick heuristic
+    const aImgs = a.images || [];
+    const bImgs = b.images || [];
+    if (aImgs.length !== bImgs.length) return false;
+    if (aImgs.length > 0 && aImgs[0] !== bImgs[0]) return false;
+    // location: compare presence and lat/lon if available
+    const aLoc = a.location || null;
+    const bLoc = b.location || null;
+    if ((aLoc && !bLoc) || (!aLoc && bLoc)) return false;
+    if (aLoc && bLoc) {
+      const aLat = aLoc.latitude || aLoc.coords?.latitude;
+      const aLon = aLoc.longitude || aLoc.coords?.longitude;
+      const bLat = bLoc.latitude || bLoc.coords?.latitude;
+      const bLon = bLoc.longitude || bLoc.coords?.longitude;
+      if (aLat !== bLat || aLon !== bLon) return false;
+    }
+  }
+  return true;
 });
 
 export default JournalCard;
@@ -826,8 +858,9 @@ const styles = StyleSheet.create({
     borderWidth: 1, // Daha kalın border
     minHeight: 90, // Biraz daha yüksek
     maxWidth: width * 0.75, // Daha dar kartlar
-    // Modern glassmorphism properties
-    backdropFilter: 'blur(10px)', // Web için blur efekti
+  // Modern glassmorphism properties
+  // Note: `backdropFilter` is a web-only style and causes warnings on React Native.
+  // Removed to avoid platform issues.
     overflow: 'hidden', // İçeriğin taşmasını önle
     // Flexbox properties for better alignment
     flexDirection: 'column',
@@ -897,7 +930,6 @@ const styles = StyleSheet.create({
   additionalTextTags: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
     marginTop: 22, // 8'den 16'ya artırıldı
     marginBottom: 0, // Alt boşluk sıfırlandı
   },
@@ -1080,7 +1112,6 @@ const styles = StyleSheet.create({
   },
   deleteActions: {
     flexDirection: 'row',
-    gap: 12,
     width: '100%',
     justifyContent: 'center',
   },
@@ -1094,6 +1125,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     borderWidth: 1,
+    marginRight: 12,
   },
   confirmButton: {
     backgroundColor: '#FF3B30',
